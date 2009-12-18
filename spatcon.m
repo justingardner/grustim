@@ -41,6 +41,7 @@ targetContrast = [0.1 0.5 1];
 
 % parameters
 stimulus.grating.radius = 8;
+stimulus.grating.targetLoc = [1 4];
 stimulus.grating.orientations = 0:60:359;
 stimulus.grating.contrasts = union(distractorContrast,targetContrast);
 stimulus.grating.sf = 2;
@@ -88,14 +89,26 @@ end
 % set up segments of trials
 if ~isLoc
   stimulus.isLocalizer = 0;
-  task{2}{1}.parameter.distractorContrast = distractorContrast;
-  task{2}{1}.parameter.targetContrast = targetContrast;
-  task{2}{1}.parameter.targetLoc = [1 4];
+  task{2}{1}.parameter.distractorContrast = 0;
+  task{2}{1}.parameter.targetContrast = 0;
+  task{2}{1}.parameter.targetLoc = 1;
   task{2}{1}.random = 1;
-  task{2}{1}.seglen = [3 2];
-  task{2}{1}.synchToVol = [0 0 0];
-  task{2}{1}.getResponse = [0 0 1];
+  task{2}{1}.segmin = [10];
+  task{2}{1}.segmax = [10];
+  task{2}{1}.synchToVol = [1];
+  task{2}{1}.getResponse = [0];
+  task{2}{1}.numTrials = 1;
   task{2}{1}.waitForBacktick = 1;
+
+  task{2}{2}.parameter.distractorContrast = distractorContrast;
+  task{2}{2}.parameter.targetContrast = targetContrast;
+  task{2}{2}.parameter.targetLoc = stimulus.grating.targetLoc;
+  task{2}{2}.random = 1;
+  task{2}{2}.segmin = [3 4];
+  task{2}{2}.segmax = [3 8];
+  task{2}{2}.synchToVol = [0 1];
+  task{2}{2}.getResponse = [0 0];
+  task{2}{2}.waitForBacktick = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % if this is localizer then change a few things
@@ -105,8 +118,8 @@ else
   stimulus.grating.contrasts = [0 1];
   task{2}{1}.parameter.distractorContrast = distractorContrast;
   task{2}{1}.parameter.targetContrast = targetContrast;
-  task{2}{1}.seglen = [10 10];
-  task{2}{1}.synchToVol = [0 0];
+  task{2}{1}.seglen = [12 12];
+  task{2}{1}.synchToVol = [1 1];
   task{2}{1}.waitForBacktick=1;
 end
 
@@ -240,6 +253,14 @@ if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
     y = stimulus.grating.radius*sin(pi*thisAngle/180);
     angleNum = iAngle;
 %    angleNum = find(stimulus.grating.orientations == 0);
+    % get which phase we are on
+    phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
+    % reverse the phase every other grating
+    if iseven(iAngle)
+      phaseNum = mod(phaseNum+length(stimulus.grating.phases)/2,length(stimulus.grating.phases))+1;
+    end
+    
+
     % get what contrast to display
     % Main experiment
     if ~stimulus.isLocalizer
@@ -249,31 +270,28 @@ if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
       else
 	contrastNum = find(stimulus.grating.contrasts==task.thistrial.distractorContrast);
       end    
-    
+
     % Localizer
     else
-      if (iAngle == stimulus.grating.targetLoc) || (iAngle==(stimulus.grating.targetLoc+length(stimulus.grating.orientations)/2))
+      if any(iAngle == stimulus.grating.targetLoc)
+	% flip phase so that left and right gratings are opposite each other
+	if (iAngle == stimulus.grating.targetLoc(1))
+	  phaseNum = mod(phaseNum+length(stimulus.grating.phases)/2,length(stimulus.grating.phases))+1;
+	end
 	if task.thistrial.thisseg == 1
-	  contrastNum = 1;
-	else
 	  contrastNum = 2;
+	else
+	  contrastNum = 1;
 	end
       else
 	if task.thistrial.thisseg == 1
-	  contrastNum = 2;
-	else
 	  contrastNum = 1;
+	else
+	  contrastNum = 2;
 	end
       end
     end
 
-    % get which phase we are on
-    phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
-    % reverse the phase every other grating
-    if iseven(iAngle)
-      phaseNum = mod(phaseNum+length(stimulus.grating.phases)/2,length(stimulus.grating.phases))+1;
-    end
-    
     % display the texture
     mglBltTexture(stimulus.tex(contrastNum,angleNum,phaseNum),[x y]);
   end
