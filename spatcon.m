@@ -7,13 +7,16 @@
 %
 %
 %
-function myscreen = spatcon
+function myscreen = spatcon(varargin)
 
 % check arguments
-if ~any(nargin == [0])
+if ~any(nargin == [0 1])
   help orientationDiscrimination
   return
 end
+
+isLoc = [];
+getArgs(varargin,{'isLoc=0'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
@@ -32,35 +35,80 @@ clear global stimulus
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
+% set the contrasts of distractor and target
+distractorContrast = [0.1 1];
+targetContrast = [0.1 0.5 1];
+
 % parameters
-stimulus.grating.orientations = [90];
-stimulus.grating.contrasts = [0:0.1:1];
+stimulus.grating.radius = 8;
+stimulus.grating.orientations = 0:60:359;
+stimulus.grating.contrasts = union(distractorContrast,targetContrast);
 stimulus.grating.sf = 2;
-stimulus.grating.tf = 1;
+stimulus.grating.tf = 2;
 stimulus.grating.width = 7;
 stimulus.grating.height = 7;
+stimulus.grating.phases = [0 pi];
+stimulus.grating.phases = [0:2*pi/30:2*pi 2*pi:-2*pi/30:0]; % note this makes the actual tf = tf*2
 stimulus.grating.phase = 0;
 stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
-stimulus.grating.sdx = stimulus.grating.width/6;
-stimulus.grating.sdy = stimulus.grating.width/6;
+stimulus.grating.sdx = stimulus.grating.width/7;
+stimulus.grating.sdy = stimulus.grating.width/7;
 
-stimulus.fix.width = 0.5;
-stimulus.fix.linewidth = 1;
-stimulus.fix.disksize = [2 2];
-stimulus.fix.startColor = 1;
-stimulus.fix.correctColor = [0 1 0];
-stimulus.fix.incorrectColor = [1 0 0];
+stimulus.grating.width = 6;
+stimulus.grating.height = 6;
+stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
+stimulus.grating.sdx = 2.5;
+stimulus.grating.sdy = 2.5;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set up fixation task
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+global fixStimulus;
+easyFixTask = 1;
+if ~easyFixTask
+  % default values
+  fixStimulus.diskSize = 0.5;
+  fixStimulus.fixWidth = 1;
+  fixStimulus.fixLineWidth = 3;
+  fixStimulus.stimTime = 0.4;
+  fixStimulus.responseTime = 1;
+else
+  % make cross bigger and task slower
+  fixStimulus.diskSize = 0.5;
+  fixStimulus.fixWidth = 1+1*easyFixTask;
+  fixStimulus.fixLineWidth = 3+2*easyFixTask;
+  fixStimulus.stimTime = 0.4+0.4*easyFixTask;
+  fixStimulus.responseTime = 1+1*easyFixTask;
+end
+[task{1} myscreen] = fixStairInitTask(myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up task
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up segments of trials
-task{1}.parameter.type = [0 1];
-task{1}.random = 1;
-task{1}.seglen = [3];
-task{1}.synchToVol = [0 0 0];
-task{1}.getResponse = [0 0 1];
-task{1}.waitForBacktick = 1;
+if ~isLoc
+  stimulus.isLocalizer = 0;
+  task{2}{1}.parameter.distractorContrast = distractorContrast;
+  task{2}{1}.parameter.targetContrast = targetContrast;
+  task{2}{1}.parameter.targetLoc = [1 4];
+  task{2}{1}.random = 1;
+  task{2}{1}.seglen = [3 2];
+  task{2}{1}.synchToVol = [0 0 0];
+  task{2}{1}.getResponse = [0 0 1];
+  task{2}{1}.waitForBacktick = 1;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% if this is localizer then change a few things
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+else
+  stimulus.isLocalizer = 1;
+  stimulus.grating.contrasts = [0 1];
+  task{2}{1}.parameter.distractorContrast = distractorContrast;
+  task{2}{1}.parameter.targetContrast = targetContrast;
+  task{2}{1}.seglen = [10 10];
+  task{2}{1}.synchToVol = [0 0];
+  task{2}{1}.waitForBacktick=1;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks and stimulus
@@ -68,8 +116,9 @@ task{1}.waitForBacktick = 1;
 stimulus = initGratings(stimulus,task,myscreen);
 
 % initialze tasks
-[task{1} myscreen] = initTask(task{1},myscreen,@startSegmentCallback,@trialStimulusCallback,@trialResponseCallback);
-
+for phaseNum = 1:length(task{2})
+  [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback,@trialResponseCallback);
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -81,9 +130,12 @@ myscreen = eyeCalibDisp(myscreen);
 % set which phase is active
 tnum = 1;
 
-while (tnum <= length(task)) && ~myscreen.userHitEsc
-  % updatethe task
-  [task myscreen tnum] = updateTask(task,myscreen,tnum);
+phaseNum = 1;
+while (phaseNum <= length(task{2})) && ~myscreen.userHitEsc
+  % update the dots
+  [task{2} myscreen phaseNum] = updateTask(task{2},myscreen,phaseNum);
+  % update the fixation task
+  [task{1} myscreen] = updateTask(task{1},myscreen,1);
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -103,37 +155,48 @@ myscreen = endTask(myscreen,task);
 function stimulus = initGratings(stimulus,myscreen,task)
 
 disppercent(-inf,'Creating grating textures');
+
+nContrasts = length(stimulus.grating.contrasts);
+nOrientations = length(stimulus.grating.orientations);
+nPhases = length(stimulus.grating.phases);
+
 % make each one of he called for gratings
-for i = 1:length(stimulus.grating.contrasts)
-  disppercent((i-1)/length(stimulus.grating.contrasts));
-  % get the orientation we want to create
-  thisOrientation = stimulus.grating.orientations(1);
-  % make the grating
-  thisGrating = 255*(mglMakeGrating(stimulus.grating.width,stimulus.grating.height,...
-				    stimulus.grating.sf,thisOrientation,...
-				    stimulus.grating.phase)+1)/2;
+for iPhase = 1:nPhases
+  for iContrast = 1:nContrasts
+    for iOrientation = 1:nOrientations
+      disppercent(calcPercentDone(iPhase,nPhases,iContrast,nContrasts,iOrientation,nOrientations));
+      % get the orientation we want to create
+      thisOrientation = stimulus.grating.orientations(iOrientation);
+      % get the phase
+      thisPhase = (stimulus.grating.phase+stimulus.grating.phases(iPhase))*180/pi;
+      % make the grating
+      thisGrating = 255*(mglMakeGrating(stimulus.grating.width,stimulus.grating.height,...
+					stimulus.grating.sf,thisOrientation,...
+					thisPhase)+1)/2;
   
-  thisGaussian = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,...
-				 stimulus.grating.sdx,stimulus.grating.sdy);
+      thisGaussian = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,...
+				     stimulus.grating.sdx,stimulus.grating.sdy);
 
-  % create an rgb/a matrix
-  thisStimulus(:,:,1) = thisGrating;
-  thisStimulus(:,:,2) = thisGrating;
-  thisStimulus(:,:,3) = thisGrating;
+      % create an rgb/a matrix
+      thisStimulus(:,:,1) = thisGrating;
+      thisStimulus(:,:,2) = thisGrating;
+      thisStimulus(:,:,3) = thisGrating;
 
-  % make the gaussian window
-  if strcmp(stimulus.grating.windowType,'gabor')
-    % create an rgb/a matrix
-    mask = stimulus.grating.contrasts(i)*255*thisGaussian;
-  else
-    mask = stimulus.grating.contrasts(i)*255*(thisGaussian>exp(-1/2));
+      % make the gaussian window
+      if strcmp(stimulus.grating.windowType,'gabor')
+	% create an rgb/a matrix
+	mask = stimulus.grating.contrasts(iContrast)*255*thisGaussian;
+      else
+	mask = stimulus.grating.contrasts(iContrast)*255*(thisGaussian>exp(-1/2));
+      end
+
+      thisStimulus(:,:,4) = mask;
+      thatStimulus(:,:,4) = mask;
+      
+      % create the texture
+      stimulus.tex(iContrast,iOrientation,iPhase) = mglCreateTexture(thisStimulus);
+    end
   end
-
-  thisStimulus(:,:,4) = mask;
-  thatStimulus(:,:,4) = mask;
-
-  % create the texture
-  stimulus.tex(i) = mglCreateTexture(thisStimulus);
 end
 disppercent(inf);
 
@@ -155,52 +218,66 @@ disppercent(inf);
 function [task myscreen] = startSegmentCallback(task,myscreen)
 
 global stimulus;
-stimulus.fix.color = stimulus.fix.startColor;
-task.thistrial.r = ceil(length(stimulus.tex)*rand(8));
-task.thistrial.thisloc = ceil(8*rand(1));
+if task.thistrial.thisseg == 1
+  disp(sprintf('Target: %0.2f Distractor: %0.2f',task.thistrial.targetContrast,task.thistrial.distractorContrast));
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to display stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [task myscreen] = trialStimulusCallback(task,myscreen)
+function [task myscreen] = updateScreenCallback(task,myscreen)
 
 global stimulus;
 mglClearScreen;
 
-angles = (0:45:359)-45;
-radius = 10;
+if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
+  % create a ring of stimuli
+  for iAngle = 1:length(stimulus.grating.orientations)
 
-for i = 1:length(angles)
-  x = radius*cos(pi*angles(i)/180);
-  y = radius*sin(pi*angles(i)/180);
-
-  if 1
-    if any(i == 2)
-      contrastNum = 2;
-    else
-      contrastNum = 10;
-    end    
-  end
-
-  if 0  
-    if i ~= task.thistrial.thisloc
-      if task.thistrial.type == 1
-	contrastNum = task.thistrial.r(i);
+    % get x,y position of grating
+    thisAngle = stimulus.grating.orientations(iAngle);
+    x = stimulus.grating.radius*cos(pi*thisAngle/180);
+    y = stimulus.grating.radius*sin(pi*thisAngle/180);
+    angleNum = iAngle;
+%    angleNum = find(stimulus.grating.orientations == 0);
+    % get what contrast to display
+    % Main experiment
+    if ~stimulus.isLocalizer
+      if iAngle == task.thistrial.targetLoc
+	contrastNum = find(stimulus.grating.contrasts==task.thistrial.targetContrast);
+	angleNum = find(stimulus.grating.orientations==0);
       else
-	contrastNum = task.thistrial.r(1);
-      end
+	contrastNum = find(stimulus.grating.contrasts==task.thistrial.distractorContrast);
+      end    
+    
+    % Localizer
     else
-      contrastNum = 4;
-    end    
+      if (iAngle == stimulus.grating.targetLoc) || (iAngle==(stimulus.grating.targetLoc+length(stimulus.grating.orientations)/2))
+	if task.thistrial.thisseg == 1
+	  contrastNum = 1;
+	else
+	  contrastNum = 2;
+	end
+      else
+	if task.thistrial.thisseg == 1
+	  contrastNum = 2;
+	else
+	  contrastNum = 1;
+	end
+      end
+    end
+
+    % get which phase we are on
+    phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
+    % reverse the phase every other grating
+    if iseven(iAngle)
+      phaseNum = mod(phaseNum+length(stimulus.grating.phases)/2,length(stimulus.grating.phases))+1;
+    end
+    
+    % display the texture
+    mglBltTexture(stimulus.tex(contrastNum,angleNum,phaseNum),[x y]);
   end
-
-  mglBltTexture(stimulus.tex(contrastNum),[x y]);
 end
-
-% draw fixation
-mglFillOval(0,0,stimulus.fix.disksize,myscreen.background);
-mglFixationCross(stimulus.fix.width,stimulus.fix.linewidth,stimulus.fix.color);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to set stimulus parameters at
