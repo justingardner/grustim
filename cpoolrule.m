@@ -37,19 +37,30 @@ myscreen = initStimulus('stimulus',myscreen);
 
 % set the contrasts of distractor and target
 pedestalContrasts = [0.1 0.2 0.4];
-deltaContrasts = [0.05 0.1 0.2];
+deltaContrasts = [0 0.05 0.1 0.15 0.2];
+
+pedestalContrasts = [0.1];
+deltaContrasts = [0 0.05 0.1 0.2]/8;
+
+% create an array of all contrasts that will need to be displayed
+allContrasts = repmat(deltaContrasts,length(pedestalContrasts),1);
+allContrasts = allContrasts(:)';
+allContrasts = allContrasts + repmat(pedestalContrasts,1,length(deltaContrasts));
+allContrasts = unique(allContrasts);
 
 % parameters
-stimulus.grating.radius = 8;
+stimulus.int1 = 2;
+stimulus.int2 = 4;
+stimulus.grating.radius = 4.5;
 stimulus.grating.orientations = -45:90:359;
 stimulus.grating.n = 4;
-stimulus.grating.contrasts = union(pedestalContrasts,deltaContrasts)
+stimulus.grating.contrasts = allContrasts;
 stimulus.grating.sf = 2;
 stimulus.grating.tf = 2;
-stimulus.grating.width = 7;
-stimulus.grating.height = 7;
+stimulus.grating.width = 6;
+stimulus.grating.height = 6;
 stimulus.grating.phases = [0 pi];
-stimulus.grating.phases = [0:2*pi/30:2*pi 2*pi:-2*pi/30:0]; % note this makes the actual tf = tf*2
+stimulus.grating.phases = [0:2*pi/10:2*pi 2*pi:-2*pi/10:0]; % note this makes the actual tf = tf*2
 stimulus.grating.phase = 0;
 stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/7;
@@ -60,6 +71,8 @@ stimulus.grating.height = 6;
 stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
 stimulus.grating.sdx = 2.5;
 stimulus.grating.sdy = 2.5;
+
+stimulus.fixColor = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up fixation task
@@ -97,12 +110,12 @@ if ~isLoc
   task{1}{1}.waitForBacktick = 0;
   task{1}{2}.parameter.pedestalContrast = repmat(pedestalContrasts,stimulus.grating.n,1);
   task{1}{2}.parameter.deltaContrast = repmat(deltaContrasts,stimulus.grating.n,1);
-  task{1}{2}.parameter.interval = [1 2];
+  task{1}{2}.parameter.interval = repmat([stimulus.int1 stimulus.int2],stimulus.grating.n,1);
   task{1}{2}.random = 1;
   task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5];
   task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5];
-  task{1}{2}.synchToVol = [0 0];
-  task{1}{2}.getResponse = [0 0];
+  task{1}{2}.synchToVol = [0 0 0 0 0];
+  task{1}{2}.getResponse = [0 0 0 0 1];
   task{1}{2}.waitForBacktick = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -121,7 +134,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks and stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-stimulus = initGratings(stimulus,task,myscreen);
+stimulus = initGratings(stimulus,myscreen,task)
 
 % initialze tasks
 for phaseNum = 1:length(task{1})
@@ -170,7 +183,13 @@ nPhases = length(stimulus.grating.phases);
 for iPhase = 1:nPhases
   for iContrast = 1:nContrasts
     for iOrientation = 1:nOrientations
-      disppercent(calcPercentDone(iPhase,nPhases,iContrast,nContrasts,iOrientation,nOrientations));
+      pDone = calcPercentDone(iPhase,nPhases,iContrast,nContrasts,iOrientation,nOrientations);
+      % display pDone to screen
+      mglClearScreen;
+      mglTextDraw(sprintf('%i%%',round(100*pDone)),[0 0]);
+      myscreen = tickScreen(myscreen);
+      disppercent(pDone);
+      if myscreen.userHitEsc,mglClose;keyboard,end
       % get the orientation we want to create
       thisOrientation = stimulus.grating.orientations(iOrientation);
       % get the phase
@@ -224,8 +243,39 @@ disppercent(inf);
 function [task myscreen] = startSegmentCallback(task,myscreen)
 
 global stimulus;
-if task.thistrial.thisseg == 1
-%  disp(sprintf('Target: %0.2f Distractor: %0.2f',task.thistrial.targetContrast,task.thistrial.distractorContrast));
+
+if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
+  % set up the stimuli
+  for i = 1:stimulus.grating.n
+    % orientation of stimulus
+    orientation = pi*stimulus.grating.orientations(i)/180;
+
+    % get x,y position of grating
+    stimulus.x(i) = stimulus.grating.radius*cos(orientation);
+    stimulus.y(i) = stimulus.grating.radius*sin(orientation);
+
+    % set the contrast num
+    if (task.thistrial.thisseg == task.thistrial.interval(i))
+      thisContrast = task.thistrial.pedestalContrast(i)+task.thistrial.deltaContrast(i);
+    else
+      thisContrast = task.thistrial.pedestalContrast(i);
+    end
+    stimulus.contrastNum(i) = find(thisContrast == stimulus.grating.contrasts);
+    
+  end
+  % compute overall contrast in the interval
+  if task.thistrial.thisseg == stimulus.int1
+    stimulus.contrast1 = sum(stimulus.grating.contrasts(stimulus.contrastNum));
+  else
+    stimulus.contrast2 = sum(stimulus.grating.contrasts(stimulus.contrastNum));
+  end
+end
+
+% set the fixation color
+if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
+  stimulus.fixColor = [1 1 0];
+else
+  stimulus.fixColor = 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -236,30 +286,21 @@ function [task myscreen] = updateScreenCallback(task,myscreen)
 global stimulus;
 mglClearScreen;
 
-if any(task.thistrial.thisseg == [2 4]) 
-  % create the stimuli
+if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2]) 
   for i = 1:stimulus.grating.n
-    % orientation of stimulus
-    orientation = pi*stimulus.grating.orientations(i)/180;
-    angleNum = i;
-
-    % get x,y position of grating
-    x = stimulus.grating.radius*cos(orientation);
-    y = stimulus.grating.radius*sin(orientation);
-
     % get which phase we are on
     phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
     % reverse the phase every other grating
     if iseven(i)
       phaseNum = mod(phaseNum+length(stimulus.grating.phases)/2,length(stimulus.grating.phases))+1;
     end
-    
-    % et the contrast num
-    contrastNum = find(task.thistrial.pedestalContrast(i) == stimulus.grating.contrasts);
-    
-    mglBltTexture(stimulus.tex(contrastNum,angleNum,phaseNum),[x y]);
+    % blt texture
+    mglBltTexture(stimulus.tex(stimulus.contrastNum(i),i,phaseNum),[stimulus.x(i) stimulus.y(i)]);
   end
 end
+
+mglFixationCross(0.5,1,stimulus.fixColor);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to set stimulus parameters at
@@ -269,3 +310,17 @@ function [task myscreen] = trialResponseCallback(task,myscreen)
 
 global stimulus;
 
+if (stimulus.contrast1 > stimulus.contrast2) && (task.thistrial.whichButton == 1)
+  disp(sprintf('correct'));
+  stimulus.fixColor = [0 1 0];
+elseif (stimulus.contrast1 < stimulus.contrast2) && (task.thistrial.whichButton == 2)
+  disp(sprintf('correct'));
+  stimulus.fixColor = [0 1 0];
+elseif (stimulus.contrast1 > stimulus.contrast2) && (task.thistrial.whichButton == 2)
+  disp(sprintf('incorrect'));
+  stimulus.fixColor = [1 0 0];
+elseif (stimulus.contrast1 < stimulus.contrast2) && (task.thistrial.whichButton == 1)
+  disp(sprintf('incorrect'));
+  stimulus.fixColor = [1 0 0];
+end
+  
