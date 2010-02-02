@@ -7,13 +7,15 @@
 %  copyright: (c) 2007 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: 2 direction patches
 %
-function myscreen = dotsdir
+function myscreen = dotsdir(varargin)
 
-% check arguments
-if ~any(nargin == [0])
-  help dotsdir
-  return
-end
+taskType=[];
+fixX = [];
+fixY = [];
+centerX = [];
+centerY = [];
+diameter = [];
+getArgs(varargin,{'taskType=dots','fixX=0','fixY=0','centerX=[]','centerY=[]','diameter=[]'});
 
 % check to see whether screen is still open
 global stimulus;
@@ -22,6 +24,7 @@ if ~isfield(stimulus,'texturesCreated')
   stimulus = [];
   stimulus.texturesCreated = 0;
 end
+
 global MGL;
 if ~isfield(MGL,'displayNumber') || (MGL.displayNumber == -1)
   % no screen open, force stimulus to recreate textures
@@ -31,20 +34,21 @@ end
 % initalize the screen
 if isfield(stimulus,'type')
   if stimulus.type == 1
-       myscreen.background = 'gray';
+    myscreen.background = 'gray';
   else
-       myscreen.background = 'black';
+    myscreen.background = 'black';
   end
 else
   myscreen.background = 'black';
 end
 
-myscreen.autoCloseScreen = 0;
+% init screen
 myscreen = initScreen(myscreen);
 
 % set the first task to be the fixation staircase task
 easyFixTask = 1;
 global fixStimulus;
+fixStimulus.pos = [fixX fixY];
 if ~easyFixTask
   % default values
   fixStimulus.diskSize = 0.5;
@@ -62,40 +66,48 @@ else
 end
 [task{1} myscreen] = fixStairInitTask(myscreen);
 
-% update stimulus every 250 ms
-% make sure it is divisible by the TR
-TR = 2.2583;
-frameLen = TR/8;
-
-% stimulus is on for 30 seconds
-stimLen = 9*TR;
+stimLen = 24;
 
 % first phase, we show randomized orientation
 %Aorientations = 15:60:135;
 orientations = 22.5:22.5:180;
-task{2}{1}.waitForBacktick =1;
-task{2}{1}.seglen = frameLen * ones(1,(stimLen/9)/frameLen);
+task{2}{1}.waitForBacktick = 0;
+task{2}{1}.seglen = 0.1;
+task{2}{1}.synchToVol = 1;
 task{2}{1}.parameter.orientation = [orientations;orientations];
 task{2}{1}.random = 1;
-task{2}{1}.numTrials = 9;
+task{2}{1}.numTrials = 1;
 
-stimLen = stimLen-frameLen;
-% second phase actually show orientations
-task{2}{2}.seglen = [frameLen * ones(1,stimLen/frameLen-1) frameLen/2];
-task{2}{2}.synchToVol = zeros(1,(stimLen/frameLen));
-task{2}{2}.synchToVol(end) = 1;
-task{2}{2}.parameter.orientation = [orientations;orientations];
-task{2}{2}.random = 1;
+% set the task type
+stimulus.taskType = taskType;
+stimulus.onoff = 1;
+
+if strcmp(stimulus.taskType,'blockLoc')
+  % half the segments will have the stimulsu on, half will have it off
+  task{2}{2}.seglen =     repmat(1.5,1,16);
+  task{2}{2}.synchToVol = zeros(1,16);
+  task{2}{2}.synchToVol(8) = 1;
+  task{2}{2}.synchToVol(16) = 1;
+  task{2}{2}.parameter.orientation = [orientations;orientations];
+  task{2}{2}.random = 1;
+else
+  % second phase actually show orientations
+  task{2}{2}.seglen = stimLen;
+  task{2}{2}.synchToVol = 1;
+  task{2}{2}.parameter.orientation = [orientations;orientations];
+  task{2}{2}.random = 1;
+end
+  
 
 % initialize the task
 for phaseNum = 1:length(task)
-  [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
+  [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
 end
 
 % register stimulus in myscreen
 myscreen = initStimulus('stimulus',myscreen);
 % do our initialization which creates a grating
-stimulus = myInitStimulus(stimulus,myscreen,task);
+stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -118,6 +130,20 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%   initTrialCallback   %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [task myscreen] = initTrialCallback(task, myscreen)
+
+% get a random orientation sequence for block design
+global stimulus;
+if strcmp(stimulus.taskType,'blockLoc')
+  orientations = task.parameter.orientation(1,:);
+  rperm1 = randperm(size(orientations,2));
+  rperm2 = randperm(size(orientations,2));
+  stimulus.thisOrientationOrder = orientations([rperm1;rperm2]);
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,6 +156,15 @@ if stimulus.type == 1
   stimulus.phaseNum = ceil(rand(1)*stimulus.numPhases);
 end
 
+% set the orientations in the tast.thistrial variable for blockLoc
+if strcmp(stimulus.taskType,'blockLoc')
+  % set the orientation
+  onum = mod(task.thistrial.thisseg-1,8)+1;
+  task.thistrial.orientation = stimulus.thisOrientationOrder(:,onum);
+  % set on or off
+  stimulus.onoff = (task.thistrial.thisseg > (length(task.seglen)/2));
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -140,13 +175,19 @@ global stimulus;
 % clear the screen
 mglClearScreen;
 
+% return if the stimulus is off
+if stimulus.onoff == 0, return,end
+
+% get coherence for this phase
+coherence = (task.thistrial.thisphase == 2);
+
 % draw the left grating
 mglStencilSelect(2);
 if stimulus.type == 1
   mglBltTexture(stimulus.tex(stimulus.phaseNum),[-stimulus.centerX 0],0,0,task.thistrial.orientation(1));
 else
   stimulus.dots{1}.dir = task.thistrial.orientation(1)*2;
-  stimulus.dots{1} = updateDots(stimulus.dots{1},1,myscreen);
+  stimulus.dots{1} = updateDots(stimulus.dots{1},coherence,myscreen);
 end
 
 % draw the right grating
@@ -155,7 +196,7 @@ if stimulus.type == 1
   mglBltTexture(stimulus.tex(stimulus.phaseNum),[stimulus.centerX 0],0,0,task.thistrial.orientation(2));
 else
   stimulus.dots{2}.dir = task.thistrial.orientation(2)*2;
-  stimulus.dots{2} = updateDots(stimulus.dots{2},1,myscreen);
+  stimulus.dots{2} = updateDots(stimulus.dots{2},coherence,myscreen);
 end
 
 % return to unstenciled drawing
@@ -169,7 +210,7 @@ function [task myscreen] = responseCallback(task, myscreen)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = myInitStimulus(stimulus,myscreen,task)
+function stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter)
 
 % 1 is for gratings. 2 is for dots
 stimulus.type = 2;
@@ -269,8 +310,21 @@ y = [0 sin(d2r(90-stimulus.stencilAngle))*stencilRadius screenTop ...
 if stimulus.circularAperture
   fixDiskSize = 1;
   distFromEdge = 0.5;
-  circleSize = (myscreen.imageWidth/2) - fixDiskSize - distFromEdge;
-  stimulus.centerX = fixDiskSize+circleSize/2;
+  if ~isempty(diameter)
+    circleSize = diameter;
+  else
+    circleSize = (myscreen.imageWidth/2) - fixDiskSize - distFromEdge;
+  end
+  if ~isempty(centerX)
+    stimulus.centerX = centerX;
+  else
+    stimulus.centerX = fixDiskSize+circleSize/2;
+  end
+  if ~isempty(centerY)
+    stimulus.centerY = centerY;
+  else
+    stimulus.centerY = 0;
+  end
   circleSize = [circleSize circleSize];
 else
   stimulus.centerX = 0;
@@ -279,8 +333,8 @@ end
 % right stencil
 mglStencilCreateBegin(1);
 if stimulus.circularAperture
-  mglFillOval(stimulus.centerX,0,circleSize,[1 1 1]);
-  mglGluDisk(stimulus.centerX,0,circleSize(1)/2,[1 1 1],128);
+  mglFillOval(stimulus.centerX,stimulus.centerY,circleSize,[1 1 1]);
+  mglGluDisk(stimulus.centerX,stimulus.centerY,circleSize(1)/2,[1 1 1],128);
 else
   % for the single grating
   if stimulus.singleAperture
@@ -295,7 +349,7 @@ mglStencilCreateEnd;
 mglClearScreen;
 mglStencilCreateBegin(2);
 if stimulus.circularAperture
-  mglGluDisk(-stimulus.centerX,0,circleSize(1)/2,[1 1 1],128);
+  mglGluDisk(-stimulus.centerX,stimulus.centerY,circleSize(1)/2,[1 1 1],128);
 else
   if ~stimulus.singleAperture
     mglPolygon(-x,y,[1 1 1]);
@@ -309,8 +363,10 @@ if stimulus.type == 2
   stimulus.dots = {};
   dots.rmax = circleSize(1)/2;
   dots.xcenter = -stimulus.centerX;
+  dots.ycenter = stimulus.centerY;
   stimulus.dots{1} = initDots(myscreen,dots);
   dots.xcenter = stimulus.centerX;
+  dots.ycenter = stimulus.centerY;
   stimulus.dots{2} = initDots(myscreen,dots);
   mglClearScreen(0);mglFlush;
   mglClearScreen(0);mglFlush;
