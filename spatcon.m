@@ -40,14 +40,14 @@ distractorContrast = [0.1 1];
 targetContrast = [0.1 0.5 1];
 
 % parameters
-stimulus.grating.radius = 8;
+stimulus.grating.radius = 8.5;
 stimulus.grating.targetLoc = [1 4];
 stimulus.grating.orientations = 0:60:359;
 stimulus.grating.contrasts = union(distractorContrast,targetContrast);
 stimulus.grating.sf = 2;
 stimulus.grating.tf = 2;
-stimulus.grating.width = 7;
-stimulus.grating.height = 7;
+stimulus.grating.width = 9;
+stimulus.grating.height = 9;
 stimulus.grating.phases = [0 pi];
 stimulus.grating.phases = [0:2*pi/30:2*pi 2*pi:-2*pi/30:0]; % note this makes the actual tf = tf*2
 stimulus.grating.phase = 0;
@@ -55,11 +55,11 @@ stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/7;
 stimulus.grating.sdy = stimulus.grating.width/7;
 
-stimulus.grating.width = 6;
-stimulus.grating.height = 6;
+stimulus.grating.width = 7.5;
+stimulus.grating.height = 7.5;
 stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
-stimulus.grating.sdx = 2.5;
-stimulus.grating.sdy = 2.5;
+stimulus.grating.sdx = stimulus.grating.width/2;
+stimulus.grating.sdy = stimulus.grating.height/2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up fixation task

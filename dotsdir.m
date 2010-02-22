@@ -15,7 +15,8 @@ fixY = [];
 centerX = [];
 centerY = [];
 diameter = [];
-getArgs(varargin,{'taskType=dots','fixX=0','fixY=0','centerX=[]','centerY=[]','diameter=[]'});
+easyFixTask = [];
+getArgs(varargin,{'taskType=dots','fixX=0','fixY=0','centerX=[]','centerY=[]','diameter=[]','easyFixTask=1'});
 
 % check to see whether screen is still open
 global stimulus;
@@ -46,7 +47,6 @@ end
 myscreen = initScreen(myscreen);
 
 % set the first task to be the fixation staircase task
-easyFixTask = 1;
 global fixStimulus;
 fixStimulus.pos = [fixX fixY];
 if ~easyFixTask
