@@ -40,7 +40,7 @@ distractorContrast = [0.1 1];
 targetContrast = [0.1 0.5 1];
 
 % parameters
-stimulus.grating.radius = 8.5;
+stimulus.grating.radius = 6.5;
 stimulus.grating.targetLoc = [1 4];
 stimulus.grating.orientations = 0:60:359;
 stimulus.grating.contrasts = union(distractorContrast,targetContrast);
@@ -54,9 +54,11 @@ stimulus.grating.phase = 0;
 stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/7;
 stimulus.grating.sdy = stimulus.grating.width/7;
+stimulus.x = 0;
 
-stimulus.grating.width = 7.5;
-stimulus.grating.height = 7.5;
+stimulus.y = 0.5;
+stimulus.grating.width = 5.5;
+stimulus.grating.height = 5.5;
 stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/2;
 stimulus.grating.sdy = stimulus.grating.height/2;
@@ -66,6 +68,7 @@ stimulus.grating.sdy = stimulus.grating.height/2;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 global fixStimulus;
 easyFixTask = 1;
+fixStimulus.pos = [stimulus.x stimulus.y];
 if ~easyFixTask
   % default values
   fixStimulus.diskSize = 0.5;
@@ -249,8 +252,8 @@ if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
 
     % get x,y position of grating
     thisAngle = stimulus.grating.orientations(iAngle);
-    x = stimulus.grating.radius*cos(pi*thisAngle/180);
-    y = stimulus.grating.radius*sin(pi*thisAngle/180);
+    x = stimulus.x + stimulus.grating.radius*cos(pi*thisAngle/180);
+    y = stimulus.y + stimulus.grating.radius*sin(pi*thisAngle/180);
     angleNum = iAngle;
 %    angleNum = find(stimulus.grating.orientations == 0);
     % get which phase we are on
