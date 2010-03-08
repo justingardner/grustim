@@ -15,7 +15,7 @@ if ~any(nargin == [0 1])
   return
 end
 
-if ~exist('type','var'),type = 'static';end
+if ~exist('type','var'),type = '0%';end
 if ~any(strcmp(type,{'static','0%'}))
   disp(sprintf('(dotslocnew) Unknown type: %s',type));
   return
@@ -114,7 +114,7 @@ if stimulus.dots.mask,mglStencilSelect(0);end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initDots(stimulus,myscreen)
 
-stimulus.speed = 7;
+stimulus.speed = 4;
 % convert the passed in parameters to real units
 if ~isfield(stimulus,'dots') || ~isfield(stimulus.dots,'rmax'), stimulus.dots.rmax = min(myscreen.imageWidth,myscreen.imageHeight);,end
 if ~isfield(stimulus.dots,'xcenter'), stimulus.dots.xcenter = 0;,end
@@ -250,8 +250,8 @@ dots.xproj = dots.f*dots.X./dots.Z;
 dots.yproj = dots.f*dots.Y./dots.Z;
 
 % stuff to compute median speed
-%dots.oldx = dots.x;
-%dots.oldy = dots.y;
+dots.oldx = dots.x;
+dots.oldy = dots.y;
 
 % get actual screen coordinates
 dots.x = dots.xproj*myscreen.imageWidth;

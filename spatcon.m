@@ -36,8 +36,10 @@ global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
 % set the contrasts of distractor and target
-distractorContrast = [0.1 1];
-targetContrast = [0.1 0.5 1];
+%distractorContrast = [0.1 1];
+%targetContrast = [0.1 0.5 1];
+targetContrast = [0.25 0.5 0.75];
+distractorContrast = [0.5];
 
 % parameters
 stimulus.grating.radius = 6.5;
