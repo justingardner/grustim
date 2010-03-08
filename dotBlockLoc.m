@@ -7,7 +7,7 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: example program to show how to use the task structure
 %
-function myscreen = dotslocnew(type)
+function myscreen = dotBlockLoc(type)
 
 % check arguments
 if ~any(nargin == [0 1])
@@ -32,13 +32,16 @@ clear global fixStimulus;
 [task{1} myscreen] = fixStairInitTask(myscreen);
 
 % a top-up period of the same direction
-task{2}{1}.seglen =     [1 1 1 1 1 1 1 1 1 1 1 1 11.5];
-task{2}{1}.synchToVol = [0 0 0 0 0 0 0 0 0 0 0 0 1];
-task{2}{1}.parameter.coherence = 1;
-task{2}{1}.random = 1;
-task{2}{1}.numTrials = 11;
-task{2}{1}.fudgeLastVolume = 1;
-task{2}{1}.waitForBacktick = 1;
+task{2}{1}.seglen =     [0.1];
+task{2}{1}.synchToVol = [1];
+task{2}{1}.parameter.coherence = 0;
+task{2}{1}.numTrials = 1;
+
+task{2}{2}.seglen =     [1 1 1 1 1 1 1 1 1 1 1 1 11.5];
+task{2}{2}.synchToVol = [0 0 0 0 0 0 0 0 0 0 0 0 1];
+task{2}{2}.parameter.coherence = 1;
+task{2}{2}.random = 1;
+task{2}{2}.fudgeLastVolume = 1;
 
 % initialize our task
 for phaseNum = 1:length(task{2})
@@ -50,6 +53,7 @@ clear global stimulus;
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 stimulus.dots.type = 'Opticflow';
+stimulus.dots.mask = 1;
 stimulus = initDots(stimulus,myscreen);
 stimulus.type = type;
 
