@@ -37,8 +37,28 @@ task{2}{1}.synchToVol = [1];
 task{2}{1}.parameter.coherence = 0;
 task{2}{1}.numTrials = 1;
 
-task{2}{2}.seglen =     [1 1 1 1 1 1 1 1 1 1 1 1 11.5];
-task{2}{2}.synchToVol = [0 0 0 0 0 0 0 0 0 0 0 0 1];
+% compute seglen to reverse the stimulus at and synchToVol based on 
+% volsPerCycle, volumeTR and numDirReversals (the number of times you
+% want the stimulus to reverse direction in th one phase
+volsPerCycle = 16;
+volumeTR = 1.57;
+numDirReverse = 10;
+
+% computed parameters
+cycleLen = volumeTR*volsPerCycle;
+halfCycleLen = cycleLen/2;
+seglen = halfCycleLen/numDirReverse;
+seglen = [repmat(seglen,1,numDirReverse-1) seglen/2 halfCycleLen-seglen/2];
+synchToVol = zeros(1,numDirReverse+1);
+synchToVol(end) = 1;
+synchToVol(end-1) = 1;
+
+disp(sprintf('(dotBlockLoc) %i volsPerCycle with a volumeTR: %f gives a cycleLen of: %f (Reversing direction every %f)', volsPerCycle, volumeTR,cycleLen,seglen(1)));
+disp(sprintf('(dotBlockLoc) seglen: %s',num2str(seglen)));
+disp(sprintf('(dotBlockLoc) synchToVol: %s',num2str(synchToVol)));
+
+task{2}{2}.seglen = seglen;
+task{2}{2}.synchToVol = synchToVol;
 task{2}{2}.parameter.coherence = 1;
 task{2}{2}.random = 1;
 task{2}{2}.fudgeLastVolume = 1;
