@@ -6,6 +6,11 @@
 %       date: 01/27/07
 %  copyright: (c) 2007 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: 2 direction patches
+% Some options: 'taskType=dots' Can be either dots (the default task) or the block localizer ('taskType=blockLoc')
+%               Change the position of the fixation cross: 'fixX=0','fixY=0'
+%               Or the position of the stimulus: 'centerX=[],'centerY=[]'
+%               Or the diameter of the stimulus: 'diameter=[]'
+%               Or the difficulty of the fixation task: 'easyFixTask=1'
 %
 function myscreen = dotsdir(varargin)
 
