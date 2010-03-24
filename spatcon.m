@@ -25,7 +25,6 @@ getArgs(varargin,{'isLoc=0'});
 myscreen.autoCloseScreen = 1;
 myscreen.allowpause = 0;
 myscreen.eatkeys = 0;
-myscreen.displayname = 'projector';
 myscreen.background = 'gray';
 
 myscreen = initScreen(myscreen);
@@ -38,8 +37,21 @@ myscreen = initStimulus('stimulus',myscreen);
 % set the contrasts of distractor and target
 %distractorContrast = [0.1 1];
 %targetContrast = [0.1 0.5 1];
-targetContrast = [0.25 0.5 0.75];
-distractorContrast = [0.5];
+
+% compute contrast, we want them evenly spaced on a log scale
+% and we specify the middle, max and number of contrast
+midContrast = 50;
+maxContrast = 85;
+nContrasts = 5;
+
+% now calculate the onctrasts we need
+logContrastDifference = log(maxContrast)-log(midContrast);
+targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
+targetContrast = targetContrast/100;
+targetContrast = targetContrast([1:3 5]);
+% and display them
+disp(sprintf('(spatcon) targetContrasts: %s',mynum2str(targetContrast)))
+distractorContrast = 0.5;
 
 % parameters
 stimulus.grating.radius = 6.5;
