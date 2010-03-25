@@ -1,13 +1,13 @@
-% od
+% spatcon
 %
-%      usage: myscreen=od(stimulus)
+%      usage: myscreen=spatcon(stimulus)
 %         by: justin gardner
 %       date: 04/15/06
-%    purpose: orientation discrimination task
+%    purpose: spatial contrast response function experiment
 %
 %
 %
-function myscreen = spatcon(varargin)
+function myscreen = spatcon1d_broken_fixme(varargin)
 
 % check arguments
 if ~any(nargin == [0 1])
@@ -25,6 +25,7 @@ getArgs(varargin,{'isLoc=0'});
 myscreen.autoCloseScreen = 1;
 myscreen.allowpause = 0;
 myscreen.eatkeys = 0;
+myscreen.displayname = 'projector';
 myscreen.background = 'gray';
 
 myscreen = initScreen(myscreen);
@@ -34,24 +35,24 @@ clear global stimulus
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
-% set the contrasts of distractor and target
-%distractorContrast = [0.1 1];
-%targetContrast = [0.1 0.5 1];
-
 % compute contrast, we want them evenly spaced on a log scale
 % and we specify the middle, max and number of contrast
 midContrast = 50;
 maxContrast = 85;
 nContrasts = 5;
 
-% now calculate the onctrasts we need
+% now calculate the contrasts we need
 logContrastDifference = log(maxContrast)-log(midContrast);
 targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
 targetContrast = targetContrast/100;
-targetContrast = targetContrast([1:3 5]);
 % and display them
 disp(sprintf('(spatcon) targetContrasts: %s',mynum2str(targetContrast)))
-distractorContrast = 0.5;
+
+% set the contrasts of distractor and target
+%distractorContrast = [0.1 1];
+%targetContrast = [0.1 0.5 1];
+%targetContrast = [0.25 0.375 0.5 0.75];
+distractorContrast = [0.5];
 
 % parameters
 stimulus.grating.radius = 6.5;
@@ -143,7 +144,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks and stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-stimulus = initGratings(stimulus,task,myscreen);
+stimulus = initGratings(stimulus,myscreen,task);
 
 % initialze tasks
 for phaseNum = 1:length(task{2})
@@ -184,48 +185,36 @@ myscreen = endTask(myscreen,task);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initGratings(stimulus,myscreen,task)
 
+maxIndex = 255;
 disppercent(-inf,'Creating grating textures');
 
 nContrasts = length(stimulus.grating.contrasts);
 nOrientations = length(stimulus.grating.orientations);
 nPhases = length(stimulus.grating.phases);
 
+gaussianWin = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sdx,stimulus.grating.sdy);
+if strcmp(stimulus.grating.windowType,'gabor')
+  % a gaussian window
+  win = maxIndex-maxIndex*gaussianWin;
+else
+  % a simple window
+  win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
+end
+mask = ones(size(win,1),size(win,2),4)*myscreen.grayIndex;
+mask(:,:,4) = round(win);
+stimulus.mask = mglCreateTexture(mask);
+
 % make each one of he called for gratings
 for iPhase = 1:nPhases
   for iContrast = 1:nContrasts
-    for iOrientation = 1:nOrientations
-      disppercent(calcPercentDone(iPhase,nPhases,iContrast,nContrasts,iOrientation,nOrientations));
-      % get the orientation we want to create
-      thisOrientation = stimulus.grating.orientations(iOrientation);
-      % get the phase
-      thisPhase = (stimulus.grating.phase+stimulus.grating.phases(iPhase))*180/pi;
-      % make the grating
-      thisGrating = 255*(mglMakeGrating(stimulus.grating.width,stimulus.grating.height,...
-					stimulus.grating.sf,thisOrientation,...
-					thisPhase)+1)/2;
-  
-      thisGaussian = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,...
-				     stimulus.grating.sdx,stimulus.grating.sdy);
-
-      % create an rgb/a matrix
-      thisStimulus(:,:,1) = thisGrating;
-      thisStimulus(:,:,2) = thisGrating;
-      thisStimulus(:,:,3) = thisGrating;
-
-      % make the gaussian window
-      if strcmp(stimulus.grating.windowType,'gabor')
-	% create an rgb/a matrix
-	mask = stimulus.grating.contrasts(iContrast)*255*thisGaussian;
-      else
-	mask = stimulus.grating.contrasts(iContrast)*255*(thisGaussian>exp(-1/2));
-      end
-
-      thisStimulus(:,:,4) = mask;
-      thatStimulus(:,:,4) = mask;
-      
-      % create the texture
-      stimulus.tex(iContrast,iOrientation,iPhase) = mglCreateTexture(thisStimulus);
-    end
+    disppercent(calcPercentDone(iPhase,nPhases,iContrast,nContrasts));
+    % get the phase and contast
+    thisPhase = (stimulus.grating.phase+stimulus.grating.phases(iPhase))*180/pi;
+    thisContrast = stimulus.grating.contrasts(iContrast);
+    % make the grating
+    thisGrating = round(maxIndex*((thisContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,thisPhase))+1)/2);
+    % create the texture
+    stimulus.tex(iContrast,iPhase) = mglCreateTexture(thisGrating);
   end
 end
 disppercent(inf);
@@ -269,7 +258,7 @@ if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
     x = stimulus.x + stimulus.grating.radius*cos(pi*thisAngle/180);
     y = stimulus.y + stimulus.grating.radius*sin(pi*thisAngle/180);
     angleNum = iAngle;
-%    angleNum = find(stimulus.grating.orientations == 0);
+
     % get which phase we are on
     phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
     % reverse the phase every other grating
@@ -310,7 +299,8 @@ if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
     end
 
     % display the texture
-    mglBltTexture(stimulus.tex(contrastNum,angleNum,phaseNum),[x y]);
+    mglBltTexture(stimulus.tex(contrastNum,phaseNum),[x y stimulus.grating.height],0,0,thisAngle);
+    mglBltTexture(stimulus.mask,[x y stimulus.grating.height],0,0,thisAngle);
   end
 end
 
@@ -319,6 +309,6 @@ end
 % the beginning of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = trialResponseCallback(task,myscreen)
-
+v
 global stimulus;
 
