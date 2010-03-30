@@ -1,6 +1,6 @@
-% od
+% cpoolrule
 %
-%      usage: myscreen=od(stimulus)
+%      usage: myscreen=cpoolrule(stimulus)
 %         by: justin gardner
 %       date: 04/15/06
 %    purpose: orientation discrimination task
@@ -11,7 +11,7 @@ function myscreen = cpoolrule(varargin)
 
 % check arguments
 if ~any(nargin == [0 1])
-  help orientationDiscrimination
+  help cpoolrule
   return
 end
 
@@ -22,12 +22,7 @@ getArgs(varargin,{'isLoc=0'});
 % set up screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % other screen parameters
-myscreen.autoCloseScreen = 1;
-myscreen.allowpause = 0;
-myscreen.eatkeys = 0;
-myscreen.displayname = 'projector';
 myscreen.background = 'gray';
-
 myscreen = initScreen(myscreen);
 
 global MGL;
@@ -40,39 +35,30 @@ pedestalContrasts = [0.1 0.2 0.4];
 deltaContrasts = [0 0.05 0.1 0.15 0.2];
 
 pedestalContrasts = [0.1];
-deltaContrasts = [0 0.05 0.1 0.2]/8;
-
-% create an array of all contrasts that will need to be displayed
-allContrasts = repmat(deltaContrasts,length(pedestalContrasts),1);
-allContrasts = allContrasts(:)';
-allContrasts = allContrasts + repmat(pedestalContrasts,1,length(deltaContrasts));
-allContrasts = unique(allContrasts);
+deltaContrasts = [-0.2 -0.1 -0.05 0 0.05 0.1 0.2]/4;
 
 % parameters
 stimulus.int1 = 2;
 stimulus.int2 = 4;
-stimulus.grating.radius = 4.5;
-stimulus.grating.orientations = -45:90:359;
+
+% grating parameters
+stimulus.grating.radius = 6;
 stimulus.grating.n = 4;
-stimulus.grating.contrasts = allContrasts;
+stimulus.colors.reservedColors = [0 0 0; 1 1 1; 0 1 0; 1 0 0;0.2 0.3 0.7];
 stimulus.grating.sf = 2;
-stimulus.grating.tf = 2;
+stimulus.grating.tf = 1;
 stimulus.grating.width = 6;
 stimulus.grating.height = 6;
-stimulus.grating.phases = [0 pi];
-stimulus.grating.phases = [0:2*pi/10:2*pi 2*pi:-2*pi/10:0]; % note this makes the actual tf = tf*2
-stimulus.grating.phase = 0;
+stimulus.grating.nPhases = 36;
+stimulus.grating.orientations = [45 135 225 315];
+
 stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/7;
 stimulus.grating.sdy = stimulus.grating.width/7;
 
-stimulus.grating.width = 6;
-stimulus.grating.height = 6;
 stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
-stimulus.grating.sdx = 2.5;
-stimulus.grating.sdy = 2.5;
-
-stimulus.fixColor = 1;
+stimulus.grating.sdx = stimulus.grating.width/2;
+stimulus.grating.sdy = stimulus.grating.height/2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up fixation task
@@ -117,6 +103,7 @@ if ~isLoc
   task{1}{2}.synchToVol = [0 0 0 0 0];
   task{1}{2}.getResponse = [0 0 0 0 1];
   task{1}{2}.waitForBacktick = 0;
+  task{1}{2}.numBlocks = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % if this is localizer then change a few things
@@ -134,7 +121,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks and stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-stimulus = initGratings(stimulus,myscreen,task)
+stimulus = initGratings(stimulus,myscreen,task);
 
 % initialze tasks
 for phaseNum = 1:length(task{1})
@@ -173,58 +160,80 @@ myscreen = endTask(myscreen,task);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initGratings(stimulus,myscreen,task)
 
+% set maximum color index (for 24 bit color we have 8 bits per channel, so 255)
+maxIndex = 255;
+
+% get gamma table
+stimulus.linearizedGammaTable = mglGetGammaTable;
+
 disppercent(-inf,'Creating grating textures');
 
-nContrasts = length(stimulus.grating.contrasts);
-nOrientations = length(stimulus.grating.orientations);
+% calculate all the phases we are going to compute
+stimulus.grating.centerPhase = 0;
+stimulus.grating.phases = [0:2*pi/(stimulus.grating.nPhases):2*pi];
+stimulus.grating.phases = stimulus.grating.phases(1:end-1);
 nPhases = length(stimulus.grating.phases);
 
-% make each one of he called for gratings
+% this gives the phase order to go back and forth
+stimulus.grating.phaseIndex = [1:nPhases 1 nPhases:-1:2];
+stimulus.grating.phaseIndexLen = length(stimulus.grating.phaseIndex);
+
+% calculate some colors information
+%  number of reserved colors
+stimulus.colors.nReservedColors = size(stimulus.colors.reservedColors,1);
+
+% number of colors possible for gratings, make sure that we 
+% have an odd number
+stimulus.colors.nGratingColors = maxIndex+1-stimulus.colors.nReservedColors;
+if iseven(stimulus.colors.nGratingColors)
+  stimulus.colors.nGratingColors = stimulus.colors.nGratingColors-1;
+end
+% min, mid and max index of gratings colors (index values are 0 based)
+stimulus.colors.minGratingIndex = maxIndex+1-stimulus.colors.nGratingColors;
+stimulus.colors.midGratingIndex = stimulus.colors.minGratingIndex+floor(stimulus.colors.nGratingColors/2);
+stimulus.colors.maxGratingIndex = maxIndex;
+% number of contrasts we can display (not including 0 contrast)
+stimulus.colors.nDisplayContrasts = floor(stimulus.colors.nGratingColors/2);
+
+% get the color value for gray (i.e. the number between 0 and 1 that corresponds to the midGratingIndex)
+stimulus.colors.grayColor = stimulus.colors.midGratingIndex/maxIndex;
+
+% set the reserved colors - this gives a convenient value between 0 and 1 to use the reserved colors with
+for i = 1:stimulus.colors.nReservedColors
+  stimulus.colors.reservedColor(i) = (i-1)/maxIndex;
+end
+
+stimulus.fixColor = stimulus.colors.reservedColor(1);
+% make the window through with the gratings will be displayed
+gaussianWin = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sdx,stimulus.grating.sdy);
+if strcmp(stimulus.grating.windowType,'gabor')
+  % a gaussian window
+  win = maxIndex-maxIndex*gaussianWin;
+else
+  % a simple window
+  win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
+end
+mask = ones(size(win,1),size(win,2),4)*stimulus.colors.midGratingIndex;
+mask(:,:,4) = win;
+stimulus.mask = mglCreateTexture(mask);
+
+% make all the 1D gratings. We compute all phases and all possible contrast values given the
+% range of indexes available to us. The 1st texture is gray the nth texture is full
+% contrast for the current gamma setting
 for iPhase = 1:nPhases
-  for iContrast = 1:nContrasts
-    for iOrientation = 1:nOrientations
-      pDone = calcPercentDone(iPhase,nPhases,iContrast,nContrasts,iOrientation,nOrientations);
-      % display pDone to screen
-      mglClearScreen;
-      mglTextDraw(sprintf('%i%%',round(100*pDone)),[0 0]);
-      myscreen = tickScreen(myscreen);
-      disppercent(pDone);
-      if myscreen.userHitEsc,mglClose;keyboard,end
-      % get the orientation we want to create
-      thisOrientation = stimulus.grating.orientations(iOrientation);
-      % get the phase
-      thisPhase = (stimulus.grating.phase+stimulus.grating.phases(iPhase))*180/pi;
-      % make the grating
-      thisGrating = 255*(mglMakeGrating(stimulus.grating.width,stimulus.grating.height,...
-					stimulus.grating.sf,thisOrientation,...
-					thisPhase)+1)/2;
-  
-      thisGaussian = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,...
-				     stimulus.grating.sdx,stimulus.grating.sdy);
-
-      % create an rgb/a matrix
-      thisStimulus(:,:,1) = thisGrating;
-      thisStimulus(:,:,2) = thisGrating;
-      thisStimulus(:,:,3) = thisGrating;
-
-      % make the gaussian window
-      if strcmp(stimulus.grating.windowType,'gabor')
-	% create an rgb/a matrix
-	mask = stimulus.grating.contrasts(iContrast)*255*thisGaussian;
-      else
-	mask = stimulus.grating.contrasts(iContrast)*255*(thisGaussian>exp(-1/2));
-      end
-
-      thisStimulus(:,:,4) = mask;
-      thatStimulus(:,:,4) = mask;
-      
-      % create the texture
-      stimulus.tex(iContrast,iOrientation,iPhase) = mglCreateTexture(thisStimulus);
-    end
+  for iContrast = 0:stimulus.colors.nDisplayContrasts
+    pDone = calcPercentDone(iPhase,nPhases,iContrast,stimulus.colors.nDisplayContrasts);
+    disppercent(pDone);
+    if myscreen.userHitEsc,mglClose;keyboard,end
+    % get the phase
+    thisPhase = (stimulus.grating.centerPhase+stimulus.grating.phases(iPhase))*180/pi;
+    % make the grating
+    thisGrating = round(iContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,thisPhase)+stimulus.colors.midGratingIndex);
+    % create the texture
+    stimulus.tex(iContrast+1,iPhase) = mglCreateTexture(thisGrating);
   end
 end
 disppercent(inf);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -245,38 +254,39 @@ function [task myscreen] = startSegmentCallback(task,myscreen)
 global stimulus;
 
 if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
+  % get the contrast for the stimuli in this interval
+  stimulusContrast = task.thistrial.pedestalContrast+task.thistrial.deltaContrast.*(task.thistrial.interval==task.thistrial.thisseg);
+  % set the maximum contrast we can display
+  setGammaTableForMaxContrast(max(stimulusContrast));
+  
+  % get the overall contrast
+  if task.thistrial.thisseg == stimulus.int1
+    stimulus.contrast1= sum(stimulusContrast);
+  else
+    stimulus.contrast2= sum(stimulusContrast);
+  end
+
   % set up the stimuli
   for i = 1:stimulus.grating.n
     % orientation of stimulus
-    orientation = pi*stimulus.grating.orientations(i)/180;
+    stimulus.o(i) = stimulus.grating.orientations(i);
 
     % get x,y position of grating
-    stimulus.x(i) = stimulus.grating.radius*cos(orientation);
-    stimulus.y(i) = stimulus.grating.radius*sin(orientation);
-
-    % set the contrast num
-    if (task.thistrial.thisseg == task.thistrial.interval(i))
-      thisContrast = task.thistrial.pedestalContrast(i)+task.thistrial.deltaContrast(i);
-    else
-      thisContrast = task.thistrial.pedestalContrast(i);
-    end
-    stimulus.contrastNum(i) = find(thisContrast == stimulus.grating.contrasts);
+    stimulus.x(i) = stimulus.grating.radius*cos(d2r(stimulus.o(i)));
+    stimulus.y(i) = stimulus.grating.radius*sin(d2r(stimulus.o(i)));
     
-  end
-  % compute overall contrast in the interval
-  if task.thistrial.thisseg == stimulus.int1
-    stimulus.contrast1 = sum(stimulus.grating.contrasts(stimulus.contrastNum));
-  else
-    stimulus.contrast2 = sum(stimulus.grating.contrasts(stimulus.contrastNum));
+    % get the contrasts
+    stimulus.contrastIndex(i) = getContrastIndex(stimulusContrast(i));
   end
 end
 
 % set the fixation color
 if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
-  stimulus.fixColor = [1 1 0];
+  stimulus.fixColor = stimulus.colors.reservedColor(1);
 else
-  stimulus.fixColor = 1;
+  stimulus.fixColor = stimulus.colors.reservedColor(2);
 end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to display stimulus
@@ -284,18 +294,25 @@ end
 function [task myscreen] = updateScreenCallback(task,myscreen)
 
 global stimulus;
-mglClearScreen;
+mglClearScreen(stimulus.colors.grayColor);
 
 if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2]) 
+
   for i = 1:stimulus.grating.n
-    % get which phase we are on
-    phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
+    % get which phase we are on, note that the phaseIndex goes through approximately 2 cycles
+    % of the stimulus so we adjust the tf accordingly
+    cycleTime = rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf*(stimulus.grating.nPhases+1)/(stimulus.grating.phaseIndexLen+1),1);
+    phaseIndex = floor(stimulus.grating.phaseIndexLen*cycleTime)+1;
+
     % reverse the phase every other grating
     if iseven(i)
-      phaseNum = mod(phaseNum+length(stimulus.grating.phases)/2,length(stimulus.grating.phases))+1;
+      phaseIndex = mod(phaseIndex+stimulus.grating.phaseIndexLen/2,stimulus.grating.phaseIndexLen)+1;
     end
+    phaseIndex = stimulus.grating.phaseIndex(phaseIndex);
+    
     % blt texture
-    mglBltTexture(stimulus.tex(stimulus.contrastNum(i),i,phaseNum),[stimulus.x(i) stimulus.y(i)]);
+    mglBltTexture(stimulus.tex(stimulus.contrastIndex(i),phaseIndex),[stimulus.x(i) stimulus.y(i) stimulus.grating.height],0,0,stimulus.o(i));
+    mglBltTexture(stimulus.mask,[stimulus.x(i) stimulus.y(i)],0,0,stimulus.o(i));
   end
 end
 
@@ -310,17 +327,86 @@ function [task myscreen] = trialResponseCallback(task,myscreen)
 
 global stimulus;
 
+fprintf(1,sprintf('difference: %f ',stimulus.contrast1-stimulus.contrast2));
 if (stimulus.contrast1 > stimulus.contrast2) && (task.thistrial.whichButton == 1)
   disp(sprintf('correct'));
-  stimulus.fixColor = [0 1 0];
+  stimulus.fixColor = stimulus.colors.reservedColor(3);
 elseif (stimulus.contrast1 < stimulus.contrast2) && (task.thistrial.whichButton == 2)
   disp(sprintf('correct'));
-  stimulus.fixColor = [0 1 0];
+  stimulus.fixColor = stimulus.colors.reservedColor(3);
 elseif (stimulus.contrast1 > stimulus.contrast2) && (task.thistrial.whichButton == 2)
   disp(sprintf('incorrect'));
-  stimulus.fixColor = [1 0 0];
+  stimulus.fixColor = stimulus.colors.reservedColor(4);
 elseif (stimulus.contrast1 < stimulus.contrast2) && (task.thistrial.whichButton == 1)
   disp(sprintf('incorrect'));
-  stimulus.fixColor = [1 0 0];
+  stimulus.fixColor = stimulus.colors.reservedColor(4);
 end
   
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    getContrastIndex    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+function contrastIndex = getContrastIndex(desiredContrast,verbose)
+
+if nargin < 2,verbose = 0;end
+
+global stimulus;
+
+% now find closest matching contrast we can display with this gamma table
+contrastIndex = min(round(stimulus.colors.nDisplayContrasts*desiredContrast/stimulus.currentMaxContrast),stimulus.colors.nDisplayContrasts);
+
+% display the desired and actual contrast values if verbose is set
+if verbose
+  actualContrast = stimulus.currentMaxContrast*(contrastIndex/stimulus.colors.nDisplayContrasts);
+  disp(sprintf('(getContrastIndex) Desired contrast: %0.4f Actual contrast: %0.4f Difference: %0.4f',desiredContrast,actualContrast,desiredContrast-actualContrast));
+end
+
+% out of range check
+if round(stimulus.colors.nDisplayContrasts*desiredContrast/stimulus.currentMaxContrast)>stimulus.colors.nDisplayContrasts
+ disp(sprintf('(getContrastIndex) Desired contrast (%0.9f) out of range max contrast : %0.9f',desiredContrast,stimulus.currentMaxContrast));
+ keyboard
+end
+
+% 1 based indexes (0th index is gray, nDisplayContrasts+1 is full contrast)
+contrastIndex = contrastIndex+1;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% sets the gamma table so that we can have
+% finest possible control over the stimulus contrast.
+%
+% stimulus.colors.reservedColors should be set to the reserved colors (for cue colors, etc).
+% maxContrast is the maximum contrast you want to be able to display.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function setGammaTableForMaxContrast(maxContrast)
+
+global stimulus;
+
+% set the reserved colors
+gammaTable(1:size(stimulus.colors.reservedColors,1),1:size(stimulus.colors.reservedColors,2))=stimulus.colors.reservedColors;
+
+% set the gamma table
+if maxContrast > 0
+  % create the rest of the gamma table
+  cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
+  luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nGratingColors-1)):cmax;
+
+  % now get the linearized range
+  redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
+  greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
+  blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
+  
+  % add these values to the table
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
+else
+  % if we are asked for 0 contrast then simply set all the values to gray
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,1)=interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,0.5,'linear');
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,2)=interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,0.5,'linear');
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,3)=interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,0.5,'linear');
+end
+
+% set the gamma table
+mglSetGammaTable(gammaTable);
+
+% remember what the current maximum contrast is that we can display
+stimulus.currentMaxContrast = maxContrast;
+
