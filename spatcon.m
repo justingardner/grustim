@@ -7,7 +7,7 @@
 %
 %
 %
-function myscreen = spatcon1d_broken_fixme(varargin)
+function myscreen = spatcon(varargin)
 
 % check arguments
 if ~any(nargin == [0 1])
@@ -15,8 +15,8 @@ if ~any(nargin == [0 1])
   return
 end
 
-isLoc = [];
-getArgs(varargin,{'isLoc=0'});
+taskType = [];
+getArgs(varargin,{'taskType=1'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
@@ -28,6 +28,8 @@ myscreen.eatkeys = 0;
 myscreen.displayname = 'projector';
 myscreen.background = 'gray';
 
+threshold = 10;
+
 myscreen = initScreen(myscreen);
 
 global MGL;
@@ -35,30 +37,40 @@ clear global stimulus
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
-% compute contrast, we want them evenly spaced on a log scale
-% and we specify the middle, max and number of contrast
-midContrast = 50;
-maxContrast = 85;
-nContrasts = 5;
+% set the time to wait before starting task
+initWaitTime = 0.1;
 
-% now calculate the contrasts we need
-logContrastDifference = log(maxContrast)-log(midContrast);
-targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
-targetContrast = targetContrast/100;
+% set target contrasts
+if taskType == 1
+  % compute contrast, we want them evenly spaced on a log scale
+  % and we specify the middle, max and number of contrast
+  midContrast = 50;
+  maxContrast = 100;
+  nContrasts = 3;
+  % now calculate the contrasts we need
+  logContrastDifference = log(maxContrast)-log(midContrast);
+  stimulus.targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
+  stimulus.targetContrast = stimulus.targetContrast/100;
+elseif any(taskType==[2 3])
+  stimulus.targetContrast = [1 0.25];
+else
+  stimulus.targetContrast = 0.5;
+end
+
 % and display them
-disp(sprintf('(spatcon) targetContrasts: %s',mynum2str(targetContrast)))
+disp(sprintf('(spatcon) targetContrasts: %s',mynum2str(stimulus.targetContrast)))
 
-% set the contrasts of distractor and target
-%distractorContrast = [0.1 1];
-%targetContrast = [0.1 0.5 1];
-%targetContrast = [0.25 0.375 0.5 0.75];
+% set the contrasts of distractor
 distractorContrast = [0.5];
 
 % parameters
 stimulus.grating.radius = 6.5;
 stimulus.grating.targetLoc = [1 4];
-stimulus.grating.orientations = 0:60:359;
-stimulus.grating.contrasts = union(distractorContrast,targetContrast);
+stimulus.grating.angles = 0:60:359;
+stimulus.grating.orientations = stimulus.grating.angles;
+stimulus.grating.orientations(1) = 30;
+stimulus.grating.orientations(4) = -30;
+stimulus.grating.contrasts = union(distractorContrast,stimulus.targetContrast);
 stimulus.grating.sf = 2;
 stimulus.grating.tf = 2;
 stimulus.grating.width = 9;
@@ -71,7 +83,7 @@ stimulus.grating.sdx = stimulus.grating.width/7;
 stimulus.grating.sdy = stimulus.grating.width/7;
 stimulus.x = 0;
 
-stimulus.y = 0.5;
+stimulus.y = 0;
 stimulus.grating.width = 5.5;
 stimulus.grating.height = 5.5;
 stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
@@ -105,21 +117,22 @@ end
 % set up task
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up segments of trials
-if ~isLoc
-  stimulus.isLocalizer = 0;
+if taskType == 1
+  disp(sprintf('(spatcon) Running fixation task main experiment.'));
+  stimulus.isLoc = 0;
+  stimulus.taskType = 1; % central fixation
   task{2}{1}.parameter.distractorContrast = 0;
   task{2}{1}.parameter.targetContrast = 0;
   task{2}{1}.parameter.targetLoc = 1;
   task{2}{1}.random = 1;
-  task{2}{1}.segmin = [10];
-  task{2}{1}.segmax = [10];
+  task{2}{1}.seglen = [initWaitTime];
   task{2}{1}.synchToVol = [1];
   task{2}{1}.getResponse = [0];
   task{2}{1}.numTrials = 1;
-  task{2}{1}.waitForBacktick = 1;
+  task{2}{1}.waitForBacktick = 0;
 
   task{2}{2}.parameter.distractorContrast = distractorContrast;
-  task{2}{2}.parameter.targetContrast = targetContrast;
+  task{2}{2}.parameter.targetContrast = stimulus.targetContrast;
   task{2}{2}.parameter.targetLoc = stimulus.grating.targetLoc;
   task{2}{2}.random = 1;
   task{2}{2}.segmin = [3 4];
@@ -128,23 +141,81 @@ if ~isLoc
   task{2}{2}.getResponse = [0 0];
   task{2}{2}.waitForBacktick = 0;
 
+  stimulus.stimSegment = 1;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set up attentive task
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set up segments of trials
+elseif any(taskType == [2 3])
+  disp(sprintf('(spatcon) Running attentive task, main experiment.'));
+  stimulus.isLoc = 0;
+  stimulus.taskType = 2; % attentive task
+  task{2}{1}.parameter.distractorContrast = 0;
+  task{2}{1}.parameter.targetContrast = 0;
+  task{2}{1}.parameter.targetLoc = 1;
+  task{2}{1}.random = 1;
+  task{2}{1}.getResponse = [0];
+  task{2}{1}.numTrials = 1;
+  task{2}{1}.waitForBacktick = 1;
+
+  task{2}{2}.parameter.distractorContrast = distractorContrast;
+  task{2}{2}.parameter.targetContrast = stimulus.targetContrast;
+  task{2}{2}.parameter.targetLoc = stimulus.grating.targetLoc;
+  task{2}{2}.random = 1;
+
+  % length of time a stimulus will be on for
+  stimLen = .75;
+  
+  % scanner and psychophysics room
+  if taskType == 2
+    % psychophyscis room
+    task{2}{1}.seglen = 0;
+    task{2}{1}.synchToVol = [0];
+    task{2}{2}.segmin = [1 stimLen 1];
+    task{2}{2}.segmax = [1 stimLen 1];
+    task{2}{2}.getResponse = [0 0 1];
+    task{2}{2}.waitForBacktick = 0;
+    task{2}{2}.numBlocks = 200;
+  else
+    % scanner
+    task{2}{1}.seglen = initWaitTime;
+    task{2}{1}.synchToVol = 1;
+    task{2}{2}.segmin = [1 stimLen 1 3];
+    task{2}{2}.segmax = [1 stimLen 1 7];
+    task{2}{2}.synchToVol = [0 0 0 1];
+    task{2}{2}.getResponse = [0 0 1 0];
+    task{2}{2}.waitForBacktick = 0;
+  end
+
+  stimulus.stimSegment = 2;
+  stimulus.fixColor = [1 1 1];
+  stimulus.fixWidth = 1;
+  stimulus.fixLineWidth = 3;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % if this is localizer then change a few things
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-else
-  stimulus.isLocalizer = 1;
+elseif taskType == 0
+  disp(sprintf('(spatcon) Running Localizer'));
+  stimulus.isLoc = 1;
+  stimulus.taskType = 1;
   stimulus.grating.contrasts = [0 1];
   task{2}{1}.parameter.distractorContrast = distractorContrast;
-  task{2}{1}.parameter.targetContrast = targetContrast;
+  task{2}{1}.parameter.targetContrast = stimulus.targetContrast;
   task{2}{1}.seglen = [12 12];
   task{2}{1}.synchToVol = [1 1];
   task{2}{1}.waitForBacktick=1;
+
+  stimulus.stimSegment = [1 2];
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks and stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus = initGratings(stimulus,myscreen,task);
+if any(taskType == [2 3])
+  stimulus = initStaircase(threshold,stimulus);
+end
 
 % initialze tasks
 for phaseNum = 1:length(task{2})
@@ -153,7 +224,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
+myscreen = eyeCalibDisp(myscreen,'Calibrate eye tracker');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the tasks
@@ -163,16 +234,30 @@ tnum = 1;
 
 phaseNum = 1;
 while (phaseNum <= length(task{2})) && ~myscreen.userHitEsc
-  % update the dots
+  % update the dotspXU
   [task{2} myscreen phaseNum] = updateTask(task{2},myscreen,phaseNum);
-  % update the fixation task
-  [task{1} myscreen] = updateTask(task{1},myscreen,1);
+  if stimulus.taskType == 1
+    % update the fixation task
+    [task{1} myscreen] = updateTask(task{1},myscreen,1);
+  end
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+
+% display results
+targetDistractorStr = {'distractor','target'};
+for iTargetDistractor = 1:2
+  for iContrast = 1:length(stimulus.targetContrast);
+    threshold = [];
+    for iLoc = stimulus.grating.targetLoc
+      threshold(end+1) = stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.threshold;
+    end
+    disp(sprintf('[%s contrast:%f]: %f (%s)',targetDistractorStr{iTargetDistractor},stimulus.targetContrast(iContrast),mean(threshold),num2str(threshold)));
+  end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -189,7 +274,6 @@ maxIndex = 255;
 disppercent(-inf,'Creating grating textures');
 
 nContrasts = length(stimulus.grating.contrasts);
-nOrientations = length(stimulus.grating.orientations);
 nPhases = length(stimulus.grating.phases);
 
 gaussianWin = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sdx,stimulus.grating.sdy);
@@ -219,6 +303,37 @@ for iPhase = 1:nPhases
 end
 disppercent(inf);
 
+for iAngle = 1:length(stimulus.grating.angles)
+  % get center of patch
+  thisAngle = stimulus.grating.angles(iAngle);
+  centerX = stimulus.x + stimulus.grating.radius*cos(pi*thisAngle/180);
+  centerY = stimulus.y + stimulus.grating.radius*sin(pi*thisAngle/180);
+  % now get top and bottom point of grating
+  thisOrientation = stimulus.grating.orientations(iAngle)+90;
+  radius = sqrt((stimulus.grating.width/2).^2 +(stimulus.grating.height/2).^2)-0.5;
+  topX = centerX + radius*cos(pi*thisOrientation/180);
+  topY = centerY + radius*sin(pi*thisOrientation/180);
+  thisOrientation = thisOrientation+180;
+  bottomX = centerX + radius*cos(pi*thisOrientation/180);
+  bottomY = centerY + radius*sin(pi*thisOrientation/180);
+  % place points
+  stimulus.grating.refPoints.x{iAngle} = [topX bottomX];
+  stimulus.grating.refPoints.y{iAngle} = [topY bottomY];
+end
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    startStaircase    %
+%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initStaircase(threshold,stimulus)
+
+for iLoc = stimulus.grating.targetLoc
+  for iContrast = 1:length(stimulus.targetContrast);
+    for iTargetDistractor = 1:2
+      stimulus.staircase{iLoc}{iContrast}{iTargetDistractor} = upDownStaircase(1,2,threshold,2.5,1);
+      stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.minThreshold = 0;
+      stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.maxThreshold = 90;
+    end
+  end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -238,9 +353,39 @@ function [task myscreen] = startSegmentCallback(task,myscreen)
 
 global stimulus;
 if task.thistrial.thisseg == 1
-  disp(sprintf('Target: %0.2f Distractor: %0.2f',task.thistrial.targetContrast,task.thistrial.distractorContrast));
+  disp(sprintf('Target: %0.2f Distractor: %0.2f TargetLoc: %i',task.thistrial.targetContrast,task.thistrial.distractorContrast,task.thistrial.targetLoc));
 end
 
+% set the orientation of the targets
+if (stimulus.taskType == 2) && (task.thistrial.thisphase == 2)
+  if (task.thistrial.thisseg == 1)
+    % choose which direction is target
+    stimulus.task.cuedLoc(task.trialnum) = stimulus.grating.targetLoc(ceil(length(stimulus.grating.targetLoc)*rand));
+    % set a random orientation of the target at the current threshold estimate
+    stimulus.task.direction{task.trialnum} = nan(1,length(stimulus.grating.orientations));
+    stimulus.task.orientation{task.trialnum} = nan(1,length(stimulus.grating.orientations));
+    % set these to decide which staircase to use. staircases are sorted by targetContrast
+    % and whether the cuedLoc is the same as the target
+    stimulus.thisContrastNum = find(task.thistrial.targetContrast == stimulus.targetContrast);
+    stimulus.thisTargetDistractor = (stimulus.task.cuedLoc(task.trialnum) == task.thistrial.targetLoc)+1;
+    for iTarget = stimulus.grating.targetLoc
+      stimulus.task.direction{task.trialnum}(iTarget) = round((rand>0.5)*2-1);
+      stimulus.task.orientation{task.trialnum}(iTarget) = stimulus.staircase{iTarget}{stimulus.thisContrastNum}{stimulus.thisTargetDistractor}.threshold*stimulus.task.direction{task.trialnum}(iTarget);
+    end
+    stimulus.fixColor = [1 1 1];
+    % set up how to draw fixation lines
+    o = d2r(stimulus.grating.angles(stimulus.task.cuedLoc(task.trialnum)));
+    cueAngle = d2r(30);
+    cueWidth = stimulus.fixWidth;
+    stimulus.cueX = [cos(o)*cueWidth/2 -cos(o+cueAngle)*cueWidth/2 cos(o)*cueWidth/2 -cos(o-cueAngle)*cueWidth/2];
+    stimulus.cueY = [sin(o)*cueWidth/2 -sin(o+cueAngle)*cueWidth/2 sin(o)*cueWidth/2 -sin(o-cueAngle)*cueWidth/2];
+    disp(sprintf('Cued targer: %i',stimulus.task.cuedLoc(task.trialnum)));
+  elseif (task.thistrial.thisseg == 3)
+    stimulus.fixColor = [1 1 0];
+  elseif (task.thistrial.thisseg == 4)
+    stimulus.fixColor = [1 1 1];
+  end
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to display stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -249,15 +394,16 @@ function [task myscreen] = updateScreenCallback(task,myscreen)
 global stimulus;
 mglClearScreen;
 
-if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
+if any(task.thistrial.thisseg == stimulus.stimSegment)
   % create a ring of stimuli
   for iAngle = 1:length(stimulus.grating.orientations)
 
     % get x,y position of grating
-    thisAngle = stimulus.grating.orientations(iAngle);
+    thisAngle = stimulus.grating.angles(iAngle);
     x = stimulus.x + stimulus.grating.radius*cos(pi*thisAngle/180);
     y = stimulus.y + stimulus.grating.radius*sin(pi*thisAngle/180);
     angleNum = iAngle;
+    thisOrientation = stimulus.grating.orientations(iAngle);
 
     % get which phase we are on
     phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
@@ -266,17 +412,22 @@ if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
       phaseNum = mod(phaseNum+length(stimulus.grating.phases)/2,length(stimulus.grating.phases))+1;
     end
     
-
     % get what contrast to display
     % Main experiment
-    if ~stimulus.isLocalizer
+    if ~stimulus.isLoc
       if iAngle == task.thistrial.targetLoc
 	contrastNum = find(stimulus.grating.contrasts==task.thistrial.targetContrast);
 	angleNum = find(stimulus.grating.orientations==0);
       else
 	contrastNum = find(stimulus.grating.contrasts==task.thistrial.distractorContrast);
       end    
-
+      % if this is the attentive task then we put threshold level changes in orientation
+      % on the target gratings
+      if any(stimulus.taskType == [2 3])
+	if any(iAngle ==stimulus.grating.targetLoc)
+	  thisOrientation = thisOrientation+stimulus.task.orientation{task.trialnum}(iAngle);
+	end
+      end
     % Localizer
     else
       if any(iAngle == stimulus.grating.targetLoc)
@@ -299,9 +450,32 @@ if (task.thistrial.thisseg == 1) || (stimulus.isLocalizer)
     end
 
     % display the texture
-    mglBltTexture(stimulus.tex(contrastNum,phaseNum),[x y stimulus.grating.height],0,0,thisAngle);
-    mglBltTexture(stimulus.mask,[x y stimulus.grating.height],0,0,thisAngle);
+    mglBltTexture(stimulus.tex(contrastNum,phaseNum),[x y stimulus.grating.height],0,0,thisOrientation);
+    mglBltTexture(stimulus.mask,[x y stimulus.grating.height],0,0,thisOrientation);
   end
+end
+
+
+% draw task reference points 
+if any(stimulus.taskType == [2 3]) && any(task.thistrial.thisseg == [stimulus.stimSegment])
+  for i = stimulus.grating.targetLoc
+    % draw reference points
+    mglPoints2(stimulus.grating.refPoints.x{i},stimulus.grating.refPoints.y{i},4,[1 1 1]);
+  end
+end
+
+% put up fixtaion cross
+if stimulus.taskType == 2
+  if (task.thistrial.thisphase == 2) && any(task.thistrial.thisseg == [1 2]) 
+    % put up cue
+    mglLines2(stimulus.cueX(1),stimulus.cueY(1),stimulus.cueX(2),stimulus.cueY(2),stimulus.fixLineWidth,stimulus.fixColor,1);
+    mglLines2(stimulus.cueX(3),stimulus.cueY(3),stimulus.cueX(4),stimulus.cueY(4),stimulus.fixLineWidth,stimulus.fixColor,1);
+    
+  else
+    % put up fixation cross
+    mglFixationCross(stimulus.fixWidth,stimulus.fixLineWidth,stimulus.fixColor);
+  end
+  
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -309,6 +483,37 @@ end
 % the beginning of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = trialResponseCallback(task,myscreen)
-v
+
 global stimulus;
+if ~task.thistrial.gotResponse
+  % get correct or incorrect
+  whichButton = -1*((task.thistrial.whichButton-1)*2-1);
+  thisDirection = stimulus.task.direction{task.trialnum}(stimulus.task.cuedLoc(task.trialnum));
+
+  dispstr = sprintf('Unknown button: %i',whichButton);
+
+  % get correct or incorrect
+  if (thisDirection == whichButton)
+    % correct
+    stimulus.fixColor = [0 1 0];
+    % update staircase
+    stimulus.staircase{stimulus.task.cuedLoc(task.trialnum)}{stimulus.thisContrastNum}{stimulus.thisTargetDistractor} = upDownStaircase(stimulus.staircase{stimulus.task.cuedLoc(task.trialnum)}{stimulus.thisContrastNum}{stimulus.thisTargetDistractor},1);
+    dispstr = 'correct';
+  else
+    % incorrect
+    stimulus.fixColor = [1 0 0];
+    % update staircase
+    stimulus.staircase{stimulus.task.cuedLoc(task.trialnum)}{stimulus.thisContrastNum}{stimulus.thisTargetDistractor} = upDownStaircase(stimulus.staircase{stimulus.task.cuedLoc(task.trialnum)}{stimulus.thisContrastNum}{stimulus.thisTargetDistractor},0);
+    dispstr = 'incorrect';
+  end
+else
+  % observer gave multiple responses
+  dispstr = sprintf('multiple responses: %i',task.thistrial.gotResponse);
+end
+
+% display threshold
+disp(sprintf('(%s) Threshold: %f',dispstr,stimulus.staircase{stimulus.task.cuedLoc(task.trialnum)}{stimulus.thisContrastNum}{stimulus.thisTargetDistractor}.threshold));
+
+
+
 
