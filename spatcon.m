@@ -247,17 +247,7 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-% display results
-targetDistractorStr = {'distractor','target'};
-for iTargetDistractor = 1:2
-  for iContrast = 1:length(stimulus.targetContrast);
-    threshold = [];
-    for iLoc = stimulus.grating.targetLoc
-      threshold(end+1) = stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.threshold;
-    end
-    disp(sprintf('[%s contrast:%f]: %f (%s)',targetDistractorStr{iTargetDistractor},stimulus.targetContrast(iContrast),mean(threshold),num2str(threshold)));
-  end
-end
+spatconPsycho(stimulus);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
