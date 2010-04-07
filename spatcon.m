@@ -9,15 +9,12 @@
 %
 function myscreen = spatcon(varargin)
 
-% check arguments
-if ~any(nargin == [0 1 2])
-  help spatcon
-  return
-end
-
 taskType = [];
 initStair = [];
-getArgs(varargin,{'taskType=1','initStair=1'});
+threshold = [];
+stepsize = [];
+useLevittRule = [];
+getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
@@ -28,9 +25,6 @@ myscreen.allowpause = 0;
 myscreen.eatkeys = 0;
 myscreen.displayname = 'projector';
 myscreen.background = 'gray';
-
-threshold = 6;
-stepsize = 2;
 
 myscreen = initScreen(myscreen);
 
@@ -177,10 +171,12 @@ elseif any(taskType == [2 3])
   if taskType == 2
     % psychophyscis room
     task{2}{1}.seglen = 0;
-    task{2}{1}.synchToVol = [0];
+    task{2}{1}.synchToVol = [1];
+    task{2}{2}.waitForBacktick = 0;
+    task{2}{1}.waitForBacktick = 0;
+
     task{2}{2}.seglen = [1 stimLen 1 0.5];
     task{2}{2}.getResponse = [0 0 1];
-    task{2}{2}.waitForBacktick = 0;
     task{2}{2}.numBlocks = 100;
   else
     % scanner
@@ -220,12 +216,26 @@ end
 stimulus = initGratings(stimulus,myscreen,task);
 
 if initStair
-  disp(sprintf('(spatcon) Initializing staircase with threshold: %f stepsize: %f',threshold,stepsize));
+  disp(sprintf('(spatcon) Initializing staircase with threshold: %f stepsize: %f useLevittRule: %i',threshold,stepsize,useLevittRule));
   if any(taskType == [2 3])
-    stimulus = initStaircase(threshold,stimulus,stepsize);
+    stimulus = initStaircase(threshold,stimulus,stepsize,useLevittRule);
   end
 else
   disp(sprintf('(spatcon) Continuing staircase from last run'));
+  targetDistractorStr = {'distractor','target'};
+  for iLoc = stimulus.grating.targetLoc
+    for iContrast = 1:length(stimulus.targetContrast);
+      for iTargetDistractor = 1:2
+	threshold = stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.threshold;
+	if isfield(stimulus.staircase{iLoc}{iContrast}{iTargetDistractor},'strength')
+	  n = length(stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.strength);
+	else
+	  n = 0;
+	end
+	disp(sprintf('%s (Loc: %i Contrast: %i): %f (n=%i)',targetDistractorStr{iTargetDistractor},iLoc,iContrast,threshold,n));
+      end
+    end
+  end
 end
 
 % initialze tasks
@@ -271,7 +281,7 @@ spatconPsycho(stimulus);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initGratings(stimulus,myscreen,task)
 
-maxIndex = 255;
+stimulus.maxIndex = 255;
 disppercent(-inf,'Creating grating textures');
 
 nContrasts = length(stimulus.grating.contrasts);
@@ -280,10 +290,10 @@ nPhases = length(stimulus.grating.phases);
 gaussianWin = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sdx,stimulus.grating.sdy);
 if strcmp(stimulus.grating.windowType,'gabor')
   % a gaussian window
-  win = maxIndex-maxIndex*gaussianWin;
+  win = stimulus.maxIndex-stimulus.maxIndex*gaussianWin;
 else
   % a simple window
-  win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
+  win = stimulus.maxIndex-stimulus.maxIndex*(gaussianWin>exp(-1/2));
 end
 mask = ones(size(win,1),size(win,2),4)*myscreen.grayIndex;
 mask(:,:,4) = round(win);
@@ -297,13 +307,15 @@ for iPhase = 1:nPhases
     thisPhase = (stimulus.grating.phase+stimulus.grating.phases(iPhase))*180/pi;
     thisContrast = stimulus.grating.contrasts(iContrast);
     % make the grating
-    thisGrating = round(maxIndex*((thisContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,thisPhase))+1)/2);
+    thisGrating = round(stimulus.maxIndex*((thisContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,thisPhase))+1)/2);
     % create the texture
     stimulus.tex(iContrast,iPhase) = mglCreateTexture(thisGrating);
   end
 end
 disppercent(inf);
-stimulus.randMask = mglCreateTexture(floor(maxIndex*rand([size(mask,1) size(mask,2)])));
+stimulus.randMaskSize = [size(mask,1) size(mask,2)];
+stimulus.randMask = mglCreateTexture(floor(stimulus.maxIndex*rand(stimulus.randMaskSize)));
+
 
 for iAngle = 1:length(stimulus.grating.angles)
   % get center of patch
@@ -322,15 +334,18 @@ for iAngle = 1:length(stimulus.grating.angles)
   stimulus.grating.refPoints.x{iAngle} = [topX bottomX];
   stimulus.grating.refPoints.y{iAngle} = [topY bottomY];
 end
+
+stimulus.waitForBacktickText = mglText('Hit backtick (`) key to start');
+
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    startStaircase    %
 %%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initStaircase(threshold,stimulus,stepsize)
+function stimulus = initStaircase(threshold,stimulus,stepsize,useLevittRule)
 
 for iLoc = stimulus.grating.targetLoc
   for iContrast = 1:length(stimulus.targetContrast);
     for iTargetDistractor = 1:2
-      stimulus.staircase{iLoc}{iContrast}{iTargetDistractor} = upDownStaircase(1,2,threshold,stepsize,1);
+      stimulus.staircase{iLoc}{iContrast}{iTargetDistractor} = upDownStaircase(1,2,threshold,stepsize,useLevittRule);
       stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.minThreshold = 0;
       stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.maxThreshold = 90;
     end
@@ -382,6 +397,10 @@ if (stimulus.taskType == 2) && (task.thistrial.thisphase == 2)
     stimulus.cueX = [cos(o)*cueWidth/2 -cos(o+cueAngle)*cueWidth/2 cos(o)*cueWidth/2 -cos(o-cueAngle)*cueWidth/2];
     stimulus.cueY = [sin(o)*cueWidth/2 -sin(o+cueAngle)*cueWidth/2 sin(o)*cueWidth/2 -sin(o-cueAngle)*cueWidth/2];
     disp(sprintf('Cued targer: %i',stimulus.task.cuedLoc(task.trialnum)));
+  elseif (task.thistrial.thisseg == 2)
+      % init a new randMask
+      mglDeleteTexture(stimulus.randMask);
+      stimulus.randMask = mglCreateTexture(floor(stimulus.maxIndex*rand(stimulus.randMaskSize)));
   elseif (task.thistrial.thisseg == 3)
     stimulus.fixColor = [1 1 0];
   elseif (task.thistrial.thisseg == 4)
@@ -395,6 +414,12 @@ function [task myscreen] = updateScreenCallback(task,myscreen)
 
 global stimulus;
 mglClearScreen;
+
+% put up text to tell subject to hit backtick to start
+if (stimulus.taskType == 2) && (task.thistrial.thisphase == 1)
+  mglBltTexture(stimulus.waitForBacktickText,[0 0]);
+  return;
+end
 
 if any(task.thistrial.thisseg == stimulus.stimSegment)
   % create a ring of stimuli
