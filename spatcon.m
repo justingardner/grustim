@@ -14,7 +14,9 @@ initStair = [];
 threshold = [];
 stepsize = [];
 useLevittRule = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1'});
+stimFile = [];
+numBlocks = [];
+getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1','stimFile=[]','numBlocks=100'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
@@ -32,6 +34,14 @@ global stimulus;
 if initStair
   clear global stimulus
   global stimulus;
+end
+
+if ~isempty(stimFile)
+  s = load(stimFile);
+  stimulus = s.stimulus;
+  numBlocks = numBlocks - s.task{2}{2}.blocknum + 1;
+  clear s;
+  initStair = 0;
 end
 myscreen = initStimulus('stimulus',myscreen);
 
@@ -176,8 +186,10 @@ elseif any(taskType == [2 3])
     task{2}{1}.waitForBacktick = 0;
 
     task{2}{2}.seglen = [1 stimLen 1 0.5];
+%    task{2}{2}.seglen = 3*task{2}{2}.seglen;
     task{2}{2}.getResponse = [0 0 1];
-    task{2}{2}.numBlocks = 100;
+    task{2}{2}.numBlocks = numBlocks;
+    disp(sprintf('(spatcon) Number of blocks: %i',numBlocks));
   else
     % scanner
     task{2}{1}.seglen = initWaitTime;
