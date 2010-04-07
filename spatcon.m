@@ -10,13 +10,14 @@
 function myscreen = spatcon(varargin)
 
 % check arguments
-if ~any(nargin == [0 1])
-  help orientationDiscrimination
+if ~any(nargin == [0 1 2])
+  help spatcon
   return
 end
 
 taskType = [];
-getArgs(varargin,{'taskType=1'});
+initStair = [];
+getArgs(varargin,{'taskType=1','initStair=1'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
@@ -28,19 +29,15 @@ myscreen.eatkeys = 0;
 myscreen.displayname = 'projector';
 myscreen.background = 'gray';
 
-threshold = 8;
-stepsize = 1;
+threshold = 6;
+stepsize = 2;
 
 myscreen = initScreen(myscreen);
 
-global MGL;
 global stimulus;
-doInitStair = 1;
-if isfield(stimulus,'staircase')
-  doInitStair = askuser('Use threshold from last run')
-end
-if doInitStair
-  clear stimulus
+if initStair
+  clear global stimulus
+  global stimulus;
 end
 myscreen = initStimulus('stimulus',myscreen);
 
@@ -77,8 +74,8 @@ stimulus.grating.radius = 6.5;
 stimulus.grating.targetLoc = [1 4];
 stimulus.grating.angles = 0:60:359;
 stimulus.grating.orientations = stimulus.grating.angles;
-stimulus.grating.orientations(1) = 30;
-stimulus.grating.orientations(4) = -30;
+stimulus.grating.orientations(1) = 45;
+stimulus.grating.orientations(4) = -45;
 stimulus.grating.contrasts = union(distractorContrast,stimulus.targetContrast);
 stimulus.grating.sf = 2;
 stimulus.grating.tf = 2;
@@ -174,14 +171,14 @@ elseif any(taskType == [2 3])
   task{2}{2}.random = 1;
 
   % length of time a stimulus will be on for
-  stimLen = 1;
+  stimLen = 0.5;
   
   % scanner and psychophysics room
   if taskType == 2
     % psychophyscis room
     task{2}{1}.seglen = 0;
     task{2}{1}.synchToVol = [0];
-    task{2}{2}.seglen = [1 stimLen 1];
+    task{2}{2}.seglen = [1 stimLen 1 0.5];
     task{2}{2}.getResponse = [0 0 1];
     task{2}{2}.waitForBacktick = 0;
     task{2}{2}.numBlocks = 100;
@@ -222,10 +219,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus = initGratings(stimulus,myscreen,task);
 
-if doInitStair
+if initStair
+  disp(sprintf('(spatcon) Initializing staircase with threshold: %f stepsize: %f',threshold,stepsize));
   if any(taskType == [2 3])
     stimulus = initStaircase(threshold,stimulus,stepsize);
   end
+else
+  disp(sprintf('(spatcon) Continuing staircase from last run'));
 end
 
 % initialze tasks
@@ -303,6 +303,7 @@ for iPhase = 1:nPhases
   end
 end
 disppercent(inf);
+stimulus.randMask = mglCreateTexture(floor(maxIndex*rand([size(mask,1) size(mask,2)])));
 
 for iAngle = 1:length(stimulus.grating.angles)
   % get center of patch
@@ -461,10 +462,20 @@ end
 if any(stimulus.taskType == [2 3]) && any(task.thistrial.thisseg == [stimulus.stimSegment])
   for i = stimulus.grating.targetLoc
     % draw reference points
-    mglPoints2(stimulus.grating.refPoints.x{i},stimulus.grating.refPoints.y{i},4,[1 1 1]);
+%    mglPoints2(stimulus.grating.refPoints.x{i},stimulus.grating.refPoints.y{i},4,[1 1 1]);
   end
 end
 
+% put up a mask durin response interval
+if any(stimulus.taskType == [2 3]) && any(task.thistrial.thisseg ~= stimulus.stimSegment)
+  for i = 1:length(stimulus.grating.angles)
+    thisAngle = stimulus.grating.angles(i);
+    x = stimulus.x + stimulus.grating.radius*cos(pi*thisAngle/180);
+    y = stimulus.y + stimulus.grating.radius*sin(pi*thisAngle/180);
+    mglBltTexture(stimulus.randMask,[x y stimulus.grating.height],0,0,0);
+    mglBltTexture(stimulus.mask,[x y stimulus.grating.height],0,0,0);
+  end
+end
 % put up fixtaion cross
 if stimulus.taskType == 2
   if (task.thistrial.thisphase == 2) && any(task.thistrial.thisseg == [1 2]) 
