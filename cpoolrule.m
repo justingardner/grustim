@@ -37,23 +37,23 @@ deltaContrasts = [0 0.05 0.1 0.15 0.2];
 pedestalContrasts = [0.1];
 deltaContrasts = [-0.2 -0.1 -0.05 0 0.05 0.1 0.2]/4;
 
-pedestalContrasts = [0.5];
-deltaContrasts = [-0.5 0.5];
+%pedestalContrasts = [0.5];
+%deltaContrasts = [-0.5 0.5];
 
 % parameters
 stimulus.int1 = 2;
 stimulus.int2 = 4;
 
 % grating parameters
-stimulus.grating.radius = 8;
-stimulus.grating.n = 6;
+stimulus.grating.n = 4;
+stimulus.grating.orientationOfFirstGrating = 45;
+stimulus.grating.radius = 6;
 stimulus.colors.reservedColors = [0 0 0; 1 1 1; 0 1 0; 1 0 0;0.2 0.3 0.7];
 stimulus.grating.sf = 2;
 stimulus.grating.tf = 1;
 stimulus.grating.width = 6;
 stimulus.grating.height = 6;
 stimulus.grating.nPhases = 36;
-stimulus.grating.orientationOfFirstGrating = 45;
 
 stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/7;
@@ -223,7 +223,7 @@ if strcmp(stimulus.grating.windowType,'gabor')
   win = maxIndex-maxIndex*gaussianWin;
 else
   % a simple window
-  win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
+  win = maxIndex-maxIndex*(gaussianWin>=exp(-1/2));
 end
 mask = ones(size(win,1),size(win,2),4)*stimulus.colors.midGratingIndex;
 mask(:,:,4) = win;
@@ -249,6 +249,46 @@ for iPhase = 1:nPhases
   end
 end
 disppercent(inf);
+
+% set up cuelines
+for i = 1:stimulus.grating.n
+  stimulus.grating.cueLines(i,1) = cos(d2r(stimulus.grating.orientations(i)))*0.5;
+  stimulus.grating.cueLines(i,2) = sin(d2r(stimulus.grating.orientations(i)))*0.5;
+end
+
+% set up reference lines
+stimulus.grating.refLines.x1 = [];
+stimulus.grating.refLines.y1 = [];
+stimulus.grating.refLines.x2 = [];
+stimulus.grating.refLines.y2 = [];
+
+for iAngle = 1:length(stimulus.grating.orientations)
+  % get center of patch
+  thisAngle = stimulus.grating.orientations(iAngle);
+  centerX = stimulus.grating.radius*cos(pi*thisAngle/180);
+  centerY = stimulus.grating.radius*sin(pi*thisAngle/180);
+  % get radius
+  radius = sqrt(((stimulus.grating.width/2)^2)+((stimulus.grating.height/2)^2))-0.5;
+  % get left/right top/bottom;
+  left = centerX-stimulus.grating.width/2;
+  right = centerX+stimulus.grating.width/2;
+  top = centerY-stimulus.grating.height/2;
+  bottom = centerY+stimulus.grating.height/2;
+  % square reference points 
+  %stimulus.grating.refLines.x1 = [stimulus.grating.refLines.x1 left left right right];
+  %stimulus.grating.refLines.y1 = [stimulus.grating.refLines.y1 top bottom bottom top];
+  %stimulus.grating.refLines.x2 = [stimulus.grating.refLines.x2 left right right left];
+  %stimulus.grating.refLines.y2 = [stimulus.grating.refLines.y2 bottom bottom top top];
+  
+  % circular reference lines
+  d = 0:1:360;
+  for dIndex = 1:length(d)-1
+    stimulus.grating.refLines.x1 = [stimulus.grating.refLines.x1 centerX+radius*cos(d2r(d(dIndex)))];
+    stimulus.grating.refLines.y1 = [stimulus.grating.refLines.y1 centerY+radius*sin(d2r(d(dIndex)))];
+    stimulus.grating.refLines.x2 = [stimulus.grating.refLines.x2 centerX+radius*cos(d2r(d(dIndex+1)))];
+    stimulus.grating.refLines.y2 = [stimulus.grating.refLines.y2 centerY+radius*sin(d2r(d(dIndex+1)))];
+  end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -316,7 +356,6 @@ global stimulus;
 mglClearScreen(stimulus.colors.grayColor);
 
 if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2]) 
-
   for i = 1:stimulus.grating.n
     % get which phase we are on, note that the phaseIndex goes through approximately 2 cycles
     % of the stimulus so we adjust the tf accordingly
@@ -332,8 +371,16 @@ if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
     % blt texture
     mglBltTexture(stimulus.tex(stimulus.contrastIndex(i),phaseIndex),[stimulus.x(i) stimulus.y(i) stimulus.grating.height],0,0,stimulus.o(i));
     mglBltTexture(stimulus.mask,[stimulus.x(i) stimulus.y(i)],0,0,stimulus.o(i));
+  
+    mglLines2(0,0,stimulus.grating.cueLines(i,1),stimulus.grating.cueLines(i,2),1,stimulus.colors.reservedColor(2));
   end
+  
+  
 end
+
+% draw reference points
+mglLines2(stimulus.grating.refLines.x1,stimulus.grating.refLines.y1,stimulus.grating.refLines.x2,stimulus.grating.refLines.y2,1,stimulus.colors.reservedColor(2));
+
 
 mglFixationCross(0.5,1,stimulus.fixColor);
 
