@@ -28,17 +28,27 @@ myscreen.eatkeys = 0;
 myscreen.displayname = 'projector';
 myscreen.background = 'gray';
 
-threshold = 10;
+threshold = 8;
+stepsize = 1;
 
 myscreen = initScreen(myscreen);
 
 global MGL;
-clear global stimulus
 global stimulus;
+doInitStair = 1;
+if isfield(stimulus,'staircase')
+  doInitStair = askuser('Use threshold from last run')
+end
+if doInitStair
+  clear stimulus
+end
 myscreen = initStimulus('stimulus',myscreen);
 
 % set the time to wait before starting task
 initWaitTime = 0.1;
+
+% set the contrasts of distractor
+distractorContrast = [0.5];
 
 % set target contrasts
 if taskType == 1
@@ -52,16 +62,15 @@ if taskType == 1
   stimulus.targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
   stimulus.targetContrast = stimulus.targetContrast/100;
 elseif any(taskType==[2 3])
-  stimulus.targetContrast = [1 0.25];
+%  stimulus.targetContrast = [1 0.25];
+  stimulus.targetContrast = [1 1/9];
+  stimulus.distractorContrast = 1/3;
 else
   stimulus.targetContrast = 0.5;
 end
 
 % and display them
 disp(sprintf('(spatcon) targetContrasts: %s',mynum2str(stimulus.targetContrast)))
-
-% set the contrasts of distractor
-distractorContrast = [0.5];
 
 % parameters
 stimulus.grating.radius = 6.5;
@@ -165,18 +174,17 @@ elseif any(taskType == [2 3])
   task{2}{2}.random = 1;
 
   % length of time a stimulus will be on for
-  stimLen = .75;
+  stimLen = 1;
   
   % scanner and psychophysics room
   if taskType == 2
     % psychophyscis room
     task{2}{1}.seglen = 0;
     task{2}{1}.synchToVol = [0];
-    task{2}{2}.segmin = [1 stimLen 1];
-    task{2}{2}.segmax = [1 stimLen 1];
+    task{2}{2}.seglen = [1 stimLen 1];
     task{2}{2}.getResponse = [0 0 1];
     task{2}{2}.waitForBacktick = 0;
-    task{2}{2}.numBlocks = 200;
+    task{2}{2}.numBlocks = 100;
   else
     % scanner
     task{2}{1}.seglen = initWaitTime;
@@ -213,8 +221,11 @@ end
 % initialze tasks and stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus = initGratings(stimulus,myscreen,task);
-if any(taskType == [2 3])
-  stimulus = initStaircase(threshold,stimulus);
+
+if doInitStair
+  if any(taskType == [2 3])
+    stimulus = initStaircase(threshold,stimulus,stepsize);
+  end
 end
 
 % initialze tasks
@@ -313,12 +324,12 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    startStaircase    %
 %%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initStaircase(threshold,stimulus)
+function stimulus = initStaircase(threshold,stimulus,stepsize)
 
 for iLoc = stimulus.grating.targetLoc
   for iContrast = 1:length(stimulus.targetContrast);
     for iTargetDistractor = 1:2
-      stimulus.staircase{iLoc}{iContrast}{iTargetDistractor} = upDownStaircase(1,2,threshold,2.5,1);
+      stimulus.staircase{iLoc}{iContrast}{iTargetDistractor} = upDownStaircase(1,2,threshold,stepsize,1);
       stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.minThreshold = 0;
       stimulus.staircase{iLoc}{iContrast}{iTargetDistractor}.maxThreshold = 90;
     end
