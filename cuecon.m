@@ -14,7 +14,7 @@ stepsize = [];
 useLevittRule = [];
 stimFile = [];
 numBlocks = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1','stimFile=[]','numBlocks=100'});
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=100'});
 
 global stimulus;
 if initStair
@@ -49,8 +49,8 @@ myscreen = initStimulus('stimulus',myscreen);
 stimulus.pedestalContrasts = [0.1 0.2 0.4];
 stimulus.deltaContrasts = [0 0.05 0.1 0.15 0.2];
 
-stimulus.pedestalContrasts = [0.1];
-stimulus.deltaContrasts = [0.4 0.8];
+%stimulus.pedestalContrasts = [0.1];
+%stimulus.deltaContrasts = [0.4 0.8];
 
 
 %pedestalContrasts = [0.5];
@@ -62,7 +62,7 @@ stimulus.int2 = 4;
 
 % grating parameters
 stimulus.grating.n = 4;
-stimulus.grating.orientationOfFirstGrating = 45;
+stimulus.grating.orientationOfFirstGrating = 0;
 stimulus.grating.radius = 6;
 stimulus.colors.reservedColors = [0 0 0; 1 1 1; 0 1 0; 1 0 0;0.2 0.3 0.7];
 stimulus.grating.sf = 2;
@@ -121,8 +121,8 @@ if taskType == 1
   task{1}{2}.parameter.targetLoc = 1:stimulus.grating.n;
   task{1}{2}.parameter.cueCondition = 1:length(stimulus.cueConditions);
   task{1}{2}.random = 1;
-  task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5];
-  task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5];
+  task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5 1];
+  task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5 1];
   task{1}{2}.synchToVol = [0 0 0 0 0];
   task{1}{2}.getResponse = [0 0 0 0 1];
   task{1}{2}.waitForBacktick = 0;
@@ -348,6 +348,13 @@ global stimulus;
 if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
   % set the maximum contrast we can display
   setGammaTableForMaxContrast(max([task.thistrial.pedestalContrast; task.thistrial.pedestalContrast(task.thistrial.targetLoc)+task.thistrial.deltaContrast]));
+  % choose which cue to show
+  switch stimulus.cueConditions{task.thistrial.cueCondition} 
+    case {'one'}
+      stimulus.thisCue = task.thistrial.targetLoc;
+    case {'four'}
+      stimulus.thisCue = [1 2 3 4];
+  end
 end
 
 if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
@@ -367,13 +374,6 @@ if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
     
     % get the contrasts
     stimulus.contrastIndex(i) = getContrastIndex(stimulusContrast(i));
-  end
-  % choose which cue to show
-  switch stimulus.cueConditions{task.thistrial.cueCondition} 
-    case {'one'}
-      stimulus.thisCue = task.thistrial.targetLoc;
-    case {'four'}
-      stimulus.thisCue = [1 2 3 4];
   end
 end
 
@@ -418,7 +418,7 @@ mglLines2(stimulus.grating.refLines.x1,stimulus.grating.refLines.y1,stimulus.gra
 if task.thistrial.thisseg == 5
   % draw target
   mglLines2(0,0,stimulus.grating.cueLines(task.thistrial.targetLoc,1),stimulus.grating.cueLines(task.thistrial.targetLoc,2),1,stimulus.colors.reservedColor(3));
-elseif task.thistrial.thisphase == 2
+elseif (task.thistrial.thisphase == 2) && (task.thistrial.thisseg < 5)
   % draw cues
   mglLines2(zeros(length(stimulus.thisCue),1),zeros(length(stimulus.thisCue),1),stimulus.grating.cueLines(stimulus.thisCue,1),stimulus.grating.cueLines(stimulus.thisCue,2),1,stimulus.colors.reservedColor(2));
 end

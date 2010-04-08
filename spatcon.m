@@ -16,7 +16,10 @@ stepsize = [];
 useLevittRule = [];
 stimFile = [];
 numBlocks = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1','stimFile=[]','numBlocks=100'});
+targetContrast = [];
+distractorContrast = [];
+subjectID = [];
+getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1','stimFile=[]','numBlocks=100','targetContrast=[1 1/9]','distractorContrast=[1/3]','subjectID=[]'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
@@ -30,6 +33,19 @@ myscreen.background = 'gray';
 
 myscreen = initScreen(myscreen);
 
+% set data directory to be ~/data/subjectID
+myscreen.datadir = fullfile(myscreen.datadir,'spatcon');
+if ~isdir(myscreen.datadir)
+  mkdir(myscreen.datadir);
+end
+if ~isempty(subjectID)
+  myscreen.datadir = fullfile(myscreen.datadir,subjectID);
+  if ~isdir(myscreen.datadir)
+    mkdir(myscreen.datadir);
+  end
+end
+disp(sprintf('(spatcon) Saving data into %s',myscreen.datadir));
+
 global stimulus;
 if initStair
   clear global stimulus
@@ -37,7 +53,16 @@ if initStair
 end
 
 if ~isempty(stimFile)
-  s = load(stimFile);
+  stimFile = setext(stimFile,'mat');
+  if isfile(stimFile)
+    s = load(stimFile);
+  elseif isfile(fullfile(myscreen.datadir,stimFile))
+    s = load(fullfile(myscreen.datadir,stimFile));
+  else
+    disp(sprintf('(spatcon) Could not find file %s',stimFile));
+    endScreen(myscreen);
+    return
+  end
   stimulus = s.stimulus;
   numBlocks = numBlocks - s.task{2}{2}.blocknum + 1;
   clear s;
@@ -47,9 +72,6 @@ myscreen = initStimulus('stimulus',myscreen);
 
 % set the time to wait before starting task
 initWaitTime = 0.1;
-
-% set the contrasts of distractor
-distractorContrast = [0.5];
 
 % set target contrasts
 if taskType == 1
@@ -64,14 +86,14 @@ if taskType == 1
   stimulus.targetContrast = stimulus.targetContrast/100;
 elseif any(taskType==[2 3])
 %  stimulus.targetContrast = [1 0.25];
-  stimulus.targetContrast = [1 1/9];
-  stimulus.distractorContrast = 1/3;
+  stimulus.targetContrast = targetContrast;
+  stimulus.distractorContrast = distractorContrast;
+  % and display them
+  disp(sprintf('(spatcon) targetContrasts: %s distractorContrast: %s',mynum2str(stimulus.targetContrast),mynum2str(stimulus.distractorContrast)));
 else
   stimulus.targetContrast = 0.5;
 end
 
-% and display them
-disp(sprintf('(spatcon) targetContrasts: %s',mynum2str(stimulus.targetContrast)))
 
 % parameters
 stimulus.grating.radius = 6.5;
