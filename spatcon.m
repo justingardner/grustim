@@ -19,7 +19,8 @@ numBlocks = [];
 targetContrast = [];
 distractorContrast = [];
 subjectID = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1','stimFile=[]','numBlocks=100','targetContrast=[1 1/9]','distractorContrast=[1/3]','subjectID=[]'});
+easyFixTask = [];
+getArgs(varargin,{'taskType=1','initStair=1','threshold=6','stepsize=2','useLevittRule=1','stimFile=[]','numBlocks=100','targetContrast=[1 1/9]','distractorContrast=[1/3]','subjectID=[]','easyFixTask=0'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
@@ -77,22 +78,28 @@ initWaitTime = 0.1;
 if taskType == 1
   % compute contrast, we want them evenly spaced on a log scale
   % and we specify the middle, max and number of contrast
-  midContrast = 50;
-  maxContrast = 100;
-  nContrasts = 3;
+  %midContrast = 50;
+  %maxContrast = 100;
+  %nContrasts = 3;
   % now calculate the contrasts we need
-  logContrastDifference = log(maxContrast)-log(midContrast);
-  stimulus.targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
-  stimulus.targetContrast = stimulus.targetContrast/100;
+  %logContrastDifference = log(maxContrast)-log(midContrast);
+  %stimulus.targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
+  %stimulus.targetContrast = stimulus.targetContrast/100;
+  targetContrast = 0:0.2:1;
+  distractorContrast = [0.2 0.8];
 elseif any(taskType==[2 3])
 %  stimulus.targetContrast = [1 0.25];
-  stimulus.targetContrast = targetContrast;
-  stimulus.distractorContrast = distractorContrast;
-  % and display them
-  disp(sprintf('(spatcon) targetContrasts: %s distractorContrast: %s',mynum2str(stimulus.targetContrast),mynum2str(stimulus.distractorContrast)));
-else
-  stimulus.targetContrast = 0.5;
+elseif taskType == 0
+  targetContrast = 1;
+  distractorContrast = 0;
 end
+
+% set the contrasts
+stimulus.targetContrast = targetContrast;
+stimulus.distractorContrast = distractorContrast;
+
+% display contaststhem
+disp(sprintf('(spatcon) targetContrasts: %s distractorContrast: %s',mynum2str(stimulus.targetContrast),mynum2str(stimulus.distractorContrast)));
 
 
 % parameters
@@ -100,9 +107,11 @@ stimulus.grating.radius = 6.5;
 stimulus.grating.targetLoc = [1 4];
 stimulus.grating.angles = 0:60:359;
 stimulus.grating.orientations = stimulus.grating.angles;
-stimulus.grating.orientations(1) = 45;
-stimulus.grating.orientations(4) = -45;
-stimulus.grating.contrasts = union(distractorContrast,stimulus.targetContrast);
+if any(taskType == [2 3])
+  stimulus.grating.orientations(1) = 45;
+  stimulus.grating.orientations(4) = -45;
+end
+stimulus.grating.contrasts = union(stimulus.distractorContrast,stimulus.targetContrast);
 stimulus.grating.sf = 2;
 stimulus.grating.tf = 2;
 stimulus.grating.width = 9;
@@ -126,7 +135,6 @@ stimulus.grating.sdy = stimulus.grating.height/2;
 % set up fixation task
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 global fixStimulus;
-easyFixTask = 1;
 fixStimulus.pos = [stimulus.x stimulus.y];
 if ~easyFixTask
   % default values
@@ -152,7 +160,7 @@ end
 if taskType == 1
   disp(sprintf('(spatcon) Running fixation task main experiment.'));
   stimulus.isLoc = 0;
-  stimulus.taskType = 1; % central fixation
+  stimulus.taskType = taskType; % central fixation
   task{2}{1}.parameter.distractorContrast = 0;
   task{2}{1}.parameter.targetContrast = 0;
   task{2}{1}.parameter.targetLoc = 1;
@@ -163,7 +171,7 @@ if taskType == 1
   task{2}{1}.numTrials = 1;
   task{2}{1}.waitForBacktick = 0;
 
-  task{2}{2}.parameter.distractorContrast = distractorContrast;
+  task{2}{2}.parameter.distractorContrast = stimulus.distractorContrast;
   task{2}{2}.parameter.targetContrast = stimulus.targetContrast;
   task{2}{2}.parameter.targetLoc = stimulus.grating.targetLoc;
   task{2}{2}.random = 1;
@@ -182,7 +190,7 @@ if taskType == 1
 elseif any(taskType == [2 3])
   disp(sprintf('(spatcon) Running attentive task, main experiment.'));
   stimulus.isLoc = 0;
-  stimulus.taskType = 2; % attentive task
+  stimulus.taskType = taskType; % attentive task
   task{2}{1}.parameter.distractorContrast = 0;
   task{2}{1}.parameter.targetContrast = 0;
   task{2}{1}.parameter.targetLoc = 1;
@@ -191,7 +199,7 @@ elseif any(taskType == [2 3])
   task{2}{1}.numTrials = 1;
   task{2}{1}.waitForBacktick = 1;
 
-  task{2}{2}.parameter.distractorContrast = distractorContrast;
+  task{2}{2}.parameter.distractorContrast = stimulus.distractorContrast;
   task{2}{2}.parameter.targetContrast = stimulus.targetContrast;
   task{2}{2}.parameter.targetLoc = stimulus.grating.targetLoc;
   task{2}{2}.random = 1;
@@ -233,9 +241,9 @@ elseif any(taskType == [2 3])
 elseif taskType == 0
   disp(sprintf('(spatcon) Running Localizer'));
   stimulus.isLoc = 1;
-  stimulus.taskType = 1;
+  stimulus.taskType = taskType;
   stimulus.grating.contrasts = [0 1];
-  task{2}{1}.parameter.distractorContrast = distractorContrast;
+  task{2}{1}.parameter.distractorContrast = stimulus.distractorContrast;
   task{2}{1}.parameter.targetContrast = stimulus.targetContrast;
   task{2}{1}.seglen = [12 12];
   task{2}{1}.synchToVol = [1 1];
@@ -302,9 +310,12 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if task{2}{2}.trialnum > 10
-  spatconPsycho(stimulus);
+if any(stimulus.taskType == [2 3])
+  if task{2}{2}.trialnum > 10
+    spatconPsycho(stimulus);
+  end
 end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -406,7 +417,9 @@ function [task myscreen] = startSegmentCallback(task,myscreen)
 
 global stimulus;
 if task.thistrial.thisseg == 1
-  disp(sprintf('Target: %0.2f Distractor: %0.2f TargetLoc: %i',task.thistrial.targetContrast,task.thistrial.distractorContrast,task.thistrial.targetLoc));
+  if stimulus.taskType > 0
+    disp(sprintf('Target: %0.2f Distractor: %0.2f TargetLoc: %i',task.thistrial.targetContrast,task.thistrial.distractorContrast,task.thistrial.targetLoc));
+  end
 end
 
 % set the orientation of the targets
