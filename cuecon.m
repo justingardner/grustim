@@ -201,6 +201,8 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
+dispStaircase(stimulus,1);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -366,6 +368,11 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
   pedestalNum = find(task.thistrial.pedestalContrast(task.thistrial.targetLoc)==stimulus.pedestalContrasts);
   cueNum = task.thistrial.cueCondition;
   stimulus.deltaContrast(task.trialnum) = stimulus.staircase{pedestalNum}{cueNum}.threshold;
+  % check to see if we go over 100% contrast
+  if (task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(end)) > 1
+    stimulus.deltaContrast(end) = 1-task.thistrial.pedestalContrast(task.thistrial.targetLoc);
+    disp(sprintf('(cuecon) !!!! Delta contast (%f) + Pedestal Contrast (%f) is greater than 100% contrast',stimulus.deltaContrast(end),task.thistrial.pedestalContrast(task.thistrial.targetLoc)));
+  end
   % set the maximum contrast we can display
   setGammaTableForMaxContrast(max([task.thistrial.pedestalContrast; task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(end)]));
   % choose which cue to show
@@ -543,14 +550,17 @@ for iPedestal = 1:stimulus.nPedestals
   for iCueCondition = 1:stimulus.nCueConditions
     stimulus.staircase{iPedestal}{iCueCondition} = upDownStaircase(1,2,threshold,stepsize,useLevittRule);
     stimulus.staircase{iPedestal}{iCueCondition}.minThreshold = 0;
-    stimulus.staircase{iPedestal}{iCueCondition}.maxThreshold = 90;
+    stimulus.staircase{iPedestal}{iCueCondition}.maxThreshold = 1;
   end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispStaircase    %
 %%%%%%%%%%%%%%%%%%%%%%%
-function dispStaircase(stimulus)
+function dispStaircase(stimulus,makeplot)
+
+if nargin < 2,makeplot = 0;end
+if makeplot,smartfig('cuecon','reuse');end
 
 for iPedestal = 1:stimulus.nPedestals
   for iCueCondition = 1:stimulus.nCueConditions
