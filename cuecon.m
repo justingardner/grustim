@@ -14,26 +14,14 @@ stepsize = [];
 useLevittRule = [];
 stimFile = [];
 numBlocks = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=100'});
+pedestalContrasts = [];
+subjectID = [];
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=50','pedestalContrasts=[0.25 0.5 0.75]','subjectID'});
 
 global stimulus;
 if initStair
   clear global stimulus
   global stimulus;
-end
-
-% open old stimfile to continue on
-if ~isempty(stimFile)
-  if isfile(setext(stimFile,'mat'))
-    s = load(stimFile);
-    stimulus = s.stimulus;
-    numBlocks = numBlocks - s.task{2}{2}.blocknum + 1;
-    clear s;
-    initStair = 0;
-  else
-    disp(sprintf('(cuecon) Could not open file %s',stimFile));
-    return
-  end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -43,18 +31,44 @@ end
 myscreen.background = 'gray';
 myscreen = initScreen(myscreen);
 
+% set data directory to be ~/data/subjectID
+myscreen.datadir = fullfile(myscreen.datadir,'cuecon');
+if ~isdir(myscreen.datadir)
+  mkdir(myscreen.datadir);
+end
+if ~isempty(subjectID)
+  myscreen.datadir = fullfile(myscreen.datadir,subjectID);
+  if ~isdir(myscreen.datadir)
+    mkdir(myscreen.datadir);
+  end
+end
+disp(sprintf('(cuecon) Saving data into %s',myscreen.datadir));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% open old stimfile to continue on, if asked for
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if ~isempty(stimFile)
+  if isfile(setext(stimFile,'mat'))
+    s = load(stimFile);
+  elseif isfile(fullfile(myscreen.datadir,setext(stimFile,'mat')))
+    s = load(fullfile(myscreen.datadir,setext(stimFile,'mat')));
+  else
+    disp(sprintf('(cuecon) Could not find file %s',stimFile));
+    return
+  end
+  stimulus = s.stimulus;
+  numBlocks = numBlocks - s.task{1}{2}.blocknum + 1;
+  clear s;
+  initStair = 0;
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set up stimulus
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = initStimulus('stimulus',myscreen);
 
 % set the contrasts of distractor and target
-stimulus.pedestalContrasts = [0.1 0.2 0.4];
-stimulus.deltaContrasts = [0 0.05 0.1 0.15 0.2];
-
-%stimulus.pedestalContrasts = [0.1];
-%stimulus.deltaContrasts = [0.4 0.8];
-
-
-%pedestalContrasts = [0.5];
-%deltaContrasts = [-0.5 0.5];
+stimulus.pedestalContrasts = pedestalContrasts;
 
 % parameters
 stimulus.int1 = 2;
@@ -62,7 +76,7 @@ stimulus.int2 = 4;
 
 % grating parameters
 stimulus.grating.n = 4;
-stimulus.grating.orientationOfFirstGrating = 0;
+stimulus.grating.orientationOfFirstGrating = 45;
 stimulus.grating.radius = 6;
 stimulus.colors.reservedColors = [0 0 0; 1 1 1; 0 1 0; 1 0 0;0.2 0.3 0.7];
 stimulus.grating.sf = 2;
@@ -71,9 +85,9 @@ stimulus.grating.width = 6;
 stimulus.grating.height = 6;
 stimulus.grating.nPhases = 36;
 
-stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
-stimulus.grating.sdx = stimulus.grating.width/7;
-stimulus.grating.sdy = stimulus.grating.width/7;
+%stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
+%stimulus.grating.sdx = stimulus.grating.width/7;
+%stimulus.grating.sdy = stimulus.grating.width/7;
 
 stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/2;
@@ -116,7 +130,6 @@ if taskType == 1
   task{1}{1}.numTrials = 1;
   task{1}{1}.waitForBacktick = 0;
   task{1}{2}.parameter.pedestalContrast = repmat(stimulus.pedestalContrasts,stimulus.grating.n,1);
-  task{1}{2}.parameter.deltaContrast = stimulus.deltaContrasts;
   task{1}{2}.parameter.interval = [stimulus.int1 stimulus.int2];
   task{1}{2}.parameter.targetLoc = 1:stimulus.grating.n;
   task{1}{2}.parameter.cueCondition = 1:length(stimulus.cueConditions);
@@ -128,6 +141,9 @@ if taskType == 1
   task{1}{2}.waitForBacktick = 0;
   task{1}{2}.numBlocks = numBlocks;
 
+  disp(sprintf('(cuecon) Number of blocks: %i',numBlocks));
+  
+  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % if this is localizer then change a few things
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -150,11 +166,11 @@ stimulus = initGratings(stimulus,myscreen,task);
 % init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if initStair
-  disp(sprintf('(spatcon) Initializing staircase with threshold: %f stepsize: %f useLevittRule: %i',threshold,stepsize,useLevittRule));
+  disp(sprintf('(cuecon) Initializing staircase with threshold: %f stepsize: %f useLevittRule: %i',threshold,stepsize,useLevittRule));
   stimulus = initStaircase(threshold,stimulus,stepsize,useLevittRule);
 else
-  disp(sprintf('(spatcon) Continuing staircase from last run'));
-  dispStaircase(stimulus.staircase);
+  disp(sprintf('(cuecon) Continuing staircase from last run'));
+  dispStaircase(stimulus);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks 
@@ -346,8 +362,12 @@ function [task myscreen] = startSegmentCallback(task,myscreen)
 global stimulus;
 
 if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
+  % get current threshold from staircase
+  pedestalNum = find(task.thistrial.pedestalContrast(task.thistrial.targetLoc)==stimulus.pedestalContrasts);
+  cueNum = task.thistrial.cueCondition;
+  stimulus.deltaContrast(task.trialnum) = stimulus.staircase{pedestalNum}{cueNum}.threshold;
   % set the maximum contrast we can display
-  setGammaTableForMaxContrast(max([task.thistrial.pedestalContrast; task.thistrial.pedestalContrast(task.thistrial.targetLoc)+task.thistrial.deltaContrast]));
+  setGammaTableForMaxContrast(max([task.thistrial.pedestalContrast; task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(end)]));
   % choose which cue to show
   switch stimulus.cueConditions{task.thistrial.cueCondition} 
     case {'one'}
@@ -360,7 +380,7 @@ end
 if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
   % get the contrast for the stimuli in this interval
   stimulusContrast = task.thistrial.pedestalContrast;
-  deltaContrast = task.thistrial.deltaContrast.*(task.thistrial.interval==task.thistrial.thisseg);
+  deltaContrast = stimulus.deltaContrast(end).*(task.thistrial.interval==task.thistrial.thisseg);
   stimulusContrast(task.thistrial.targetLoc) = stimulusContrast(task.thistrial.targetLoc)+deltaContrast;
 
   % set up the stimuli
@@ -441,7 +461,7 @@ else
   correctIncorrect = 'incorrect';
   stimulus.fixColor = stimulus.colors.reservedColor(4);
 end
-disp(sprintf('deltaC: %f %s',task.thistrial.deltaContrast,correctIncorrect));
+disp(sprintf('Cue: %s pedestal: %f deltaC: %f (%s)',stimulus.cueConditions{task.thistrial.cueCondition},task.thistrial.pedestalContrast(task.thistrial.targetLoc),stimulus.deltaContrast(end),correctIncorrect));
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    getContrastIndex    %
@@ -498,6 +518,8 @@ if maxContrast > 0
   blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
   
   % add these values to the table
+
+
   gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
 else
   % if we are asked for 0 contrast then simply set all the values to gray
