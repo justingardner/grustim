@@ -16,7 +16,7 @@ stimFile = [];
 numBlocks = [];
 pedestalContrasts = [];
 subjectID = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=50','pedestalContrasts=[0.25 0.5 0.75]','subjectID'});
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=7','pedestalContrasts=[0.25 0.5 0.75]','subjectID'});
 
 global stimulus;
 if initStair
@@ -114,7 +114,10 @@ else
   fixStimulus.responseTime = 1+1*easyFixTask;
 end
 
+% descriptive names for cue conditions. Add a name here for a new cue condition
+% Yuko add here!!!
 stimulus.cueConditions = {'one','four'};
+%stimulus.cueConditions = {'one','two','four'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up task
@@ -365,9 +368,9 @@ global stimulus;
 
 if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
   % get current threshold from staircase
-  pedestalNum = find(task.thistrial.pedestalContrast(task.thistrial.targetLoc)==stimulus.pedestalContrasts);
-  cueNum = task.thistrial.cueCondition;
-  stimulus.deltaContrast(task.trialnum) = stimulus.staircase{pedestalNum}{cueNum}.threshold;
+  stimulus.pedestalNum = find(task.thistrial.pedestalContrast(task.thistrial.targetLoc)==stimulus.pedestalContrasts);
+  stimulus.cueNum = task.thistrial.cueCondition;
+  stimulus.deltaContrast(task.trialnum) = stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum}.threshold;
   % check to see if we go over 100% contrast
   if (task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(end)) > 1
     stimulus.deltaContrast(end) = 1-task.thistrial.pedestalContrast(task.thistrial.targetLoc);
@@ -376,6 +379,7 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
   % set the maximum contrast we can display
   setGammaTableForMaxContrast(max([task.thistrial.pedestalContrast; task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(end)]));
   % choose which cue to show
+  % Yuko hey!!!
   switch stimulus.cueConditions{task.thistrial.cueCondition} 
     case {'one'}
       stimulus.thisCue = task.thistrial.targetLoc;
@@ -464,9 +468,11 @@ whichInterval = find(task.thistrial.interval == task.parameter.interval);
 if (task.thistrial.whichButton == whichInterval)
   correctIncorrect = 'correct';
   stimulus.fixColor = stimulus.colors.reservedColor(3);
+  stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum},1);
 else
   correctIncorrect = 'incorrect';
   stimulus.fixColor = stimulus.colors.reservedColor(4);
+  stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum},0);
 end
 disp(sprintf('Cue: %s pedestal: %f deltaC: %f (%s)',stimulus.cueConditions{task.thistrial.cueCondition},task.thistrial.pedestalContrast(task.thistrial.targetLoc),stimulus.deltaContrast(end),correctIncorrect));
   
@@ -560,7 +566,7 @@ end
 function dispStaircase(stimulus,makeplot)
 
 if nargin < 2,makeplot = 0;end
-if makeplot,smartfig('cuecon','reuse');end
+%if makeplot,smartfig('cuecon','reuse');end
 
 for iPedestal = 1:stimulus.nPedestals
   for iCueCondition = 1:stimulus.nCueConditions
