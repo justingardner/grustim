@@ -16,7 +16,7 @@ stimFile = [];
 numBlocks = [];
 pedestalContrasts = [];
 subjectID = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=7','pedestalContrasts=[0.25 0.5 0.75]','subjectID'});
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=7','pedestalContrasts=[0.25]','subjectID'});
 
 global stimulus;
 if initStair
@@ -116,7 +116,8 @@ end
 
 % descriptive names for cue conditions. Add a name here for a new cue condition
 % Yuko add here!!!
-stimulus.cueConditions = {'one','four'};
+%stimulus.cueConditions = {'one','four'};
+stimulus.cueConditions = {'four','two_sameHemi'}
 %stimulus.cueConditions = {'one','two','four'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -385,6 +386,26 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
       stimulus.thisCue = task.thistrial.targetLoc;
     case {'four'}
       stimulus.thisCue = [1 2 3 4];
+    case {'twoSameHemi'} %upR=1, upL=2, loL=3, loR=4
+      if task.thistrial.targetLoc == 1
+        stimulus.thisCue = [1 4];
+      elseif task.thistrial.targetLoc == 2
+        stimulus.thisCue = [2 3];
+      elseif task.thistrial.targetLoc == 3
+        stimulus.thisCue = [2 3];
+      elseif task.thistrial.targetLoc == 4
+        stimulus.thisCue = [1 4];
+      end
+    case {'kittyCorners'}
+      if task.thistrial.targetLoc == 1
+        stimulus.thisCue = [1 3];
+      elseif task.thistrial.targetLoc == 2
+        stimulus.thisCue = [2 4];
+      elseif task.thistrial.targetLoc == 3
+        stimulus.thisCue = [1 3];
+      elseif task.thistrial.targetLoc == 4
+        stimulus.thisCue = [2 4];
+      end
   end
 end
 
