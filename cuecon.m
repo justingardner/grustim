@@ -16,7 +16,7 @@ stimFile = [];
 numBlocks = [];
 pedestalContrasts = [];
 subjectID = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=7','pedestalContrasts=[0.25]','subjectID'});
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=24','pedestalContrasts=[0.0625 0.125 0.25]','subjectID'});
 
 global stimulus;
 if initStair
@@ -117,8 +117,8 @@ end
 % descriptive names for cue conditions. Add a name here for a new cue condition
 % Yuko add here!!!
 %stimulus.cueConditions = {'one','four'};
-stimulus.cueConditions = {'four','two_sameHemi'}
-%stimulus.cueConditions = {'one','two','four'};
+%stimulus.cueConditions = {'one','two_LeftRightHemi','four'};
+stimulus.cueConditions = {'one','two_UpperLowerHemi','two_kittyCorners','four'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up task
@@ -386,7 +386,8 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
       stimulus.thisCue = task.thistrial.targetLoc;
     case {'four'}
       stimulus.thisCue = [1 2 3 4];
-    case {'twoSameHemi'} %upR=1, upL=2, loL=3, loR=4
+    %upR=1, upL=2, loL=3, loR=4
+    case {'two_LeftRightHemi'} %left vs. right (made a mistake and named this cueCondition two_sameHemi for 100415_stim01 and stim02.
       if task.thistrial.targetLoc == 1
         stimulus.thisCue = [1 4];
       elseif task.thistrial.targetLoc == 2
@@ -396,7 +397,17 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
       elseif task.thistrial.targetLoc == 4
         stimulus.thisCue = [1 4];
       end
-    case {'kittyCorners'}
+    case {'two_UpperLowerHemi'} %upper vs. lower
+      if task.thistrial.targetLoc == 1
+        stimulus.thisCue = [1 2];
+      elseif task.thistrial.targetLoc == 2
+        stimulus.thisCue = [1 2];
+      elseif task.thistrial.targetLoc == 3
+        stimulus.thisCue = [3 4];
+      elseif task.thistrial.targetLoc == 4
+        stimulus.thisCue = [3 4];
+      end      
+    case {'two_kittyCorners'} %opp diagonal corners
       if task.thistrial.targetLoc == 1
         stimulus.thisCue = [1 3];
       elseif task.thistrial.targetLoc == 2
