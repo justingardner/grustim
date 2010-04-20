@@ -118,7 +118,7 @@ end
 % Yuko add here!!!
 %stimulus.cueConditions = {'one','four'};
 %stimulus.cueConditions = {'one','two_LeftRightHemi','four'};
-stimulus.cueConditions = {'one','two_UpperLowerHemi','two_kittyCorners','four'};
+stimulus.cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'};
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up task
@@ -387,7 +387,7 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
     case {'four'}
       stimulus.thisCue = [1 2 3 4];
     %upR=1, upL=2, loL=3, loR=4
-    case {'two_LeftRightHemi'} %left vs. right (made a mistake and named this cueCondition two_sameHemi for 100415_stim01 and stim02.
+    case {'two_leftRightHemi'} %left vs. right (made a mistake and named this cueCondition two_sameHemi for 100415_stim01 and stim02.
       if task.thistrial.targetLoc == 1
         stimulus.thisCue = [1 4];
       elseif task.thistrial.targetLoc == 2
@@ -397,7 +397,7 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
       elseif task.thistrial.targetLoc == 4
         stimulus.thisCue = [1 4];
       end
-    case {'two_UpperLowerHemi'} %upper vs. lower
+    case {'two_upperLowerHemi'} %upper vs. lower
       if task.thistrial.targetLoc == 1
         stimulus.thisCue = [1 2];
       elseif task.thistrial.targetLoc == 2
