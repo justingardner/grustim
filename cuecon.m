@@ -40,22 +40,27 @@ subjectID = [];
 cueConditions = [];
 training = [];
 cueCondOneFour = [];
+cueCondOneOnly = [];
 getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=12','pedestalContrasts=[0.0625 0.125 0.25]','subjectID=default','training=0','cueCondOneFour=0','cueCondOneOnly=0'});
 
+%if this is a training set...
 if training > 0
-    if threshold == 0.2
+    if threshold == 0.2 %and threshold is not set (is default)
         threshold = 0.5;
     end
-    if isequal(pedestalContrasts,[0.0625 0.125 0.25])
+    if isequal(pedestalContrasts,[0.0625 0.125 0.25]) %and pedestals are not set (are default)
         if training == 1 %training 1
             pedestalContrasts = [0.50];
         else %training 2 and 3
             pedestalContrasts = [0.75 0.50 0.25];
         end
     end
-    if isequal(cueCondOneOnly,0) && isequal(cueCondOneFour,0)
+    if isequal(cueCondOneOnly,0) && isequal(cueCondOneFour,0) %we will not run training if cueconditions are not specified
         disp('cueCondition not set for this training set. please choose between cueCondOneOnly=1 or cueCondOneFour=1');
         return
+    end
+end
+
 global stimulus;
 if initStair
   clear global stimulus
@@ -191,7 +196,7 @@ if taskType == 1
         task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5 1];
         task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5 1];
       end
-  else
+  else % not training set
     task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5 1];
     task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5 1];
   end
