@@ -6,10 +6,12 @@
 %    purpose: contrast discrimination cuing different numbers of stimuli
 %
 %
-%  notes:   training > 1 (default=0), large threshold (0.5) and pedestalContrasts (50%);
-%                       training=1  longer seglens, only one cue
-%                       training=2  standard seglens, only one cue
-%                       training=3  standard seglens, one and four cues
+%  if training, set to 1, 2, or 3.
+%  Training set will always have large threshold (0.5) and the pedestals defined below, UNLESS SPECIFIED.
+%  Must specify cueCondOneOnly=1 OR cueCondOneFour=1.
+%               training=1  long seglens, pedestalContrasts = [0.5]
+%               training=2  long seglens, pedestalContrasts = [0.75 0.50 0.25]
+%               training=3  standard seglens, pedestalContrasts = [0.75 0.50 0.25]
 %  defaults:
 %           threshold=0.2
 %           stepsize=0.1
@@ -17,9 +19,11 @@
 %           stimFile=[]
 %           numBlocks=12
 %           pedestalContrasts=[0.0625 0.125 0.25]
-%           subjectID (not set)
+%           subjectID=default
 %           training=0
 %           cueCondOneFour=0
+%           cueCondOneOnly=4
+%               (default cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'})
 
             
 function myscreen = cuecon(varargin)
@@ -36,17 +40,22 @@ subjectID = [];
 cueConditions = [];
 training = [];
 cueCondOneFour = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=12','pedestalContrasts=[0.0625 0.125 0.25]','subjectID=default','training=0','cueCondOneFour=0'});
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=12','pedestalContrasts=[0.0625 0.125 0.25]','subjectID=default','training=0','cueCondOneFour=0','cueCondOneOnly=0'});
 
 if training > 0
     if threshold == 0.2
         threshold = 0.5;
     end
     if isequal(pedestalContrasts,[0.0625 0.125 0.25])
-        pedestalContrasts = [0.50];
+        if training == 1 %training 1
+            pedestalContrasts = [0.50];
+        else %training 2 and 3
+            pedestalContrasts = [0.75 0.50 0.25];
+        end
     end
-end
-
+    if isequal(cueCondOneOnly,0) && isequal(cueCondOneFour,0)
+        disp('cueCondition not set for this training set. please choose between cueCondOneOnly=1 or cueCondOneFour=1');
+        return
 global stimulus;
 if initStair
   clear global stimulus
@@ -148,9 +157,9 @@ end
 %stimulus.cueConditions = {'one','four'};
 %stimulus.cueConditions = {'one','two_LeftRightHemi','four'};
 %stimulus.cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'};
-if training == 1 || training == 2
+if cueCondOneOnly == 1
     stimulus.cueConditions = {'one'};
-elseif training == 3 || cueCondOneFour == 1
+elseif cueCondOneFour == 1
     stimulus.cueConditions = {'one', 'four'};
 else
     stimulus.cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'};
@@ -174,10 +183,15 @@ if taskType == 1
   task{1}{2}.parameter.targetLoc = 1:stimulus.grating.n;
   task{1}{2}.parameter.cueCondition = 1:length(stimulus.cueConditions);
   task{1}{2}.random = 1;
-  if training == 1 % first training is slow
-    task{1}{2}.segmin = [1 1 0.3 1 2.5 1];
-    task{1}{2}.segmax = [1 1 0.3 1 2.5 1];
-  else %2nd and 3rd training is regular speed
+  if training > 0
+      if training == 1 || training == 2 % training 1 and 2 is slow
+        task{1}{2}.segmin = [1 1 0.3 1 2.5 1];
+        task{1}{2}.segmax = [1 1 0.3 1 2.5 1];
+      else% training 3 is regular speed
+        task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5 1];
+        task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5 1];
+      end
+  else
     task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5 1];
     task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5 1];
   end
