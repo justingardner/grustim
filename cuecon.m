@@ -5,6 +5,23 @@
 %       date: 04/15/06
 %    purpose: contrast discrimination cuing different numbers of stimuli
 %
+%
+%  notes:   training > 1 (default=0), large threshold (0.5) and pedestalContrasts (50%);
+%                       training=1  longer seglens, only one cue
+%                       training=2  standard seglens, only one cue
+%                       training=3  standard seglens, one and four cues
+%  defaults:
+%           threshold=0.2
+%           stepsize=0.1
+%           useLevittRule=1
+%           stimFile=[]
+%           numBlocks=12
+%           pedestalContrasts=[0.0625 0.125 0.25]
+%           subjectID (not set)
+%           training=0
+%           cueCondOneFour=0
+
+            
 function myscreen = cuecon(varargin)
 
 taskType = [];
@@ -16,7 +33,19 @@ stimFile = [];
 numBlocks = [];
 pedestalContrasts = [];
 subjectID = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=24','pedestalContrasts=[0.0625 0.125 0.25]','subjectID'});
+cueConditions = [];
+training = [];
+cueCondOneFour = [];
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=12','pedestalContrasts=[0.0625 0.125 0.25]','subjectID=default','training=0','cueCondOneFour=0'});
+
+if training > 0
+    if threshold == 0.2
+        threshold = 0.5;
+    end
+    if isequal(pedestalContrasts,[0.0625 0.125 0.25])
+        pedestalContrasts = [0.50];
+    end
+end
 
 global stimulus;
 if initStair
@@ -118,7 +147,14 @@ end
 % Yuko add here!!!
 %stimulus.cueConditions = {'one','four'};
 %stimulus.cueConditions = {'one','two_LeftRightHemi','four'};
-stimulus.cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'};
+%stimulus.cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'};
+if training == 1 || training == 2
+    stimulus.cueConditions = {'one'};
+elseif training == 3 || cueCondOneFour == 1
+    stimulus.cueConditions = {'one', 'four'};
+else
+    stimulus.cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'};
+end 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up task
@@ -138,8 +174,13 @@ if taskType == 1
   task{1}{2}.parameter.targetLoc = 1:stimulus.grating.n;
   task{1}{2}.parameter.cueCondition = 1:length(stimulus.cueConditions);
   task{1}{2}.random = 1;
-  task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5 1];
-  task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5 1];
+  if training == 1 % first training is slow
+    task{1}{2}.segmin = [1 1 0.3 1 2.5 1];
+    task{1}{2}.segmax = [1 1 0.3 1 2.5 1];
+  else %2nd and 3rd training is regular speed
+    task{1}{2}.segmin = [1 0.6 0.3 0.6 1.5 1];
+    task{1}{2}.segmax = [1 0.6 0.3 0.6 1.5 1];
+  end
   task{1}{2}.synchToVol = [0 0 0 0 0];
   task{1}{2}.getResponse = [0 0 0 0 1];
   task{1}{2}.waitForBacktick = 0;
