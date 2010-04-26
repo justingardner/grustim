@@ -41,7 +41,8 @@ cueConditions = [];
 training = [];
 cueCondOneFour = [];
 cueCondOneOnly = [];
-getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=12','pedestalContrasts=[0.0625 0.125 0.25]','subjectID=default','training=0','cueCondOneFour=0','cueCondOneOnly=0'});
+cueCondFourOnly = [];
+getArgs(varargin,{'taskType=1','initStair=1','threshold=0.2','stepsize=0.1','useLevittRule=1','stimFile=[]','numBlocks=12','pedestalContrasts=[0.0625 0.125 0.25]','subjectID=default','training=0','cueCondOneFour=0','cueCondOneOnly=0','cueCondFourOnly=0'});
 
 %if this is a training set...
 if training > 0
@@ -164,6 +165,8 @@ end
 %stimulus.cueConditions = {'one','two_leftRightHemi','two_upperLowerHemi','two_kittyCorners','four'};
 if cueCondOneOnly == 1
     stimulus.cueConditions = {'one'};
+elseif cueCondFourOnly == 1
+    stimulus.cueConditions = {'four'};
 elseif cueCondOneFour == 1
     stimulus.cueConditions = {'one', 'four'};
 else
@@ -560,6 +563,7 @@ whichInterval = find(task.thistrial.interval == task.parameter.interval);
 if (task.thistrial.whichButton == whichInterval)
   correctIncorrect = 'correct';
   stimulus.fixColor = stimulus.colors.reservedColor(3);
+  keyboard
   stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum},1);
 else
   correctIncorrect = 'incorrect';
