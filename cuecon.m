@@ -100,7 +100,7 @@ if ~isempty(stimFile)
     disp(sprintf('(cuecon) Could not find file %s',stimFile));
     return
   end
-  stimulus = s.stimulus;
+  stimulus.staircase = s.stimulus.staircase;
   numBlocks = numBlocks - s.task{1}{2}.blocknum + 1;
   clear s;
   initStair = 0;
@@ -436,12 +436,12 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
   stimulus.cueNum = task.thistrial.cueCondition;
   stimulus.deltaContrast(task.trialnum) = stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum}.threshold;
   % check to see if we go over 100% contrast
-  if (task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(end)) > 1
-    stimulus.deltaContrast(end) = 1-task.thistrial.pedestalContrast(task.thistrial.targetLoc);
-    disp(sprintf('(cuecon) !!!! Delta contast (%f) + Pedestal Contrast (%f) is greater than 100% contrast',stimulus.deltaContrast(end),task.thistrial.pedestalContrast(task.thistrial.targetLoc)));
+  if (task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(task.trialnum)) > 1
+    stimulus.deltaContrast(task.trialnum) = 1-task.thistrial.pedestalContrast(task.thistrial.targetLoc);
+    disp(sprintf('(cuecon) !!!! Delta contast (%f) + Pedestal Contrast (%f) is greater than 100% contrast',stimulus.deltaContrast(task.trialnum),task.thistrial.pedestalContrast(task.thistrial.targetLoc)));
   end
   % set the maximum contrast we can display
-  setGammaTableForMaxContrast(max([task.thistrial.pedestalContrast; task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(end)]));
+  setGammaTableForMaxContrast(max([task.thistrial.pedestalContrast; task.thistrial.pedestalContrast(task.thistrial.targetLoc)+stimulus.deltaContrast(task.trialnum)]));
   % choose which cue to show
   % Yuko hey!!!
   switch stimulus.cueConditions{task.thistrial.cueCondition} 
@@ -486,7 +486,7 @@ end
 if any(task.thistrial.thisseg == [stimulus.int1 stimulus.int2])
   % get the contrast for the stimuli in this interval
   stimulusContrast = task.thistrial.pedestalContrast;
-  deltaContrast = stimulus.deltaContrast(end).*(task.thistrial.interval==task.thistrial.thisseg);
+  deltaContrast = stimulus.deltaContrast(task.trialnum).*(task.thistrial.interval==task.thistrial.thisseg);
   stimulusContrast(task.thistrial.targetLoc) = stimulusContrast(task.thistrial.targetLoc)+deltaContrast;
 
   % set up the stimuli
@@ -512,7 +512,7 @@ end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function to display stimulus
+% function to display stimulus (on every refresh)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = updateScreenCallback(task,myscreen)
 
@@ -552,25 +552,26 @@ mglFixationCross(0.5,1,stimulus.fixColor);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function to set stimulus parameters at
-% the beginning of each segment
+% function response callback 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = trialResponseCallback(task,myscreen)
 
 global stimulus;
-
-whichInterval = find(task.thistrial.interval == task.parameter.interval);
-if (task.thistrial.whichButton == whichInterval)
-  correctIncorrect = 'correct';
-  stimulus.fixColor = stimulus.colors.reservedColor(3);
-  keyboard
-  stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum},1);
+if task.thistrial.gotResponse == 0
+  whichInterval = find(task.thistrial.interval == task.parameter.interval);
+  if (task.thistrial.whichButton == whichInterval)
+    correctIncorrect = 'correct';
+    stimulus.fixColor = stimulus.colors.reservedColor(3);
+    stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum},1);
+  else
+    correctIncorrect = 'incorrect';
+    stimulus.fixColor = stimulus.colors.reservedColor(4);
+    stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum},0);
+  end
+    disp(sprintf('Cue: %s pedestal: %f deltaC: %f (%s)',stimulus.cueConditions{task.thistrial.cueCondition},task.thistrial.pedestalContrast(task.thistrial.targetLoc),stimulus.deltaContrast(task.trialnum),correctIncorrect));
 else
-  correctIncorrect = 'incorrect';
-  stimulus.fixColor = stimulus.colors.reservedColor(4);
-  stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.cueNum},0);
+  disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse+1));
 end
-disp(sprintf('Cue: %s pedestal: %f deltaC: %f (%s)',stimulus.cueConditions{task.thistrial.cueCondition},task.thistrial.pedestalContrast(task.thistrial.targetLoc),stimulus.deltaContrast(end),correctIncorrect));
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    getContrastIndex    %
