@@ -31,14 +31,16 @@ myscreen = initStimulus('stimulus',myscreen);
 stimulus = myInitStimulus(stimulus,myscreen,faceDir,placeDir,imageDir);
 
 % set up task
-task{1}.waitForBacktick = 1;
+task{1}.waitForBacktick = 0;
 task{1}.segmin = [0.5 2];
 task{1}.segmax = [0.5 2];
 task{1}.getResponse = [0 1];
 % fix: enter the parameter of your choice
-task{1}.parameter.scrambleFactor = 0.5:0.05:0.8;%0:0.1:1;%[0 0.4 0.5 0.6 1];
+task{1}.parameter.scrambleFactor = 0.4:0.05:0.8;%0:0.1:1;%[0 0.4 0.5 0.6 1];
+task{1}.numBlocks = 40;
+%task{1}.parameter.scrambleFactor = [0 1];
+%task{1}.numBlocks = 10;
 task{1}.random = 1;
-task{1}.numBlocks = 10;
 % initialize the task
 for phaseNum = 1:length(task)
   [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@stimStartSegmentCallback,@stimDrawStimulusCallback,@responseCallback);
@@ -69,6 +71,8 @@ dispPsychometricFunction(myscreen,task);
 %    dispPsychometricFunction    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dispPsychometricFunction(myscreen,task)
+
+if ~isfield(task{1}.thistrial,'trialNum'),return,end
 
 e = getTaskparameters(myscreen,task)
 p = task{1}.parameter.scrambleFactor;
@@ -102,7 +106,6 @@ if task.thistrial.thisseg == 1
   % phase information from the place image
   scrambledPhases = randperm(faceIm.n);
   scrambledPhases = scrambledPhases(1:floor(faceIm.n*task.thistrial.scrambleFactor));
-  disp(sprintf('scrambleFactor: %f',task.thistrial.scrambleFactor));
 
   faceIm.phase(scrambledPhases) = placeIm.phase(scrambledPhases);
   %faceIm.phase(scrambledPhases) = rand(1,length(scrambledPhases))*2*pi;
@@ -139,6 +142,7 @@ function [task myscreen] = responseCallback(task, myscreen)
 mglClearScreen;
 mglFixationCross(1,1,[1 0 1]);
 myscreen.flushMode = 1;
+disp(sprintf('scrambleFactor: %f choice: %i',task.thistrial.scrambleFactor,task.thistrial.whichButton));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus
