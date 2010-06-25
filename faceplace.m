@@ -8,21 +8,19 @@
 %
 function retval = faceplace(varargin)
 
-% check arguments
-if ~any(nargin == [0])
-  help faceplace
-  return
-end
-
 % get arguments
 faceDir = [];
 placeDir = [];
 imageDir = [];
-getArgs(varargin,{'faceDir=faces','placeDir=houses','imageDir=proj/faceplace/FaceHouseStim'});
+stimfile = [];
+getArgs(varargin,{'faceDir=faces','placeDir=houses','imageDir=~/proj/faceplace/FaceHouseStim','stimfile=[]'});
+
+% just display data if called with stimfile name
+if ~isempty(stimfile),dispStimfile(stimfile);return;end
 
 % initalize the screen
-myscreen = initScreen;
-
+myscreen.background = 'gray';
+myscreen = initScreen(myscreen)
 % init the stimulus
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
@@ -40,6 +38,8 @@ task{1}.parameter.scrambleFactor = 0.4:0.05:0.8;%0:0.1:1;%[0 0.4 0.5 0.6 1];
 task{1}.numBlocks = 40;
 %task{1}.parameter.scrambleFactor = [0 1];
 %task{1}.numBlocks = 10;
+%task{1}.parameter.scrambleFactor = [0.7 0.8];
+task{1}.parameter.scrambleFactor = [0.6];
 task{1}.random = 1;
 % initialize the task
 for phaseNum = 1:length(task)
@@ -67,25 +67,59 @@ myscreen = endTask(myscreen,task);
 
 dispPsychometricFunction(myscreen,task);
 
+%%%%%%%%%%%%%%%%%%%%%%
+%    dispStimfile    %
+%%%%%%%%%%%%%%%%%%%%%%
+function dispStimfile(filename)
+
+filename = setext(filename,'mat');
+if ~isfile(filename)
+  disp(sprintf('(faceplace) Could not find file %s',filename));
+  return
+end
+
+stimfile = load(filename);
+if ~isfield(stimfile,'myscreen') || ~isfield(stimfile,'task')
+  disp(sprintf('(faceplace) File %s does not contain myscreen/task',filename));
+  return
+end
+
+% display the data
+dispPsychometricFunction(stimfile.myscreen,stimfile.task);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    dispPsychometricFunction    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dispPsychometricFunction(myscreen,task)
 
-if ~isfield(task{1}.thistrial,'trialNum'),return,end
+if ~isfield(task{1},'trialnum') || (task{1}.trialnum <= length(task{1}.parameter.scrambleFactor))
+  disp(sprintf('(faceplace:dispPsychometricFunction) Not enough data to display'));
+  return
+end
 
-e = getTaskparameters(myscreen,task)
+e = getTaskparameters(myscreen,task);
 p = task{1}.parameter.scrambleFactor;
 for i = 1:length(p)
   thisResponse = denan(e.response(e.parameter.scrambleFactor == p(i)));
-  percentChoices2(i) = sum(thisResponse==2)/length(thisResponse);
+  n(i) = length(thisResponse);
+  nChoice2(i) = sum(thisResponse==2);
+  percentChoices2(i) = nChoice2(i)/n(i);
+  percentChoices2Error(i) = sqrt((percentChoices2(i) * (1-percentChoices2(i)))/n(i));
 end
+weibull = fitweibull(p,nChoice2,n,0,0,0,0);
+weibull.bias = interp1(weibull.y,weibull.x,0.5);
+
 smartfig('faceplace','reuse');
 clf;
-plot(p,percentChoices2,'k.-');
-xlabel('scramble factor');
-ylabel('percent choices 2');
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+myerrorbar(p,percentChoices2,'yError',percentChoices2Error,'Symbol=o');
+hold on
+plot(weibull.x,weibull.y,'k-');
+hline(0.5);vline(weibull.bias);
+xlabel('face <- scramble factor -> place');
+ylabel('percent choices place');
+title(sprintf('%s: %i blocks\n(bias: %f beta: %f lambda: %f)',myscreen.starttime,task{1}.blocknum,weibull.bias,weibull.fitparams(2),weibull.fitparams(3)));
+keyboard
+
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = stimStartSegmentCallback(task, myscreen)

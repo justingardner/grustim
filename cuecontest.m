@@ -616,7 +616,7 @@ contrastIndex = contrastIndex+1;
 function setGammaTableForMaxContrast(maxContrast)
 
 global stimulus;
-
+disp(sprintf('setGammeTableForMaxContrast: %f',maxContrast));
 % set the reserved colors
 gammaTable(1:size(stimulus.colors.reservedColors,1),1:size(stimulus.colors.reservedColors,2))=stimulus.colors.reservedColors;
 
