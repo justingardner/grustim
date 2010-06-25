@@ -12,7 +12,15 @@ function retval = objloc(varargin)
 categories = [];
 imageDir = [];
 dispLoadFig = [];
-getArgs(varargin,{'categories',{'faces','houses','scramble','gray'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0'});
+categoryWeight = [];
+keepAspectRatio = [];
+repeatFreq = [];
+waitForBacktick = [];
+widthPix = [];
+heightPix = [];
+widthDeg = [];
+heightDeg = [];
+getArgs(varargin,{'categories',{'faces','houses','scramble','gray'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0','categoryWeight=[]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -21,21 +29,35 @@ myscreen = initScreen(myscreen);
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
+% setup categoryWeight
+if isempty(categoryWeight)
+  categoryWeight = ones(1,length(categories));
+elseif length(categoryWeight) ~= length(categories)
+  disp(sprintf('(objloc) Length of categories: %i does not mach categoryWeight length: %i',length(categories),length(categoryWeight)));
+  return
+end
+categoryNums = [];
+for i = 1:length(categoryWeight)
+  categoryNums = [categoryNums repmat(i,1,categoryWeight(i))];
+end
+
 % load images
-stimulus.widthPix = 180;
-stimulus.heightPix = 180;
-stimulus.widthDeg = 18;
-stimulus.heightDeg = 18;
-stimulus.repeatFreq = 0.8;
-stimulus = myInitStimulus(stimulus,myscreen,categories,imageDir,dispLoadFig);
+stimulus.widthPix = widthPix;
+stimulus.heightPix = heightPix;
+stimulus.widthDeg = widthDeg;
+stimulus.heightDeg = heightDeg;
+stimulus.repeatFreq = repeatFreq;
+stimulus = myInitStimulus(stimulus,myscreen,categories,imageDir,dispLoadFig,keepAspectRatio);
 
 % set up task
-task{1}.waitForBacktick = 0;
+task{1}.waitForBacktick = waitForBacktick;
 task{1}.seglen = repmat([0.75 0.25],1,12);
 task{1}.getResponse = ones(1,length(task{1}.seglen));
 task{1}.getResponse(1:2) = 0;
+task{1}.synchToVol = zeros(1,length(task{1}.seglen));
+task{1}.synchToVol(end) = waitForBacktick;
 % fix: enter the parameter of your choice
-task{1}.parameter.categoryNum = 1:length(categories);
+task{1}.parameter.categoryNum = categoryNums;
 task{1}.numBlocks = 100;
 task{1}.random = 1;
 
@@ -141,7 +163,7 @@ myscreen.flushMode = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = myInitStimulus(stimulus,myscreen,categories,imageDir,dispFig)
+function stimulus = myInitStimulus(stimulus,myscreen,categories,imageDir,dispFig,keepAspectRatio)
 
 % make sure widht and height are odd
 if iseven(stimulus.widthPix), stimulus.widthPix = stimulus.widthPix-1;end
@@ -159,7 +181,7 @@ if ~isfield(stimulus,'imagesLoaded') || (~stimulus.imagesLoaded) || ~isequal(sti
   for i = 1:stimulus.nCategories
     if ~any(strcmp(categories{i},{'scramble','blank','gray'}))
       % load images
-      stimulus.raw{i} = loadNormalizedImages(fullfile(imageDir,categories{i}),'width',stimulus.widthPix,'height',stimulus.heightPix,'dispFig',dispFig);
+      stimulus.raw{i} = loadNormalizedImages(fullfile(imageDir,categories{i}),'width',stimulus.widthPix,'height',stimulus.heightPix,'dispFig',dispFig,'keepAspectRatio',keepAspectRatio);
 
       % make sure we opened ok
       if isempty(stimulus.raw{i})
@@ -304,7 +326,8 @@ end
 width=[];
 height=[];
 dispFig=[];
-getArgs(varargin,{'height=320','width=240','dispFig=0'});
+keepAspectRatio=[];
+getArgs(varargin,{'height=320','width=240','dispFig=0','keepAspectRatio=0'});
 
 % check directory
 d = [];
@@ -338,7 +361,7 @@ for i = 1:length(d.dir)
     % display if called for
     if dispFig,clf;subplot(1,2,1);imagesc(im);axis equal; axis off;end
     % normalize to grayscale and same width height
-    im = imageNormalize(im,d.width,d.height);
+    im = imageNormalize(im,d.width,d.height,keepAspectRatio);
     if dispFig,subplot(1,2,2);imagesc(im);colormap(gray);axis equal; axis off;drawnow;end
     % save
     d.im(1:height,1:width,d.n) = im;
@@ -360,7 +383,7 @@ d.averageDC = d.averageDC/d.n;
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    imageNormalize    %
 %%%%%%%%%%%%%%%%%%%%%%%%
-function im = imageNormalize(im,width,height)
+function im = imageNormalize(im,width,height,keepAspectRatio)
 
 % get image dimensions
 imdim = size(im);
@@ -370,28 +393,33 @@ if length(imdim > 2)
   im = mean(im,3);
 end
 
-% get aspect ratios
-aspectRatioIn = imdim(2)/imdim(1);
-aspectRatioOut = (height/width);
-
-% now resample to the same dimensions, making sure to keep the same
-% aspect ratio (this will cause some cropping of the image in the
-% appropriate dimension if your aspect ratios do not match).
-
 % get the image coordinates of the image
 [x y] = meshgrid(0:1/(imdim(2)-1):1,0:1/(imdim(1)-1):1);
 
-% set the image coordinates of the output
-if (aspectRatioOut > aspectRatioIn)
-  minX = (1-aspectRatioIn/aspectRatioOut)/2;
-  maxX = 1-minX;
-  [xi yi] = meshgrid(minX:(maxX-minX)/(width-1):maxX,0:1/(height-1):1);
-else
-  minY = (1-aspectRatioOut/aspectRatioIn)/2;
-  maxY = 1-minY;
-  [xi yi] = meshgrid(0:1/(width-1):1,minY:(maxY-minY)/(height-1):maxY);
-end
 
+if keepAspectRatio
+  % get aspect ratios
+  aspectRatioIn = imdim(2)/imdim(1);
+  aspectRatioOut = (height/width);
+
+  % now resample to the same dimensions, making sure to keep the same
+  % aspect ratio (this will cause some cropping of the image in the
+  % appropriate dimension if your aspect ratios do not match).
+
+  % set the image coordinates of the output
+  if (aspectRatioOut > aspectRatioIn)
+    minX = (1-aspectRatioIn/aspectRatioOut)/2;
+    maxX = 1-minX;
+    [xi yi] = meshgrid(minX:(maxX-minX)/(width-1):maxX,0:1/(height-1):1);
+  else
+    minY = (1-aspectRatioOut/aspectRatioIn)/2;
+    maxY = 1-minY;
+    [xi yi] = meshgrid(0:1/(width-1):1,minY:(maxY-minY)/(height-1):maxY);
+  end
+else
+  [xi yi] = meshgrid(0:1/(width-1):1,0:1/(height-1):1);
+end
+  
 % interpolate the image
 im = interp2(x,y,im,xi,yi,'cubic');
 
