@@ -6,6 +6,25 @@
 %       date: 06/14/10
 %    purpose: get psychometric function for faces vs places
 %
+% options:
+% objloc('imageDir=somedir') 
+%   the directory which stores images
+% objloc('categories',{'faces','houses','scramble','gray'}) % categories
+%   of images, should be directories of image under imageDir for everything
+%   except scramble and gray which are created by the program
+% objloc('categoryWeight=[4 2 1 1]')
+%    This is an array that specifies how you want to weight each category in
+%    terms of how frequently it will be shown. In this case, category 1 will
+%    be shown 4 times for every time category 2 is shown 2 and category 3
+%    and 4 shown 1 time.
+% objloc('keepAspectRatio=0')
+%    defaults to zero - keeps the aspect ratio of the original
+% objloc('widthPix=180','heightPix=180','widthDeg','heightDeg')
+%    image sizes
+% objloc('repeatFreq=0.1')
+%    frequency with which to repeat images
+% objloc('waitForBacktick=1')
+%    whether to wait for backtick (for running in scanner)
 function retval = objloc(varargin)
 
 % get arguments
