@@ -3,8 +3,8 @@
 %        $Id:$ 
 %      usage: objloc(<'faceDir=faceDir'>,<'placeDir=placeDir'>)
 %         by: justin gardner
-%       date: 06/14/10
-%    purpose: get psychometric function for faces vs places
+%       date: 06/25/10
+%    purpose: object localizer scan
 %
 % options:
 % objloc('imageDir=somedir') 

@@ -23,7 +23,6 @@ myscreen = initScreen(myscreen);
 task{1}.waitForBacktick = 1;
 task{1}.seglen = 1;
 
-
 % initialize the task
 for phaseNum = 1:length(task)
   [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@stimStartSegmentCallback,@stimDrawStimulusCallback);
