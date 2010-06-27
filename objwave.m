@@ -107,10 +107,11 @@ if isodd(task.thistrial.thisseg)
   % display a random image
   % see if we want to do a repeat
   if (task.thistrial.thisseg > 1) && (rand < stimulus.repeatFreq);
-
+    stimulus.isRepeat = 1;
   else
     iPhase = (task.thistrial.thisseg+1)/2;
     stimulus.thisTex = stimulus.tex(task.trialnum,iPhase);
+    stimulus.isRepeat = 0;
   end
   
   % draw the textures
@@ -142,11 +143,10 @@ global stimulus;
 fixColor = [1 0 1];
 mglClearScreen;
 % redisplay image
-if isodd(task.thistrial.thisseg) && (stimulus.raw{task.thistrial.categoryNum}.n ~= 0)
-  randImageNum = stimulus.randImageNum{task.trialnum}(floor((task.thistrial.thisseg+1)/2));
-  mglBltTexture(stimulus.tex{task.thistrial.categoryNum}(randImageNum),[0 0 stimulus.widthDeg stimulus.heightDeg]);;
+if isodd(task.thistrial.thisseg)
+  mglBltTexture(stimulus.thisTex,[0 0 stimulus.widthDeg stimulus.heightDeg]);;
   % check correct
-  if randImageNum == stimulus.randImageNum{task.trialnum}(floor((task.thistrial.thisseg-1)/2));
+  if stimulus.isRepeat
     disp('(objloc) Correct');
     fixColor = [0 1 0];
   else
