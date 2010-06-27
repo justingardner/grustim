@@ -60,8 +60,9 @@ end
 
 % load images
 stepsPerCycle = length(task{1}.seglen)/2;
+range = 1;midPoint = 0.5;
 oneCycle = cos(0:2*pi/(stepsPerCycle):2*pi);
-oneCycle = (oneCycle(1:end-1)+1)/2;
+oneCycle = (range/2)*oneCycle(1:end-1)+midPoint;
 scrambleFactors = oneCycle;
 stimulus.widthPix = widthPix;
 stimulus.heightPix = heightPix;
