@@ -71,6 +71,7 @@ stimulus = myInitStimulus(stimulus,myscreen,categories,imageDir,dispLoadFig,keep
 % set up task
 task{1}.waitForBacktick = waitForBacktick;
 task{1}.seglen = repmat([0.75 0.25],1,12);
+if waitForBacktick,task{1}.seglen(end) = 0.1;end
 task{1}.getResponse = ones(1,length(task{1}.seglen));
 task{1}.getResponse(1:2) = 0;
 task{1}.synchToVol = zeros(1,length(task{1}.seglen));
@@ -102,11 +103,10 @@ while (phaseNum <= length(task)) && ~myscreen.userHitEsc
 end
 
 % delete texture
-for i  = 1:length(stimulus.raw)
-  for j = 1:stimulus.raw{i}.n
-    mglDeleteTexture(stimulus.tex{i}(j));
-  end
+for i  = 1:length(stimulus.tex(:))
+  mglDeleteTexture(stimulus.tex(i));
 end
+stimulus = rmfield(stimulus,'tex');
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
