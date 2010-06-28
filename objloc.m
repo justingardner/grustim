@@ -70,7 +70,7 @@ stimulus = myInitStimulus(stimulus,myscreen,categories,imageDir,dispLoadFig,keep
 
 % set up task
 task{1}.waitForBacktick = waitForBacktick;
-task{1}.seglen = repmat([0.75 0.25],1,12);
+task{1}.seglen = repmat([0.75 0.25],1,13);
 if waitForBacktick,task{1}.seglen(end) = 0.1;end
 task{1}.getResponse = ones(1,length(task{1}.seglen));
 task{1}.getResponse(1:2) = 0;
@@ -79,6 +79,14 @@ task{1}.synchToVol(end) = waitForBacktick;
 % fix: enter the parameter of your choice
 task{1}.parameter.categoryNum = categoryNums;
 task{1}.random = 1;
+task{1}.numBlocks=1;
+
+task{2}.waitForBacktick = 0;
+task{2}.seglen = task{1}.seglen;
+task{2}.getResponse = task{1}.getResponse;
+task{2}.parameter.categoryNum = find(strcmp('gray',categories));
+task{2}.random = 0;
+task{2}.numBlocks=1;
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -89,6 +97,9 @@ end
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = eyeCalibDisp(myscreen);
+
+mglFixationCross(1,2,[0 0 0]);
+myscreen.flushMode = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
@@ -121,7 +132,7 @@ if isodd(task.thistrial.thisseg)
   mglClearScreen;
   % display what block we are on at the first segment only
   if task.thistrial.thisseg == 1
-    disp(sprintf('%i: %s (last cyclelen: %0.2fs)',task.trialnum,stimulus.categories{task.thistrial.categoryNum},mglGetSecs(stimulus.trialStart)));
+    disp(sprintf('%i: %s (volnum: %i last cyclelen: %0.2fs)',task.trialnum,stimulus.categories{task.thistrial.categoryNum},myscreen.volnum,mglGetSecs(stimulus.trialStart)));
     stimulus.trialStart = mglGetSecs;
   end
   % display a random image

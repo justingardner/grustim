@@ -44,7 +44,7 @@ myscreen = initStimulus('stimulus',myscreen);
 
 % set up task
 task{1}.waitForBacktick = waitForBacktick;
-task{1}.seglen = repmat([0.75 0.25],1,24);
+task{1}.seglen = repmat([0.75 0.25],1,26);
 if waitForBacktick,task{1}.seglen(end) = 0.1;end
 task{1}.getResponse = ones(1,length(task{1}.seglen));
 task{1}.getResponse(1:2) = 0;
@@ -76,6 +76,9 @@ stimulus = myInitStimulus(stimulus,myscreen,scrambleFactors,categories,imageDir,
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = eyeCalibDisp(myscreen);
 
+mglFixationCross(1,2,[0 0 0]);
+myscreen.flushMode = 1;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -106,7 +109,7 @@ if isodd(task.thistrial.thisseg)
   % clear screen
   mglClearScreen;
   if task.thistrial.thisseg == 1
-    disp(sprintf('%i: %0.2f',task.trialnum,mglGetSecs(stimulus.trialStart)));
+    disp(sprintf('%i: %0.2f volnum: %i',task.trialnum,mglGetSecs(stimulus.trialStart),myscreen.volnum));
     stimulus.trialStart = mglGetSecs;
   end
   % display a random image

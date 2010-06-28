@@ -7,7 +7,7 @@
 %  copyright: (c) 2010 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: show tr length
 %
-function myscreen = trtest
+function framePeriod = trtest
 
 % check arguments
 if ~any(nargin == [0])
@@ -47,6 +47,20 @@ end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+
+volTimes = myscreen.events.time(find(myscreen.events.tracenum == 1));
+
+% if we have more than one volume than display average framePeriod
+framePeriod = [];
+if length(volTimes) > 1
+  framePeriod = diff(volTimes);
+
+  disp(sprintf('Volume number: %i',myscreen.volnum));
+  disp(sprintf('Mean frame period: %0.4f',mean(framePeriod)));
+  disp(sprintf('Min frame period: %0.4f',min(framePeriod)));
+  disp(sprintf('Max frame period: %0.4f',max(framePeriod)));
+  disp(sprintf('Last frame period: %0.4f',framePeriod(end)));
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
