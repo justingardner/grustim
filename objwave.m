@@ -33,7 +33,7 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'faces','houses'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+getArgs(varargin,{'categories',{'faces','houses'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -105,6 +105,10 @@ global stimulus;
 if isodd(task.thistrial.thisseg)
   % clear screen
   mglClearScreen;
+  if task.thistrial.thisseg == 1
+    disp(sprintf('%i: %0.2f',task.trialnum,mglGetSecs(stimulus.trialStart)));
+    stimulus.trialStart = mglGetSecs;
+  end
   % display a random image
   % see if we want to do a repeat
   if (task.thistrial.thisseg > 1) && (rand < stimulus.repeatFreq);
@@ -146,15 +150,16 @@ mglClearScreen;
 % redisplay image
 if isodd(task.thistrial.thisseg)
   mglBltTexture(stimulus.thisTex,[0 0 stimulus.widthDeg stimulus.heightDeg]);;
-  % check correct
-  if stimulus.isRepeat
-    disp('(objloc) Correct');
-    fixColor = [0 1 0];
-  else
-    disp('(objloc) Incorrect')
-    fixColor = [1 0 0];
-  end
 end
+% check correct
+if stimulus.isRepeat
+  disp('(objloc) Correct');
+  fixColor = [0 1 0];
+else
+  disp('(objloc) Incorrect')
+  fixColor = [1 0 0];
+end
+
 % change fixation color
 mglFixationCross(1,1,fixColor);
 myscreen.flushMode = 1;
@@ -237,6 +242,7 @@ for iCycle = 1:stimulus.nCycles
 end
 disppercent(inf);
 
+stimulus.trialStart = mglGetSecs;
 stimulus.categories = categories;
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    getHalfFourier    %

@@ -39,7 +39,7 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'faces','houses','scramble','gray'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0','categoryWeight=[]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+getArgs(varargin,{'categories',{'faces','houses','scramble','gray'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0','categoryWeight=[]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -78,8 +78,7 @@ task{1}.synchToVol = zeros(1,length(task{1}.seglen));
 task{1}.synchToVol(end) = waitForBacktick;
 % fix: enter the parameter of your choice
 task{1}.parameter.categoryNum = categoryNums;
-task{1}.numBlocks = 100;
-task{1}.random = 1;
+[task{1}.random = 1;
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -122,7 +121,8 @@ if isodd(task.thistrial.thisseg)
   mglClearScreen;
   % display what block we are on at the first segment only
   if task.thistrial.thisseg == 1
-    disp(sprintf('%i: %s',task.trialnum,stimulus.categories{task.thistrial.categoryNum}));
+    disp(sprintf('%i: %s (last cyclelen: %0.2fs)',task.trialnum,stimulus.categories{task.thistrial.categoryNum},mglGetSecs(stimulus.trialStart)));
+    stimulus.trialStart = mglGetSecs;
   end
   % display a random image
   if stimulus.raw{task.thistrial.categoryNum}.n > 0
@@ -183,6 +183,10 @@ myscreen.flushMode = 1;
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = myInitStimulus(stimulus,myscreen,categories,imageDir,dispFig,keepAspectRatio)
+
+if ~isfield(stimulus,'objloc'),stimulus.imagesLoaded = 0;end
+stimulus.objloc = 1;
+stimulus.thisTex = [];
 
 % make sure widht and height are odd
 if iseven(stimulus.widthPix), stimulus.widthPix = stimulus.widthPix-1;end
@@ -273,6 +277,7 @@ if ~isempty(doScramble)
 end
 disppercent(inf);
 
+stimulus.trialStart = mglGetSecs;
 stimulus.categories = categories;
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    getHalfFourier    %
