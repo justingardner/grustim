@@ -17,6 +17,7 @@ end
 
 % initialize the screen
 myscreen.background = 0;
+myscreen.saveData = 0;
 myscreen = initScreen(myscreen);
 
 % setup task

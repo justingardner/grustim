@@ -85,8 +85,11 @@ if taskType == 1
   %logContrastDifference = log(maxContrast)-log(midContrast);
   %stimulus.targetContrast = exp(log(midContrast)+(-logContrastDifference:2*logContrastDifference/(nContrasts-1):logContrastDifference));
   %stimulus.targetContrast = stimulus.targetContrast/100;
-  targetContrast = 0:0.2:1;
-  distractorContrast = [0.2 0.8];
+%  targetContrast = 0:0.2:1;
+%  distractorContrast = [0.2 0.8];
+  targetContrast = [0.1 0.5 1];
+  distractorContrast = 0.5;
+  
 elseif any(taskType==[2 3])
 %  stimulus.targetContrast = [1 0.25];
 elseif taskType == 0
@@ -103,7 +106,7 @@ disp(sprintf('(spatcon) targetContrasts: %s distractorContrast: %s',mynum2str(st
 
 
 % parameters
-stimulus.grating.radius = 6.5;
+stimulus.grating.radius = 10;
 stimulus.grating.targetLoc = [1 4];
 stimulus.grating.angles = 0:60:359;
 stimulus.grating.orientations = stimulus.grating.angles;
@@ -114,8 +117,8 @@ end
 stimulus.grating.contrasts = union(stimulus.distractorContrast,stimulus.targetContrast);
 stimulus.grating.sf = 2;
 stimulus.grating.tf = 2;
-stimulus.grating.width = 9;
-stimulus.grating.height = 9;
+stimulus.grating.width = 11;
+stimulus.grating.height = 11;
 stimulus.grating.phases = [0 pi];
 stimulus.grating.phases = [0:2*pi/30:2*pi 2*pi:-2*pi/30:0]; % note this makes the actual tf = tf*2
 stimulus.grating.phase = 0;
@@ -124,9 +127,9 @@ stimulus.grating.sdx = stimulus.grating.width/7;
 stimulus.grating.sdy = stimulus.grating.width/7;
 stimulus.x = 0;
 
-stimulus.y = 0;
-stimulus.grating.width = 5.5;
-stimulus.grating.height = 5.5;
+stimulus.y = 1.5;
+stimulus.grating.width = 8.5;
+stimulus.grating.height = 8.5;
 stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
 stimulus.grating.sdx = stimulus.grating.width/2;
 stimulus.grating.sdy = stimulus.grating.height/2;
@@ -299,7 +302,7 @@ phaseNum = 1;
 while (phaseNum <= length(task{2})) && ~myscreen.userHitEsc
   % update the dotspXU
   [task{2} myscreen phaseNum] = updateTask(task{2},myscreen,phaseNum);
-  if stimulus.taskType == 1
+  if any(stimulus.taskType == [0 1])
     % update the fixation task
     [task{1} myscreen] = updateTask(task{1},myscreen,1);
   end

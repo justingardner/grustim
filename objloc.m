@@ -39,7 +39,7 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'faces','houses','scramble','gray'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0','categoryWeight=[]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+getArgs(varargin,{'categories',{'human_face','building','car','flower','fruit_veg','instrument','scramble','gray'},'imageDir=~/proj/ObjLocImages','dispLoadFig=0','categoryWeight=[4 4 1 1 1 1 4 2]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -78,7 +78,7 @@ task{1}.synchToVol = zeros(1,length(task{1}.seglen));
 task{1}.synchToVol(end) = waitForBacktick;
 % fix: enter the parameter of your choice
 task{1}.parameter.categoryNum = categoryNums;
-[task{1}.random = 1;
+task{1}.random = 1;
 
 % initialize the task
 for phaseNum = 1:length(task)

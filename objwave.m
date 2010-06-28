@@ -33,7 +33,7 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'faces','houses'},'imageDir=~/proj/faceplace/FaceHouseStim','dispLoadFig=0','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+getArgs(varargin,{'categories',{'human_face','building'},'imageDir=~/proj/ObjLocImages','dispLoadFig=0','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -60,7 +60,7 @@ end
 
 % load images
 stepsPerCycle = length(task{1}.seglen)/2;
-range = 1;midPoint = 0.5;
+range = .75;midPoint = 0.4;
 oneCycle = cos(0:2*pi/(stepsPerCycle):2*pi);
 oneCycle = (range/2)*oneCycle(1:end-1)+midPoint;
 scrambleFactors = oneCycle;
@@ -346,11 +346,11 @@ for i = 1:length(d.dir)
   if isfile(thisFilename) && ~isempty(imformats(getext(thisFilename)))
     d.n = d.n + 1;
     % read the image
-    im = flipud(imread(thisFilename));
+    im = imread(thisFilename);
     % display if called for
     if dispFig,clf;subplot(1,2,1);imagesc(im);axis equal; axis off;end
     % normalize to grayscale and same width height
-    im = imageNormalize(im,d.width,d.height,keepAspectRatio);
+    im = flipud(imageNormalize(im,d.width,d.height,keepAspectRatio));
     if dispFig,subplot(1,2,2);imagesc(im);colormap(gray);axis equal; axis off;drawnow;end
     % save
     d.im(1:height,1:width,d.n) = im;
