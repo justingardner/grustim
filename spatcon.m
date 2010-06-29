@@ -417,7 +417,7 @@ end
 % the beginning of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task,myscreen)
-
+keyboard
 global stimulus;
 if task.thistrial.thisseg == 1
   if stimulus.taskType > 0
