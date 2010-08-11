@@ -39,8 +39,8 @@ task{1}.numBlocks = 40;
 %task{1}.parameter.scrambleFactor = [0 1];
 %task{1}.numBlocks = 10;
 %task{1}.parameter.scrambleFactor = [0.7 0.8];
-task{1}.parameter.scrambleFactor = [0.6];
-task{1}.random = 1;
+task{1}.parameter.scrambleFactor = [0 0.4 0.6 1];
+task{1}.random = 0;
 % initialize the task
 for phaseNum = 1:length(task)
   [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@stimStartSegmentCallback,@stimDrawStimulusCallback,@responseCallback);

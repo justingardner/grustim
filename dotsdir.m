@@ -76,6 +76,7 @@ stimLen = 24;
 % first phase, we show randomized orientation
 %Aorientations = 15:60:135;
 orientations = 22.5:22.5:180;
+orientations = 15:60:135;
 task{2}{1}.waitForBacktick = 0;
 task{2}{1}.seglen = 0.1;
 task{2}{1}.synchToVol = 1;
