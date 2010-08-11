@@ -1,0 +1,90 @@
+
+ Volume in drive C has no label
+ Volume Serial Number is 4015-1901
+ Directory of C:\FINAL.JPEG\faces
+
+.              <DIR>        08-16-00  3:13p .
+..             <DIR>        08-16-00  3:13p ..
+ADAML_~1 JPG         5,132  08-16-00  2:40p adam L_front.JPG
+ADAML_~2 JPG         5,121  08-16-00  2:40p adam L_prof.JPG
+ALLISO~1 JPG         5,281  08-16-00  2:40p allison_front.JPG
+ALLISO~2 JPG         5,160  08-16-00  2:40p allison_prof.JPG
+ANDREA~1 JPG         4,962  08-16-00  2:40p Andrea_georg_front.JPG
+ANDREA~2 JPG         4,500  08-16-00  2:40p Andrea_georg_prof.JPG
+ANDREA~3 JPG         5,039  08-16-00  2:40p andreaB_front.JPG
+ANDREA~4 JPG         4,908  08-16-00  2:40p andreaB_prof.JPG
+B_LEHM~1 JPG         6,174  08-16-00  2:40p B_lehman_front.JPG
+B_LEHM~2 JPG         5,459  08-16-00  2:40p B_lehman_prof.JPG
+BONNIE~1 JPG         4,488  08-16-00  2:40p bonnie_front.JPG
+BONNIE~2 JPG         5,260  08-16-00  2:40p bonnie_prof.JPG
+BRANDO~1 JPG         6,632  08-16-00  2:40p brandon_front.JPG
+BRANDO~2 JPG         6,970  08-16-00  2:40p brandon_prof.JPG
+BRIAN_~1 JPG         5,750  08-16-00  2:40p brian_front.JPG
+BRIAN_~2 JPG         5,558  08-16-00  2:40p brian_prof.JPG
+CARLA_~1 JPG         6,437  08-16-00  2:40p carla_front.JPG
+CARLA_~2 JPG         6,316  08-16-00  2:40p carla_prof.JPG
+CLAUDI~1 JPG         6,082  08-16-00  2:40p claudia_front.JPG
+CLAUDI~2 JPG         5,865  08-16-00  2:40p claudia_prof.JPG
+DAVE_B~1 JPG         6,760  08-16-00  2:40p dave_b_front.JPG
+DAVE_B~2 JPG         6,808  08-16-00  2:40p dave_b_prof.JPG
+DAVE_E~1 JPG         5,561  08-16-00  2:40p dave_e_front.JPG
+DAVE_E~2 JPG         5,540  08-16-00  2:40p dave_e_prof.JPG
+DAVID_~1 JPG         5,888  08-16-00  2:40p david_G_front.JPG
+DAVID_~2 JPG         5,840  08-16-00  2:40p david_G_prof.JPG
+DEBBIE~1 JPG         6,203  08-16-00  2:40p debbie_front.JPG
+DEBBIE~2 JPG         6,109  08-16-00  2:40p debbie_prof.JPG
+DEBRA_~1 JPG         5,948  08-16-00  2:40p debra_front.JPG
+DEBRA_~2 JPG         5,410  08-16-00  2:40p debra_prof.JPG
+DOUG_R~1 JPG         6,271  08-16-00  2:40p doug_r_front.JPG
+DOUG_R~2 JPG         5,980  08-16-00  2:41p doug_r_prof.JPG
+EMERSO~1 JPG         6,035  08-16-00  2:41p emerson_front.JPG
+EMERSO~2 JPG         6,216  08-16-00  2:41p emerson_prof.JPG
+ERIC_G~1 JPG         6,067  08-16-00  2:41p eric_georg_front.JPG
+ERIC_G~2 JPG         5,941  08-16-00  2:41p eric_georg_prof.JPG
+GEORGE~1 JPG         6,140  08-16-00  2:41p george_front.JPG
+GEORGE~2 JPG         5,824  08-16-00  2:41p george_prof.JPG
+JAIME_~1 JPG         5,935  08-16-00  2:41p jaime_front.JPG
+JAIME_~2 JPG         5,831  08-16-00  2:41p jaime_prof.JPG
+JAMES_~1 JPG         5,552  08-16-00  2:41p James_front.JPG
+JAMES_~2 JPG         5,793  08-16-00  2:41p James_prof.JPG
+JASON_~1 JPG         6,305  08-16-00  2:41p jason_front.JPG
+JASON_~2 JPG         5,700  08-16-00  2:41p jason_prof.JPG
+JENNIF~1 JPG         5,708  08-16-00  2:41p jennifer_front.JPG
+JENNIF~2 JPG         5,135  08-16-00  2:41p jennifer_prof.JPG
+JESSIC~1 JPG         6,564  08-16-00  2:41p jessica_front.JPG
+JESSIC~2 JPG         6,175  08-16-00  2:41p jessica_prof.JPG
+JOE_FR~1 JPG         5,830  08-16-00  2:41p joe_front.JPG
+JOE_PROF JPG         5,363  08-16-00  2:41p joe_prof.JPG
+KATHLE~1 JPG         5,531  08-16-00  2:41p kathleen_front.JPG
+KATHLE~2 JPG         5,556  08-16-00  2:41p kathleen_prof.JPG
+KEV_FR~1 JPG         6,211  08-16-00  2:41p Kev_front.JPG
+KEV_PROF JPG         5,850  08-16-00  2:41p Kev_prof.JPG
+LABALL~1 JPG         5,546  08-16-00  2:41p laballe_front.JPG
+LABALL~2 JPG         5,758  08-16-00  2:41p laballe_prof.JPG
+LAURA_~1 JPG         6,592  08-16-00  2:41p laura_front.JPG
+LAURA_~2 JPG         6,199  08-16-00  2:41p laura_prof.JPG
+LOUISE~1 JPG         6,028  08-16-00  2:41p louise_front.JPG
+LOUISE~2 JPG         5,589  08-16-00  2:41p louise_prof.JPG
+MARK_F~1 JPG         5,806  08-16-00  2:41p mark_front.JPG
+MARK_P~1 JPG         6,091  08-16-00  2:41p mark_prof.JPG
+MICHEL~1 JPG         5,734  08-16-00  2:41p michelle2_front.JPG
+MICHEL~2 JPG         5,396  08-16-00  2:41p michelle2_prof.JPG
+MICHEL~3 JPG         6,369  08-16-00  2:41p michelle_front.JPG
+MICHEL~4 JPG         5,860  08-16-00  2:41p michelle_prof.JPG
+NUNO_F~1 JPG         6,093  08-16-00  2:41p nuno_front.JPG
+NUNO_P~1 JPG         5,874  08-16-00  2:41p nuno_prof.JPG
+P_HELL~1 JPG         6,588  08-16-00  2:41p p_hellman_front.JPG
+P_HELL~2 JPG         6,548  08-16-00  2:41p p_hellman_prof.JPG
+RUTH_F~1 JPG         6,463  08-16-00  2:41p ruth_front.JPG
+RUTH_P~1 JPG         5,576  08-16-00  2:41p ruth_prof.JPG
+STEVE_~1 JPG         6,676  08-16-00  2:41p steve_front.JPG
+STEVE_~2 JPG         6,426  08-16-00  2:41p steve_prof.JPG
+SUSIE_~1 JPG         6,305  08-16-00  2:41p susie_front.JPG
+SUSIE_~2 JPG         6,484  08-16-00  2:41p susie_prof.JPG
+TODD_F~1 JPG         6,481  08-16-00  2:41p todd_front.JPG
+TODD_P~1 JPG         5,549  08-16-00  2:41p todd_prof.JPG
+TOM_H_~1 JPG         5,541  08-16-00  2:41p tom_h_front.JPG
+TOM_H_~2 JPG         5,404  08-16-00  2:41p tom_h_prof.JPG
+FACES    TXT             0  09-04-00  1:15p faces.txt
+        81 file(s)        469,650 bytes
+         2 dir(s)     157,876,224 bytes free
