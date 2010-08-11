@@ -97,6 +97,7 @@ else
 end
 task{2}.randVars.calculated.strength = nan;
 
+
 % initialize our task
 [task{1} myscreen] = initTask(task{1},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
 [task{2} myscreen] = initTask(task{2},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
@@ -181,7 +182,7 @@ end
 
 % save log
 if ~isempty(myscreen.stimfile)
-  fid = fopen(fullfile(myscreen.datadir,'log.txt'),'w');
+  fid = fopen(fullfile(myscreen.datadir,'log.txt'),'a');
   fprintf(fid,sprintf('%s: nTrials:%i staircaseType: %s threshold: %f',myscreen.stimfile,task{2}.trialnum,stimulus.staircaseType,t.threshold));
   fclose(fid);
 end
@@ -191,7 +192,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
 
-
+keyboard
 global stimulus;
 stimulus.fixColor = [1 1 1];
 % when to show the stimulus (i.e. set strength high)
