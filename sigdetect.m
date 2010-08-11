@@ -35,7 +35,7 @@ presentProb = [];
 staircase = [];
 stimulusType = [];
 staircaseType=[];
-getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/yuko/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.3 0.4 0.5 0.6 0.7]'});
+getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/yuko/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]'});
 
 % display stome settings
 disp(sprintf(repmat('=',1,40)));
@@ -140,8 +140,7 @@ stimulus.imageWidth = 24;
 stimulus.imageHeight = 32;
 % init staircase
 if stimulus.staircase
-  nStaircaseTrials = 16;
-
+  nStaircaseTrials = 48;
   if strcmp(staircaseType,'quest')
     stimulus.s = doStaircase('init','quest','initialThreshold=0.8','tGuessSd=4','nTrials',nStaircaseTrials,'dispFig=1');
   elseif strcmp(staircaseType,'fixed')
@@ -180,7 +179,6 @@ else
   t = doStaircase('threshold',stimulus.s,'dispFig=1');
 end
 
-keyboard
 % save log
 if ~isempty(myscreen.stimfile)
   fid = fopen(fullfile(myscreen.datadir,'log.txt'),'w');
