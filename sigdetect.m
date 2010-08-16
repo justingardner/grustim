@@ -36,7 +36,9 @@ staircase = [];
 stimulusType = [];
 staircaseType=[];
 dprime=[];
-getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/yuko/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]'});
+runnum=[];
+dispParams=[];
+getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/yuko/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','runnum=[]','dispParams=1'});
 
 % create subject directory
 myscreen.datadir = '~/data/sigdetect';
@@ -54,11 +56,25 @@ if psychophysics
 else
   task{1}.waitForBacktick = 1;
 end
+subjectDir = fileparts(myscreen.datadir);
+
+% if runnum, go run the doit in the subject directory
+if ~isempty(runnum)
+  runCommand = fullfile(subjectDir,'sigdetectRun.m');
+  if ~isfile(runCommand)
+    disp(sprintf('(sigdetect) Could not find %s',doitCommand));
+    keyboard
+  end
+  thisPwd = pwd;
+  cd(subjectDir);
+  sigdetectRun(runnum);
+  cd(thisPwd);
+  return
+end
 
 % get dprime if called for
 if ~isempty(dprime)
   % get staricase directory
-  [subjectDir] = fileparts(myscreen.datadir);
   dprimeTableFile = fullfile(subjectDir,'dprimeTable.mat');
   if ~isfile(dprimeTableFile) 
     disp(sprintf('(sigdetect) Could not dprime table: %s',dprimeTableFile));
@@ -71,16 +87,17 @@ end
 
 % display stome settings
 disp(sprintf(repmat('=',1,40)));
-if ~isempty(dprime)
-  disp(sprintf('(sigdetect) Testing strength of %s (d''=%s)',mynum2str(strength),mynum2str(dprime)));
-else
-  disp(sprintf('(sigdetect) Testing strength of %s',mynum2str(strength)));
+if dispParams
+  if ~isempty(dprime)
+    disp(sprintf('(sigdetect) Testing strength of %s (d''=%s)',mynum2str(strength),mynum2str(dprime)));
+  else
+    disp(sprintf('(sigdetect) Testing strength of %s',mynum2str(strength)));
+  end
+  disp(sprintf('(sigdetect) TestRun = %i Psychophysic run = %i staircase = %i',testRun,psychophysics,staircase));
+  if ~staircase
+    disp(sprintf('(sigdetect) Probability %s',mynum2str(presentProb)));
+  end  
 end
-disp(sprintf('(sigdetect) TestRun = %i Psychophysic run = %i staircase = %i',testRun,psychophysics,staircase));
-if ~staircase
-  disp(sprintf('(sigdetect) Probability %s',mynum2str(presentProb)));
-end  
-
 disp(sprintf('(sigdetect) SubjectID=%i SaveDir=%s',subjectID,myscreen.datadir));
 disp(sprintf(repmat('=',1,40)));
 
