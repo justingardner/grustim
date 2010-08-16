@@ -35,12 +35,8 @@ presentProb = [];
 staircase = [];
 stimulusType = [];
 staircaseType=[];
-getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/yuko/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]'});
-
-% display stome settings
-disp(sprintf(repmat('=',1,40)));
-disp(sprintf('(sigdetect) Testing strength of %0.3f',strength));
-disp(sprintf('(sigdetect) TestRun = %i Psychophysic run = %i staircase = %i',testRun,psychophysics,staircase));
+dprime=[];
+getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/yuko/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]'});
 
 % create subject directory
 myscreen.datadir = '~/data/sigdetect';
@@ -54,7 +50,37 @@ if psychophysics
     myscreen.datadir = fullfile(myscreen.datadir,'sdt');
   end
   if ~isdir(myscreen.datadir),mkdir(myscreen.datadir);end
+  task{1}.waitForBacktick = 0;
+else
+  task{1}.waitForBacktick = 1;
 end
+
+% get dprime if called for
+if ~isempty(dprime)
+  % get staricase directory
+  [subjectDir] = fileparts(myscreen.datadir);
+  dprimeTableFile = fullfile(subjectDir,'dprimeTable.mat');
+  if ~isfile(dprimeTableFile) 
+    disp(sprintf('(sigdetect) Could not dprime table: %s',dprimeTableFile));
+    keyboard
+  end
+  load(dprimeTableFile);
+  % get strength from table
+  strength = round(100*interp1(dprimeTable(:,1),dprimeTable(:,2),dprime,'linear'))/100;
+end
+
+% display stome settings
+disp(sprintf(repmat('=',1,40)));
+if ~isempty(dprime)
+  disp(sprintf('(sigdetect) Testing strength of %s (d''=%s)',mynum2str(strength),mynum2str(dprime)));
+else
+  disp(sprintf('(sigdetect) Testing strength of %s',mynum2str(strength)));
+end
+disp(sprintf('(sigdetect) TestRun = %i Psychophysic run = %i staircase = %i',testRun,psychophysics,staircase));
+if ~staircase
+  disp(sprintf('(sigdetect) Probability %s',mynum2str(presentProb)));
+end  
+
 disp(sprintf('(sigdetect) SubjectID=%i SaveDir=%s',subjectID,myscreen.datadir));
 disp(sprintf(repmat('=',1,40)));
 
@@ -68,7 +94,6 @@ if testRun ~= 1 %if actual scanner run, not test run
 else % if test run
   task{1}.seglen = 0.1;
 end 
-task{1}.waitForBacktick = 1;
 task{1}.numTrials = 1;
 task{1}.parameter.strength = 0;
 if psychophysics == 1
@@ -150,9 +175,9 @@ if stimulus.staircase
     %  stimulus.s = doStaircase('init','upDown','stepRule=pest','initialThreshold=0.8','initialStepsize=0.2','nTrials',nStaircaseTrials,'dispFig=1','minThreshold=0','maxThreshold=1');
 else
   % sdt trials, use doStaircase for running sdt
-  stimulus.s = doStaircase('init','sdt','strength=[0.3 0.6 1]','dispFig=1','p=[0.8 0.05]');
-  stimulus.s = doStaircase('init','sdt','strength=[0.5]','dispFig=1','p=[1]');
-%  stimulus.s = doStaircase('init','sdt','strength=[1]','dispFig=1','p=[1]');
+%  stimulus.s = doStaircase('init','sdt','strength=[0.3 0.6 1]','dispFig=1','p=[0.8 0.05]');
+%  stimulus.s = doStaircase('init','sdt','strength=[0.5]','dispFig=1','p=[1]');
+  stimulus.s = doStaircase('init','sdt','strength',strength,'dispFig=1','p',presentProb);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -192,7 +217,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
 
-keyboard
 global stimulus;
 stimulus.fixColor = [1 1 1];
 % when to show the stimulus (i.e. set strength high)
@@ -348,12 +372,20 @@ if task.thistrial.gotResponse == 0
     % HIT trial
     if task.thistrial.strength > 0
       task.thistrial.response = 1;
-      if (stimulus.feedback) mglPlaySound(stimulus.sounds.correct); end
+      % feedback
+      if stimulus.feedback
+	mglPlaySound(stimulus.sounds.correct); 
+	stimulus.fixColor = [0 1 0];
+      end
       responseType = 'Hit';
       % FALSE ALARM, incorrect
     else
       task.thistrial.response = 0;
-      if (stimulus.feedback) mglPlaySound(stimulus.sounds.incorrect); end
+      % feedback
+      if stimulus.feedback
+	mglPlaySound(stimulus.sounds.incorrect); 
+	stimulus.fixColor = [1 0 0];
+      end
       responseType = 'False Alarm';
     end
   %response absent
@@ -361,12 +393,20 @@ if task.thistrial.gotResponse == 0
     % CORRECT REJECT, correct
     if task.thistrial.strength == 0
       task.thistrial.response = 1;
-      if (stimulus.feedback) mglPlaySound(stimulus.sounds.correct); end
+      % feedback
+      if stimulus.feedback
+	mglPlaySound(stimulus.sounds.correct); 
+	stimulus.fixColor = [0 1 0];
+      end
       responseType = 'Correct Reject';
       %MISS, incorrect
     else
       task.thistrial.response = 0;
-      if (stimulus.feedback) mglPlaySound(stimulus.sounds.incorrect); end
+      % feedback
+      if stimulus.feedback
+	mglPlaySound(stimulus.sounds.incorrect); 
+	stimulus.fixColor = [1 0 0];
+      end
       responseType = 'Miss';
     end
   end
@@ -376,8 +416,10 @@ if task.thistrial.gotResponse == 0
     % keep response type
     task.thistrial.responseType = responseType(1);
     disp(sprintf('(sigdetect) %s strength=%f',responseType,task.thistrial.strength));
-    stimulus.fixColor = [1 0 1];
+    if ~stimulus.feedback,stimulus.fixColor = [1 0 1];end
   end
+  % turn off feedback after stimulus.feedback number of trials
+  stimulus.feedback = max(stimulus.feedback-1,0);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
