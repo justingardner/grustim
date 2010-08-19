@@ -39,7 +39,7 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'human_face','building','car','flower','fruit_veg','instrument','scramble','gray'},'imageDir=~/proj/ObjLocImages','dispLoadFig=0','categoryWeight=[4 4 1 1 1 1 4 2]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+getArgs(varargin,{'categories',{'human_face','building','car','flower','fruit_veg','instrument','scramble','gray'},'imageDir=~/proj/grustim/images/ObjLocImages','dispLoadFig=0','categoryWeight=[4 4 1 1 1 1 4 2]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
