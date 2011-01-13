@@ -175,6 +175,7 @@ end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+mglSetGammaTable(mglGetParam('initialGammaTable'));
 
 dispStaircase(stimulus,1);
 
@@ -580,13 +581,11 @@ if nargin < 2,makeplot = 0;end
 %if makeplot,smartfig('cuecon','reuse');end
 
 for iPedestal = 1:stimulus.nPedestals
-  for iStaircase = 1:stimulus.nStaircases
-    s = stimulus.staircase{iPedestal}{iStaircase};
-    if isfield(s,'strength')
-      n = length(s.strength);
-    else
-      n = 0;
+  for iProb = 1:stimulus.nProb
+    for iValid = 1:2
+      s = stimulus.staircase{iPedestal}{iProb}{iValid};
+%      disp(sprintf('(Contrast: %f CueCondition: %i): %f
+%      (n=%i)',stimulus.pedestalContrasts(iPedestal),stimulus.priorProb(iStaircase),s.threshold,n));
     end
-    disp(sprintf('(Contrast: %f CueCondition: %i): %f (n=%i)',stimulus.pedestalContrasts(iPedestal),stimulus.priorProb(iStaircase),s.threshold,n));
   end
 end
