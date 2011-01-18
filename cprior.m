@@ -8,19 +8,25 @@
 function myscreen = cprior(varargin)
 
 taskType = [];
-initStair = [];
 stimFile = [];
 numBlocks = [];
 pedestalContrasts = [];
 subjectID = [];
 cueConditions = [];
 training = [];
-getArgs(varargin,{'taskType=1','initStair=1','stimFile=[]','numBlocks=12','pedestalContrasts=[0.0625 0.125 0.25]','subjectID=[]','training=0'});
+showPercentDone = [];
+dispFig = [];
+displayCorrectThreshold = [];
+priorProb = [];
+fixedValues = [];
+getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.8 0.5]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]'});
 
 %i Training run
 if training > 0
-  disp(sprintf('(cprior) Training not implemented yet!'));
-  keyboard
+  numBlocks = 25;
+  priorProb = 0.8;
+  displayCorrectThreshold = 0;
+  fixedValues = [0.08 0.16 0.32];
 end
 
 global stimulus;
@@ -40,18 +46,21 @@ if ~isempty(stimFile)
   if isfile(setext(stimFile,'mat'))
     s = load(stimFile);
   elseif isfile(fullfile(myscreen.datadir,setext(stimFile,'mat')))
-    s = load(fullfile(myscreen.datadir,setext(stimFile,'mat')));
+    stimFile = fullfile(myscreen.datadir,setext(stimFile,'mat'));
+    s = load(filename);
   else
     disp(sprintf('(cprior) Could not find file %s',stimFile));
     return
   end
-  disp(sprintf('(cprior) Loading from stimfile not implemented yet!'));
-  keyboard
-  %  stimulus.staircase = s.stimulus.staircase;
-%  numBlocks = numBlocks - s.task{1}{2}.blocknum + 1;
-%  clear s;
-%  initStair = 0;
+  stimulus.staircase = s.stimulus.staircase;
+  numBlocks = numBlocks - s.task{1}{2}.blocknum + 1;
+  clear s;
+  initStair = 0;
+  disp(sprintf('(cprior) Loading staircase from %s',stimFile));
+else
+  initStair = 1;
 end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up stimulus
@@ -77,10 +86,15 @@ stimulus.grating.sdy = stimulus.grating.height/2;
 
 % other stimulus parameters
 stimulus.interval = 2;
-stimulus.priorProb = [0.9 0.6];
-stimulus.cueColor = [3 4];
+stimulus.showPercentDone = showPercentDone;
+
+stimulus.priorProb = priorProb;
+stimulus.cueColor = [3 nan];
 stimulus.nProb = length(stimulus.priorProb);
 stimulus.nPedestals = length(stimulus.pedestalContrasts);
+stimulus.targetLocResponseNum = fliplr(1:stimulus.grating.n);
+stimulus.displayCorrectThreshold = displayCorrectThreshold;
+stimulus.fixedValues = fixedValues; 
 
 % init the stimulus with these settings
 stimulus = initGratings(stimulus,myscreen);
@@ -106,8 +120,8 @@ if taskType == 1
   task{1}{2}.randVars.calculated.deltaContrast = nan;
   task{1}{2}.randVars.calculated.distractorLoc = nan;
   task{1}{2}.random = 1;
-  task{1}{2}.segmin = [0.5 3 1.5];
-  task{1}{2}.segmax = [0.5 3 1.5];
+  task{1}{2}.segmin = [1 1 1.5];
+  task{1}{2}.segmax = [1 1 1.5];
   task{1}{2}.synchToVol = [0 0 0];
   task{1}{2}.getResponse = [0 0 1];
   task{1}{2}.waitForBacktick = 0;
@@ -140,7 +154,7 @@ if initStair
   for iPedestal = 1:stimulus.nPedestals
     for iProb = 1:stimulus.nProb
       for iValidity = 1:2
-	stimulus.staircase{iPedestal}{iProb}{iValidity} = doStaircase('init','fixed','fixedVals=[0 0.01 0.02 0.04 0.08 0.16]');
+	stimulus.staircase{iPedestal}{iProb}{iValidity} = doStaircase('init','fixed','fixedVals',stimulus.fixedValues');
       end
     end
   end
@@ -177,7 +191,9 @@ end
 myscreen = endTask(myscreen,task);
 mglSetGammaTable(mglGetParam('initialGammaTable'));
 
-dispStaircase(stimulus,1);
+if dispFig
+  dispStaircase(stimulus,1);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -328,8 +344,12 @@ stimulus.oldGrating = stimulus.grating;
 
 % set up cuelines
 for i = 1:stimulus.grating.n
-  stimulus.grating.cueLines(i,1) = cos(d2r(stimulus.grating.orientations(i)))*0.5;
-  stimulus.grating.cueLines(i,2) = sin(d2r(stimulus.grating.orientations(i)))*0.5;
+  % starting point of lines
+  stimulus.grating.cueLines.x0(i) = cos(d2r(stimulus.grating.orientations(i)))*0.5;
+  stimulus.grating.cueLines.y0(i) = sin(d2r(stimulus.grating.orientations(i)))*0.5;
+  % ending point of lines
+  stimulus.grating.cueLines.x1(i) = cos(d2r(stimulus.grating.orientations(i)))*1;
+  stimulus.grating.cueLines.y1(i) = sin(d2r(stimulus.grating.orientations(i)))*1;
 end
 
 % set up reference lines
@@ -389,7 +409,7 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
   task.thistrial.validity = (task.thistrial.priorProb > rand);
   % get the distractor location (a random location out of the n), for the case of 2 targets
   % then is always the other location
-  task.thistrial.distractorLoc = setxor(task.thistrial.targetLoc,randperm(1:stimulus.grating.n));
+  task.thistrial.distractorLoc = setxor(task.thistrial.targetLoc,1:stimulus.grating.n);
   task.thistrial.distractorLoc = task.thistrial.distractorLoc(first(randperm(length(task.thistrial.distractorLoc))));
   % get deltaContrast to test from relevant staircase
   stimulus.pedestalNum = find(task.thistrial.pedestalContrast==stimulus.pedestalContrasts);
@@ -405,7 +425,7 @@ if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
   % set the maximum contrast we can display
   setGammaTableForMaxContrast(task.thistrial.pedestalContrast+task.thistrial.deltaContrast);
   % display some stuff
-  disp(sprintf('(cprior) pedestal: %i:%0.3f priorProb: %i:%0.3f validity: %i targetLoc: %i distractorLoc: %i deltaContrast:%f',stimulus.pedestalNum,100*task.thistrial.pedestalContrast,stimulus.probNum,task.thistrial.priorProb,task.thistrial.validity,task.thistrial.targetLoc,task.thistrial.distractorLoc,task.thistrial.deltaContrast));
+  disp(sprintf('(cprior) %i (block: %i): pedestal: %i:%0.3f priorProb: %i:%0.3f validity: %i targetLoc: %i distractorLoc: %i deltaContrast:%f',task.trialnum,task.blocknum,stimulus.pedestalNum,100*task.thistrial.pedestalContrast,stimulus.probNum,task.thistrial.priorProb,task.thistrial.validity,task.thistrial.targetLoc,task.thistrial.distractorLoc,task.thistrial.deltaContrast));
 end
 
 if any(task.thistrial.thisseg == stimulus.interval)
@@ -430,8 +450,10 @@ end
 % set the fixation color
 if any(task.thistrial.thisseg == [stimulus.interval])
   stimulus.fixColor = stimulus.colors.reservedColor(1);
+  stimulus.fixColor2 = stimulus.colors.reservedColor(2);
 else
   stimulus.fixColor = stimulus.colors.reservedColor(2);
+  stimulus.fixColor2 = stimulus.colors.reservedColor(1);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -463,19 +485,34 @@ end
 % draw reference points
 mglLines2(stimulus.grating.refLines.x1,stimulus.grating.refLines.y1,stimulus.grating.refLines.x2,stimulus.grating.refLines.y2,1,stimulus.colors.reservedColor(2));
 
-if task.thistrial.thisseg == 5
-  % draw target
-elseif (task.thistrial.thisphase == 2) && (task.thistrial.thisseg < 5)
-  if task.thistrial.validity
-    % draw the valid cue
-    mglLines2(0,0,stimulus.grating.cueLines(task.thistrial.targetLoc,1),stimulus.grating.cueLines(task.thistrial.targetLoc,2),1,stimulus.colors.reservedColor(3));
-  else
-    % draw the invalid cue
-    mglLines2(0,0,stimulus.grating.cueLines(task.thistrial.distractorLoc,1),stimulus.grating.cueLines(task.thistrial.distractorLoc,2),1,stimulus.colors.reservedColor(3));
-  end
+% draw how much done we are
+if stimulus.showPercentDone
+  mglGluDisk(0,0,0.5*(task.blocknum-1)/task.numBlocks,0.6,15);
 end
+
+%draw fixation cross
 mglFixationCross(1,1,stimulus.fixColor);
 
+% draw cue
+if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg <= 2)
+  if task.thistrial.validity
+    % draw the valid cue
+    drawCue(stimulus,task.thistrial.targetLoc,stimulus.cueColor(stimulus.probNum));
+  else
+    % draw the invalid cue
+    drawCue(stimulus,task.thistrial.distractorLoc,stimulus.cueColor(stimulus.probNum));
+  end
+end
+
+%%%%%%%%%%%%%%%%%
+%    drawCue    %
+%%%%%%%%%%%%%%%%%
+function drawCue(stimulus,loc,c)
+
+% draw the cue if we have a valid color
+if ~isnan(c)
+  mglLines2(stimulus.grating.cueLines.x0(loc),stimulus.grating.cueLines.y0(loc),stimulus.grating.cueLines.x1(loc),stimulus.grating.cueLines.y1(loc),1,stimulus.colors.reservedColor(c));
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function response callback 
@@ -484,17 +521,24 @@ function [task myscreen] = trialResponseCallback(task,myscreen)
 
 global stimulus;
 if task.thistrial.gotResponse == 0
-  whichInterval = find(task.thistrial.interval == task.parameter.interval);
-  if (task.thistrial.whichButton == whichInterval)
-    correctIncorrect = 'correct';
+%  if ((task.thistrial.whichButton == 1)&&(task.thistrial.validity==1)) || ((task.thistrial.whichButton==2)&&(task.thistrial.validity==0))
+  if (task.thistrial.whichButton == stimulus.targetLocResponseNum(task.thistrial.targetLoc))
+    correctIncorrect = 'Correct';
     stimulus.fixColor = stimulus.colors.reservedColor(3);
-    stimulus.staircase{stimulus.pedestalNum}{stimulus.staircaseNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.staircaseNum},1);
+    % update the staircase
+    stimulus.staircase{stimulus.pedestalNum}{stimulus.probNum}{stimulus.validityNum} = doStaircase('update',stimulus.staircase{stimulus.pedestalNum}{stimulus.probNum}{stimulus.validityNum},1);
   else
-    correctIncorrect = 'incorrect';
+    correctIncorrect = 'Incorrect';
     stimulus.fixColor = stimulus.colors.reservedColor(4);
-    stimulus.staircase{stimulus.pedestalNum}{stimulus.staircaseNum} = upDownStaircase(stimulus.staircase{stimulus.pedestalNum}{stimulus.staircaseNum},0);
+    % update the staircase
+    stimulus.staircase{stimulus.pedestalNum}{stimulus.probNum}{stimulus.validityNum} = doStaircase('update',stimulus.staircase{stimulus.pedestalNum}{stimulus.probNum}{stimulus.validityNum},0);
   end
-    disp(sprintf('Cue: %s pedestal: %f deltaC: %f (%s)',stimulus.cueConditions{task.thistrial.cueCondition},task.thistrial.pedestalContrast(task.thistrial.targetLoc),stimulus.deltaContrast(task.trialnum),correctIncorrect));
+
+  disp(sprintf('(cprior) %s',correctIncorrect));
+  % no feedback about correct or incorrect for hard trials
+  if task.thistrial.deltaContrast < stimulus.displayCorrectThreshold
+    stimulus.fixColor = stimulus.colors.reservedColor(5);
+  end
 else
   disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse+1));
 end
@@ -580,12 +624,32 @@ if nargin < 2,makeplot = 0;end
 
 %if makeplot,smartfig('cuecon','reuse');end
 
+smartfig('cprior','reuse');
+clear threshold;
 for iPedestal = 1:stimulus.nPedestals
   for iProb = 1:stimulus.nProb
+    clear s;
     for iValid = 1:2
-      s = stimulus.staircase{iPedestal}{iProb}{iValid};
-%      disp(sprintf('(Contrast: %f CueCondition: %i): %f
-%      (n=%i)',stimulus.pedestalContrasts(iPedestal),stimulus.priorProb(iStaircase),s.threshold,n));
+      s(iValid) = stimulus.staircase{iPedestal}{iProb}{iValid};
+      % display weibull fits separately
+      subplot(stimulus.nPedestals*stimulus.nProb,3,iValid);
+      threshold(iValid) = doStaircase('threshold',s(end),'type=weibull','dispPsycho=1');
     end
+    disp(sprintf('(cprior) prior=%0.3f pedestal=%0.3f threshold valid vs invalid: %f vs %f',stimulus.priorProb(iProb),stimulus.pedestalContrasts(iPedestal),threshold(2).threshold,threshold(1).threshold));
+    % display combined psychometric function
+    % little hacky here. Have the invalid cue trials get an inverted meaning
+    % also need to shift the xAxis so there are no negative values which
+    % the weibull fit does not like. Also, the gamma (guessing value) can't
+    % be 0, so set gamma to a small value.
+    s(1).response = ~s(1).response;
+    shiftValue = 0.08;
+    s(1).testValues = shiftValue-s(1).testValues;
+    s(2).testValues = shiftValue+s(2).testValues;
+    subplot(stimulus.nPedestals*stimulus.nProb,3,3);
+    t = doStaircase('threshold',s,'type=weibull','dispPsycho=1','gamma=0.001','p=0.5');
+    title(sprintf('Shift of %0.3f%% contrast',100*(shiftValue-t.threshold')));
+    vline(shiftValue);
   end
 end
+
+keyboard
