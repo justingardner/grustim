@@ -23,10 +23,14 @@ getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150'
 
 %i Training run
 if training > 0
+  disp(sprintf('(cprior) training: %i',training));
   numBlocks = 25;
   priorProb = 0.8;
   displayCorrectThreshold = 0;
   fixedValues = [0.08 0.16 0.32];
+  if training == 2
+    fixedValues = [0.02 0.04 0.08];
+  end
 end
 
 global stimulus;
@@ -47,7 +51,7 @@ if ~isempty(stimFile)
     s = load(stimFile);
   elseif isfile(fullfile(myscreen.datadir,setext(stimFile,'mat')))
     stimFile = fullfile(myscreen.datadir,setext(stimFile,'mat'));
-    s = load(filename);
+    s = load(stimFile);
   else
     disp(sprintf('(cprior) Could not find file %s',stimFile));
     return
@@ -633,7 +637,7 @@ for iPedestal = 1:stimulus.nPedestals
       s(iValid) = stimulus.staircase{iPedestal}{iProb}{iValid};
       % display weibull fits separately
       subplot(stimulus.nPedestals*stimulus.nProb,3,iValid);
-      threshold(iValid) = doStaircase('threshold',s(end),'type=weibull','dispPsycho=1');
+      threshold(iValid) = doStaircase('threshold',s(end),'type=weibull','dispPsycho=1','doFit=0');
     end
     disp(sprintf('(cprior) prior=%0.3f pedestal=%0.3f threshold valid vs invalid: %f vs %f',stimulus.priorProb(iProb),stimulus.pedestalContrasts(iPedestal),threshold(2).threshold,threshold(1).threshold));
     % display combined psychometric function
@@ -642,13 +646,14 @@ for iPedestal = 1:stimulus.nPedestals
     % the weibull fit does not like. Also, the gamma (guessing value) can't
     % be 0, so set gamma to a small value.
     s(1).response = ~s(1).response;
-    shiftValue = 0.08;
+    shiftValue = 0.16;
     s(1).testValues = shiftValue-s(1).testValues;
     s(2).testValues = shiftValue+s(2).testValues;
     subplot(stimulus.nPedestals*stimulus.nProb,3,3);
-    t = doStaircase('threshold',s,'type=weibull','dispPsycho=1','gamma=0.001','p=0.5');
+    t = doStaircase('threshold',s,'type=weibull','dispPsycho=1','gamma=0.001','p=0.5','dofit=0');
     title(sprintf('Shift of %0.3f%% contrast',100*(shiftValue-t.threshold')));
     vline(shiftValue);
+    keyboard
   end
 end
 
