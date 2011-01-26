@@ -19,7 +19,7 @@ dispFig = [];
 displayCorrectThreshold = [];
 priorProb = [];
 fixedValues = [];
-getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.8]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]'});
+getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.9]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]'});
 
 % Training run
 if training > 0
