@@ -19,9 +19,9 @@ dispFig = [];
 displayCorrectThreshold = [];
 priorProb = [];
 fixedValues = [];
-getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.8 0.5]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]'});
+getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.8]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]'});
 
-%i Training run
+% Training run
 if training > 0
   disp(sprintf('(cprior) training: %i',training));
   numBlocks = 25;
@@ -637,7 +637,7 @@ for iPedestal = 1:stimulus.nPedestals
       s(iValid) = stimulus.staircase{iPedestal}{iProb}{iValid};
       % display weibull fits separately
       subplot(stimulus.nPedestals*stimulus.nProb,3,iValid);
-      threshold(iValid) = doStaircase('threshold',s(end),'type=weibull','dispPsycho=1','doFit=0');
+      threshold(iValid) = doStaircase('threshold',s(end),'type=weibull','dispPsycho=1','doFit=1');
     end
     disp(sprintf('(cprior) prior=%0.3f pedestal=%0.3f threshold valid vs invalid: %f vs %f',stimulus.priorProb(iProb),stimulus.pedestalContrasts(iPedestal),threshold(2).threshold,threshold(1).threshold));
     % display combined psychometric function
@@ -650,7 +650,7 @@ for iPedestal = 1:stimulus.nPedestals
     s(1).testValues = shiftValue-s(1).testValues;
     s(2).testValues = shiftValue+s(2).testValues;
     subplot(stimulus.nPedestals*stimulus.nProb,3,3);
-    t = doStaircase('threshold',s,'type=weibull','dispPsycho=1','gamma=0.001','p=0.5','dofit=0');
+    t = doStaircase('threshold',s,'type=weibull','dispPsycho=1','gamma=0.001','p=0.5','doFit=1');
     title(sprintf('Shift of %0.3f%% contrast',100*(shiftValue-t.threshold')));
     vline(shiftValue);
     keyboard
