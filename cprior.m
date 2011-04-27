@@ -14,22 +14,30 @@ pedestalContrasts = [];
 subjectID = [];
 cueConditions = [];
 training = [];
-showPercentDone = [];
+showPercentDone = []; % fixation cross 
 dispFig = [];
-displayCorrectThreshold = [];
+displayCorrectThreshold = []; % contrast threshold over which correct/incorrect feedback is given
 priorProb = [];
 fixedValues = [];
-getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.9]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]'});
+nGratings = [];
+getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.9]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]','nGratings=4'});
 
 % Training run
 if training > 0
   disp(sprintf('(cprior) training: %i',training));
-  numBlocks = 25;
-  priorProb = 0.8;
+  numBlocks = 10;
+  priorProb = 0.95;
   displayCorrectThreshold = 0;
   fixedValues = [0.08 0.16 0.32];
   if training == 2
+    numBlocks = 25;
+    priorProb = 0.9;
     fixedValues = [0.02 0.04 0.08];
+  end
+  if training == 3
+    numBlocks = 25;
+    fixedValues = [0.01 0.02 0.04];
+    priorProb = 0.8;
   end
 end
 
@@ -47,7 +55,14 @@ myscreen = initScreen(myscreen);
 % open old stimfile to continue on, if asked for
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~isempty(stimFile)
-  if isfile(setext(stimFile,'mat'))
+  if isstruct(stimFile)
+    % passed in structure is a msc variable
+    if isfield(stimFile,'stimuli')
+      s.task = stimFile.task;
+      s.stimulus = stimFile.stimuli{1};
+      stimFile = 'myscreen variable';
+    end
+  elseif isfile(setext(stimFile,'mat'))
     s = load(stimFile);
   elseif isfile(fullfile(myscreen.datadir,setext(stimFile,'mat')))
     stimFile = fullfile(myscreen.datadir,setext(stimFile,'mat'));
@@ -75,8 +90,12 @@ myscreen = initStimulus('stimulus',myscreen);
 stimulus.pedestalContrasts = pedestalContrasts;
 
 % grating parameters
-stimulus.grating.n = 2;
-stimulus.grating.orientationOfFirstGrating = 0;
+stimulus.grating.n = nGratings;
+if stimulus.grating.n == 2
+  stimulus.grating.orientationOfFirstGrating = 0;
+else
+  stimulus.grating.orientationOfFirstGrating = 135;
+end
 stimulus.grating.radius = 10;
 stimulus.colors.reservedColors = [0 0 0; 1 1 1; 0 1 0; 1 0 0;0.2 0.3 0.7];
 stimulus.grating.sf = 2;
@@ -96,7 +115,7 @@ stimulus.priorProb = priorProb;
 stimulus.cueColor = [3 nan];
 stimulus.nProb = length(stimulus.priorProb);
 stimulus.nPedestals = length(stimulus.pedestalContrasts);
-stimulus.targetLocResponseNum = fliplr(1:stimulus.grating.n);
+stimulus.targetLocResponseNum = 1:stimulus.grating.n;
 stimulus.displayCorrectThreshold = displayCorrectThreshold;
 stimulus.fixedValues = fixedValues; 
 
@@ -123,6 +142,7 @@ if taskType == 1
   task{1}{2}.randVars.calculated.validity = nan;
   task{1}{2}.randVars.calculated.deltaContrast = nan;
   task{1}{2}.randVars.calculated.distractorLoc = nan;
+  task{1}{2}.randVars.calculated.stimulusContrast = [nan nan nan nan];
   task{1}{2}.random = 1;
   task{1}{2}.segmin = [1 1 1.5];
   task{1}{2}.segmax = [1 1 1.5];
@@ -224,7 +244,7 @@ end
 stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
 
 % calculate all the orientations we need
-stimulus.grating.orientations = stimulus.grating.orientationOfFirstGrating:360/stimulus.grating.n:stimulus.grating.orientationOfFirstGrating+359;
+stimulus.grating.orientations = stimulus.grating.orientationOfFirstGrating:-360/stimulus.grating.n:stimulus.grating.orientationOfFirstGrating-359;
 
 % calculate all the phases we are going to compute
 stimulus.grating.centerPhase = 0;
@@ -434,9 +454,18 @@ end
 
 if any(task.thistrial.thisseg == stimulus.interval)
   % get the contrast for the stimuli in this interval
-  stimulusContrast(1:stimulus.grating.n) = task.thistrial.pedestalContrast;
-  stimulusContrast(task.thistrial.targetLoc) = stimulusContrast(task.thistrial.targetLoc)+task.thistrial.deltaContrast;
+  task.thistrial.stimulusContrast(1:stimulus.grating.n) = task.thistrial.pedestalContrast;
+  task.thistrial.stimulusContrast(task.thistrial.targetLoc) = task.thistrial.stimulusContrast(task.thistrial.targetLoc)+task.thistrial.deltaContrast;
 
+  % set up the other distractor locations i.e. not target and invalid cued location to have
+  % contrast lower than the distractor
+  otherDistractorLocs = setxor([task.thistrial.targetLoc task.thistrial.distractorLoc],1:stimulus.grating.n);
+  otherDistractorLocs = otherDistractorLocs(randperm(length(otherDistractorLocs)));
+  for i = 1:length(otherDistractorLocs)
+%    task.thistrial.stimulusContrast(otherDistractorLocs(i)) = max(0,task.thistrial.pedestalContrast-task.thistrial.deltaContrast*i);
+     task.thistrial.stimulusContrast(otherDistractorLocs(i)) = max(0,task.thistrial.pedestalContrast/(i+1));
+  end
+  disp(sprintf('(cprior) Contrast configuration: %s',mynum2str(task.thistrial.stimulusContrast)));
   % set up the stimuli
   for i = 1:stimulus.grating.n
     % orientation of stimulus
@@ -447,7 +476,7 @@ if any(task.thistrial.thisseg == stimulus.interval)
     stimulus.y(i) = stimulus.grating.radius*sin(d2r(stimulus.o(i)));
     
     % get the contrasts
-    stimulus.contrastIndex(i) = getContrastIndex(stimulusContrast(i));
+    stimulus.contrastIndex(i) = getContrastIndex(task.thistrial.stimulusContrast(i));
   end
 end
 

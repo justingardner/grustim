@@ -1,10 +1,10 @@
 % mglFlicker.m
 %
 %        $Id:$ 
-%      usage: mglFlicker()
+%      usage: mglFlicker(<freq=refreshRate/2>,<screenNumber=[]>)
 %         by: justin gardner
 %       date: 09/09/10
-%    purpose: 
+%    purpose: With no arguments, flickers the screen at maximum rate possible (i.e. refreshRate/2).
 %
 function retval = mglFlicker(varargin)
 
