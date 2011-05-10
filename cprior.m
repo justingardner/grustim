@@ -20,7 +20,14 @@ displayCorrectThreshold = []; % contrast threshold over which correct/incorrect 
 priorProb = [];
 fixedValues = [];
 nGratings = [];
-getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.9]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]','nGratings=4'});
+analyze = [];
+getArgs(varargin,{'taskType=1','showPercentDone=1','stimFile=[]','numBlocks=150','pedestalContrasts=[0.25]','subjectID=[]','training=0','dispFig=0','displayCorrectThreshold=1','priorProb=[0.9]','fixedValues=[0 0.005 0.01 0.02 0.04 0.08 0.16]','nGratings=4','analyze=[]'});
+
+% analyze means to analyze the data, run the analysis part of the script.
+if ~isempty(analyze)
+  analyzeData(analyze);
+  return
+end
 
 % Training run
 if training > 0
@@ -686,4 +693,101 @@ for iPedestal = 1:stimulus.nPedestals
   end
 end
 
-keyboard
+%%%%%%%%%%%%%%%%%%%%%
+%    analyzeData    %
+%%%%%%%%%%%%%%%%%%%%%
+function analyzeData(a)
+
+dataDir = '~/data/cprior';
+
+% check to see if a is a subject id
+if isstr(a) && (length(a) == 4) && (a(1) == 's')
+  subjectID = a;
+  % find all data files for the subject
+  subjectDir = fullfile(dataDir,subjectID);
+  subjectDirList = dir(fullfile(subjectDir,'*stim*.mat'));
+  % go through and load so we can display info
+  for i = 1:length(subjectDirList)
+    % get name of data
+    d{i}.name = subjectDirList(i).name;
+    d{i}.fullname = fullfile(subjectDir,subjectDirList(i).name);
+    % load stimfile
+    d{i}.stimfile = load(d{i}.fullname);
+    % get time elapsed
+    timeElapsed = d{i}.stimfile.myscreen.endtimeSecs-d{i}.stimfile.myscreen.time;
+    d{i}.timeElapsed = dispTime(timeElapsed);
+    % display
+    disp(sprintf('%02i: %s (%s -> %s) %i trials',i,d{i}.name,d{i}.stimfile.myscreen.starttime,d{i}.timeElapsed,d{i}.stimfile.task{1}{2}.trialnum));
+    disp(sprintf('    Prior: %0.3f Pedestals %s',d{i}.stimfile.stimulus.priorProb,mynum2str(d{i}.stimfile.stimulus.fixedValues,'sigfigs=-1')));
+  end
+  % get user choice
+  n =getnum(sprintf('Choose data to view (0 to quit, -1 to analyze all): '),-1:length(subjectDirList));
+  if n==0,return,end
+  % now get stimfile
+  if n ~= -1
+    d = d{n};
+  end
+else
+  disp(sprintf('(cprior) Not a valid subjectID to analyze '));
+  return
+end
+
+if length(d) == 1
+  dispStaircase(d.stimfile.stimulus,1);
+else
+  % go analyze each one
+  disppercent(-inf,'(cprior) Analyzing data');
+  for i = 1:length(d)
+    d{i} = doAnalysis(d{i});
+    disppercent(i/length(d));
+  end
+  disppercent(inf);
+  
+  % display info for each
+  for i = 1:length(d)
+    % display
+    dispHeader(sprintf('%02i: %s (%s -> %s) %i trials',i,d{i}.name,d{i}.stimfile.myscreen.starttime,d{i}.timeElapsed,d{i}.stimfile.task{1}{2}.trialnum));
+    disp(sprintf('    Prior: %0.3f Pedestals %s',d{i}.stimfile.stimulus.priorProb,mynum2str(d{i}.stimfile.stimulus.fixedValues,'sigfigs=-1')));
+    for iPedestal = 1:d{i}.nPedestals
+      for iProb = 1:d{i}.nProb
+	if isstruct(d{i}.psycho{iPedestal,iProb,1})
+	  dispHeader(sprintf('Pedestal: %s prob: %s',mynum2str(d{i}.pedestalContrasts(iPedestal)),mynum2str(d{i}.prior(iProb))));
+	  disp(sprintf('Strength:\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,1}.stimStrength,'tabs=1')));
+	  disp(sprintf('Valid:\t\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,2}.pCorrect,'tabs=1','sigfigs=3')));
+	  disp(sprintf('n:\t\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,2}.n,'tabs=1','sigfigs=0')));
+	  disp(sprintf('Invalid:\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,1}.pCorrect,'tabs=1','sigfigs=2')));
+	  disp(sprintf('n:\t\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,1}.n,'tabs=1','sigfigs=0')));
+	end
+      end
+    end
+  end
+end
+
+%%%%%%%%%%%%%%%%%%%%
+%    doAnalysis    %
+%%%%%%%%%%%%%%%%%%%%
+function d = doAnalysis(d)
+
+% grab some values for easier access
+d.nPedestals = d.stimfile.stimulus.nPedestals;
+d.pedestalContrasts = d.stimfile.stimulus.pedestalContrasts;
+d.nProb = d.stimfile.stimulus.nProb;
+d.prior = d.stimfile.stimulus.priorProb;
+
+for iPedestal = 1:d.nPedestals
+  for iProb = 1:d.nProb
+    for iValid = 1:2
+      s = d.stimfile.stimulus.staircase{iPedestal}{iProb}{iValid};
+      if s.trialNum > 1
+	% get threshold
+	d.threshold{iPedestal,iProb,iValid} = doStaircase('threshold',s(end),'type=weibull','dispPsycho=0','doFit=1','verbose=0');
+	% and psychometric function
+	d.psycho{iPedestal,iProb,iValid} = doStaircase('getPsycho',s(end),'verbose=0');
+      else
+	d.threshold{iPedestal,iProb,iValid} = nan;
+	d.psycho{iPedestal,iProb,iValid} = nan;
+      end
+    end
+  end
+end
+
