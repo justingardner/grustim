@@ -10,10 +10,20 @@
 %       'doEyeCalib' Default is -1 (at begining of each block)
 %       'setPresentButton=1' for present to be 1 (default)
 %       'setAbsentButton=2' for absent to be 2 (default)
+%       'feedback=0' gives correct/incorrect feedback for as many trials as it is set for.
+%                    To always give feedback set to inf.
+%       'presentProb=0.5' The probability for which a target is presetn
+%       'subjectID=999' Saves in directory with that subjectID
 %
 %        sigdetect('staircase=1','staircaseType=quest');
 %
 %        sigdetect('staircase=1','staircaseType=fixed','fixedValues=[0.3 0.4 0.5 0.6 0.7]);
+%
+%        % To run signal detection with dots and coherence of 0.3
+%        sigdetect('staircase=0','stimulusType=dots','strength=0.3')
+% 
+%        Same thing, but does sdt for faces
+%        sigdetect('staircase=0','stimulusType=faces,'strength=0.3')
 %
 function [myscreen stimulus] = sigdetect(varargin)
 
@@ -38,7 +48,7 @@ staircaseType=[];
 dprime=[];
 runnum=[];
 dispParams=[];
-getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/yuko/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','runnum=[]','dispParams=1'});
+getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','runnum=[]','dispParams=1'});
 
 % create subject directory
 myscreen.datadir = '~/data/sigdetect';
@@ -274,12 +284,14 @@ else
   % randomize whether stimulus will be presented or not
   if task.thistrial.thisseg == 1
     [task.thistrial.strength stimulus.s] = doStaircase('testValue',stimulus.s);
-    % remove old textures
-    if ~isempty(stimulus.sigTex) mglDeleteTexture(stimulus.sigTex);end
-    if ~isempty(stimulus.noiseTex) mglDeleteTexture(stimulus.noiseTex);end
-    % create new ones
-    stimulus.sigTex = createScrambledFace(task.thistrial.strength);
-    stimulus.noiseTex = createScrambledFace(0);
+    if strcmp(stimulus.stimulusType,'faces')
+      % remove old textures
+      if ~isempty(stimulus.sigTex) mglDeleteTexture(stimulus.sigTex);end
+      if ~isempty(stimulus.noiseTex) mglDeleteTexture(stimulus.noiseTex);end
+      % create new ones
+      stimulus.sigTex = createScrambledFace(task.thistrial.strength);
+      stimulus.noiseTex = createScrambledFace(0);
+    end
   end
   
   % show the stimulus in segment 2 when it is present
@@ -312,7 +324,7 @@ global stimulus
 mglClearScreen;
 
 if strcmp(stimulus.stimulusType,'dots')
-  if isempty(stimulus.strength), stimulus.strength = 0;end
+  if isempty(stimulus.strength) || isnan(stimulus.strength), stimulus.strength = 0;end
   % update the dots
   stimulus.dots = feval(sprintf('updateDots%s',stimulus.dots.type),stimulus.dots,stimulus.strength,myscreen);
 
@@ -472,7 +484,6 @@ if stimulus.dots.mask
   mglStencilCreateEnd;
   mglClearScreen;
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set the dots speed

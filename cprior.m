@@ -746,17 +746,20 @@ else
   % display info for each
   for i = 1:length(d)
     % display
-    dispHeader(sprintf('%02i: %s (%s -> %s) %i trials',i,d{i}.name,d{i}.stimfile.myscreen.starttime,d{i}.timeElapsed,d{i}.stimfile.task{1}{2}.trialnum));
+    dispHeader
+    disp(sprintf('%02i: %s (%s -> %s) %i trials',i,d{i}.name,d{i}.stimfile.myscreen.starttime,d{i}.timeElapsed,d{i}.stimfile.task{1}{2}.trialnum));
     disp(sprintf('    Prior: %0.3f Pedestals %s',d{i}.stimfile.stimulus.priorProb,mynum2str(d{i}.stimfile.stimulus.fixedValues,'sigfigs=-1')));
     for iPedestal = 1:d{i}.nPedestals
       for iProb = 1:d{i}.nProb
 	if isstruct(d{i}.psycho{iPedestal,iProb,1})
 	  dispHeader(sprintf('Pedestal: %s prob: %s',mynum2str(d{i}.pedestalContrasts(iPedestal)),mynum2str(d{i}.prior(iProb))));
+	  disp(sprintf('Valid threshold: %s Invalid threshold: %s',mynum2str(d{i}.threshold{1,1,2}.threshold,'sigfigs=-1'),mynum2str(d{i}.threshold{1,1,1}.threshold,'sigfigs=-1')));
 	  disp(sprintf('Strength:\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,1}.stimStrength,'tabs=1')));
 	  disp(sprintf('Valid:\t\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,2}.pCorrect,'tabs=1','sigfigs=3')));
 	  disp(sprintf('n:\t\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,2}.n,'tabs=1','sigfigs=0')));
 	  disp(sprintf('Invalid:\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,1}.pCorrect,'tabs=1','sigfigs=2')));
 	  disp(sprintf('n:\t\t%s',mynum2str(d{i}.psycho{iPedestal,iProb,1}.n,'tabs=1','sigfigs=0')));
+
 	end
       end
     end
