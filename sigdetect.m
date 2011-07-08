@@ -235,7 +235,11 @@ end
 % save log
 if ~isempty(myscreen.stimfile)
   fid = fopen(fullfile(myscreen.datadir,'log.txt'),'a');
-  fprintf(fid,sprintf('%s: nTrials:%i staircaseType: %s threshold: %f',myscreen.stimfile,task{2}.trialnum,stimulus.staircaseType,t.threshold));
+  if stimulus.staircase
+    fprintf(fid,sprintf('%s: nTrials:%i staircaseType: %s threshold: %f',myscreen.stimfile,task{2}.trialnum,stimulus.staircaseType,t.threshold));
+  else
+    fprintf(fid,sprintf('%s: nTrials:%i d-prime: %s',myscreen.stimfile,task{2}.trialnum,mynum2str(t.dprime,'sigfigs=3','compact=1')));
+  end
   fclose(fid);
 end
 
