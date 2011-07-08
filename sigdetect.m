@@ -25,6 +25,11 @@
 %        Same thing, but does sdt for faces
 %        sigdetect('staircase=0','stimulusType=faces,'strength=0.3')
 %
+%        Note that for displaying images, a clipRange has been set arbitrarily
+%        for the images in grustim/images/facesWithTransparentBackground.
+%        It scales the image by 0.7 and then clips to 0 and 255. This seems
+%        to work find, but it might be better to calculate the scale factor
+%        on the fly for the set of images when they are loaded using loadNormalizedImages
 function [myscreen stimulus] = sigdetect(varargin)
 
 % evaluate the arguments
@@ -373,7 +378,7 @@ faceIm.phase(scrambledPhases) = rand(1,length(scrambledPhases))*2*pi;
 faceIm.mag = stimulus.averageMag;
 
 % create current image
-imageTex = mglCreateTexture(flipud(contrastNormalize(reconstructFromHalfFourier(faceIm))));
+imageTex = mglCreateTexture(flipud(clipRange(reconstructFromHalfFourier(faceIm))));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called when subject responds
@@ -720,155 +725,18 @@ stimulus.faceNum = [];
 stimulus.sigTex = [];
 stimulus.noiseTex = [];
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-%    getHalfFourier    %
-%%%%%%%%%%%%%%%%%%%%%%%%
-function d = getHalfFourier(im)
+%%%%%%%%%%%%%%%%%%%
+%    clipRange    %
+%%%%%%%%%%%%%%%%%%%
+function im = clipRange(im)
 
-% make sure there are an odd number of pixels
-if iseven(size(im,1)),im = im(1:end-1,:);end
-if iseven(size(im,2)),im = im(:,1:end-1);end
+% new version (July 2011) to keep luminance and rms contrast
+% constant across images. Scaling factor 0.7 chosen for a specific set
+% of stimuli (the set of images that was in grustim/images/ObjLocImages/
+% in June 2011)
 
-% take fourier transform of image
-imf = fft2(im);
+im = im*0.7;
+im(find(im>255)) = 255;
+im(find(im<0)) = 0;
 
-% get input dimensions
-d.originalDims = size(im);
-
-% get one half of fourier image
-imfh = fftshift(imf);
-imfh = imfh(1:d.originalDims(1),1:ceil(d.originalDims(2)/2));
-
-% extract dc form half fourier image
-d.dc = imfh(ceil(d.originalDims(1)/2),end);
-halfFourier = imfh(1:(prod(size(imfh))-ceil(d.originalDims(1)/2)));
-
-d.mag = abs(halfFourier);
-d.phase = angle(halfFourier);
-d.n = length(d.phase);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    reconstructFromHalfFourier    %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function im = reconstructFromHalfFourier(d)
-
-d.halfFourier = d.mag.*(cos(d.phase)+i*sin(d.phase));
-
-% first make the last column of the half fourier space which includes
-% the dc and should have the frequency components replicated corectly
-halfFourier = [d.halfFourier d.dc];
-halfFourier(end+1:end+floor(d.originalDims(1)/2)) = conj(d.halfFourier(end:-1:end-floor(d.originalDims(1)/2)+1));
-halfFourier = reshape(halfFourier,d.originalDims(1),ceil(d.originalDims(2)/2));
-
-% replicate the frequency components to make the negative frequencies which
-% are the complex conjugate of the positive frequncies
-halfFourier2 = fliplr(flipud(conj(halfFourier(:,1:floor(d.originalDims(2)/2)))));
-im = ifft2(ifftshift([halfFourier halfFourier2]));
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    contrastNormalize    %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function im = contrastNormalize(im)
-
-% image max/min
-immax = max(im(:));
-immin = min(im(:));
-
-% normalize to range of 0:1
-im = 255*(im-immin)/(immax-immin);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    loadNormalizedImages    %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function d = loadNormalizedImages(dirname,varargin)
-
-if nargin == 0
-  help loadNormalizedImages;
-  return
-end
-
-% get variable arguments
-width=[];
-height=[];
-dispFig=[];
-getArgs(varargin,{'height=320','width=240','dispFig=0'});
-
-% check directory
-d = [];
-if ~isdir(dirname)
-  disp(sprintf('(loadNormalizedImages) Could not find directory %s',dirname));
-  return
-end
-
-% size that image will be resampled to
-d.width = width;
-d.height = height;
-
-% get a listing of directory
-d.dirName = dirname;
-d.dir = dir(dirname);
-d.n = 0;
-
-% load each image
-if dispFig,smartfig('loadNormalizedImages','reuse');end
-disppercent(-inf,sprintf('(loadNormalizedImages) Loading images for %s',dirname));
-d.im = zeros(width,height,length(d.dir));
-d.averageMag = 0;
-for i = 1:length(d.dir)
-  % get filename
-  thisFilename = fullfile(d.dirName,d.dir(i).name);
-  % and load if it exists
-  if isfile(thisFilename) && (thisFilename(1) ~= '.') && ~isempty(imformats(getext(thisFilename)))
-    d.n = d.n + 1;
-    % read the image
-    [im m alpha] = imread(thisFilename);
-    % normalize to grayscale and same width height
-    im = imageNormalize(im,d.width,d.height,alpha);
-    if dispFig,clf;imagesc(im);drawnow;colormap(gray);axis equal; axis off;end
-    % save
-    d.im(1:width,1:height,d.n) = im;
-    d.filenames{d.n} = thisFilename;
-    % get its half fourier image
-    d.halfFourier{d.n} = getHalfFourier(d.im(:,:,d.n));
-    d.averageMag = d.averageMag + d.halfFourier{d.n}.mag;
-  end
-  disppercent(i/length(d.dir));
-end
-disppercent(inf);
-d.im = d.im(:,:,1:d.n);
-
-% now get average magnitude
-d.averageMag = d.averageMag/d.n;
-
-%%%%%%%%%%%%%%%%%%%%%%%%
-%    imageNormalize    %
-%%%%%%%%%%%%%%%%%%%%%%%%
-function im = imageNormalize(im,width,height,alpha)
-
-if ieNotDefined('alpha'),alpha = 255*ones(size(im(:,:,1)));end
-
-% check image dimensions
-if ~isequal(size(im(:,:,1)),size(alpha))
-  disp(sprintf('(sigdetect:imageNormalize) Alpha image size does not match. Ignoring alpha'));
-  alpha = 255*ones(size(im(:,:,1)));
-end
-
-% get image dimensions
-imdim = size(im);
-
-% first convert to grayscale
-if length(imdim > 2)
-  im = mean(im,3);
-end
-
-% apply alpha (make background gray)
-grayvalue = 127;
-im = im.*(double(alpha)/255)+grayvalue*(255-double(alpha))/255;
-
-% now resample to the same dimensions
-if ~isempty(width) && ~isempty(height)
-  [x y] = meshgrid(0:1/(imdim(2)-1):1,0:1/(imdim(1)-1):1);
-  [xi yi] = meshgrid(0:1/(height-1):1,0:1/(width-1):1);
-  im = interp2(x,y,im,xi,yi,'cubic');
-end
 
