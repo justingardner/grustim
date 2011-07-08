@@ -6,6 +6,12 @@
 %       date: 06/25/10
 %    purpose: object localizer scan
 %
+%   modified: 07/08/11 by topi tanskanen
+%             function contrastNormalize modified to keep luminance and
+%             rms contrast constant across images            
+%             NOTE: Scaling factor (0.7) chosen for the set of images
+%             that was in grustim/images/ObjLocImages/ in June 2011
+%
 % options:
 % objloc('imageDir=somedir') 
 %   the directory which stores images
@@ -39,7 +45,7 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'human_face','building','car','flower','fruit_veg','instrument','scramble','gray'},'imageDir=~/proj/grustim/images/ObjLocImages','dispLoadFig=0','categoryWeight=[4 4 1 1 1 1 4 2]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=1','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+getArgs(varargin,{'categories',{'human_face','building','car','flower','fruit_veg','instrument','scramble','gray'},'imageDir=/Applications/gru/grustim/images/ObjLocImages','dispLoadFig=0','categoryWeight=[4 4 1 1 1 1 4 2]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -96,10 +102,10 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
-
-mglFixationCross(1,2,[0 0 0]);
-myscreen.flushMode = 1;
+%myscreen = eyeCalibDisp(myscreen);
+%
+%mglFixationCross(1,2,[0 0 0]);
+%myscreen.flushMode = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
@@ -340,12 +346,23 @@ im = ifft2(ifftshift([halfFourier halfFourier2]));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 function im = contrastNormalize(im)
 
-% image max/min
-immax = max(im(:));
-immin = min(im(:));
+% new version (July 2011) to keep luminance and rms contrast
+% constant across images. Scaling factor 0.7 chosen for a specific set
+% of stimuli (the set of images that was in grustim/images/ObjLocImages/
+% in June 2011)
 
+ im = im*0.7;
+ im(find(im>255)) = 255;
+ im(find(im<0)) = 0;
+
+% original version of contrastNormalize
+%
+% image max/min
+% immax = max(im(:));
+% immin = min(im(:));
+%
 % normalize to range of 0:1
-im = 255*(im-immin)/(immax-immin);
+% im = 255*(im-immin)/(immax-immin);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    loadNormalizedImages    %
@@ -455,6 +472,9 @@ else
   [xi yi] = meshgrid(0:1/(width-1):1,0:1/(height-1):1);
 end
   
+% uncomment the following line if you want to rescale the aspect ratio
+% [xi yi] = meshgrid(0:1/(width-1):1,0:1/(height-1):1);
+
 % interpolate the image
 im = interp2(x,y,im,xi,yi,'cubic');
 
