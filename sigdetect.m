@@ -53,7 +53,8 @@ staircaseType=[];
 dprime=[];
 runnum=[];
 dispParams=[];
-getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','runnum=[]','dispParams=1'});
+blankIntertrial=[];
+getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','runnum=[]','dispParams=1','blankIntertrial=0'});
 
 % create subject directory
 myscreen.datadir = '~/data/sigdetect';
@@ -192,6 +193,8 @@ stimulus.presentProb = presentProb;
 stimulus.staircase = staircase;
 stimulus.staircaseType = staircaseType;
 stimulus.strength = strength;
+stimulus.blankIntertrial = blankIntertrial;
+stimulus.display = 1;
 
 % size of image to display
 stimulus.imageWidth = 24;
@@ -306,8 +309,10 @@ else
   % show the stimulus in segment 2 when it is present
   if task.thistrial.thisseg == 2
     stimulus.strength = task.thistrial.strength;
+    if stimulus.blankIntertrial,stimulus.display = true;end
   else
     stimulus.strength = nan;
+    if stimulus.blankIntertrial,stimulus.display = false;end
   end
   % set fixation color
   if any(task.thistrial.thisseg == [2])
@@ -338,14 +343,19 @@ if strcmp(stimulus.stimulusType,'dots')
   stimulus.dots = feval(sprintf('updateDots%s',stimulus.dots.type),stimulus.dots,stimulus.strength,myscreen);
 
   % draw the dots
-  if stimulus.dots.mask,mglStencilSelect(1);end
-  mglPoints2(stimulus.dots.x,stimulus.dots.y,stimulus.dots.dotsize,[1 1 1]);
-  if stimulus.dots.mask,mglStencilSelect(0);end
+  if stimulus.display
+    if stimulus.dots.mask,mglStencilSelect(1);end
+    mglPoints2(stimulus.dots.x,stimulus.dots.y,stimulus.dots.dotsize,[1 1 1]);
+    if stimulus.dots.mask,mglStencilSelect(0);end
+  end
 else
-  if stimulus.strength == 0
-    mglBltTexture(stimulus.noiseTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
-  elseif stimulus.strength > 0
-    mglBltTexture(stimulus.sigTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
+  % display the face images
+  if stimulus.display
+    if stimulus.strength == 0
+      mglBltTexture(stimulus.noiseTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
+    elseif stimulus.strength > 0
+      mglBltTexture(stimulus.sigTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
+    end
   end
 end
 
