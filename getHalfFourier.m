@@ -4,7 +4,8 @@
 %      usage: d = getHalfFourier(im)
 %         by: justin gardner
 %       date: 07/08/11
-%    purpose: returns the half-fourier representation of the image
+%    purpose: returns the half-fourier representation of the image.
+%             (See reconstructFromHalfFourier)
 %
 function d = getHalfFourier(im)
 
