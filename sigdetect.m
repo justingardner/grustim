@@ -8,8 +8,8 @@
 %    sigdetect(varargin)
 %       'numTrials=10' for 10 trials.
 %       'doEyeCalib' Default is -1 (at begining of each block)
-%       'setPresentButton=1' for present to be 1 (default)
-%       'setAbsentButton=2' for absent to be 2 (default)
+%       'presentButton=1' for present to be 1 (default)
+%       'absentButton=2' for absent to be 2 (default)
 %       'feedback=0' gives correct/incorrect feedback for as many trials as it is set for.
 %                    To always give feedback set to inf.
 %       'presentProb=0.5' The probability for which a target is presetn
@@ -30,88 +30,55 @@
 %        It scales the image by 0.7 and then clips to 0 and 255. This seems
 %        to work find, but it might be better to calculate the scale factor
 %        on the fly for the set of images when they are loaded using loadNormalizedImages
+%  nTrials                number of trials to run before quiting
+%  doEyeCalib             run eye calibration
+%  presentButtion      button to press when stimulus is present
+%  absentButton        button to press when stimulus is absernt
+%  correctSound           correct sound
+%  incorrectSound         incorrect sound
+%  stimSound              sound for when the stimulus period occurs
+%  soundDir               where the sounds are to be found
+%  strength               strength is the signal present strength for sigdetect trials
+%  pedestals              pedestals for which to run staircase on
+%  feedback               give feedback 
+%  presentProb            change probability of stimulus present for sigdetect trials
+%  staircase              run a staircase instead of a detection experiment
+%  continueStaircase      continues staircases from one run to the other
+%  stimulusType           dots or faces
+%  staircaseType          quest or fixed
+%  dispParams             display params, sometimes useful to turn off so that subejct's don't view what is going on
+%  blankIntertrial        set to true to have no stimulus in between trials (FIX - does this work for images?)
+%  nStaircaseTrials       number of trials in each staircase
+%  scanner                scanner run. Sets ITIs, startDelay and waitForBacktick etc for parameters for magnet runs
+%  startDelay             time to wait before starting experiment, useful for fMRI experiments
+%  waitForBacktick        wait for backtick before starting, useful for scanner runs
 function [myscreen stimulus] = sigdetect(varargin)
 
-% evaluate the arguments
-nTrials = [];        % number of trials to run before quiting
-doEyeCalib = [];     % run eye calibration
-setPresentButtion=[];% button to press when stimulus is present
-setAbsentButton = [];% button to press when stimulus is absernt
-correctSound = [];   % correct sound
-incorrectSound = []; % incorrect sound
-stimSound = [];      % sound for when the stimulus period occurs
-soundDir = [];       % where the sounds are to be found
-strength = [];       % strength is the signal present strength for sigdetect trials
-pedestals = [];      % pedestals for which to run staircase on
-feedback = [];       % give feedback 
-presentProb = [];    % change probability of stimulus present for sigdetect trials
-staircase = [];      % run a staircase instead of a detection experiment
-continueStaircase=[];% continues staircases from one run to the other
-stimulusType = [];   % dots or faces
-staircaseType=[];    % quest or fixed
-dprime=[];           % Supposed to get the signal strength from a precalculated dprime table, does it still work?
-dispParams=[];       % display params, sometimes useful to turn off so that subejct's don't view what is going on
-blankIntertrial=[];  % set to true to have no stimulus in between trials (FIX - does this work for images?)
-nStaircaseTrials=[]; % number of trials in each staircase
-scanner = [];        % scanner run. Sets ITIs, startDelay and waitForBacktick etc for parameters for magnet runs
-startDelay = [];     % time to wait before starting experiment, useful for fMRI experiments
-waitForBacktick=[];  % wait for backtick before starting, useful for scanner runs
-getArgs(varargin,{'startDelay=[]','nTrials=500','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','dispParams=1','blankIntertrial=0','nStaircaseTrials=50','scanner=0','waitForBacktick=[]','pedestals=0','continueStaircase=1'});
-
-% create subject directory
-if isscalar(subjectID),subjectID = sprintf('s%03i',subjectID);end
-myscreen.subjectID = subjectID;
-if staircase
-  myscreen.subjectFolder = 'staircase';
-else
-  myscreen.subjectFolder = 'sdt';
-end
-  
-% change the settings based on whether we are in the scanner or not
-if scanner
-  if isempty(waitForBacktick),waitForBacktick = true;end
-  if isempty(startDelay),startDelay = 10;end
-else
-  if isempty(waitForBacktick),waitForBacktick = false;end
-  if isempty(startDelay),startDelay = 0.1;end
-end
+% parse arguments, note that stimulus variable gets
+% set because it is a global
+myscreen = parseArgs(varargin);
+global stimulus;
 
 % initalize the screen
 myscreen.background = 'black';
 myscreen = initScreen(myscreen);
 
 % display some settings
-if dispParams
-  dispHeader(sprintf('subjectID: %s dataDir: %s',myscreen.subjectID,myscreen.datadir),80);
-  if ~staircase
-    disp(sprintf('(sigdetect) Running signal detection task: %s',stimulusType));
-    disp(sprintf('(sigdetect) Testing strength: %s',mynum2str(strength)));
-    disp(sprintf('(sigdetect) Probability: %s',mynum2str(presentProb)));
-  else
-    disp(sprintf('(sigdetect) Running 2AFC discrimination task: %s',stimulusType));
-    disp(sprintf('(sigdetect) Pedestals: %s',mynum2str(pedestals)));
-    disp(sprintf('(sigdetect) Staircase type: %s',staircaseType));
-    disp(sprintf('(sigdetect) Testing strength of %s',mynum2str(strength)));
-  end
-  disp(sprintf('(sigdetect) startDelay: %s waitForBacktick: %i doEyeCalib: %i',mynum2str(startDelay),waitForBacktick,doEyeCalib));
-  disp(sprintf('(sigdetect) soundDir: %s correctSound: %s incorrectSound: %s stimSound: %s',soundDir,correctSound,incorrectSound,stimSound));
-  disp(sprintf('(sigdetect) blankIntertrial: %i',blankIntertrial));
-  dispHeader('',80);
-end
+if stimulus.runParams.dispParams,doDispParams(myscreen,stimulus);end
 
-% First phase is just for having a start delay
-task{1}.waitForBacktick = waitForBacktick;
-task{1}.seglen = startDelay;
+% first phase is just for having a start delay
+task{1}.waitForBacktick = stimulus.runParams.waitForBacktick;
+task{1}.seglen = stimulus.runParams.startDelay;
 task{1}.numTrials = 1;
 task{1}.parameter.strength = 0;
 
 % set up the actual task
-if ~scanner
+if ~stimulus.runParams.scanner
   % setup trials for either a staircase (with two intervals) or a sigdetect task
-  if staircase
+  if stimulus.params.staircase
     task{2}.seglen = [0.5 1 0.4 1 1];
     task{2}.getResponse = [0 0 0 0 1];
-    task{2}.parameter.pedestal = pedestals;
+    task{2}.parameter.pedestal = stimulus.params.pedestals;
   else
     task{2}.seglen = [0.5 1 1.5];
     task{2}.getResponse = [0 1 1];
@@ -125,10 +92,10 @@ else
   keyboard % FIX these
 end
 task{2}.random = 1;
-task{2}.numTrials = nTrials;
+task{2}.numTrials = stimulus.runParams.nTrials;
 task{2}.waitForBacktick = 0;
 task{2}.randVars.calculated.response = nan;
-if staircase
+if stimulus.params.staircase
   task{2}.randVars.calculated.whichInterval = nan;
 else
   task{2}.randVars.calculated.responseType = nan;
@@ -139,12 +106,8 @@ task{2}.randVars.calculated.strength = nan;
 [task{1} myscreen] = initTask(task{1},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
 [task{2} myscreen] = initTask(task{2},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
 
-% init the stimulus
-clear global stimulus;
-global stimulus;
-myscreen = initStimulus('stimulus',myscreen);
-stimulus.stimulusType = stimulusType;
-if strcmp(stimulusType ,'dots')
+% set up stimulus
+if strcmp(stimulus.params.stimulusType ,'dots')
   % type can be Opticflow or Linear
   stimulus.dots.type = 'Opticflow'; 
   % set to 1 to make a circular mask around stimulus
@@ -154,26 +117,13 @@ if strcmp(stimulusType ,'dots')
   stimulus.dots.rmax = myscreen.imageHeight;
   stimulus = initDots(stimulus,myscreen);
 else
-  stimulus = initFaces(stimulus,myscreen,imageDir,320,240);
+  stimulus = initFaces(stimulus,myscreen,stimulus.runParams.imageDir,320,240);
 end
 
 % sounds
-mglInstallSound(soundDir);
-stimulus.sounds.stim = stimSound;
-stimulus.sounds.correct = correctSound;
-stimulus.sounds.incorrect = incorrectSound;
-stimulus.feedback = feedback;
-
-% which button indicates present and which button indicates absent? 
-stimulus.presentButton = setPresentButton;
-stimulus.absentButton = setAbsentButton;
+mglInstallSound(stimulus.sounds.soundDir);
 
 % other stimulus settings
-stimulus.presentProb = presentProb;
-stimulus.staircase = staircase;
-stimulus.staircaseType = staircaseType;
-stimulus.strength = strength;
-stimulus.blankIntertrial = blankIntertrial;
 stimulus.display = 1;
 
 % size of image to display
@@ -183,34 +133,44 @@ stimulus.imageHeight = 32;
 % see if we can load staircase from last run
 stimulus.s = [];
 % see if we can continue from last run
-if continueStaircase
+if stimulus.runParams.continueStaircase
+  % load last stimfile
   lastStimfile = getLastStimfile(myscreen);
+  % see if we have a match
   if ~isempty(lastStimfile)
-    disp(sprintf('(sigdetect) Continuing staircases from last run'));
-    stimulus.s = lastStimfile.stimulus.s;
+    % match, then grab that staircase
+    if isequal(lastStimfile.stimulus.params,stimulus.params)
+      disp(sprintf('(sigdetect) Continuing staircases from last run'));
+      stimulus.s = lastStimfile.stimulus.s;
+    else
+      % no match, warn and go on
+      dispHeader('',80);
+      disp(sprintf('(sigdetect) !!! Last stimfile params does not match, starting new staircase !!!'));
+      dispHeader('',80);
+    end
   end
 end
 
 % init staircase
 if isempty(stimulus.s)
-  if stimulus.staircase
-    nPedestals = length(pedestals);
+  if stimulus.params.staircase
+    nPedestals = length(stimulus.params.pedestals);
     % initialize staircase if we haven't been able to continue
     for i = 1:nPedestals
-      if strcmp(staircaseType,'quest')
-	stimulus.s{i} = doStaircase('init','quest','initialThreshold=0.8','tGuessSd=4','nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
-      elseif strcmp(staircaseType,'pest')
-	stimulus.s{i} = doStaircase('init','upDown','stepRule=pest','initialThreshold=0.8','initialStepsize=0.2','nTrials',nStaircaseTrials,'dispFig=1','minThreshold=0','maxThreshold=1','subplotRows',nPedestals,'subplotNum',i);
-      elseif strcmp(staircaseType,'fixed')
-	stimulus.s{i} = doStaircase('init','fixed','fixedVals',fixedValues,'nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
+      if strcmp(stimulus.params.staircaseType,'quest')
+	stimulus.s{i} = doStaircase('init','quest','initialThreshold=0.8','tGuessSd=4','nTrials',stimulus.runParams.nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
+      elseif strcmp(stimulus.params.staircaseType,'pest')
+	stimulus.s{i} = doStaircase('init','upDown','stepRule=pest','initialThreshold=0.8','initialStepsize=0.2','nTrials',stimulus.runParams.nStaircaseTrials,'dispFig=1','minThreshold=0','maxThreshold=1','subplotRows',nPedestals,'subplotNum',i);
+      elseif strcmp(stimulus.params.staircaseType,'fixed')
+	stimulus.s{i} = doStaircase('init','fixed','fixedVals',stimulus.params.fixedValues,'nTrials',stimulus.runParams.nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
       else
-	disp(sprintf('(sigdetect) Unknown staircase type: %s',staircaseType));
+	disp(sprintf('(sigdetect) Unknown staircase type: %s',stimulus.params.staircaseType));
 	keyboard
       end
     end
   else
     % sdt trials, use doStaircase for running sdt
-    stimulus.s = doStaircase('init','sdt','strength',strength,'dispFig=1','p',presentProb);
+    stimulus.s = doStaircase('init','sdt','strength',stimulus.params.strength,'dispFig=1','p',stimulus.params.presentProb);
   end
 end
 
@@ -233,12 +193,12 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if stimulus.staircase
-  for i = 1:length(pedestals)
+if stimulus.params.staircase
+  for i = 1:length(stimulus.params.pedestals)
     t(i) = doStaircase('threshold',stimulus.s{i});
   end
   smartfig('sigdetect','reuse');clf;
-  plot(pedestals,[t.threshold],'ko-','MarkerFaceColor','k','MarkerSize',9);
+  plot(stimulus.params.pedestals,[t.threshold],'ko-','MarkerFaceColor','k','MarkerSize',9);
   xlabel('pedestal');
   ylabel('threshold');
 else
@@ -248,8 +208,8 @@ end
 % save log
 if ~isempty(myscreen.stimfile)
   fid = fopen(fullfile(myscreen.datadir,'log.txt'),'a');
-  if stimulus.staircase
-    fprintf(fid,sprintf('%s: nTrials:%i staircaseType: %s threshold: %f',myscreen.stimfile,task{2}.trialnum,stimulus.staircaseType,t.threshold));
+  if stimulus.params.staircase
+    fprintf(fid,sprintf('%s: nTrials:%i staircaseType: %s threshold: %s',myscreen.stimfile,task{2}.trialnum,stimulus.params.staircaseType,mynum2str([t.threshold])));
   else
     fprintf(fid,sprintf('%s: nTrials:%i d-prime: %s',myscreen.stimfile,task{2}.trialnum,mynum2str(t.dprime,'sigfigs=3','compact=1')));
   end
@@ -264,12 +224,14 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus;
 stimulus.fixColor = [1 1 1];
 % when to show the stimulus (i.e. set strength high)
-if stimulus.staircase
+if stimulus.params.staircase
   % find which staircase we are working on.
   if isfield(task.thistrial,'pedestal')
     stimulus.snum = find(task.thistrial.pedestal == task.parameter.pedestal);
   else
-    stimulus.snum = 1;
+    stimulus.strength = nan;
+    stimulus.sigStrength = inf;
+    return;
   end
   % staircase to find a strength threshold
   % set which interval the signal occurs in.
@@ -278,15 +240,16 @@ if stimulus.staircase
     % now set the strength for each trial
     [task.thistrial.strength stimulus.s{stimulus.snum}] = doStaircase('testValue',stimulus.s{stimulus.snum});
     % for faces create the signal and noise images
-    if strcmp(stimulus.stimulusType,'faces')
+    if strcmp(stimulus.params.stimulusType,'faces')
       if ~isempty(stimulus.sigTex) mglDeleteTexture(stimulus.sigTex);end
       stimulus.sigTex = createScrambledFace(task.thistrial.strength+task.thistrial.pedestal);
+      stimulus.sigStrength = task.thistrial.pedestal+task.thistrial.strength;
       if ~isempty(stimulus.noiseTex) mglDeleteTexture(stimulus.noiseTex);end
       stimulus.noiseTex = createScrambledFace(task.thistrial.pedestal);
     end
   end
   % set which strength should be displayed in which segment
-  if stimulus.blankIntertrial,stimulus.display = true;end
+  if stimulus.params.blankIntertrial,stimulus.display = true;end
   if (task.thistrial.thisseg == 2) && (task.thistrial.whichInterval == 1)
     stimulus.strength = task.thistrial.strength+task.thistrial.pedestal;
   elseif (task.thistrial.thisseg == 4) && (task.thistrial.whichInterval == 2)
@@ -294,14 +257,14 @@ if stimulus.staircase
   elseif any(task.thistrial.thisseg == [2 4])
     stimulus.strength = task.thistrial.pedestal;
   else
-    if stimulus.blankIntertrial,stimulus.display = false;end
+    if stimulus.params.blankIntertrial,stimulus.display = false;end
     stimulus.strength = [];
     stimulus.fixColor = [1 1 1];
   end
   % set fixation color
   if any(task.thistrial.thisseg == [2 4])
     stimulus.fixColor = [1 1 0];
-    mglPlaySound(stimulus.sounds.stim);
+    mglPlaySound(stimulus.sounds.stimSound);
   elseif task.thistrial.thisseg == 5
     stimulus.fixColor = [0 1 1];
   end
@@ -309,7 +272,7 @@ else
   % randomize whether stimulus will be presented or not
   if task.thistrial.thisseg == 1
     [task.thistrial.strength stimulus.s] = doStaircase('testValue',stimulus.s);
-    if strcmp(stimulus.stimulusType,'faces')
+    if strcmp(stimulus.params.stimulusType,'faces')
       % remove old textures
       if ~isempty(stimulus.sigTex) mglDeleteTexture(stimulus.sigTex);end
       if ~isempty(stimulus.noiseTex) mglDeleteTexture(stimulus.noiseTex);end
@@ -322,22 +285,22 @@ else
   % show the stimulus in segment 2 when it is present
   if task.thistrial.thisseg == 2
     stimulus.strength = task.thistrial.strength;
-    if stimulus.blankIntertrial,stimulus.display = true;end
+    if stimulus.params.blankIntertrial,stimulus.display = true;end
   else
     stimulus.strength = nan;
-    if stimulus.blankIntertrial,stimulus.display = false;end
+    if stimulus.params.blankIntertrial,stimulus.display = false;end
   end
   % set fixation color
   if any(task.thistrial.thisseg == [2])
     stimulus.fixColor = [1 1 0];
-    mglPlaySound(stimulus.sounds.stim);
+    mglPlaySound(stimulus.sounds.stimSound);
   elseif task.thistrial.thisseg == 3
     stimulus.fixColor = [0 1 1];
   end
 end
 
 % set speed
-if strcmp(stimulus.stimulusType,'dots')
+if strcmp(stimulus.params.stimulusType,'dots')
   stimulus.dots = feval(sprintf('setDotsSpeed%s',stimulus.dots.type),stimulus.dots,stimulus.speed,myscreen);
   stimulus.dots = feval(sprintf('setDotsDir%s',stimulus.dots.type),stimulus.dots,2*mod(task.thistrial.thisseg,2)-1,myscreen);
 end
@@ -350,7 +313,7 @@ function [task myscreen] = updateScreenCallback(task, myscreen)
 global stimulus
 mglClearScreen;
 
-if strcmp(stimulus.stimulusType,'dots')
+if strcmp(stimulus.params.stimulusType,'dots')
   if isempty(stimulus.strength) || isnan(stimulus.strength), stimulus.strength = 0;end
   % update the dots
   stimulus.dots = feval(sprintf('updateDots%s',stimulus.dots.type),stimulus.dots,stimulus.strength,myscreen);
@@ -364,10 +327,10 @@ if strcmp(stimulus.stimulusType,'dots')
 else
   % display the face images
   if stimulus.display
-    if stimulus.strength == 0
-      mglBltTexture(stimulus.noiseTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
-    elseif stimulus.strength > 0
+    if stimulus.strength == stimulus.sigStrength
       mglBltTexture(stimulus.sigTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
+    else
+      mglBltTexture(stimulus.noiseTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
     end
   end
 end
@@ -413,7 +376,7 @@ global stimulus
 % only record the first response
 if task.thistrial.gotResponse == 0
   % for staircase just get correct, incorrect and update staircase
-  if stimulus.staircase
+  if stimulus.params.staircase
     task.thistrial.response = (task.thistrial.whichInterval == task.thistrial.whichButton);
     stimulus.s{stimulus.snum} = doStaircase('update',stimulus.s{stimulus.snum},task.thistrial.response);
     % if at the end of the staircase, reinitialize
@@ -421,21 +384,21 @@ if task.thistrial.gotResponse == 0
       stimulus.s{stimulus.snum}(end+1) = doStaircase('init',stimulus.s{stimulus.snum}(end));
     end
     if task.thistrial.response
-      disp(sprintf('Trial %i: strength %f Interval %i correct',task.trialnum,task.thistrial.strength,task.thistrial.whichInterval));
+      disp(sprintf('Trial %i: pedestal %s strength %f interval %i correct',task.trialnum,mynum2str(task.thistrial.pedestal),task.thistrial.strength,task.thistrial.whichInterval));
       stimulus.fixColor = [0 1 0];
     else
-      disp(sprintf('Trial %i: strength %f Interval %i incorrect',task.trialnum,task.thistrial.strength,task.thistrial.whichInterval));
+      disp(sprintf('Trial %i: pedestal %s strength %f interval %i incorrect',task.trialnum,mynum2str(task.thistrial.pedestal),task.thistrial.strength,task.thistrial.whichInterval));
       stimulus.fixColor = [1 0 0];
     end
     return
   end
   %classify the respones into 4 SDT categories
-  if task.thistrial.whichButton == stimulus.presentButton
+  if task.thistrial.whichButton == stimulus.runParams.presentButton
     % HIT trial
     if task.thistrial.strength > 0
       task.thistrial.response = 1;
       % feedback
-      if stimulus.feedback
+      if stimulus.runParams.feedback
 	mglPlaySound(stimulus.sounds.correct); 
 	stimulus.fixColor = [0 1 0];
       end
@@ -444,19 +407,19 @@ if task.thistrial.gotResponse == 0
     else
       task.thistrial.response = 0;
       % feedback
-      if stimulus.feedback
+      if stimulus.runParams.feedback
 	mglPlaySound(stimulus.sounds.incorrect); 
 	stimulus.fixColor = [1 0 0];
       end
       responseType = 'False Alarm';
     end
   %response absent
-  elseif task.thistrial.whichButton == stimulus.absentButton
+  elseif task.thistrial.whichButton == stimulus.runParams.absentButton
     % CORRECT REJECT, correct
     if task.thistrial.strength == 0
       task.thistrial.response = 1;
       % feedback
-      if stimulus.feedback
+      if stimulus.runParams.feedback
 	mglPlaySound(stimulus.sounds.correct); 
 	stimulus.fixColor = [0 1 0];
       end
@@ -465,23 +428,23 @@ if task.thistrial.gotResponse == 0
     else
       task.thistrial.response = 0;
       % feedback
-      if stimulus.feedback
+      if stimulus.runParams.feedback
 	mglPlaySound(stimulus.sounds.incorrect); 
 	stimulus.fixColor = [1 0 0];
       end
       responseType = 'Miss';
     end
   end
-  if any(task.thistrial.whichButton == [stimulus.presentButton stimulus.absentButton])
+  if any(task.thistrial.whichButton == [stimulus.runParams.presentButton stimulus.runParams.absentButton])
     %update staircase
     stimulus.s = doStaircase('update',stimulus.s,task.thistrial.response);;
     % keep response type
     task.thistrial.responseType = responseType(1);
     disp(sprintf('(sigdetect) %s strength=%f',responseType,task.thistrial.strength));
-    if ~stimulus.feedback,stimulus.fixColor = [1 0 1];end
+    if ~stimulus.runParams.feedback,stimulus.fixColor = [1 0 1];end
   end
   % turn off feedback after stimulus.feedback number of trials
-  stimulus.feedback = max(stimulus.feedback-1,0);
+  stimulus.runParams.feedback = max(stimulus.runParams.feedback-1,0);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -763,4 +726,107 @@ im = im*0.7;
 im(find(im>255)) = 255;
 im(find(im<0)) = 0;
 
+%%%%%%%%%%%%%%%%%%%%%%
+%%   doDispParams   %%
+%%%%%%%%%%%%%%%%%%%%%%
+function doDispParams(myscreen,stimulus)
 
+dispHeader(sprintf('subjectID: %s dataDir: %s',myscreen.subjectID,myscreen.datadir),80);
+if ~stimulus.params.staircase
+  disp(sprintf('(sigdetect) Running signal detection task: %s',stimulus.params.stimulusType));
+  disp(sprintf('(sigdetect) Testing strength: %s',mynum2str(stimulus.params.strength)));
+  disp(sprintf('(sigdetect) Probability: %s',mynum2str(stimulus.params.presentProb)));
+else
+  disp(sprintf('(sigdetect) Running 2AFC discrimination task: %s',stimulus.params.stimulusType));
+  disp(sprintf('(sigdetect) Pedestals: %s',mynum2str(stimulus.params.pedestals)));
+  disp(sprintf('(sigdetect) Staircase type: %s',stimulus.params.staircaseType));
+end
+disp(sprintf('(sigdetect) startDelay: %s waitForBacktick: %i doEyeCalib: %i',mynum2str(stimulus.runParams.startDelay),stimulus.runParams.waitForBacktick,stimulus.runParams.doEyeCalib));
+disp(sprintf('(sigdetect) soundDir: %s correctSound: %s incorrectSound: %s stimSound: %s',stimulus.sounds.soundDir,stimulus.sounds.correctSound,stimulus.sounds.incorrectSound,stimulus.sounds.stimSound));
+disp(sprintf('(sigdetect) blankIntertrial: %i',stimulus.params.blankIntertrial));
+dispHeader('',80);
+
+%%%%%%%%%%%%%%%%%%%%
+%%   paraseArgs   %%
+%%%%%%%%%%%%%%%%%%%%
+function [myscreen stimulus] = parseArgs(args)
+
+% evaluate the arguments
+nTrials = [];        % number of trials to run before quiting
+doEyeCalib = [];     % run eye calibration
+presentButton=[];    % button to press when stimulus is present
+absentButton = [];   % button to press when stimulus is absernt
+correctSound = [];   % correct sound
+incorrectSound = []; % incorrect sound
+stimSound = [];      % sound for when the stimulus period occurs
+soundDir = [];       % where the sounds are to be found
+strength = [];       % strength is the signal present strength for sigdetect trials
+pedestals = [];      % pedestals for which to run staircase on
+feedback = [];       % give feedback 
+presentProb = [];    % change probability of stimulus present for sigdetect trials
+staircase = [];      % run a staircase instead of a detection experiment
+continueStaircase=[];% continues staircases from one run to the other
+stimulusType = [];   % dots or faces
+staircaseType=[];    % quest or fixed
+dispParams=[];       % display params, sometimes useful to turn off so that subejct's don't view what is going on
+blankIntertrial=[];  % set to true to have no stimulus in between trials (FIX - does this work for images?)
+nStaircaseTrials=[]; % number of trials in each staircase
+scanner = [];        % scanner run. Sets ITIs, startDelay and waitForBacktick etc for parameters for magnet runs
+startDelay = [];     % time to wait before starting experiment, useful for fMRI experiments
+waitForBacktick=[];  % wait for backtick before starting, useful for scanner runs
+getArgs(args,{'startDelay=[]','nTrials=500','doEyeCalib=1','presentButton=1','absentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dispParams=1','blankIntertrial=[]','nStaircaseTrials=50','scanner=0','waitForBacktick=[]','pedestals=0','continueStaircase=1'});
+
+% init the stimulus with current settings
+clear global stimulus;
+global stimulus;
+stimulus.params.stimulusType = stimulusType;
+stimulus.params.staircase = staircase;
+stimulus.params.blankIntertrial = blankIntertrial;
+if stimulus.params.staircase
+  stimulus.params.staircaseType = staircaseType;
+  stimulus.params.fixedValues = fixedValues;
+  stimulus.params.pedestals = pedestals;
+  myscreen.subjectFolder = 'staircase';
+  if isempty(stimulus.params.blankIntertrial),stimulus.params.blankIntertrial = true;end
+else
+  stimulus.params.strength = strength;
+  stimulus.params.presentProb = presentProb;
+  myscreen.subjectFolder = 'sdt';
+  if isempty(stimulus.params.blankIntertrial),stimulus.params.blankIntertrial = false;end
+end
+
+% change the settings based on whether we are in the scanner or not
+if scanner
+  if isempty(waitForBacktick),waitForBacktick = true;end
+  if isempty(startDelay),startDelay = 10;end
+else
+  if isempty(waitForBacktick),waitForBacktick = false;end
+  if isempty(startDelay),startDelay = 0.1;end
+end
+
+% set run params
+stimulus.runParams.startDelay = startDelay;
+stimulus.runParams.nTrials = nTrials;
+stimulus.runParams.doEyeCalib = doEyeCalib;
+stimulus.runParams.presentButton = presentButton;
+stimulus.runParams.absentButton = absentButton;
+stimulus.runParams.feedback = feedback;
+stimulus.runParams.imageDir = imageDir;
+stimulus.runParams.dispParams = dispParams;
+stimulus.runParams.nStaircaseTrials = nStaircaseTrials;
+stimulus.runParams.scanner = scanner;
+stimulus.runParams.waitForBacktick = waitForBacktick;
+stimulus.runParams.continueStaircase = continueStaircase;
+
+% set sound parameters
+stimulus.sounds.soundDir = soundDir;
+stimulus.sounds.correctSound = correctSound;
+stimulus.sounds.incorrectSound = incorrectSound;
+stimulus.sounds.stimSound = stimSound;
+
+% create subject directory
+if isscalar(subjectID),subjectID = sprintf('s%03i',subjectID);end
+myscreen.subjectID = subjectID;
+
+% register stimulus name
+myscreen = initStimulus('stimulus',myscreen);
