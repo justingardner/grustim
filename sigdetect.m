@@ -33,119 +33,93 @@
 function [myscreen stimulus] = sigdetect(varargin)
 
 % evaluate the arguments
-testRun = [];
-numTrials = [];
-doEyeCalib = [];
-setPresentButtion = [];
-setAbsentButton = [];
-dispText = [];
-psychophysics = [];
-correctSound = [];
-incorrectSound = [];
-stimSound = [];
-soundDir = [];
-strength = [];
-feedback = [];
-presentProb = [];
-staircase = [];
-stimulusType = [];
-staircaseType=[];
-dprime=[];
-runnum=[];
-dispParams=[];
-blankIntertrial=[];
-getArgs(varargin,{'testRun=1','psychophysics=1','numTrials=50','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','runnum=[]','dispParams=1','blankIntertrial=0'});
+nTrials = [];        % number of trials to run before quiting
+doEyeCalib = [];     % run eye calibration
+setPresentButtion=[];% button to press when stimulus is present
+setAbsentButton = [];% button to press when stimulus is absernt
+correctSound = [];   % correct sound
+incorrectSound = []; % incorrect sound
+stimSound = [];      % sound for when the stimulus period occurs
+soundDir = [];       % where the sounds are to be found
+strength = [];       % strength is the signal present strength for sigdetect trials
+pedestals = [];      % pedestals for which to run staircase on
+feedback = [];       % give feedback 
+presentProb = [];    % change probability of stimulus present for sigdetect trials
+staircase = [];      % run a staircase instead of a detection experiment
+stimulusType = [];   % dots or faces
+staircaseType=[];    % quest or fixed
+dprime=[];           % Supposed to get the signal strength from a precalculated dprime table, does it still work?
+dispParams=[];       % display params, sometimes useful to turn off so that subejct's don't view what is going on
+blankIntertrial=[];  % set to true to have no stimulus in between trials (FIX - does this work for images?)
+nStaircaseTrials=[]; % number of trials in each staircase
+scanner = [];        % scanner run. Sets ITIs, startDelay and waitForBacktick etc for parameters for magnet runs
+startDelay = [];     % time to wait before starting experiment, useful for fMRI experiments
+waitForBacktick=[];  % wait for backtick before starting, useful for scanner runs
+getArgs(varargin,{'startDelay=[]','nTrials=500','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','dispParams=1','blankIntertrial=0','nStaircaseTrials=50','scanner=0','waitForBacktick=[]','pedestals=0'});
 
 % create subject directory
-myscreen.datadir = '~/data/sigdetect';
-if ~isdir(myscreen.datadir),mkdir(myscreen.datadir);end
-if psychophysics
-  myscreen.datadir = fullfile(myscreen.datadir,sprintf('s%03i',subjectID));
-  if ~isdir(myscreen.datadir),mkdir(myscreen.datadir);end
-  if staircase
-    myscreen.datadir = fullfile(myscreen.datadir,'staircase');
-  else
-    myscreen.datadir = fullfile(myscreen.datadir,'sdt');
-  end
-  if ~isdir(myscreen.datadir),mkdir(myscreen.datadir);end
-  task{1}.waitForBacktick = 0;
+if isscalar(subjectID),subjectID = sprintf('s%03i',subjectID);end
+myscreen.subjectID = subjectID;
+
+% change the settings based on whether we are in the scanner or not
+if scanner
+  if isempty(waitForBacktick),waitForBacktick = true;end
+  if isempty(startDelay),startDelay = 10;end
 else
-  task{1}.waitForBacktick = 1;
+  if isempty(waitForBacktick),waitForBacktick = false;end
+  if isempty(startDelay),startDelay = 0.1;end
 end
-subjectDir = fileparts(myscreen.datadir);
-
-% if runnum, go run the doit in the subject directory
-if ~isempty(runnum)
-  runCommand = fullfile(subjectDir,'sigdetectRun.m');
-  if ~isfile(runCommand)
-    disp(sprintf('(sigdetect) Could not find %s',doitCommand));
-    keyboard
-  end
-  thisPwd = pwd;
-  cd(subjectDir);
-  sigdetectRun(runnum);
-  cd(thisPwd);
-  return
-end
-
-% get dprime if called for
-if ~isempty(dprime)
-  % get staricase directory
-  dprimeTableFile = fullfile(subjectDir,'dprimeTable.mat');
-  if ~isfile(dprimeTableFile) 
-    disp(sprintf('(sigdetect) Could not dprime table: %s',dprimeTableFile));
-    keyboard
-  end
-  load(dprimeTableFile);
-  % get strength from table
-  strength = round(100*interp1(dprimeTable(:,1),dprimeTable(:,2),dprime,'linear'))/100;
-end
-
-% display stome settings
-disp(sprintf(repmat('=',1,40)));
-if dispParams
-  if ~isempty(dprime)
-    disp(sprintf('(sigdetect) Testing strength of %s (d''=%s)',mynum2str(strength),mynum2str(dprime)));
-  else
-    disp(sprintf('(sigdetect) Testing strength of %s',mynum2str(strength)));
-  end
-  disp(sprintf('(sigdetect) TestRun = %i Psychophysic run = %i staircase = %i',testRun,psychophysics,staircase));
-  if ~staircase
-    disp(sprintf('(sigdetect) Probability %s',mynum2str(presentProb)));
-  end  
-end
-disp(sprintf('(sigdetect) SubjectID=%i SaveDir=%s',subjectID,myscreen.datadir));
-disp(sprintf(repmat('=',1,40)));
 
 % initalize the screen
 myscreen.background = 'black';
 myscreen = initScreen(myscreen);
 
-%Task is divided into two phases --> {1} is 10 second delay and {2} is task
-if testRun ~= 1 %if actual scanner run, not test run
-  task{1}.seglen = 10;
-else % if test run
-  task{1}.seglen = 0.1;
-end 
+% display some settings
+if dispParams
+  dispHeader(sprintf('subjectID: %s dataDir: %s',myscreen.subjectID,myscreen.datadir));
+  if ~staircase
+    disp(sprintf('(sigdetect) Running signal detection task: %s',stimulusType));
+    disp(sprintf('(sigdetect) Testing strength: %s',mynum2str(strength)));
+    disp(sprintf('(sigdetect) Probability: %s',mynum2str(presentProb)));
+  else
+    disp(sprintf('(sigdetect) Running 2AFC discrimination task: %s',stimulusType));
+    disp(sprintf('(sigdetect) Pedestals: %s',mynum2str(pedestals)));
+    disp(sprintf('(sigdetect) Staircase type: %s',staircaseType));
+    disp(sprintf('(sigdetect) Testing strength of %s',mynum2str(strength)));
+  end
+  disp(sprintf('(sigdetect) startDelay: %s waitForBacktick: %i doEyeCalib: %i',mynum2str(startDelay),waitForBacktick,doEyeCalib));
+  disp(sprintf('(sigdetect) soundDir: %s correctSound: %s incorrectSound: %s stimSound: %s',soundDir,correctSound,incorrectSound,stimSound));
+  disp(sprintf('(sigdetect) blankIntertrial: %i',blankIntertrial));
+  dispHeader;
+end
+
+% First phase is just for having a start delay
+task{1}.waitForBacktick = waitForBacktick;
+task{1}.seglen = startDelay;
 task{1}.numTrials = 1;
 task{1}.parameter.strength = 0;
-if psychophysics == 1
-  task{1}.seglen = 0.1;
+
+% set up the actual task
+if ~scanner
+  % setup trials for either a staircase (with two intervals) or a sigdetect task
   if staircase
     task{2}.seglen = [0.5 1 0.4 1 1];
     task{2}.getResponse = [0 0 0 0 1];
+    task{2}.parameter.pedestal = pedestals;
   else
     task{2}.seglen = [0.5 1 1.5];
     task{2}.getResponse = [0 1 1];
   end
 else
+  % non-psychophysics
   task{2}.segmin = [1 1 3];
   task{2}.segmax = [5 1 3]; % randomize fixation between 4 and 8 seconds
   task{2}.synchToVol = [1 0 0]; % sync at end of fixation
   task{2}.getResponse = [0 0 1];
+  keyboard % FIX these
 end
 task{2}.random = 1;
-task{2}.numTrials = numTrials;
+task{2}.numTrials = nTrials;
 task{2}.waitForBacktick = 0;
 task{2}.randVars.calculated.response = nan;
 if staircase
@@ -154,7 +128,6 @@ else
   task{2}.randVars.calculated.responseType = nan;
 end
 task{2}.randVars.calculated.strength = nan;
-
 
 % initialize our task
 [task{1} myscreen] = initTask(task{1},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
@@ -189,6 +162,7 @@ stimulus.feedback = feedback;
 stimulus.presentButton = setPresentButton;
 stimulus.absentButton = setAbsentButton;
 
+% other stimulus settings
 stimulus.presentProb = presentProb;
 stimulus.staircase = staircase;
 stimulus.staircaseType = staircaseType;
@@ -199,19 +173,24 @@ stimulus.display = 1;
 % size of image to display
 stimulus.imageWidth = 24;
 stimulus.imageHeight = 32;
+
 % init staircase
 if stimulus.staircase
-  nStaircaseTrials = 48;
-  if strcmp(staircaseType,'quest')
-    stimulus.s = doStaircase('init','quest','initialThreshold=0.8','tGuessSd=4','nTrials',nStaircaseTrials,'dispFig=1');
-  elseif strcmp(staircaseType,'fixed')
-    stimulus.s = doStaircase('init','fixed','fixedVals',fixedValues,'nTrials',nStaircaseTrials,'dispFig=1');
+  nPedestals = length(pedestals);
+  for i = 1:nPedestals
+    if strcmp(staircaseType,'quest')
+      stimulus.s{i} = doStaircase('init','quest','initialThreshold=0.8','tGuessSd=4','nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
+    elseif strcmp(staircaseType,'pest')
+      stimulus.s{i} = doStaircase('init','upDown','stepRule=pest','initialThreshold=0.8','initialStepsize=0.2','nTrials',nStaircaseTrials,'dispFig=1','minThreshold=0','maxThreshold=1','subplotRows',nPedestals,'subplotNum',i);
+    elseif strcmp(staircaseType,'fixed')
+      stimulus.s{i} = doStaircase('init','fixed','fixedVals',fixedValues,'nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i11212122122);
+    else
+      disp(sprintf('(sigdetect) Unknown staircase type: %s',staircaseType));
+      keyboard
+    end
   end
-    %  stimulus.s = doStaircase('init','upDown','stepRule=pest','initialThreshold=0.8','initialStepsize=0.2','nTrials',nStaircaseTrials,'dispFig=1','minThreshold=0','maxThreshold=1');
 else
   % sdt trials, use doStaircase for running sdt
-%  stimulus.s = doStaircase('init','sdt','strength=[0.3 0.6 1]','dispFig=1','p=[0.8 0.05]');
-%  stimulus.s = doStaircase('init','sdt','strength=[0.5]','dispFig=1','p=[1]');
   stimulus.s = doStaircase('init','sdt','strength',strength,'dispFig=1','p',presentProb);
 end
 
@@ -235,7 +214,9 @@ end
 myscreen = endTask(myscreen,task);
 
 if stimulus.staircase
-  t = doStaircase('threshold',stimulus.s,'type=weibull','dispFig=1');
+  for i = 1:length(pedestals)
+    t = doStaircase('threshold',stimulus.s{i},'type=weibull','dispFig=1');
+  end
 else
   t = doStaircase('threshold',stimulus.s,'dispFig=1');
 end
@@ -260,28 +241,36 @@ global stimulus;
 stimulus.fixColor = [1 1 1];
 % when to show the stimulus (i.e. set strength high)
 if stimulus.staircase
+  % find which staircase we are working on.
+  if isfield(task.thistrial,'pedestal')
+    stimulus.snum = find(task.thistrial.pedestal == task.parameter.pedestal);
+  else
+    stimulus.snum = 1;
+  end
   % staircase to find a strength threshold
   % set which interval the signal occurs in.
   if task.thistrial.thisseg == 1
     task.thistrial.whichInterval = (rand > 0.5)+1;
     % now set the strength for each trial
-    [task.thistrial.strength stimulus.s] = doStaircase('testValue',stimulus.s);
+    [task.thistrial.strength stimulus.s{stimulus.snum}] = doStaircase('testValue',stimulus.s{stimulus.snum});
     % for faces create the signal and noise images
     if strcmp(stimulus.stimulusType,'faces')
       if ~isempty(stimulus.sigTex) mglDeleteTexture(stimulus.sigTex);end
-      stimulus.sigTex = createScrambledFace(task.thistrial.strength);
+      stimulus.sigTex = createScrambledFace(task.thistrial.strength+task.thistrial.pedestal);
       if ~isempty(stimulus.noiseTex) mglDeleteTexture(stimulus.noiseTex);end
-      stimulus.noiseTex = createScrambledFace(0);
+      stimulus.noiseTex = createScrambledFace(task.thistrial.pedestal);
     end
   end
   % set which strength should be displayed in which segment
+  if stimulus.blankIntertrial,stimulus.display = true;end
   if (task.thistrial.thisseg == 2) && (task.thistrial.whichInterval == 1)
-    stimulus.strength = task.thistrial.strength;
+    stimulus.strength = task.thistrial.strength+task.thistrial.pedestal;
   elseif (task.thistrial.thisseg == 4) && (task.thistrial.whichInterval == 2)
-    stimulus.strength = task.thistrial.strength;
+    stimulus.strength = task.thistrial.strength+task.thistrial.pedestal;
   elseif any(task.thistrial.thisseg == [2 4])
-    stimulus.strength = 0;
+    stimulus.strength = task.thistrial.pedestal;
   else
+    if stimulus.blankIntertrial,stimulus.display = false;end
     stimulus.strength = [];
     stimulus.fixColor = [1 1 1];
   end
@@ -402,9 +391,10 @@ if task.thistrial.gotResponse == 0
   % for staircase just get correct, incorrect and update staircase
   if stimulus.staircase
     task.thistrial.response = (task.thistrial.whichInterval == task.thistrial.whichButton);
-    stimulus.s = doStaircase('update',stimulus.s,task.thistrial.response);
-    if doStaircase('stop',stimulus.s)
-      stimulus.s(end+1) = doStaircase('init',stimulus.s(end));
+    stimulus.s{stimulus.snum} = doStaircase('update',stimulus.s{stimulus.snum},task.thistrial.response);
+    % if at the end of the staircase, reinitialize
+    if doStaircase('stop',stimulus.s{stimulus.snum})
+      stimulus.s{stimulus.snum}(end+1) = doStaircase('init',stimulus.s{stimulus.snum}(end));
     end
     if task.thistrial.response
       disp(sprintf('Trial %i: strength %f Interval %i correct',task.trialnum,task.thistrial.strength,task.thistrial.whichInterval));
