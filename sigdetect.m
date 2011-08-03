@@ -46,6 +46,7 @@ pedestals = [];      % pedestals for which to run staircase on
 feedback = [];       % give feedback 
 presentProb = [];    % change probability of stimulus present for sigdetect trials
 staircase = [];      % run a staircase instead of a detection experiment
+continueStaircase=[];% continues staircases from one run to the other
 stimulusType = [];   % dots or faces
 staircaseType=[];    % quest or fixed
 dprime=[];           % Supposed to get the signal strength from a precalculated dprime table, does it still work?
@@ -55,12 +56,17 @@ nStaircaseTrials=[]; % number of trials in each staircase
 scanner = [];        % scanner run. Sets ITIs, startDelay and waitForBacktick etc for parameters for magnet runs
 startDelay = [];     % time to wait before starting experiment, useful for fMRI experiments
 waitForBacktick=[];  % wait for backtick before starting, useful for scanner runs
-getArgs(varargin,{'startDelay=[]','nTrials=500','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','dispParams=1','blankIntertrial=0','nStaircaseTrials=50','scanner=0','waitForBacktick=[]','pedestals=0'});
+getArgs(varargin,{'startDelay=[]','nTrials=500','doEyeCalib=1','setPresentButton=1','setAbsentButton=2','correctSound=Pop','incorrectSound=Basso','stimSound=stimsound','soundDir=~/proj/grustim/sounds','strength=1','feedback=0','presentProb=0.5','staircase=0','stimulusType=faces','imageDir=~/proj/grustim/images/facesWithTransparentBackground','subjectID=999','staircaseType=quest','fixedValues=[0.1 0.2 0.3 0.4 0.5 0.6 0.7]','dprime=[]','dispParams=1','blankIntertrial=0','nStaircaseTrials=50','scanner=0','waitForBacktick=[]','pedestals=0','continueStaircase=1'});
 
 % create subject directory
 if isscalar(subjectID),subjectID = sprintf('s%03i',subjectID);end
 myscreen.subjectID = subjectID;
-
+if staircase
+  myscreen.subjectFolder = 'staircase';
+else
+  myscreen.subjectFolder = 'sdt';
+end
+  
 % change the settings based on whether we are in the scanner or not
 if scanner
   if isempty(waitForBacktick),waitForBacktick = true;end
@@ -76,7 +82,7 @@ myscreen = initScreen(myscreen);
 
 % display some settings
 if dispParams
-  dispHeader(sprintf('subjectID: %s dataDir: %s',myscreen.subjectID,myscreen.datadir));
+  dispHeader(sprintf('subjectID: %s dataDir: %s',myscreen.subjectID,myscreen.datadir),80);
   if ~staircase
     disp(sprintf('(sigdetect) Running signal detection task: %s',stimulusType));
     disp(sprintf('(sigdetect) Testing strength: %s',mynum2str(strength)));
@@ -90,7 +96,7 @@ if dispParams
   disp(sprintf('(sigdetect) startDelay: %s waitForBacktick: %i doEyeCalib: %i',mynum2str(startDelay),waitForBacktick,doEyeCalib));
   disp(sprintf('(sigdetect) soundDir: %s correctSound: %s incorrectSound: %s stimSound: %s',soundDir,correctSound,incorrectSound,stimSound));
   disp(sprintf('(sigdetect) blankIntertrial: %i',blankIntertrial));
-  dispHeader;
+  dispHeader('',80);
 end
 
 % First phase is just for having a start delay
@@ -174,24 +180,38 @@ stimulus.display = 1;
 stimulus.imageWidth = 24;
 stimulus.imageHeight = 32;
 
-% init staircase
-if stimulus.staircase
-  nPedestals = length(pedestals);
-  for i = 1:nPedestals
-    if strcmp(staircaseType,'quest')
-      stimulus.s{i} = doStaircase('init','quest','initialThreshold=0.8','tGuessSd=4','nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
-    elseif strcmp(staircaseType,'pest')
-      stimulus.s{i} = doStaircase('init','upDown','stepRule=pest','initialThreshold=0.8','initialStepsize=0.2','nTrials',nStaircaseTrials,'dispFig=1','minThreshold=0','maxThreshold=1','subplotRows',nPedestals,'subplotNum',i);
-    elseif strcmp(staircaseType,'fixed')
-      stimulus.s{i} = doStaircase('init','fixed','fixedVals',fixedValues,'nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i11212122122);
-    else
-      disp(sprintf('(sigdetect) Unknown staircase type: %s',staircaseType));
-      keyboard
-    end
+% see if we can load staircase from last run
+stimulus.s = [];
+% see if we can continue from last run
+if continueStaircase
+  lastStimfile = getLastStimfile(myscreen);
+  if ~isempty(lastStimfile)
+    disp(sprintf('(sigdetect) Continuing staircases from last run'));
+    stimulus.s = lastStimfile.stimulus.s;
   end
-else
-  % sdt trials, use doStaircase for running sdt
-  stimulus.s = doStaircase('init','sdt','strength',strength,'dispFig=1','p',presentProb);
+end
+
+% init staircase
+if isempty(stimulus.s)
+  if stimulus.staircase
+    nPedestals = length(pedestals);
+    % initialize staircase if we haven't been able to continue
+    for i = 1:nPedestals
+      if strcmp(staircaseType,'quest')
+	stimulus.s{i} = doStaircase('init','quest','initialThreshold=0.8','tGuessSd=4','nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
+      elseif strcmp(staircaseType,'pest')
+	stimulus.s{i} = doStaircase('init','upDown','stepRule=pest','initialThreshold=0.8','initialStepsize=0.2','nTrials',nStaircaseTrials,'dispFig=1','minThreshold=0','maxThreshold=1','subplotRows',nPedestals,'subplotNum',i);
+      elseif strcmp(staircaseType,'fixed')
+	stimulus.s{i} = doStaircase('init','fixed','fixedVals',fixedValues,'nTrials',nStaircaseTrials,'dispFig=1','subplotRows',nPedestals,'subplotNum',i);
+      else
+	disp(sprintf('(sigdetect) Unknown staircase type: %s',staircaseType));
+	keyboard
+      end
+    end
+  else
+    % sdt trials, use doStaircase for running sdt
+    stimulus.s = doStaircase('init','sdt','strength',strength,'dispFig=1','p',presentProb);
+  end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -215,8 +235,12 @@ myscreen = endTask(myscreen,task);
 
 if stimulus.staircase
   for i = 1:length(pedestals)
-    t = doStaircase('threshold',stimulus.s{i},'type=weibull','dispFig=1');
+    t(i) = doStaircase('threshold',stimulus.s{i});
   end
+  smartfig('sigdetect','reuse');clf;
+  plot(pedestals,[t.threshold],'ko-','MarkerFaceColor','k','MarkerSize',9);
+  xlabel('pedestal');
+  ylabel('threshold');
 else
   t = doStaircase('threshold',stimulus.s,'dispFig=1');
 end
