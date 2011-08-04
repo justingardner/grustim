@@ -139,7 +139,7 @@ if stimulus.runParams.continueStaircase
   % see if we have a match
   if ~isempty(lastStimfile)
     % match, then grab that staircase
-    if isequal(lastStimfile.stimulus.params,stimulus.params)
+    if isfield(lastStimfile.stimulus,'params') && isequal(lastStimfile.stimulus.params,stimulus.params)
       disp(sprintf('(sigdetect) Continuing staircases from last run'));
       stimulus.s = lastStimfile.stimulus.s;
     else
