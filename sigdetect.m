@@ -193,6 +193,7 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
+% display the data plots
 if stimulus.params.staircase
   for i = 1:length(stimulus.params.pedestals)
     t(i) = doStaircase('threshold',stimulus.s{i});
