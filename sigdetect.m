@@ -199,6 +199,7 @@ if stimulus.params.staircase
   end
   smartfig('sigdetect','reuse');clf;
   plot(stimulus.params.pedestals,[t.threshold],'ko-','MarkerFaceColor','k','MarkerSize',9);
+  yaxis(0,1);
   xlabel('pedestal');
   ylabel('threshold');
 else
