@@ -80,7 +80,7 @@ mglTextDraw(sprintf('Volume number: %i',myscreen.volnum),[5 1.5],1);
 % if we have more than one volume than display average framePeriod
 if length(volTimes) > 1
   framePeriod = diff(volTimes);
-  mglTextDraw(sprintf('Mean frame period: %0.4f',mean(framePeriod)),[5 0],1);
+  mglTextDraw(sprintf('Median frame period: %0.4f',median(framePeriod)),[5 0],1);
   mglTextDraw(sprintf('Min frame period: %0.4f',min(framePeriod)),[5 -1.5],1);
   mglTextDraw(sprintf('Max frame period: %0.4f',max(framePeriod)),[5 -3],1);
   mglTextDraw(sprintf('Last frame period: %0.4f',framePeriod(end)),[5 -4.5],1);
