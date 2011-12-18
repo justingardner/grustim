@@ -45,7 +45,11 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'human_face','building','car','flower','fruit_veg','instrument','scramble','gray'},'imageDir=/Applications/gru/grustim/images/ObjLocImages','dispLoadFig=0','categoryWeight=[4 4 1 1 1 1 4 2]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+% get directory where stimuli live
+objlocDir = which('objloc');
+objlocDir = fileparts(objlocDir);
+imageDir = fullfile(objlocDir,'images/ObjLocImages');
+getArgs(varargin,{'categories',{'human_face','building','car','flower','fruit_veg','instrument','scramble','gray'},'imageDir',imageDir,'dispLoadFig=0','categoryWeight=[4 4 1 1 1 1 4 2]','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';

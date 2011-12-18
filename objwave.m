@@ -39,7 +39,11 @@ widthPix = [];
 heightPix = [];
 widthDeg = [];
 heightDeg = [];
-getArgs(varargin,{'categories',{'human_face','building'},'imageDir=/Applications/gru/grustim/images/ObjLocImages','dispLoadFig=0','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
+% get directory where stimuli live
+objWaveDir = which('objwave');
+objWaveDir = fileparts(objWaveDir);
+imageDir = fullfile(objWaveDir,'images/ObjLocImages');
+getArgs(varargin,{'categories',{'human_face','building'},'imageDir',imageDir,'dispLoadFig=0','keepAspectRatio=0','repeatFreq=0.1','waitForBacktick=0','widthPix=180','heightPix=180','widthDeg=18','heightDeg=18'});
 
 % initalize the screen
 myscreen.background = 'gray';
