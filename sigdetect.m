@@ -116,6 +116,27 @@ if strcmp(stimulus.params.stimulusType ,'dots')
   stimulus.dots.ycenter = 0;
   stimulus.dots.rmax = myscreen.imageHeight;
   stimulus = initDots(stimulus,myscreen);
+elseif strcmp(stimulus.params.stimulusType ,'grating')
+  % grating parameters
+  stimulus.grating.radius = 9;
+  stimulus.grating.n = 4;
+  stimulus.grating.sf = 2;
+  stimulus.grating.tf = 2;
+  stimulus.grating.width = 12;
+  stimulus.grating.height = 12;
+  stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
+  stimulus.grating.sdx = stimulus.grating.width/7;
+  stimulus.grating.sdy = stimulus.grating.width/7;
+  % these are the reserved colors, if you need them later
+  % you can display them by setting your color to the appropriate
+  % index in stimulus.colors.reservedColor e.g. to get the
+  % second color, in this case white, you would do
+  % mglClearScreen(stimulus.colors.reservedColor(2));
+  stimulus.colors.reservedColors = [0 0 0; 1 1 1; 1 1 0; 0 1 1;1 0 0;0 1 0;1 0 1];
+  % init the grating stimulus.
+  stimulus = initGratings(stimulus,myscreen);
+  myscreen.background = stimulus.colors.grayColor;
+  mglClearScreen(stimulus.colors.grayColor);
 else
   stimulus = initFaces(stimulus,myscreen,stimulus.runParams.imageDir,320,240);
 end
@@ -307,6 +328,14 @@ if strcmp(stimulus.params.stimulusType,'dots')
   stimulus.dots = feval(sprintf('setDotsDir%s',stimulus.dots.type),stimulus.dots,2*mod(task.thistrial.thisseg,2)-1,myscreen);
 end
 
+% special stuff for gratings that deals with the gamma table
+if strcmp(stimulus.params.stimulusType,'grating')
+  setGammaTableForMaxContrast(stimulus.strength);
+  % find the color in the reserved color array and get its index for display
+  [matchColor reservedColorIndex] = intersect(stimulus.colors.reservedColors,stimulus.fixColor,'rows');
+  if isempty(matchColor),disp(sprintf('(sigdetect) Missing fixation color in reserved colors'));end
+  stimulus.fixColor = stimulus.colors.reservedColor(reservedColorIndex);
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -315,6 +344,7 @@ function [task myscreen] = updateScreenCallback(task, myscreen)
 global stimulus
 mglClearScreen;
 
+% display the dots
 if strcmp(stimulus.params.stimulusType,'dots')
   if isempty(stimulus.strength) || isnan(stimulus.strength), stimulus.strength = 0;end
   % update the dots
@@ -326,8 +356,22 @@ if strcmp(stimulus.params.stimulusType,'dots')
     mglPoints2(stimulus.dots.x,stimulus.dots.y,stimulus.dots.dotsize,[1 1 1]);
     if stimulus.dots.mask,mglStencilSelect(0);end
   end
+% display the grating stimulus
+elseif strcmp(stimulus.params.stimulusType,'grating')
+  if isempty(stimulus.strength) || isnan(stimulus.strength), stimulus.strength = 0;end
+  if stimulus.display && stimulus.strength > 0
+    % get the contrast index
+    contrastIndex = getContrastIndex(stimulus.strength);
+    
+    % blt texture
+    mglBltTexture(stimulus.tex(contrastIndex),[0 0 stimulus.grating.height]);
+
+    % and mask with the gaussian
+    mglBltTexture(stimulus.mask,[0 0]);
+
+  end
+% display the face images
 else
-  % display the face images
   if stimulus.display
     if stimulus.strength == stimulus.sigStrength
       mglBltTexture(stimulus.sigTex,[0 0 stimulus.imageWidth stimulus.imageHeight]);
@@ -338,9 +382,9 @@ else
 end
 
 % draw fixation cross
-crossSize = 2;
-mglGluDisk(0,0,repmat(crossSize*.6,1,2),myscreen.background,60);
-mglFixationCross(crossSize,4,stimulus.fixColor);
+fixCrossSize = 2;
+mglGluDisk(0,0,repmat(fixCrossSize*.6,1,2),myscreen.background,60);
+mglFixationCross(fixCrossSize,4,stimulus.fixColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    createScreambledFace    %
@@ -392,6 +436,15 @@ if task.thistrial.gotResponse == 0
       disp(sprintf('Trial %i: pedestal %s strength %f interval %i incorrect',task.trialnum,mynum2str(task.thistrial.pedestal),task.thistrial.strength,task.thistrial.whichInterval));
       stimulus.fixColor = [1 0 0];
     end
+    % deal with gamma table for gratings
+    if strcmp(stimulus.params.stimulusType,'grating')
+      if length(stimulus.fixColor) > 1
+	% find the color in the reserved color array and get its index for display
+	[matchColor reservedColorIndex] = intersect(stimulus.colors.reservedColors,stimulus.fixColor,'rows');
+	if isempty(matchColor),disp(sprintf('(sigdetect) Missing fixation color in reserved colors'));end
+	stimulus.fixColor = stimulus.colors.reservedColor(reservedColorIndex);
+      end
+    end
     return
   end
   %classify the respones into 4 SDT categories
@@ -401,7 +454,7 @@ if task.thistrial.gotResponse == 0
       task.thistrial.response = 1;
       % feedback
       if stimulus.runParams.feedback
-	mglPlaySound(stimulus.sounds.correct); 
+	mglPlaySound(stimulus.sounds.correctSound); 
 	stimulus.fixColor = [0 1 0];
       end
       responseType = 'Hit';
@@ -410,7 +463,7 @@ if task.thistrial.gotResponse == 0
       task.thistrial.response = 0;
       % feedback
       if stimulus.runParams.feedback
-	mglPlaySound(stimulus.sounds.incorrect); 
+	mglPlaySound(stimulus.sounds.incorrectSound); 
 	stimulus.fixColor = [1 0 0];
       end
       responseType = 'False Alarm';
@@ -422,7 +475,7 @@ if task.thistrial.gotResponse == 0
       task.thistrial.response = 1;
       % feedback
       if stimulus.runParams.feedback
-	mglPlaySound(stimulus.sounds.correct); 
+	mglPlaySound(stimulus.sounds.correctSound); 
 	stimulus.fixColor = [0 1 0];
       end
       responseType = 'Correct Reject';
@@ -431,7 +484,7 @@ if task.thistrial.gotResponse == 0
       task.thistrial.response = 0;
       % feedback
       if stimulus.runParams.feedback
-	mglPlaySound(stimulus.sounds.incorrect); 
+	mglPlaySound(stimulus.sounds.incorrectSound); 
 	stimulus.fixColor = [1 0 0];
       end
       responseType = 'Miss';
@@ -447,6 +500,16 @@ if task.thistrial.gotResponse == 0
   end
   % turn off feedback after stimulus.feedback number of trials
   stimulus.runParams.feedback = max(stimulus.runParams.feedback-1,0);
+end
+
+% deal with gamma table for gratings
+if strcmp(stimulus.params.stimulusType,'grating')
+  if length(stimulus.fixColor) > 1
+    % find the color in the reserved color array and get its index for display
+    [matchColor reservedColorIndex] = intersect(stimulus.colors.reservedColors,stimulus.fixColor,'rows');
+    if isempty(matchColor),disp(sprintf('(sigdetect) Missing fixation color in reserved colors'));end
+    stimulus.fixColor = stimulus.colors.reservedColor(reservedColorIndex);
+  end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -832,3 +895,149 @@ myscreen.subjectID = subjectID;
 
 % register stimulus name
 myscreen = initStimulus('stimulus',myscreen);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     STIMULUS Gratings
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initGratings(stimulus,myscreen)
+
+% set maximum color index (for 24 bit color we have 8 bits per channel, so 255)
+maxIndex = 255;
+
+% get gamma table
+if ~isfield(myscreen,'gammaTable')
+  stimulus.linearizedGammaTable = mglGetGammaTable;
+  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+  disp(sprintf('(taskTemplateContrast10bit:initGratings) No gamma table found in myscreen. Contrast'));
+  disp(sprintf('         displays like this should be run with a valid calibration made by moncalib'));
+  disp(sprintf('         for this monitor.'));
+  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+end
+stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
+
+disppercent(-inf,'Creating grating textures');
+
+% calculate some colors information
+%  number of reserved colors
+stimulus.colors.nReservedColors = size(stimulus.colors.reservedColors,1);
+
+% number of colors possible for gratings, make sure that we 
+% have an odd number
+stimulus.colors.nGratingColors = maxIndex+1-stimulus.colors.nReservedColors;
+if iseven(stimulus.colors.nGratingColors)
+  stimulus.colors.nGratingColors = stimulus.colors.nGratingColors-1;
+end
+% min, mid and max index of gratings colors (index values are 0 based)
+stimulus.colors.minGratingIndex = maxIndex+1-stimulus.colors.nGratingColors;
+stimulus.colors.midGratingIndex = stimulus.colors.minGratingIndex+floor(stimulus.colors.nGratingColors/2);
+stimulus.colors.maxGratingIndex = maxIndex;
+% number of contrasts we can display (not including 0 contrast)
+stimulus.colors.nDisplayContrasts = floor(stimulus.colors.nGratingColors/2);
+
+% get the color value for gray (i.e. the number between 0 and 1 that corresponds to the midGratingIndex)
+stimulus.colors.grayColor = stimulus.colors.midGratingIndex/maxIndex;
+
+% set the reserved colors - this gives a convenient value between 0 and 1 to use the reserved colors with
+for i = 1:stimulus.colors.nReservedColors
+  stimulus.colors.reservedColor(i) = (i-1)/maxIndex;
+end
+
+% make the window through with the gratings will be displayed
+gaussianWin = mglMakeGaussian(stimulus.grating.width+1,stimulus.grating.height+1,stimulus.grating.sdx,stimulus.grating.sdy);
+if strcmp(stimulus.grating.windowType,'gabor')
+  % a gaussian window
+  win = maxIndex-maxIndex*gaussianWin;
+else
+  % a simple window
+  win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
+end
+mask = ones(size(win,1),size(win,2),4)*stimulus.colors.midGratingIndex;
+mask(:,:,4) = win;
+stimulus.mask = mglCreateTexture(mask);
+
+% make all the 1D gratings. We compute all possible contrast values given the
+% range of indexes available to us. The 1st texture is gray the nth texture is full
+% contrast for the current gamma setting
+for iContrast = 0:stimulus.colors.nDisplayContrasts
+  disppercent(iContrast/stimulus.colors.nDisplayContrasts);
+  if myscreen.userHitEsc,mglClose;keyboard,end
+  % make the grating
+  thisGrating = round(iContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,0)+stimulus.colors.midGratingIndex);
+  % create the texture
+  stimulus.tex(iContrast+1) = mglCreateTexture(thisGrating);
+end
+disppercent(inf);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    getContrastIndex    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+function contrastIndex = getContrastIndex(desiredContrast,verbose)
+
+if nargin < 2,verbose = 0;end
+
+global stimulus;
+if desiredContrast < 0, desiredContrast = 0;end
+
+% now find closest matching contrast we can display with this gamma table
+contrastIndex = min(round(stimulus.colors.nDisplayContrasts*desiredContrast/stimulus.currentMaxContrast),stimulus.colors.nDisplayContrasts);
+
+% display the desired and actual contrast values if verbose is set
+if verbose
+  actualContrast = stimulus.currentMaxContrast*(contrastIndex/stimulus.colors.nDisplayContrasts);
+  disp(sprintf('(getContrastIndex) Desired contrast: %0.4f Actual contrast: %0.4f Difference: %0.4f',desiredContrast,actualContrast,desiredContrast-actualContrast));
+end
+
+% out of range check
+if round(stimulus.colors.nDisplayContrasts*desiredContrast/stimulus.currentMaxContrast)>stimulus.colors.nDisplayContrasts
+ disp(sprintf('(getContrastIndex) Desired contrast (%0.9f) out of range max contrast : %0.9f',desiredContrast,stimulus.currentMaxContrast));
+ keyboard
+end
+
+% 1 based indexes (0th index is gray, nDisplayContrasts+1 is full contrast)
+contrastIndex = contrastIndex+1;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% sets the gamma table so that we can have
+% finest possible control over the stimulus contrast.
+%
+% stimulus.reservedColors should be set to the reserved colors (for cue colors, etc).
+% maxContrast is the maximum contrast you want to be able to display.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function setGammaTableForMaxContrast(maxContrast)
+
+global stimulus;
+% if you just want to show gray, that's ok, but to make the
+% code work properly we act as if you want to display a range of contrasts
+if maxContrast <= 0,maxContrast = 0.01;end
+
+% set the reserved colors
+gammaTable(1:size(stimulus.colors.reservedColors,1),1:size(stimulus.colors.reservedColors,2))=stimulus.colors.reservedColors;
+
+% set the gamma table
+if maxContrast > 0
+  % create the rest of the gamma table
+  cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
+  luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nGratingColors-1)):cmax;
+
+  % now get the linearized range
+  redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
+  greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
+  blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
+  
+  % add these values to the table
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
+else
+  % if we are asked for 0 contrast then simply set all the values to gray
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,1)=interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,0.5,'linear');
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,2)=interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,0.5,'linear');
+  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,3)=interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,0.5,'linear');
+end
+
+% set the gamma table
+mglSetGammaTable(gammaTable);
+
+% remember what the current maximum contrast is that we can display
+stimulus.currentMaxContrast = maxContrast;
+
