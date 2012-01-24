@@ -322,6 +322,11 @@ else
   end
 end
 
+if stimulus.strength > 1
+  disp(sprintf('(sigdetect) Desired signal strength: %f out of range, settting to 1',stimulus.strength));
+  stimulus.strength = 1;
+end
+
 % set speed
 if strcmp(stimulus.params.stimulusType,'dots')
   stimulus.dots = feval(sprintf('setDotsSpeed%s',stimulus.dots.type),stimulus.dots,stimulus.speed,myscreen);
