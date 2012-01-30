@@ -127,6 +127,8 @@ elseif strcmp(stimulus.params.stimulusType ,'grating')
   stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
   stimulus.grating.sdx = stimulus.grating.width/7;
   stimulus.grating.sdy = stimulus.grating.width/7;
+  stimulus.grating.pedestal.type = 'plaid';
+  stimulus.grating.pedestal.contrast = 0.2;
   % these are the reserved colors, if you need them later
   % you can display them by setting your color to the appropriate
   % index in stimulus.colors.reservedColor e.g. to get the
@@ -333,9 +335,36 @@ if strcmp(stimulus.params.stimulusType,'dots')
   stimulus.dots = feval(sprintf('setDotsDir%s',stimulus.dots.type),stimulus.dots,2*mod(task.thistrial.thisseg,2)-1,myscreen);
 end
 
+% create stimulus texture map for grating on plaid.
+
 % special stuff for gratings that deals with the gamma table
 if strcmp(stimulus.params.stimulusType,'grating')
-  setGammaTableForMaxContrast(stimulus.strength);
+  % create stimulus texture map for grating on plaid.
+  if strcmp(stimulus.grating.pedestal.type,'plaid')
+    if stimulus.strength ~= stimulus.grating.pedestal.dispStrength
+      % remove old textures
+      if ~isempty(stimulus.grating.pedestal.dispTex)
+	mglDeleteTexture(stimulus.grating.pedestal.dispTex);
+      end
+      if stimulus.strength+stimulus.grating.pedestal.contrast > 1
+	disp(sprintf('(sigdetect) Stimulus strength of %f not available on top of plaid with contrast: %f. Setting to max available',stimulus.strength,stimulus.grating.pedestal.contrast));
+	stimulus.strength = 1-stimulus.grating.pedestal.contrast;
+      end
+      % get the contrast index
+      setGammaTableForMaxContrast(stimulus.strength+stimulus.grating.pedestal.contrast);
+      stimulusIndex = getContrastIndex(stimulus.strength)-1;
+      plaidIndex = getContrastIndex(stimulus.grating.pedestal.contrast)-1;
+      % create new texture
+      thisStimulus = round((stimulusIndex)*stimulus.grating.pedestal.signal+plaidIndex*stimulus.grating.pedestal.plaid+stimulus.colors.midGratingIndex);
+      % create the texture
+      stimulus.grating.pedestal.dispTex = mglCreateTexture(thisStimulus);
+      % set the currently displayed stregnth
+      stimulus.grating.pedestal.dispStrength = stimulus.strength;
+    end
+  else
+    % for simple gratings, just set max contrast to stimulus strength
+    setGammaTableForMaxContrast(stimulus.strength);
+  end
   % find the color in the reserved color array and get its index for display
   [matchColor reservedColorIndex] = intersect(stimulus.colors.reservedColors,stimulus.fixColor,'rows');
   if isempty(matchColor),disp(sprintf('(sigdetect) Missing fixation color in reserved colors'));end
@@ -363,17 +392,26 @@ if strcmp(stimulus.params.stimulusType,'dots')
   end
 % display the grating stimulus
 elseif strcmp(stimulus.params.stimulusType,'grating')
-  if isempty(stimulus.strength) || isnan(stimulus.strength), stimulus.strength = 0;end
-  if stimulus.display && stimulus.strength > 0
-    % get the contrast index
-    contrastIndex = getContrastIndex(stimulus.strength);
+  if strcmp(stimulus.grating.pedestal.type,'plaid')
+    % grating on plaid
+    if stimulus.display
+      mglBltTexture(stimulus.grating.pedestal.dispTex,[0 0]);
+      % and mask with the gaussian
+      mglBltTexture(stimulus.mask,[0 0]);
+    end
+  else
+    % grating stimuli
+    if isempty(stimulus.strength) || isnan(stimulus.strength), stimulus.strength = 0;end
+    if stimulus.display && stimulus.strength > 0
+      % get the contrast index
+      contrastIndex = getContrastIndex(stimulus.strength);
     
-    % blt texture
-    mglBltTexture(stimulus.tex(contrastIndex),[0 0 stimulus.grating.height]);
+      % blt texture
+      mglBltTexture(stimulus.tex(contrastIndex),[0 0 stimulus.grating.height]);
 
-    % and mask with the gaussian
-    mglBltTexture(stimulus.mask,[0 0]);
-
+      % and mask with the gaussian
+      mglBltTexture(stimulus.mask,[0 0]);
+    end
   end
 % display the face images
 else
@@ -960,6 +998,15 @@ end
 mask = ones(size(win,1),size(win,2),4)*stimulus.colors.midGratingIndex;
 mask(:,:,4) = win;
 stimulus.mask = mglCreateTexture(mask);
+
+if strcmp(stimulus.grating.pedestal.type,'plaid')
+  % make the bitmaps that will be used to create textures
+  stimulus.grating.pedestal.plaid = 0.5*mglMakeGrating(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sf,60,0)+0.5*mglMakeGrating(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sf,120,0);
+  stimulus.grating.pedestal.signal = mglMakeGrating(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sf,90,0);
+  % set the fields for the textures
+  stimulus.grating.pedestal.dispTex = [];
+  stimulus.grating.pedestal.dispStrength = nan;
+end
 
 % make all the 1D gratings. We compute all possible contrast values given the
 % range of indexes available to us. The 1st texture is gray the nth texture is full
