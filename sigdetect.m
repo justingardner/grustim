@@ -128,7 +128,8 @@ elseif strcmp(stimulus.params.stimulusType ,'grating')
   stimulus.grating.sdx = stimulus.grating.width/7;
   stimulus.grating.sdy = stimulus.grating.width/7;
   stimulus.grating.pedestal.type = 'plaid';
-  stimulus.grating.pedestal.contrast = 0.2;
+%  stimulus.grating.pedestal.type = 'none';
+  stimulus.grating.pedestal.contrast = 0.1;
   % these are the reserved colors, if you need them later
   % you can display them by setting your color to the appropriate
   % index in stimulus.colors.reservedColor e.g. to get the
