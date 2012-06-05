@@ -44,7 +44,7 @@
 %  presentProb            change probability of stimulus present for sigdetect trials
 %  staircase              run a staircase instead of a detection experiment
 %  continueStaircase      continues staircases from one run to the other
-%  stimulusType           dots or faces
+%  stimulusType           dots or faces or gratings
 %  staircaseType          quest or fixed
 %  dispParams             display params, sometimes useful to turn off so that subejct's don't view what is going on
 %  blankIntertrial        set to true to have no stimulus in between trials (FIX - does this work for images?)
