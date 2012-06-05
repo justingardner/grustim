@@ -38,16 +38,16 @@ myscreen = initStimulus('stimulus',myscreen);
 % set up two patches, one for the right and left
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % spatial and temporal frequencies
-stimulus.patches.sf = 0.8;
-stimulus.patches.tf = 6;
+stimulus.patches.sf = 1;
+stimulus.patches.tf = 1.5;
 stimulus.patches.flickertf = 0;%6;
 stimulus.patches.flickerMaxContrast = 0.5;
-stimulus.patches.maxContrast = 0.5;
+stimulus.patches.maxContrast = 0.8;
 % how many frames apart each row will be shown for global motion
-stimulus.patches.toffset = 8;%10;%6
+stimulus.patches.toffset = 14;%10;%6
 % number of frames stimulus will be on. i.e. stimulus
 % will have non-zero contrast for this many frames
-stimulus.patches.pdur = 25;%25;
+stimulus.patches.pdur = 1200;
 % width and height of patches in degrees
 stimulus.patches.width = 3;
 stimulus.patches.height = 2;
@@ -62,13 +62,13 @@ stimulus.patches.flickerPhase = 0;
 stimulus.patches.gaussianWidth = stimulus.patches.width/4;
 stimulus.patches.gaussianHeight = stimulus.patches.height/4;
 % number of rows and columns
-stimulus.patches.numrows = 9;
-stimulus.patches.numcols = 4;
+stimulus.patches.numrows = 11;
+stimulus.patches.numcols = 7;
 % spacing between patches in degrees
 stimulus.patches.xspacing = 0.0;
 stimulus.patches.yspacing = 0.0;%0.5;
 % offset of left and right patches from fixation
-stimulus.patches.xoffset = -2;
+stimulus.patches.xoffset = -4;
 stimulus.patches.yoffset = 0;%1.5;
 
 [stimulus myscreen] = initPatches(stimulus,myscreen);
@@ -87,16 +87,16 @@ triallen = 15;
 task{2}{1}.numBlocks = 1;
 task{2}{1}.parameter.dirnum = [1;1];
 task{2}{1}.parameterCode.localdir = -1;
-task{2}{1}.parameterCode.globaldir = inf;
+task{2}{1}.parameterCode.globaldir = 0;
 task{2}{1}.parameterCode.orientation = inf;
 task{2}{1}.random = 0;
-task{2}{1}.seglen = [0.1 11.9];
+task{2}{1}.seglen = [0 11.9];
 task{2}{1}.timeInVols = 0;
 task{2}{1}.waitForBacktick = 1;
 
-task{2}{2}.parameter.dirnum = [1:6;1:6];
-task{2}{2}.parameterCode.localdir =  [-1 -1 -1 1 1 1];
-task{2}{2}.parameterCode.globaldir = [-1 1 inf -1 1 inf];
+task{2}{2}.parameter.dirnum = [1:2;1:2];
+task{2}{2}.parameterCode.localdir =  [-1 1 -1 1];
+task{2}{2}.parameterCode.globaldir = [0 0 0 0];
 task{2}{2}.parameterCode.orientation = ones(1,max(task{2}{2}.parameter.dirnum(:)));
 task{2}{2}.random = 1;
 % set up segments of trials
@@ -107,7 +107,7 @@ task{2}{2}.segmin = [12 5.9];
 task{2}{2}.segmax = [12 5.9];
 task{2}{2}.synchToVol = [0 1];
 task{2}{2}.timeInVols = 0;
-task{2}{2}.waitForBacktick = 0;
+task{2}{2}.waitForBacktick = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks
@@ -261,7 +261,7 @@ for contrastNum = 1:length(stimulus.patches.contrast)
   disppercent(contrastNum/length(stimulus.patches.contrast));
   % get this phase and contrast
   phase = stimulus.patches.phase(contrastNum);
-  contrast = stimulus.patches.maxContrast * stimulus.patches.contrast(contrastNum);
+  contrast = stimulus.patches.maxContrast;% * stimulus.patches.contrast(contrastNum);
   % get orientation
   angle = d2r(stimulus.patches.primaryOrientation);
   % get spatial frequency
@@ -359,6 +359,8 @@ else
   stimulus.patches.contrastSeq{1} = [zeroContrastSequence stimulus.patches.pdur:-1:1];
   stimulus.patches.contrastSeq{2} = [zeroContrastSequence 1:stimulus.patches.pdur];
 end
+stimulus.patches.contrastSeq{1} = [stimulus.patches.pdur:-1:1];
+stimulus.patches.contrastSeq{2} = [1:stimulus.patches.pdur];
 
 % get the last sequence number that is gray
 stimulus.patches.lastZeroContrastSeqNum = length(zeroContrastSequence);
@@ -403,6 +405,8 @@ stimulus.patches.size = size(stimulus.patches.contrastSeqNum);
 stimulus.patches.motiontypeCountdown = -inf;
 stimulus.patches.orientations(1:2,1:stimulus.patches.numcols,1:stimulus.patches.numrows) = stimulus.patches.displayOrientations(1);
 stimulus.patches.desiredOrientations(1:2,1:stimulus.patches.numcols,1:stimulus.patches.numrows) = stimulus.patches.displayOrientations(1);
+
+stimulus.uhmContrastSeqNum = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to set the patch local/global dir
@@ -495,7 +499,7 @@ for side = 1:2
 end
 
 % don't change local motion right away, wait 
-stimulus.patches.motiontypeCountdown = stimulus.patches.pdur;
+stimulus.patches.motiontypeCountdown = 0;%stimulus.patches.pdur;
 
 % offset the contrast sequence nat the very beginning now, when
 % all the patches start off with infinity.
@@ -503,6 +507,9 @@ if all(isinf(stimulus.patches.contrastSeqNum))
   stimulus.patches.contrastSeqNum = stimulus.patches.desiredContrastSeqNum-stimulus.patches.pdur+stimulus.patches.toffset;
   stimulus.patches.desiredContrastSeqNum = stimulus.patches.contrastSeqNum;
 end
+
+stimulus.patches.contrastSeq{1} = [stimulus.patches.pdur:-1:1];
+stimulus.patches.contrastSeq{2} = [1:stimulus.patches.pdur];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -647,20 +654,28 @@ end
 thisContrastSeqNum = stimulus.patches.contrastSeqNum;
 thisContrastSeqNum(thisContrastSeqNum<=0) = 1;
 
+stimulus.uhmContrastSeqNum = stimulus.uhmContrastSeqNum+1;
+stimulus.uhmContrastSeqNum = mod(stimulus.uhmContrastSeqNum,stimulus.patches.contrastSeqLen)+1;
+
 % grab the appropriate stimuli
 for rownum = 1:stimulus.patches.numrows
   for colnum = 1:stimulus.patches.numcols
     % get the correct patch
-    leftPatches(sub2ind(stimulus.patches.rowcolsize,colnum,rownum)) = stimulus.patches.stim{stimulus.patches.contrastSeq{stimulus.patches.thislocaldir(1,colnum,rownum)}(thisContrastSeqNum(1,colnum,rownum)),stimulus.patches.motiontype(1,colnum,rownum)};
-    rightPatches(sub2ind(stimulus.patches.rowcolsize,colnum,rownum)) = stimulus.patches.stim{stimulus.patches.contrastSeq{stimulus.patches.thislocaldir(2,colnum,rownum)}(thisContrastSeqNum(2,colnum,rownum)),stimulus.patches.motiontype(2,colnum,rownum)};
+%    leftPatches(sub2ind(stimulus.patches.rowcolsize,colnum,rownum)) = stimulus.patches.stim{stimulus.patches.contrastSeq{stimulus.patches.thislocaldir(1,colnum,rownum)}(thisContrastSeqNum(1,colnum,rownum)),stimulus.patches.motiontype(1,colnum,rownum)};
+%    rightPatches(sub2ind(stimulus.patches.rowcolsize,colnum,rownum)) = stimulus.patches.stim{stimulus.patches.contrastSeq{stimulus.patches.thislocaldir(2,colnum,rownum)}(thisContrastSeqNum(2,colnum,rownum)),stimulus.patches.motiontype(2,colnum,rownum)};
+    leftPatches(sub2ind(stimulus.patches.rowcolsize,colnum,rownum)) = stimulus.patches.stim{stimulus.patches.contrastSeq{(-stimulus.patches.localdir(1)+1)/2+1}(stimulus.uhmContrastSeqNum),1};
+    rightPatches(sub2ind(stimulus.patches.rowcolsize,colnum,rownum)) = stimulus.patches.stim{stimulus.patches.contrastSeq{(-stimulus.patches.localdir(2)+1)/2+1}(stimulus.uhmContrastSeqNum),1};
   end
 end
 
 % and blit them all together to the screen
 %mglBltTexture(leftPatches,stimulus.patches.leftdest,1,-1);
 %mglBltTexture(rightPatches,stimulus.patches.rightdest,-1,-1);
-mglBltTexture(leftPatches,stimulus.patches.leftdest,1,-1,stimulus.patches.orientations(1,:,:));
-mglBltTexture(rightPatches,stimulus.patches.rightdest,-1,-1,stimulus.patches.orientations(2,:,:));
+mglClearScreen;
+if task.thistrial.thisseg == 1
+  mglBltTexture(leftPatches,stimulus.patches.leftdest,1,-1,stimulus.patches.orientations(1,:,:));
+  mglBltTexture(rightPatches,stimulus.patches.rightdest,-1,-1,stimulus.patches.orientations(2,:,:));
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % end trial

@@ -43,8 +43,8 @@ myscreen = initStimulus('stimulus',myscreen);
 % set up two patches, one for the right and left
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % spatial and temporal frequencies
-stimulus.patches.sf = 0.8;
-stimulus.patches.tf = 6;
+stimulus.patches.sf = 1;
+stimulus.patches.tf = 8;
 stimulus.patches.flickertf = 6;
 % how many frames apart each row will be shown for global motion
 stimulus.patches.toffset = 6;
@@ -122,7 +122,7 @@ task{2}{2}.writetrace{1}.tracerow = [1 2];
 
 % initialze tasks
 for phasenum = 1:length(task{2})
-  task{2}{phasenum} = initTask(task{2}{phasenum},myscreen,@startSegmentCallback,@trialStimulusCallback,@trialResponseCallback,[],@endTrialCallback);
+  [task{2}{phasenum} myscreen] = initTask(task{2}{phasenum},myscreen,@startSegmentCallback,@trialStimulusCallback,@trialResponseCallback,[],@endTrialCallback);
 end
 
 % set which task is active
