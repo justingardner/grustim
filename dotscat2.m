@@ -15,11 +15,14 @@ stimulus = [];
 
 % init screen
 myscreen.subjectID = subjectID;
+myscreen.saveData = 1;
 myscreen = initScreen(myscreen);
 
 % dot categorization task
 directions = [60:30:419];
-task{1}{1}.seglen = [0.5 1 0.6 1 3];
+task{1}{1}.segmin = [1 1 1 1 2];
+task{1}{1}.segmax = [11 1 11 1 2];
+task{1}{1}.synchToVol = [1 0 1 0 0 0];
 task{1}{1}.getResponse = [0 0 0 0 1];
 task{1}{1}.waitForBacktick = 1;
 %task{1}{1}.synchToVol = 1;
@@ -28,7 +31,7 @@ task{1}{1}.parameter.direction2 = [directions;directions];
 task{1}{1}.random = 1;
 task{1}{1}.randVars.calculated.correctIncorrect = nan;
 task{1}{1}.numBlocks = 1
-task{1}{1}.numTrials = 100
+task{1}{1}.numTrials = 2000
 
 % init task
 [task{1}{1} myscreen] = initTask(task{1}{1},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
@@ -113,19 +116,20 @@ if any(task.thistrial.thisseg == [2 4])
   % select the stencil to make the dot patterns round patches
   mglStencilSelect(1);
   
-  if stimulus.categorySide == 1
+  %if stimulus.categorySide == 1
     % draw the left patch
     stimulus.dots{1}.dir = direction(1);
     stimulus.dots{1} = updateDots(stimulus.dots{1},coherence,myscreen);
-  else
+  %else
     % draw the right patch
     stimulus.dots{2}.dir = direction(2);
     stimulus.dots{2} = updateDots(stimulus.dots{2},coherence,myscreen);
-  end
+  %end
   % return to unstenciled drawing
   mglStencilSelect(0);
+  
 end
-
+ 
 % fixation cross
 mglFixationCross(1,2,stimulus.fixColor);
 
@@ -165,6 +169,7 @@ disp(sprintf('(dotscat) %i: %0.2f vs %0.2f (cat:%i vs cat:%i) %s - %s (%i)',task
 
 % keep the correct incorrect in a calculated variable
 task.thistrial.correctIncorrect = correctIncorrect;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus

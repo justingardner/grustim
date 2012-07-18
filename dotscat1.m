@@ -15,11 +15,13 @@ stimulus = [];
 
 % init screen
 myscreen.subjectID = subjectID;
+myscreen.saveData = 1;
 myscreen = initScreen(myscreen);
 
 % dot categorization task
 directions = [150:30:500];
-task{1}{1}.seglen = [0.5 1 0.6 1 3];
+task{1}{1}.segmin = [0.5 1 0.3 1 2];
+task{1}{1}.segmax = [0.8 1 0.6 1 2];
 task{1}{1}.getResponse = [0 0 0 0 1];
 task{1}{1}.waitForBacktick = 1;
 %task{1}{1}.synchToVol = 1;
