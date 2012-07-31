@@ -40,8 +40,8 @@ task{2}{1}.numTrials = 1;
 % compute seglen to reverse the stimulus at and synchToVol based on 
 % volsPerCycle, volumeTR and numDirReversals (the number of times you
 % want the stimulus to reverse direction in th one phase
-volsPerCycle = 16;
-volumeTR = 1.57;
+volsPerCycle = 20;
+volumeTR = 1.2;
 numDirReverse = 10;
 
 % computed parameters
@@ -141,6 +141,7 @@ function stimulus = initDots(stimulus,myscreen)
 stimulus.speed = 4;
 % convert the passed in parameters to real units
 if ~isfield(stimulus,'dots') || ~isfield(stimulus.dots,'rmax'), stimulus.dots.rmax = min(myscreen.imageWidth,myscreen.imageHeight);,end
+stimulus.dots.rmax = floor(stimulus.dots.rmax-8);
 if ~isfield(stimulus.dots,'xcenter'), stimulus.dots.xcenter = 0;,end
 if ~isfield(stimulus.dots,'ycenter'), stimulus.dots.ycenter = 0;,end
 if ~isfield(stimulus.dots,'dotsize'), stimulus.dots.dotsize = 4;,end
