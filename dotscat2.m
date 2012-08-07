@@ -21,23 +21,29 @@ myscreen = initScreen(myscreen);
 % set our task to have two phases
 % category boundary phase
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.seglen = 5;
+task{1}{1}.seglen = 4;
 task{1}{1}.numBlocks = 1;
 
 % dot categorization task
 directions = [60:60:419];
-task{1}{2}.segmin = [1 1 1 1 2];
-task{1}{2}.segmax = [6 1 6 1 2];
-%task{1}{2}.synchToVol = [1 0 1 0 0 ];
+task{1}{2}.segmin = [1 1 6 1 2];
+task{1}{2}.segmax = [11 1 6 1 2];
+task{1}{2}.synchToVol = [1 0 0 0 0 ];
 task{1}{2}.getResponse = [0 0 0 0 1];
 task{1}{2}.waitForBacktick = 1;
-%task{1}{2}.synchToVol = 1;
 task{1}{2}.parameter.direction1 = [directions;directions];
 task{1}{2}.parameter.direction2 = [directions;directions];
 task{1}{2}.random = 1;
 task{1}{2}.randVars.calculated.correctIncorrect = nan;
-task{1}{2}.randVars.calculated.category = nan;
 task{1}{2}.randVars.calculated.matchNonmatch = nan;
+task{1}{2}.randVars.calculated.oddDirection11 = nan;
+task{1}{2}.randVars.calculated.oddDirection12 = nan;
+task{1}{2}.randVars.calculated.oddDirection21 = nan;
+task{1}{2}.randVars.calculated.oddDirection22 = nan;
+task{1}{2}.randVars.calculated.evenDirection11= nan;
+task{1}{2}.randVars.calculated.evenDirection12 = nan;
+task{1}{2}.randVars.calculated.evenDirection21 = nan;
+task{1}{2}.randVars.calculated.evenDirection22 = nan;
 task{1}{2}.numBlocks = 1
 task{1}{2}.numTrials = 2000
 
@@ -59,6 +65,7 @@ stimulus.category2 = directions(directions >= 210);
 
 % which stimulus is the one to do the discrimination on (1 is left, 2 is right)
 stimulus.categorySide = 2;
+stimulus.notCategorySide = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -161,12 +168,14 @@ stimulus.fixColor = [0 0 1];
 % get the directions that were presented
 dir1 = task.thistrial.direction1(stimulus.categorySide);
 dir2 = task.thistrial.direction2(stimulus.categorySide);
+dir3 = task.thistrial.direction1(stimulus.notCategorySide);
+dir4 = task.thistrial.direction2(stimulus.notCategorySide);
 
 % get the "category" for each direction. 
 cat1 = 1+any(dir1 == stimulus.category2);
 cat2 = 1+any(dir2 == stimulus.category2);
 
-% match or nonomatch
+% match or nonmatch
 catMatch = (cat1==cat2);
 if catMatch,catMatchStr = 'match';else,catMatchStr = 'nonmatch';end
 
@@ -187,13 +196,44 @@ disp(sprintf('(dotscat) %i: %0.2f vs %0.2f (cat:%i vs cat:%i) %s - %s (%i)',task
 % keep the correct incorrect in a calculated variable
 task.thistrial.correctIncorrect = correctIncorrect;
 
-% keep category 1 or category 2 as a calculated variable FIX FIX FIX
-task.thistrial.category = cat1;cat2;
+% store matchNonmatch as a calculated variable (0=nonmatch, 1=category1
+% match, 2=category2 match)
+if any(dir1 == stimulus.category2) & any(dir2 == stimulus.category2);
+task.thistrial.matchNonmatch = 2
+end
+if any(dir1==stimulus.category1)& any(dir2==stimulus.category1);
+    task.thistrial.matchNonmatch = 1
+end
+if ~catMatch;
+    task.thistrial.matchNonmatch=0;
+end
 
-% keep match nonmatch as a calculated variable
-task.thistrial.matchNonmatch = catMatch;
 
-% sort trials by odd and even
+% sort trials by odd and even and store odd even as a calculated variable
+% (note: randVars direction label is hardcoded, but linked to categorySide
+% or nonCategorySide. Pay close attention to this if changing side that
+% categorization takes place on)
+if isodd(task.trialnum);
+task.thistrial.oddDirection12 = dir1;
+task.thistrial.oddDirection11 = dir3;
+task.thistrial.oddDirection22 = dir2;
+task.thistrial.oddDirection21 = dir4;
+task.thistrial.evenDirection12 = 0;
+task.thistrial.evenDirection11 = 0;
+task.thistrial.evenDirection22 = 0;
+task.thistrial.evenDirection21 = 0;
+end
+
+if iseven(task.trialnum);
+task.thistrial.evenDirection12 = dir1;
+task.thistrial.evenDirection11 = dir3;
+task.thistrial.evenDirection22 = dir2;
+task.thistrial.evenDirection21 = dir4;
+task.thistrial.oddDirection12 = 0;
+task.thistrial.oddDirection11 = 0;
+task.thistrial.oddDirection22 = 0;
+task.thistrial.oddDirection21 = 0;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus
