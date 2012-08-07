@@ -18,33 +18,44 @@ myscreen.subjectID = subjectID;
 myscreen.saveData = 1;
 myscreen = initScreen(myscreen);
 
-% dot categorization task
-directions = [60:30:419];
-task{1}{1}.segmin = [1 1 1 1 2];
-task{1}{1}.segmax = [11 1 11 1 2];
-task{1}{1}.synchToVol = [1 0 1 0 0 0];
-task{1}{1}.getResponse = [0 0 0 0 1];
+% set our task to have two phases
+% category boundary phase
 task{1}{1}.waitForBacktick = 1;
-%task{1}{1}.synchToVol = 1;
-task{1}{1}.parameter.direction1 = [directions;directions];
-task{1}{1}.parameter.direction2 = [directions;directions];
-task{1}{1}.random = 1;
-task{1}{1}.randVars.calculated.correctIncorrect = nan;
-task{1}{1}.numBlocks = 1
-task{1}{1}.numTrials = 2000
+task{1}{1}.seglen = 5;
+task{1}{1}.numBlocks = 1;
+
+% dot categorization task
+directions = [60:60:419];
+task{1}{2}.segmin = [1 1 1 1 2];
+task{1}{2}.segmax = [6 1 6 1 2];
+%task{1}{2}.synchToVol = [1 0 1 0 0 ];
+task{1}{2}.getResponse = [0 0 0 0 1];
+task{1}{2}.waitForBacktick = 1;
+%task{1}{2}.synchToVol = 1;
+task{1}{2}.parameter.direction1 = [directions;directions];
+task{1}{2}.parameter.direction2 = [directions;directions];
+task{1}{2}.random = 1;
+task{1}{2}.randVars.calculated.correctIncorrect = nan;
+task{1}{2}.randVars.calculated.category = nan;
+task{1}{2}.randVars.calculated.matchNonmatch = nan;
+task{1}{2}.numBlocks = 1
+task{1}{2}.numTrials = 2000
 
 % init task
-[task{1}{1} myscreen] = initTask(task{1}{1},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
-  
+for phaseNum = 1:length(task{1})
+[task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+end
+
 % register stimulus in myscreen
+global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
 % do our initialization which creates dots
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter);
 
 % create the direction categories
-stimulus.category1 = directions(directions < 225);
-stimulus.category2 = directions(directions >= 225);
+stimulus.category1 = directions(directions < 210);
+stimulus.category2 = directions(directions >= 210);
 
 % which stimulus is the one to do the discrimination on (1 is left, 2 is right)
 stimulus.categorySide = 2;
@@ -101,6 +112,11 @@ global stimulus;
 
 % clear the screen
 mglClearScreen;
+    
+% draw category boundary
+if task.thistrial.thisphase == 1
+    mglLines2(stimulus.dots{2}.xcenter+((stimulus.dots{2}.rmax)*(cos(7*(pi)/6))), stimulus.dots{2}.ycenter+ ((stimulus.dots{2}.rmax)*(sin(7*(pi)/6))), stimulus.dots{2}.xcenter+((stimulus.dots{2}.rmax)*(cos((pi)/6))), stimulus.dots{2}.ycenter+((stimulus.dots{2}.rmax)*(sin((pi)/6))), 4, [1 1 1]);
+end
 
 if any(task.thistrial.thisseg == [2 4])
   % use the different directions for each segment
@@ -127,6 +143,7 @@ if any(task.thistrial.thisseg == [2 4])
   %end
   % return to unstenciled drawing
   mglStencilSelect(0);
+  
   
 end
  
@@ -170,6 +187,13 @@ disp(sprintf('(dotscat) %i: %0.2f vs %0.2f (cat:%i vs cat:%i) %s - %s (%i)',task
 % keep the correct incorrect in a calculated variable
 task.thistrial.correctIncorrect = correctIncorrect;
 
+% keep category 1 or category 2 as a calculated variable FIX FIX FIX
+task.thistrial.category = cat1;cat2;
+
+% keep match nonmatch as a calculated variable
+task.thistrial.matchNonmatch = catMatch;
+
+% sort trials by odd and even
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus
