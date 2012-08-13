@@ -20,7 +20,7 @@ myscreen = initScreen(myscreen);
 
 % set our task to have two phases
 % category boundary phase
-task{1}{1}.waitForBacktick = 1;
+task{1}{1}.waitForBacktick = 0;
 task{1}{1}.seglen = 4;
 task{1}{1}.numBlocks = 1;
 
@@ -199,10 +199,10 @@ task.thistrial.correctIncorrect = correctIncorrect;
 % store matchNonmatch as a calculated variable (0=nonmatch, 1=category1
 % match, 2=category2 match)
 if any(dir1 == stimulus.category2) & any(dir2 == stimulus.category2);
-task.thistrial.matchNonmatch = 2
+task.thistrial.matchNonmatch = 2;
 end
 if any(dir1==stimulus.category1)& any(dir2==stimulus.category1);
-    task.thistrial.matchNonmatch = 1
+    task.thistrial.matchNonmatch = 1;
 end
 if ~catMatch;
     task.thistrial.matchNonmatch=0;
