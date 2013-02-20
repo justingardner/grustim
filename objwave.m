@@ -60,7 +60,7 @@ task{1}.getResponse = ones(1,length(task{1}.seglen));
 task{1}.getResponse(1:2) = 0;
 task{1}.synchToVol = zeros(1,length(task{1}.seglen));
 task{1}.synchToVol(end) = waitForBacktick;
-task{1}.numBlocks = 100;
+task{1}.numBlocks = 12;
 task{1}.random = 1;
 
 % initialize the task
@@ -79,7 +79,7 @@ stimulus.heightPix = heightPix;
 stimulus.widthDeg = widthDeg;
 stimulus.heightDeg = heightDeg;
 stimulus.repeatFreq = repeatFreq;
-stimulus = myInitStimulus(stimulus,myscreen,scrambleFactors,categories,imageDir,dispLoadFig,keepAspectRatio);
+stimulus = myInitStimulus(stimulus,myscreen,scrambleFactors,categories,imageDir,dispLoadFig,keepAspectRatio,task{1}.numBlocks);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -184,7 +184,7 @@ myscreen.flushMode = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = myInitStimulus(stimulus,myscreen,scrambleFactors,categories,imageDir,dispFig,keepAspectRatio)
+function stimulus = myInitStimulus(stimulus,myscreen,scrambleFactors,categories,imageDir,dispFig,keepAspectRatio,nBlocks)
 
 if ~isfield(stimulus,'objwave'),stimulus.imagesLoaded = 0;end
 stimulus.objwave = 1;
@@ -242,7 +242,7 @@ for i = 1:stimulus.nCategories
 end
 
 stimulus.scrambleFactors = scrambleFactors;
-stimulus.nCycles = 12;
+stimulus.nCycles = nBlocks;
 
 disppercent(-inf,'(objloc) Crateating mixture images');
 for iCycle = 1:stimulus.nCycles
