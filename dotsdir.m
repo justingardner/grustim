@@ -71,15 +71,16 @@ else
 end
 [task{1} myscreen] = fixStairInitTask(myscreen);
 
-stimLen = 24;
+stimLen = 12;
 
 % first phase, we show randomized orientation
 %Aorientations = 15:60:135;
 orientations = 22.5:22.5:180;
 orientations = 15:60:135;
-task{2}{1}.waitForBacktick = 0;
-task{2}{1}.seglen = 0.1;
-task{2}{1}.synchToVol = 1;
+orientations = 0:90:270;
+task{2}{1}.waitForBacktick = 1;
+task{2}{1}.seglen = [0 11.9];
+task{2}{1}.synchToVol = [0 0];
 task{2}{1}.parameter.orientation = [orientations;orientations];
 task{2}{1}.random = 1;
 task{2}{1}.numTrials = 1;
@@ -96,12 +97,14 @@ if strcmp(stimulus.taskType,'blockLoc')
   task{2}{2}.synchToVol(16) = 1;
   task{2}{2}.parameter.orientation = [orientations;orientations];
   task{2}{2}.random = 1;
+  task{2}{2}.waitForBacktick = 1;
 else
   % second phase actually show orientations
-  task{2}{2}.seglen = stimLen;
-  task{2}{2}.synchToVol = 1;
+  task{2}{2}.seglen = [12 5.9];
+  task{2}{2}.synchToVol = [0 1];
   task{2}{2}.parameter.orientation = [orientations;orientations];
   task{2}{2}.random = 1;
+  task{2}{2}.waitForBacktick = 1;
 end
   
 
@@ -171,6 +174,9 @@ if strcmp(stimulus.taskType,'blockLoc')
   stimulus.onoff = (task.thistrial.thisseg > (length(task.seglen)/2));
 end
 
+if (task.thistrial.thisphase == 2) && (task.thistrial.thisseg == 1)
+  disp(sprintf('Orientations: %s',num2str(task.thistrial.orientation','%i ')));
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -180,6 +186,7 @@ global stimulus;
 
 % clear the screen
 mglClearScreen;
+if task.thistrial.thisseg == 2,return,end
 
 % return if the stimulus is off
 if stimulus.onoff == 0, return,end
@@ -188,25 +195,25 @@ if stimulus.onoff == 0, return,end
 coherence = (task.thistrial.thisphase == 2);
 
 % draw the left grating
-mglStencilSelect(2);
+%mglStencilSelect(0);
 if stimulus.type == 1
   mglBltTexture(stimulus.tex(stimulus.phaseNum),[-stimulus.centerX 0],0,0,task.thistrial.orientation(1));
 else
-  stimulus.dots{1}.dir = task.thistrial.orientation(1)*2;
+  stimulus.dots{1}.dir = task.thistrial.orientation(1);
   stimulus.dots{1} = updateDots(stimulus.dots{1},coherence,myscreen);
 end
 
 % draw the right grating
-mglStencilSelect(1);
+%mglStencilSelect(0);
 if stimulus.type == 1
   mglBltTexture(stimulus.tex(stimulus.phaseNum),[stimulus.centerX 0],0,0,task.thistrial.orientation(2));
 else
-  stimulus.dots{2}.dir = task.thistrial.orientation(2)*2;
+  stimulus.dots{2}.dir = task.thistrial.orientation(2);
   stimulus.dots{2} = updateDots(stimulus.dots{2},coherence,myscreen);
 end
 
 % return to unstenciled drawing
-mglStencilSelect(0);
+%mglStencilSelect(0);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets subject  response
@@ -337,15 +344,12 @@ else
 end
 
 % right stencil
+mglClearScreen;
 mglStencilCreateBegin(1);
 if stimulus.circularAperture
-  mglFillOval(stimulus.centerX,stimulus.centerY,circleSize,[1 1 1]);
   mglGluDisk(stimulus.centerX,stimulus.centerY,circleSize(1)/2,[1 1 1],128);
 else
-  % for the single grating
-  if stimulus.singleAperture
-    mglGluDisk(0,0,myscreen.imageWidth,[1 1 1],128);
-  else
+  if ~stimulus.singleAperture
     mglPolygon(x,y,[1 1 1]);
   end
 end
@@ -359,6 +363,18 @@ if stimulus.circularAperture
 else
   if ~stimulus.singleAperture
     mglPolygon(-x,y,[1 1 1]);
+  end
+end
+mglStencilCreateEnd;
+
+% right stencil
+mglClearScreen;
+mglStencilCreateBegin(3);
+if stimulus.circularAperture
+  mglGluDisk(stimulus.centerX,stimulus.centerY,circleSize(1)/2,[1 1 1],128);
+else
+  if ~stimulus.singleAperture
+    mglPolygon(x,y,[1 1 1]);
   end
 end
 mglStencilCreateEnd;
@@ -435,8 +451,15 @@ function dots = updateDots(dots,coherence,myscreen)
 % update the dots
 dots = feval(sprintf('updateDots%s',dots.type),dots,coherence,myscreen);
 
+% make circular aperture
+x = dots.x;
+y = dots.y;
+good = find(sqrt(x.^2 + y.^2) <= dots.rmax);
+x = x(good);
+y = y(good);
 % draw the dots
-mglPoints2(dots.x+dots.xcenter,dots.y+dots.ycenter,dots.dotsize,[1 1 1]);
+%mglPoints2(dots.x+dots.xcenter,dots.y+dots.ycenter,dots.dotsize,[1 1 1]);
+mglPoints2(x+dots.xcenter,y+dots.ycenter,dots.dotsize,[1 1 1]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step dots for linear

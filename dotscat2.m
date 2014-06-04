@@ -5,7 +5,7 @@
 %       date: 06/20/2012
 %    purpose: direction category experiment 
 %
-function myscreen = dotscat(varargin)
+function myscreen = dotscat2(varargin)
 
 % set input arguments
 getArgs(varargin,{'subjectID=s9999','centerX=10','centerY=0','diameter=16'});

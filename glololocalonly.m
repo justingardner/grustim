@@ -42,7 +42,7 @@ stimulus.patches.sf = 1;
 stimulus.patches.tf = 1.5;
 stimulus.patches.flickertf = 0;%6;
 stimulus.patches.flickerMaxContrast = 0.5;
-stimulus.patches.maxContrast = 0.8;
+stimulus.patches.maxContrast = 0.9;
 % how many frames apart each row will be shown for global motion
 stimulus.patches.toffset = 14;%10;%6
 % number of frames stimulus will be on. i.e. stimulus
@@ -62,13 +62,13 @@ stimulus.patches.flickerPhase = 0;
 stimulus.patches.gaussianWidth = stimulus.patches.width/4;
 stimulus.patches.gaussianHeight = stimulus.patches.height/4;
 % number of rows and columns
-stimulus.patches.numrows = 11;
-stimulus.patches.numcols = 7;
+stimulus.patches.numrows = 15;
+stimulus.patches.numcols = 5;
 % spacing between patches in degrees
 stimulus.patches.xspacing = 0.0;
 stimulus.patches.yspacing = 0.0;%0.5;
 % offset of left and right patches from fixation
-stimulus.patches.xoffset = -4;
+stimulus.patches.xoffset = -3;
 stimulus.patches.yoffset = 0;%1.5;
 
 [stimulus myscreen] = initPatches(stimulus,myscreen);
@@ -88,7 +88,7 @@ task{2}{1}.numBlocks = 1;
 task{2}{1}.parameter.dirnum = [1;1];
 task{2}{1}.parameterCode.localdir = -1;
 task{2}{1}.parameterCode.globaldir = 0;
-task{2}{1}.parameterCode.orientation = inf;
+task{2}{1}.parameterCode.orientation = 1;
 task{2}{1}.random = 0;
 task{2}{1}.seglen = [0 11.9];
 task{2}{1}.timeInVols = 0;

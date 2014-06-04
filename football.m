@@ -14,7 +14,7 @@ function football(varargin)
 
 magnetRun = [];
 mainPath = [];
-getArgs(varargin,{'mainPath=~/proj/grustim/','magnetRun=0'});
+getArgs(varargin,{'mainPath=~/grustim/','magnetRun=0'});
 
 
 %%%%%%%%%%%%%%%%%%%%% Load necessary files %%%%%%%%%%%%%%%%%%%%%
