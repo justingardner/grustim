@@ -7,10 +7,11 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: program to generate stimuli for Contrast-INVariant-ORientation experiment
 %
-function myscreen = cinvor2
+function myscreen = cinvor2(runNum)
+load cinvor2_RandState_s00520140704;
 
 % check arguments
-if ~any(nargin == [0])
+if ~any(nargin == [0 1])
   help cinvor2
   return
 end
@@ -28,7 +29,7 @@ stimulus.eccentricity = 8;
 
 % initalize the screen
 myscreen.background = 'gray';
-myscreen = initScreen(myscreen);
+myscreen = initScreen(myscreen,rs(runNum));
 
 % init stimulus
 stimulus = myInitStimulus(stimulus,myscreen);
@@ -42,7 +43,7 @@ trialDur=7*framePeriod;
 
 task{1}{1}.waitForBacktick = inmagnet;
 % first phase is a single trial that is just run to be discarded
-task{1}{1}.seglen = 4*framePeriod-0.5*inmagnet;  %TSL: shouldn't this be fixed 4 TRs? (numtrial vs. numblock)
+task{1}{1}.seglen = 4*framePeriod-0.5*inmagnet;  
 task{1}{1}.numTrials = 1;
 if inmagnet
     task{1}{1}.synchToVol = 1; 
