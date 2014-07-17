@@ -42,18 +42,19 @@ trialDur=7*framePeriod;
 
 task{1}{1}.waitForBacktick = inmagnet;
 % first phase is a single trial that is just run to be discarded
-task{1}{1}.seglen = 4*framePeriod-0.1*inmagnet;  %TSL: shouldn't this be fixed 4 TRs? (numtrial vs. numblock)
+task{1}{1}.seglen = 4*framePeriod-0.5*inmagnet;  %TSL: shouldn't this be fixed 4 TRs? (numtrial vs. numblock)
 task{1}{1}.numTrials = 1;
 if inmagnet
     task{1}{1}.synchToVol = 1; 
 end
 
-task{1}{2}.seglen = [stimDur trialDur-stimDur-0.1*inmagnet];
+task{1}{2}.seglen = [stimDur trialDur-stimDur-0.5*inmagnet];
 task{1}{2}.parameter.contrast = repmat(stimulus.contrast,2,1);
 task{1}{2}.parameter.orientation = repmat(stimulus.orientation,2,1);
 % task{1}{2}.numTrials=2*length(stimulus.contrast)*length(stimulus.orientation);
 task{1}{2}.numBlocks=3;
 task{1}{2}.random = 1;
+task{1}{2}.fudgeLastVolume = 1;
 if inmagnet
     task{1}{2}.synchToVol =[0 1];
 end
