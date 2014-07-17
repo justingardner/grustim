@@ -18,7 +18,7 @@ end
 myscreen = initScreen;
 
 % get the last stimfile
-stimfile = getLastStimfile(myscreen);
+stimfile = getLastStimfile(myscreen,'stimfileNum=-1');
 
 % task parameters
 task{1}.waitForBacktick = 1;
@@ -33,11 +33,13 @@ task{1}.randVars.calculated.correct = nan;
 task{1}.randVars.calculated.responseSide = nan;
 task{1}.random = 1;
 
-testing = false;
+testing = true;
 if testing
+  task{1}.waitForBacktick = 0;
   task{1}.segmin = [1 3 1];
   task{1}.segmax = [1 3 1];
-  task{1}.parameter.pedestal = [-1 0.5];
+  task{1}.parameter.pedestal = [-1 0.5 0.25 0.125 0];
+%  task{1}.parameter.pedestal = [-1 0.5];
   task{1}.synchToVol = [0 0 0];
 end
 
@@ -201,7 +203,7 @@ pedestal = params.originalTaskParameter.pedestal;
 numPedestal = length(pedestal);
 stimulus.pedestal = pedestal;
 stimulus.numPedestal = numPedestal;
-
+stimfile = [];
 % first time, initialize the staircases,
 if isempty(stimfile)
   for iStaircase = 1:numPedestal
@@ -223,4 +225,5 @@ else
 end
   
   
+
 
