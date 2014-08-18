@@ -6,9 +6,11 @@
 %       date: 09/24/2013
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: program to generate stimuli for Contrast-INVariant-ORientation experiment
+%             the program runs for 328 TRs (4+324), 48 trials (3 repeats of
+%             2 contrasts and 8 orientation, 3x2x8)
 %
-function myscreen = cinvor2(runNum)
-load cinvor2_RandState_s00520140704;
+function myscreen = cinvor2
+% load cinvor2_RandState_s00520140704;
 
 % check arguments
 if ~any(nargin == [0 1])
@@ -16,48 +18,50 @@ if ~any(nargin == [0 1])
   return
 end
 
-% create
-
-% stimulus parameters
+% create stimulus parameters
 global stimulus;
 stimulus.contrast = [0.2 0.8];
 stimulus.orientation = linspace(0,157.5,8); %[0:180/12:179];
 stimulus.sf = 0.7;
 stimulus.phaseFreq = 5;
-stimulus.size = 10; 
+stimulus.size = 10;
 stimulus.eccentricity = 8;
 
 % initalize the screen
 myscreen.background = 'gray';
-myscreen = initScreen(myscreen,rs(runNum));
+% myscreen = initScreen(myscreen,rs(runNum)); %this line is used when re-running the same stim sequence as s00520140704 (need to load that sequence)
+myscreen = initScreen(myscreen);
 
-% init stimulus
+% init stimulus and register with myscreen
 stimulus = myInitStimulus(stimulus,myscreen);
-% and register with myscreen
 myscreen = initStimulus('stimulus',myscreen);
 
 inmagnet = 1;
 framePeriod = 1.28;
 stimDur=4;
-trialDur=7*framePeriod;
+%trialDur=7*framePeriod;
 
 task{1}{1}.waitForBacktick = inmagnet;
 % first phase is a single trial that is just run to be discarded
-task{1}{1}.seglen = 4*framePeriod-0.5*inmagnet;  
+task{1}{1}.seglen = 4*framePeriod-0.5*inmagnet;
 task{1}{1}.numTrials = 1;
 if inmagnet
-    task{1}{1}.synchToVol = 1; 
+  task{1}{1}.synchToVol = 1;
 end
 
-task{1}{2}.seglen = [stimDur trialDur-stimDur-0.5*inmagnet];
+% task{1}{2}.seglen = [stimDur trialDur-stimDur-0.5*inmagnet];
+task{1}{2}.segmin = [stimDur];
+task{1}{2}.segmax = [stimDur];
+task{1}{2}.segdur{2} = [5 6 7 8 9 10]*framePeriod-stimDur-0.5*inmagnet;
+task{1}{2}.segprob{2} = [0.25 0.25 0.2 0.15 0.1 0.05];
+task{1}{2}.seglenPrecompute = 1;
 task{1}{2}.parameter.contrast = repmat(stimulus.contrast,2,1);
 task{1}{2}.parameter.orientation = repmat(stimulus.orientation,2,1);
-% task{1}{2}.numTrials=2*length(stimulus.contrast)*length(stimulus.orientation);
 task{1}{2}.numBlocks=3;
 task{1}{2}.random = 1;
-task{1}{2}.fudgeLastVolume = 1;
 if inmagnet
-    task{1}{2}.synchToVol =[0 1];
+  task{1}{2}.synchToVol =[0 1];
+  task{1}{2}.fudgeLastVolume = 1;
 end
 
 % initialize the main task
@@ -65,7 +69,7 @@ for taskNum = 1:length(task)
   for phaseNum = 1:length(task{taskNum})
     [task{taskNum}{phaseNum} myscreen] = initTask(task{taskNum}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback);
     % remember taskID
-%     stimulus.taskID(taskNum,phaseNum) = task{taskNum}{phaseNum}.taskID; %TSL: what's taskID?
+    %     stimulus.taskID(taskNum,phaseNum) = task{taskNum}{phaseNum}.taskID; %TSL: what's taskID?
   end
 end
 
@@ -112,10 +116,10 @@ global stimulus;
 if task.thistrial.thisphase==2 && task.thistrial.thisseg == 1
 
   % display trial info
-%   disp(sprintf('Trial: %i OriLeft: %0.1f ContrLeft: %0.2f OriRight: %0.1f ContrRight: %0.2f  (%s)',task.trialnum,task.thistrial.orientation(1),task.thistrial.contrast(1),task.thistrial.orientation(2),task.thistrial.contrast(2),num2str(task.thistrial.seglen,'%0.2f ')));
+  %   disp(sprintf('Trial: %i OriLeft: %0.1f ContrLeft: %0.2f OriRight: %0.1f ContrRight: %0.2f  (%s)',task.trialnum,task.thistrial.orientation(1),task.thistrial.contrast(1),task.thistrial.orientation(2),task.thistrial.contrast(2),num2str(task.thistrial.seglen,'%0.2f ')));
   fprintf('Trial: %i OriLeft: %0.1f ContrLeft: %0.2f OriRight: %0.1f ContrRight: %0.2f  (%s)\n',task.trialnum,task.thistrial.orientation(1),task.thistrial.contrast(1),task.thistrial.orientation(2),task.thistrial.contrast(2),num2str(task.thistrial.seglen,'%0.2f '));
   stimulus.phase = (randi(16,1,2)-1)/16*360;  %16 possible discreate phases uniformly spaced between 0 and 360
-%   stimulus.phaseClock = mglGetSecs-rand(1,2)*stimulus.phaseUpdateTime;
+  %   stimulus.phaseClock = mglGetSecs-rand(1,2)*stimulus.phaseUpdateTime;
   stimulus.phaseClockInit = mglGetSecs-rand(1,2)*stimulus.phaseUpdateTime;
   stimulus.phaseClock=stimulus.phaseClockInit;
 end
@@ -127,33 +131,33 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
 if task.thistrial.thisphase==2 && task.thistrial.thisseg == 1 %task.thistrial.stimseg
-    % get x and y for this position
-    x = stimulus.x;
-    y = stimulus.y;
-    
-    % get contrast num
-    %   contrastNum = find(stimulus.contrast == task.thistrial.contrast);
-    [temp, contrastNum] = ismember(task.thistrial.contrast, stimulus.contrast);
-    
-    for i=1:2
-        % and choose a phase
-        if mglGetSecs(stimulus.phaseClock(i)) > stimulus.phaseUpdateTime
-            % reset the phase
-            stimulus.phase(i) = (randi(16)-1)/16*360;
-            % and restart phase clock (reset to actual time remaining till enxt phase change)
-            %     stimulus.phaseClock(task.thistrial.loc) = 2*mglGetSecs-(stimulus.phaseClock(task.thistrial.loc)+stimulus.phaseUpdateTime);
-            stimulus.phaseClock(i) = stimulus.phaseClock(i)+stimulus.phaseUpdateTime;
-        end
-        %   phase = stimulus.phase(task.thistrial.loc);
-        
-        % calculate x/y shift needed for phase shift
-        xPhaseShift = (1/stimulus.sf)*((stimulus.phase(i)-180)/360)*cos(d2r(task.thistrial.orientation));
-        yPhaseShift = (1/stimulus.sf)*((stimulus.phase(i)-180)/360)*sin(d2r(task.thistrial.orientation));
-        
-        mglBltTexture(stimulus.tex1dsin(contrastNum(i)),[x(i)+xPhaseShift(i) y(i)+yPhaseShift(i) stimulus.texsize stimulus.texsize],0,0,task.thistrial.orientation(i));
-        % blt window
-        mglBltTexture(stimulus.tex2dGaussWin,[x(i) y(i) stimulus.masksize stimulus.masksize],0,0,task.thistrial.orientation(i)); %TSL: is it better to blt twice, instead of once?
+  % get x and y for this position
+  x = stimulus.x;
+  y = stimulus.y;
+
+  % get contrast num
+  %   contrastNum = find(stimulus.contrast == task.thistrial.contrast);
+  [temp, contrastNum] = ismember(task.thistrial.contrast, stimulus.contrast);
+
+  for i=1:2
+    % and choose a phase
+    if mglGetSecs(stimulus.phaseClock(i)) > stimulus.phaseUpdateTime
+      % reset the phase
+      stimulus.phase(i) = (randi(16)-1)/16*360;
+      % and restart phase clock (reset to actual time remaining till enxt phase change)
+      %     stimulus.phaseClock(task.thistrial.loc) = 2*mglGetSecs-(stimulus.phaseClock(task.thistrial.loc)+stimulus.phaseUpdateTime);
+      stimulus.phaseClock(i) = stimulus.phaseClock(i)+stimulus.phaseUpdateTime;
     end
+    %   phase = stimulus.phase(task.thistrial.loc);
+
+    % calculate x/y shift needed for phase shift
+    xPhaseShift = (1/stimulus.sf)*((stimulus.phase(i)-180)/360)*cos(d2r(task.thistrial.orientation));
+    yPhaseShift = (1/stimulus.sf)*((stimulus.phase(i)-180)/360)*sin(d2r(task.thistrial.orientation));
+
+    mglBltTexture(stimulus.tex1dsin(contrastNum(i)),[x(i)+xPhaseShift(i) y(i)+yPhaseShift(i) stimulus.texsize stimulus.texsize],0,0,task.thistrial.orientation(i));
+    % blt window
+    mglBltTexture(stimulus.tex2dGaussWin,[x(i) y(i) stimulus.masksize stimulus.masksize],0,0,task.thistrial.orientation(i)); %TSL: is it better to blt twice, instead of once?
+  end
 end
 
 
@@ -208,7 +212,7 @@ yPhaseShift = (1/stimulus.sf)*((phase-180)/360)*sin(d2r(orientation));
 % get matching contrastNum
 contrastNum = find(stimulus.contrast==contrast);
 
-% blt grating texture 
+% blt grating texture
 mglBltTexture(stimulus.tex1dsin(contrastNum),[x+xPhaseShift y+yPhaseShift stimulus.texsize stimulus.texsize],0,0,orientation);
 
 % blt window
@@ -216,7 +220,7 @@ mglBltTexture(stimulus.tex2dGaussWin,[x y stimulus.masksize stimulus.masksize],0
 
 % flush
 mglFlush;
- 
+
 keyboard
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -225,14 +229,14 @@ keyboard
 function endStimulus %TSL: why are you doing this?
 
 global stimulus
-if isfield(stimulus,'tex1dsin') 
+if isfield(stimulus,'tex1dsin')
   for iTex = 1:length(stimulus.tex1dsin)
     mglDeleteTexture(stimulus.tex1dsin(iTex));
   end
   stimulus = rmfield(stimulus,'tex1dsin');
 end
 
-if isfield(stimulus,'tex2dGaussWin') 
+if isfield(stimulus,'tex2dGaussWin')
   for iTex = 1:length(stimulus.tex2dGaussWin)
     mglDeleteTexture(stimulus.tex2dGaussWin(iTex));
   end
