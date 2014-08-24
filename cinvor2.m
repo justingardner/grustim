@@ -55,6 +55,7 @@ task{1}{2}.segmax = [stimDur];
 task{1}{2}.segdur{2} = [5 6 7 8 9 10]*framePeriod-stimDur-0.5*inmagnet;
 task{1}{2}.segprob{2} = [0.25 0.25 0.2 0.15 0.1 0.05];
 task{1}{2}.seglenPrecompute = 1;
+task{1}{2}.seglenPrecomputeSettings.framePeriod=framePeriod; 
 task{1}{2}.parameter.contrast = repmat(stimulus.contrast,2,1);
 task{1}{2}.parameter.orientation = repmat(stimulus.orientation,2,1);
 task{1}{2}.numBlocks=3;
