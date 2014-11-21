@@ -42,6 +42,7 @@ if dispFig,smartfig('loadNormalizedImages','reuse');end
 disppercent(-inf,sprintf('(loadNormalizedImages) Loading images for %s',dirname));
 d.im = zeros(width,height,length(d.dir));
 d.averageMag = 0;
+d.averageDC = 0;
 for i = 1:length(d.dir)
   % get filename
   thisFilename = fullfile(d.dirName,d.dir(i).name);
@@ -59,6 +60,7 @@ for i = 1:length(d.dir)
     % get its half fourier image
     d.halfFourier{d.n} = getHalfFourier(d.im(:,:,d.n));
     d.averageMag = d.averageMag + d.halfFourier{d.n}.mag;
+    d.averageDC = d.averageDC + d.halfFourier{d.n}.dc;
   end
   disppercent(i/length(d.dir));
 end
@@ -67,6 +69,7 @@ d.im = d.im(:,:,1:d.n);
 
 % now get average magnitude
 d.averageMag = d.averageMag/d.n;
+d.averageDC = d.averageDC/d.n;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%
@@ -98,5 +101,5 @@ im = im.*(double(alpha)/255)+grayvalue*(255-double(alpha))/255;
 if ~isempty(width) && ~isempty(height)
   [x y] = meshgrid(0:1/(imdim(2)-1):1,0:1/(imdim(1)-1):1);
   [xi yi] = meshgrid(0:1/(height-1):1,0:1/(width-1):1);
-  im = interp2(x,y,im,xi,yi,'cubic');
+  im = interp2(x,y,im,xi,yi,'bilinear');
 end

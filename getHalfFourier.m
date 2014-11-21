@@ -10,7 +10,7 @@
 function d = getHalfFourier(im)
 
 % check arguments
-if ~any(nargin == [1])
+if ~any(nargin == 1)
   help getHalfFourier
   return
 end
@@ -31,7 +31,7 @@ imfh = imfh(1:d.originalDims(1),1:ceil(d.originalDims(2)/2));
 
 % extract dc form half fourier image
 d.dc = imfh(ceil(d.originalDims(1)/2),end);
-halfFourier = imfh(1:(prod(size(imfh))-ceil(d.originalDims(1)/2)));
+halfFourier = imfh(1:(numel(imfh))-ceil(d.originalDims(1)/2));
 
 d.mag = abs(halfFourier);
 d.phase = angle(halfFourier);
