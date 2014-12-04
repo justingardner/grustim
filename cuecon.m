@@ -1,4 +1,4 @@
-% cuecon
+e% cuecon
 %
 %      usage: myscreen=cuecon(stimulus)
 %         by: justin gardner
