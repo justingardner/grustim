@@ -73,6 +73,10 @@ clear global stimulus;
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 stimulus.dots.type = 'Opticflow';
+% note, movshon noise only available with linear motion - so uncomment both of there lines
+% and set movshonNoise to true to see movshon style noise
+%stimulus.dots.type = 'Linear';
+%stimulus.dots.movshonNoise = true;
 stimulus.dots.mask = 1;
 stimulus = initDots(stimulus,myscreen);
 stimulus.type = type;
@@ -180,7 +184,7 @@ dots.stepsize = speed/myscreen.framesPerSecond;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set the dots direction
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dots = setDotsDirectionLinear(dots,direction,myscreen)
+function dots = setDotsDirLinear(dots,direction,myscreen)
 
 % get the step size
 dots.dir = direction;
@@ -208,8 +212,10 @@ dots.x(~dots.coherent) = dots.x(~dots.coherent)+cos(thisdir)*dots.stepsize;
 dots.y(~dots.coherent) = dots.y(~dots.coherent)+sin(thisdir)*dots.stepsize;
 
 % movshon noise
-%dots.x(~dots.coherent) = rand(1,sum(~dots.coherent))*dots.width;
-%dots.y(~dots.coherent) = rand(1,sum(~dots.coherent))*dots.height;
+%if dots.movshonNoise
+  dots.x(~dots.coherent) = rand(1,sum(~dots.coherent))*dots.width;
+  dots.y(~dots.coherent) = rand(1,sum(~dots.coherent))*dots.height;
+%end
 
 % make sure we haven't gone off the patch
 % do the dots separately for left and right hand side
