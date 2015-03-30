@@ -120,6 +120,7 @@ stimulus.dots.centerOffset = 2;
 
 if stimulus.mtloc
     stimulus.dots.dotsize = 4;
+    stimulus.dots.density = 3;
 end
 
 stimulus.dotsR = stimulus.dots;
@@ -140,7 +141,7 @@ stimulus.pedestals.catch.coherence = [.125 .155 .185 .215 .245];
 stimulus.pedestals.catch.contrast = [.025 .04 .06 .085 .115];
 
 if stimulus.mtloc
-   stimulus.pedestals.coherence = .95;
+   stimulus.pedestals.coherence = .975;
    stimulus.pedestals.contrast = 1;
 end
 
@@ -180,8 +181,8 @@ task{1}{1}.segmin = [.4 .6 .1 1];
 task{1}{1}.segmax = [.8 .6 .4 1];
 
 if stimulus.mtloc
-    task{1}{1}.segmin = [6 12 0 0];
-    task{1}{1}.segmax = [8 12 0 0];
+    task{1}{1}.segmin = [12 12 0 0];
+    task{1}{1}.segmax = [12 12 0 0];
 end
 
 task{1}{1}.synchToVol = [0 0 0 0];
@@ -198,7 +199,7 @@ if stimulus.mtloc
     task{1}{1}.parameter.conPedestal = 1;
     task{1}{1}.parameter.cohPedestal = 1;
     task{1}{1}.parameter.catch = 0;
-    task{1}{1}.numTrials = 15;
+    task{1}{1}.numTrials = 12;
 end
 
 %% Run variables
@@ -238,8 +239,9 @@ end
 
 %% Unattended Mode
 if stimulus.unattended
+    clear fixStimulus
     fixStimulus.diskSize = 0;
-    %fixStimulus.stimColor = [1 1 1];
+    fixStimulus.stimColor = [1 0 0];
     fixStimulus.responseColor = stimulus.colors.white;
     fixStimulus.interColor = stimulus.colors.black;
     fixStimulus.correctColor = stimulus.colors.green;
@@ -478,7 +480,7 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
-if stimulus.mtloc && cputime > stimulus.mt.nextFlip
+if stimulus.mtloc && (mglGetSecs > stimulus.mt.nextFlip)
     stimulus = mtRandDirs(stimulus);
 end
 
@@ -519,13 +521,14 @@ end
 function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
+repick = logical(stimulus.mtloc);
 
 if task.thistrial.side == 1
-    stimulus.dotsL = updateDotsRadial(stimulus.dotsL,task.thistrial.coherence+stimulus.live.cohDelta,myscreen);
-    stimulus.dotsR = updateDotsRadial(stimulus.dotsR,task.thistrial.coherence,myscreen);
+    stimulus.dotsL = updateDotsRadial(stimulus.dotsL,task.thistrial.coherence+stimulus.live.cohDelta,myscreen,repick);
+    stimulus.dotsR = updateDotsRadial(stimulus.dotsR,task.thistrial.coherence,myscreen,repick);
 else
-    stimulus.dotsL = updateDotsRadial(stimulus.dotsL,task.thistrial.coherence,myscreen);
-    stimulus.dotsR = updateDotsRadial(stimulus.dotsR,task.thistrial.coherence+stimulus.live.cohDelta,myscreen);
+    stimulus.dotsL = updateDotsRadial(stimulus.dotsL,task.thistrial.coherence,myscreen,repick);
+    stimulus.dotsR = updateDotsRadial(stimulus.dotsR,task.thistrial.coherence+stimulus.live.cohDelta,myscreen,repick);
 end
 
 if task.thistrial.side == 1
@@ -619,11 +622,10 @@ function stimulus = initStaircase(stimulus)
 
 stimulus.stairCatch = cell(1,2);
 stimulus.staircase = cell(2,length(stimulus.pedestals.contrast));
-% note the staircase positions are flipped to match the tasks (i.e. when
-% coherence, task 1, is running we want the catch staircase to be contrast.
-stimulus.stairCatch{2} = doStaircase('init','fixed',...
-    'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=25');
+
 stimulus.stairCatch{1} = doStaircase('init','fixed',...
+    'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=25');
+stimulus.stairCatch{2} = doStaircase('init','fixed',...
     'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=25');
 for task = 1:2
     stimulus.staircase{task,1} = doStaircase('init','upDown',...
@@ -641,10 +643,9 @@ end
 function dispStaircaseCatch(stimulus)
 
 try
-    taskOpts = {'contrast','coherence'};
+    taskOpts = {'coherence','contrast'};
     drawing = {'--r' '-r'};
-    % note: when the task is coherence, stairCatch{1} holds the CONTRAST
-    % results, so we flip the taskOpts from before.
+    
     figure
     for task = 1:2
         pedSuccess = zeros(size(stimulus.pedestals.catch.(taskOpts{task})));
@@ -794,14 +795,14 @@ dots.coherent = ~dots.incoherent;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step dots for Radial
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dots = updateDotsRadial(dots,coherence,myscreen)
+function dots = updateDotsRadial(dots,coherence,myscreen,repick)
 
 % stuff to compute median speed
 dots.oldx = dots.x;
 dots.oldy = dots.y;
 
 % get the coherent and incoherent dots
-if (dots.coherency ~= coherence)
+if (dots.coherency ~= coherence) || repick
   dots.incoherent = rand(1,dots.n) > coherence;
   dots.incoherentn = sum(dots.incoherent);
   dots.coherent = ~dots.incoherent;
@@ -846,9 +847,8 @@ dots.ydisp = dots.y;
 
 function stimulus = mtRandDirs(stimulus)
 
-stimulus.mt.lastFlip = cputime;
-flipOpts = [.600 .800 .1000];
-stimulus.mt.nextFlip = stimulus.mt.lastFlip + flipOpts(randi(3));
+stimulus.mt.lastFlip = mglGetSecs;
+stimulus.mt.nextFlip = stimulus.mt.lastFlip + 1.5;
 
 dirOpts = [1 0 -1];
 curDir = dirOpts(stimulus.dotsL.dir+2);
