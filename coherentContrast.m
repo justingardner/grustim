@@ -115,8 +115,13 @@ stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 3;
 stimulus.dots.density = 5;
-stimulus.dots.speed = 3;
+stimulus.dots.speed = 3.25;
 stimulus.dots.centerOffset = 2;
+
+if stimulus.mtloc
+    stimulus.dots.dotsize = 4;
+end
+
 stimulus.dotsR = stimulus.dots;
 stimulus.dotsR.mult = 1;
 stimulus.dotsL = stimulus.dots;
@@ -156,9 +161,6 @@ stimulus.text.cTexK = mglText('C');
 mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
 stimulus.text.mTexW = mglText('M');
 stimulus.text.cTexW = mglText('C');
-
-%% MGL Text Parameters
-% mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
 
 %% Setup Task
 
