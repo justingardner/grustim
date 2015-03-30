@@ -21,6 +21,7 @@
 %             coherence, 2 = contrast
 %             projector (0/1) - Masks stimuli using the default projector
 %             mask.
+%             mtloc (0/1) - Runs an mt localizer instead of the actual task
 
 function [myscreen] = coherentContrast(varargin)
 
@@ -34,11 +35,21 @@ unattended = [];
 plots = [];
 overrideTask = [];
 projector = [];
-getArgs(varargin,{'stimFileNum=-1','unattended=0', ...
+mtloc = [];
+getArgs(varargin,{'stimFileNum=-1','unattended=0', 'mtloc=0'...
     'dual=0','plots=1','overrideTask=0','projector=0'});
 stimulus.projector = projector;
-
+stimulus.mtloc = mtloc;
 stimulus.unattended = unattended;
+
+if stimulus.mtloc && ~stimulus.unattended
+    warning('Running mtlocalizer attended... are you sure that''s what you wanted?');
+    keyboard
+end
+
+if stimulus.mtloc
+    stimulus.mt = struct;
+end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 %% Setup Screen
@@ -118,6 +129,11 @@ stimulus.pedestals.initThresh.coherence = .3;
 stimulus.pedestals.contrast = exp(-1.5:(1.25/3):-.25);
 stimulus.pedestals.initThresh.contrast = .1;
 
+if stimulus.mtloc
+   stimulus.pedestals.coherence = .95;
+   stimulus.pedestals.contrast = 1;
+end
+
 stimulus.dotsR = initDotsRadial(stimulus.dotsR,myscreen);
 stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
 
@@ -148,21 +164,35 @@ stimulus.text.cTexW = mglText('C');
 
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
+
 stimulus.seg.ITI = 1; % the ITI is either 20s (first time) or 1s
 stimulus.seg.stim = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
 task{1}{1}.segmin = [.4 .6 .1 1];
 task{1}{1}.segmax = [.8 .6 .4 1];
+
+if stimulus.mtloc
+    task{1}{1}.segmin = [6 12 0 0];
+    task{1}{1}.segmax = [8 12 0 0];
+end
+
 task{1}{1}.synchToVol = [0 0 0 0];
 task{1}{1}.getResponse = [0 0 0 1];
 task{1}{1}.parameter.side = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.dir = [-1 1];
 task{1}{1}.parameter.conPedestal = [1 2 3 4]; % target contrast
 task{1}{1}.parameter.cohPedestal = [1 2 3 4]; % target flow coherence
-task{1}{1}.parameter.catch = [1 0 0 0 0 0 0 0 0 0]; % 10% chance of being a catch trial
+task{1}{1}.parameter.catch = [1 1 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 150;
+
+if stimulus.mtloc
+    task{1}{1}.parameter.conPedestal = 1;
+    task{1}{1}.parameter.cohPedestal = 1;
+    task{1}{1}.parameter.catch = 0;
+    task{1}{1}.numTrials = 15;
+end
 
 %% Run variables
 task{1}{1}.randVars.calculated.task = nan; % Current task (calc per run)
@@ -202,6 +232,11 @@ end
 %% Unattended Mode
 if stimulus.unattended
     fixStimulus.diskSize = 0;
+    %fixStimulus.stimColor = [1 1 1];
+    fixStimulus.responseColor = stimulus.colors.white;
+    fixStimulus.interColor = stimulus.colors.black;
+    fixStimulus.correctColor = stimulus.colors.green;
+    fixStimulus.incorrectColor = stimulus.colors.red;
     [task{2}, myscreen] = fixStairInitTask(myscreen);
 end
 
@@ -235,11 +270,15 @@ end
 %% Get Ready...
 % clear screen
 mglClearScreen(0.5);
-mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
+if ~stimulus.unattended
+    mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
+end
 
 % let the user know
 disp(sprintf('(cohCon) Starting run number: %i',stimulus.counter));
-myscreen.flushMode = 1;
+if ~stimulus.unattended
+    myscreen.flushMode = 1;
+end
 
 %% Main Task Loop
 
@@ -248,8 +287,8 @@ phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % update the task
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
-  % update the fixation task
-    if unattended
+    % update the fixation task
+    if stimulus.unattended
         [task{2}, myscreen] = updateTask(task{2},myscreen,1);
     end
     % flip screen
@@ -282,6 +321,11 @@ myscreen = endTask(myscreen,task);
 function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
+
+if stimulus.mtloc
+    % track the trial start time
+    stimulus = mtRandDirs(stimulus);
+end
 
 stimulus.curTrial = stimulus.curTrial + 1;
 
@@ -404,6 +448,10 @@ end
 
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
+
+if cputime > stimulus.mt.nextFlip
+    stimulus = mtRandDirs(stimulus);
+end
 
 if stimulus.projector
     mglClearScreen(1/255);
@@ -688,6 +736,8 @@ dots.maxX = 10;
 dots.minY = -5;
 dots.maxY = 5;
 
+dots.dir = 1;
+
 % make a some points
 dots.n = 500*dots.density;
 % make sure it's an even number
@@ -760,6 +810,17 @@ dots.y(offscreen) = dots.y(offscreen) + abs(dots.maxY - dots.minY);
 
 dots.xdisp = dots.mult*dots.x;
 dots.ydisp = dots.y;
+
+function stimulus = mtRandDirs(stimulus)
+
+stimulus.mt.lastFlip = cputime;
+flipOpts = [.600 .800 .1000];
+stimulus.mt.nextFlip = stimulus.mt.lastFlip + flipOpts(randi(3));
+
+dirOpts = [1 0 -1];
+curDir = dirOpts(stimulus.dotsL.dir+2);
+stimulus.dotsL.dir = curDir;
+stimulus.dotsR.dir = curDir;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sets the gamma table so that we can have
