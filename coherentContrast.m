@@ -129,10 +129,15 @@ stimulus.dotsL.mult = -1;
 stimulus = rmfield(stimulus,'dots');
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
+
 stimulus.pedestals.coherence = [.05 .25 .45 .65];
-stimulus.pedestals.initThresh.coherence = .3;
 stimulus.pedestals.contrast = exp(-1.5:(1.25/3):-.25);
+
+stimulus.pedestals.initThresh.coherence = .3;
 stimulus.pedestals.initThresh.contrast = .1;
+
+stimulus.pedestals.catch.coherence = [.125 .155 .185 .215 .245];
+stimulus.pedestals.catch.contrast = [.025 .04 .06 .085 .115];
 
 if stimulus.mtloc
    stimulus.pedestals.coherence = .95;
@@ -473,7 +478,7 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
-if cputime > stimulus.mt.nextFlip
+if stimulus.mtloc && cputime > stimulus.mt.nextFlip
     stimulus = mtRandDirs(stimulus);
 end
 
@@ -616,12 +621,10 @@ stimulus.stairCatch = cell(1,2);
 stimulus.staircase = cell(2,length(stimulus.pedestals.contrast));
 % note the staircase positions are flipped to match the tasks (i.e. when
 % coherence, task 1, is running we want the catch staircase to be contrast.
-stimulus.pedestals.catch.coherence = [.125 .155 .185 .215 .245];
 stimulus.stairCatch{2} = doStaircase('init','fixed',...
-    'fixedVals',stimulus.pedestals.catch.coherence);
-stimulus.pedestals.catch.contrast = [.025 .04 .06 .085 .115];
+    'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=25');
 stimulus.stairCatch{1} = doStaircase('init','fixed',...
-    'fixedVals',stimulus.pedestals.catch.contrast);
+    'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=25');
 for task = 1:2
     stimulus.staircase{task,1} = doStaircase('init','upDown',...
         'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task}),...
@@ -711,6 +714,12 @@ end
 %% checkStaircaseStop
 function checkStaircaseStop()
 global stimulus
+for task = 1:2
+    s = stimulus.stairCatch{task};
+    if doStaircase('stop',s)
+        
+    end
+end
 % Check both staircases
 for task = 1:2
     for ped = 1:4
