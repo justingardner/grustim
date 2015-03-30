@@ -37,7 +37,7 @@ overrideTask = [];
 projector = [];
 mtloc = [];
 getArgs(varargin,{'stimFileNum=-1','unattended=0', 'mtloc=0'...
-    'dual=0','plots=1','overrideTask=0','projector=0'});
+    'plots=1','overrideTask=0','projector=0'});
 stimulus.projector = projector;
 stimulus.mtloc = mtloc;
 stimulus.unattended = unattended;
@@ -312,6 +312,28 @@ end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+
+% if this was 'unattended' or 'mtloc' mode, we should copy the file we saved
+% to a different folder.
+dFolder = fullfile('~/data/coherentContrast/',mglGetSID);
+files = dir(dFolder);
+cFile = files(end);
+if stimulus.mtloc 
+    nFolder = fullfile('~/data/coherentContrast/',mglGetSID,'unattended');
+    if ~isdir(nFolder), mkdir(nFolder); end
+    s = movefile(fullfile(dFolder,cFile.name),fullfile(nFolder,cFile.name));
+elseif stimulus.unattended
+    nFolder = fullfile('~/data/coherentContrast/',mglGetSID,'unattended');
+    if ~isdir(nFolder), mkdir(nFolder); end
+    s = movefile(fullfile(dFolder,cFile.name),fullfile(nFolder,cFile.name));
+else
+    s = 1;
+end
+
+if ~s
+    warning('File copy failed for some reason...');
+    keyboard
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
