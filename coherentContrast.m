@@ -141,7 +141,7 @@ stimulus.pedestals.catch.coherence = [.125 .155 .185 .215 .245];
 stimulus.pedestals.catch.contrast = [.025 .04 .06 .085 .115];
 
 if stimulus.mtloc
-   stimulus.pedestals.coherence = .975;
+   stimulus.pedestals.coherence = [0 1];
    stimulus.pedestals.contrast = 1;
 end
 
@@ -181,8 +181,8 @@ task{1}{1}.segmin = [.4 .6 .1 1];
 task{1}{1}.segmax = [.8 .6 .4 1];
 
 if stimulus.mtloc
-    task{1}{1}.segmin = [12 12 0 0];
-    task{1}{1}.segmax = [12 12 0 0];
+    task{1}{1}.segmin = [0 12 0 0];
+    task{1}{1}.segmax = [0 12 0 0];
 end
 
 task{1}{1}.synchToVol = [0 0 0 0];
@@ -197,9 +197,9 @@ task{1}{1}.numTrials = 150;
 
 if stimulus.mtloc
     task{1}{1}.parameter.conPedestal = 1;
-    task{1}{1}.parameter.cohPedestal = 1;
+    task{1}{1}.parameter.cohPedestal = [1 2];
     task{1}{1}.parameter.catch = 0;
-    task{1}{1}.numTrials = 12;
+    task{1}{1}.numTrials = 22;
 end
 
 %% Run variables
@@ -378,6 +378,10 @@ end
 
 % Set the missing thistrial vars
 task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedestal);
+if stimulus.mtloc
+    % fix the coherence so it switches
+    task.thistrial.coherence = stimulus.pedestals.coherence(mod(stimulus.curTrial,2)+1);
+end
 task.thistrial.contrast = stimulus.pedestals.contrast(task.thistrial.conPedestal);
 task.thistrial.trialNum = stimulus.curTrial;
 if ~stimulus.unattended
