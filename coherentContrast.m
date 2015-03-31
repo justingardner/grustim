@@ -279,11 +279,11 @@ end
 setGammaTable_flowMax(1);
 mglWaitSecs(.1);
 mglClearScreen(0.5);
-setGammaTable_flowMax(1);
 mglWaitSecs(.1);
 if ~stimulus.unattended
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
 end
+mglFlush
 
 % let the user know
 disp(sprintf('(cohCon) Starting run number: %i',stimulus.counter));
