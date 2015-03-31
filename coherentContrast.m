@@ -255,8 +255,6 @@ for phaseNum = 1:length(task{1})
     [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
 
-mglClearScreen(0.5);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -277,7 +275,9 @@ end
 % myscreen = eyeCalibDisp(myscreen);
 
 %% Get Ready...
-% clear screen
+% clear screen    
+setGammaTable_flowMax(1);
+mglWaitSecs(.1);
 mglClearScreen(0.5);
 if ~stimulus.unattended
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
