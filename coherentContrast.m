@@ -56,7 +56,7 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 myscreen = initScreen();
 
-if projector, stimulus.stencil = mglProjStencil(); end
+if stimulus.projector, stimulus.stencil = mglProjStencil(); end
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -161,13 +161,13 @@ end
 stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
     
 %% Character textures
-mglTextSet('Helvetica',32,stimulus.colors.black,0,0,0,0,0,0,0);
-stimulus.text.mTexK = mglText('M');
-stimulus.text.cTexK = mglText('C');
 mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
 stimulus.text.mTexW = mglText('M');
 stimulus.text.cTexW = mglText('C');
 
+mglTextSet('Helvetica',32,stimulus.colors.black,0,0,0,0,0,0,0);
+stimulus.text.mTexK = mglText('M');
+stimulus.text.cTexK = mglText('C');
 %% Setup Task
 
 % This is the contrast change detection task
@@ -279,6 +279,8 @@ end
 setGammaTable_flowMax(1);
 mglWaitSecs(.1);
 mglClearScreen(0.5);
+setGammaTable_flowMax(1);
+mglWaitSecs(.1);
 if ~stimulus.unattended
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
 end
