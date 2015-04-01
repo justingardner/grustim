@@ -721,10 +721,12 @@ end
 %% checkStaircaseStop
 function checkStaircaseStop()
 global stimulus
+taskOpts = {'coherence','contrast'};
 for task = 1:2
     s = stimulus.stairCatch{task};
     if doStaircase('stop',s)
-        
+        stimulus.staircatch{task}(end+1) = doStaircase('init','fixed',...
+            'fixedVals',stimulus.pedestals.catch.(taskOpts{task}),'nTrials=25');
     end
 end
 % Check both staircases
