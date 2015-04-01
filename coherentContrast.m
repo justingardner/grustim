@@ -26,6 +26,7 @@
 function [myscreen] = coherentContrast(varargin)
 
 global stimulus
+clear fixStimulus
 global fixStimulus
 %% Initialize Variables
 
@@ -239,9 +240,8 @@ end
 
 %% Unattended Mode
 if stimulus.unattended
-    clear fixStimulus
     fixStimulus.diskSize = 0;
-    fixStimulus.stimColor = [1 0 0];
+    fixStimulus.stimColor = [.9 .9 0];
     fixStimulus.responseColor = stimulus.colors.white;
     fixStimulus.interColor = stimulus.colors.black;
     fixStimulus.correctColor = stimulus.colors.green;
@@ -276,10 +276,9 @@ end
 
 %% Get Ready...
 % clear screen    
+mglWaitSecs(1);
 setGammaTable_flowMax(1);
-mglWaitSecs(.1);
 mglClearScreen(0.5);
-mglWaitSecs(.1);
 if ~stimulus.unattended
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
 end
