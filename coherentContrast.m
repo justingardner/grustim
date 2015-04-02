@@ -154,14 +154,14 @@ stimulus = rmfield(stimulus,'dots');
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
-stimulus.pedestals.coherence = [0 .1 .25 .45];
+stimulus.pedestals.coherence = [.05 .125 .25 .45];
 stimulus.pedestals.contrast = exp(-1.75:(1.25/3):-.5);
 
-stimulus.pedestals.initThresh.coherence = .4;
+stimulus.pedestals.initThresh.coherence = .5;
 stimulus.pedestals.initThresh.contrast = .2;
 
-stimulus.pedestals.catch.coherence = exp([-2 -1.75 -1.5 -1.25 -1]);
-stimulus.pedestals.catch.contrast = exp([-3.5 -3.2 -2.9 -2.6 -2.3]);
+stimulus.pedestals.catch.coherence = exp([-1.9 -1.6 -1.3 -1 -.7]);
+stimulus.pedestals.catch.contrast = exp([-3.3 -3 -2.7 -2.4 -2.1]);
 
 if stimulus.mtloc
    stimulus.pedestals.coherence = [0 1];
