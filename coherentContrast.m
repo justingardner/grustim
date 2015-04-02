@@ -105,6 +105,18 @@ myscreen = initStimulus('stimulus',myscreen);
 
 stimulus.responseKeys = [9 10]; % corresponds to LEFT - RIGHT
 
+% Sigmoid
+x = 0:.015:1;
+
+y = 1 ./ (1 + exp(-8 * (x - 0.5)));
+y = y - min(y);
+y = y ./ sum(y);
+y = y ./ max(y);
+
+y = [zeros(1,101-length(y)) y];
+
+stimulus.sigmoid = y;
+
 %% Colors
 stimulus.colors.rmed = 127.75;
 
@@ -189,8 +201,8 @@ stimulus.seg.stim = 3;
 stimulus.seg.rampDOWN = 4;
 stimulus.seg.ISI = 5;
 stimulus.seg.resp = 6;
-task{1}{1}.segmin = [.3 .45 .5 .45 .1 1];
-task{1}{1}.segmax = [.7 .45 .5 .45 .4 1];
+task{1}{1}.segmin = [.3 .55 .4 .55 .1 1];
+task{1}{1}.segmax = [.7 .55 .4 .55 .4 1];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -538,6 +550,9 @@ if stimulus.unattended
     stimulus.live.dotRampDir = 0;
 end
 
+function value = calcPerc(stimulus,perc)
+  value = stimulus.sigmoid(int8(round(perc,2)*100+1));
+
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -603,7 +618,7 @@ switch stimulus.live.dotRampDir
         perc = 1-((mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg));
 end
 
-perc = perc^2;
+perc = calcPerc(stimulus,perc);
 
 if task.thistrial.side==1
     lCohDel = perc*stimulus.live.cohDelta;
