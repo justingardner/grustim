@@ -347,7 +347,7 @@ end
 
 stimulus.ended = mglGetSecs;
 
-disp('(cohCon) Run ending... Elapsed time: %i',stimulus.ended-stimulus.started);
+disp(sprintf('(cohCon) Run ending... Elapsed time: %3.0f s',stimulus.ended-stimulus.started));
 
 % task ended
 mglClearScreen(0.5);
