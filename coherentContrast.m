@@ -22,6 +22,7 @@
 %             projector (0/1) - Masks stimuli using the default projector
 %             mask.
 %             mtloc (0/1) - Runs an mt localizer instead of the actual task
+%             scan (0/1) - Scanner timing
 
 function [myscreen] = coherentContrast(varargin)
 
@@ -37,14 +38,22 @@ plots = [];
 overrideTask = [];
 projector = [];
 mtloc = [];
+scan = [];
 getArgs(varargin,{'stimFileNum=-1','unattended=0', 'mtloc=0'...
-    'plots=1','overrideTask=0','projector=0'});
+    'plots=1','overrideTask=0','projector=0','scan=0'});
 stimulus.projector = projector;
 stimulus.mtloc = mtloc;
 stimulus.unattended = unattended;
+stimulus.scan = scan;
+stimulus.plots = plots;
 
-if stimulus.mtloc && ~stimulus.unattended
-    warning('Running mtlocalizer attended... are you sure that''s what you wanted?');
+% if (stimulus.projector && ~stimulus.scan) || (stimulus.scan && ~ stimulus.projector)
+%     warning('Running in scan mode or projector mode without the other... are you sure that''s what you wanted?');
+%     keyboard
+% end
+
+if stimulus.mtloc && (~stimulus.unattended || ~stimulus.scan)
+    warning('Running mtlocalizer attended or without scan... are you sure that''s what you wanted?');
     keyboard
 end
 
@@ -114,8 +123,8 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 %% Everything else
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
-stimulus.dots.dotsize = 3;
-stimulus.dots.density = 5;
+stimulus.dots.dotsize = 4;
+stimulus.dots.density = 3;
 stimulus.dots.speed = 3.25;
 stimulus.dots.centerOffset = 2;
 
@@ -175,27 +184,56 @@ stimulus.text.cTexK = mglText('C');
 task{1}{1}.waitForBacktick = 1;
 
 stimulus.seg.ITI = 1; % the ITI is either 20s (first time) or 1s
-stimulus.seg.stim = 2;
-stimulus.seg.ISI = 3;
-stimulus.seg.resp = 4;
-task{1}{1}.segmin = [.4 .6 .1 1];
-task{1}{1}.segmax = [.8 .6 .4 1];
+stimulus.seg.rampUP = 2;
+stimulus.seg.stim = 3;
+stimulus.seg.rampDOWN = 4;
+stimulus.seg.ISI = 5;
+stimulus.seg.resp = 6;
+task{1}{1}.segmin = [.4 .3 .6 .3 .1 1];
+task{1}{1}.segmax = [.8 .3 .6 .3 .4 1];
 
+if stimulus.unattended
+    task{1}{1}.segmin(stimulus.seg.ITI) = 1;
+    task{1}{1}.segmax(stimulus.seg.ITI) = 2;
+    % remove ramps
+    task{1}{1}.segmin(stimulus.seg.rampUP) = 0;
+    task{1}{1}.segmax(stimulus.seg.rampUP) = 0;
+    task{1}{1}.segmin(stimulus.seg.rampDOWN) = 0;
+    task{1}{1}.segmax(stimulus.seg.rampDOWN) = 0;
+    % remove response
+    task{1}{1}.segmin(stimulus.seg.ISI) = 0;
+    task{1}{1}.segmax(stimulus.seg.ISI) = 0;
+    task{1}{1}.segmin(stimulus.seg.resp) = 0;
+    task{1}{1}.segmax(stimulus.seg.resp) = 0;
+end
+if stimulus.scan
+    task{1}{1}.segmin(stimulus.seg.ITI) = 1;
+    task{1}{1}.segmax(stimulus.seg.ITI) = 12;
+end
 if stimulus.mtloc
-    task{1}{1}.segmin = [0 12 0 0];
-    task{1}{1}.segmax = [0 12 0 0];
+    % change stim length
+    task{1}{1}.segmin(stimulus.seg.stim) = 12;
+    task{1}{1}.segmax(stimulus.seg.stim) = 12;
+    task{1}{1}.segmin(stimulus.seg.ITI) = 0;
+    task{1}{1}.segmax(stimulus.seg.ITI) = 0;
 end
 
-task{1}{1}.synchToVol = [0 0 0 0];
-task{1}{1}.getResponse = [0 0 0 1];
+task{1}{1}.synchToVol = [0 0 0 0 0 0];
+task{1}{1}.getResponse = [0 0 0 0 0 1];
 task{1}{1}.parameter.side = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.dir = [-1 1];
 task{1}{1}.parameter.conPedestal = [1 2 3 4]; % target contrast
 task{1}{1}.parameter.cohPedestal = [1 2 3 4]; % target flow coherence
-task{1}{1}.parameter.catch = [1 1 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
+task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 150;
+task{1}{1}.numTrials = 145;
 
+if stimulus.scan
+    task{1}{1}.numTrials = 50;
+end
+if stimulus.unattended
+    task{1}{1}.getResponse = [0 0 0 0 0 0];
+end
 if stimulus.mtloc
     task{1}{1}.parameter.conPedestal = 1;
     task{1}{1}.parameter.cohPedestal = [1 2];
@@ -207,7 +245,9 @@ end
 task{1}{1}.randVars.calculated.task = nan; % Current task (calc per run)
 task{1}{1}.randVars.calculated.deltaPed = nan; % Current task (calc per run)
 task{1}{1}.randVars.calculated.coherence = nan;
+task{1}{1}.randVars.calculated.avgCoherence = nan;
 task{1}{1}.randVars.calculated.contrast = nan;
+task{1}{1}.randVars.calculated.avgContrast = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
 
 %% Tracking
@@ -305,6 +345,10 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     myscreen = tickScreen(myscreen,task);
 end
 
+stimulus.ended = mglGetSecs;
+
+disp('(cohCon) Run ending... Elapsed time: %i',stimulus.ended-stimulus.started);
+
 % task ended
 mglClearScreen(0.5);
 mglTextDraw('Run complete... please wait.',[0 0]);
@@ -312,7 +356,7 @@ mglFlush
 myscreen.flushMode = 1;
 disp('(cohCon) Run ending...');
 
-if plots
+if stimulus.plots
     disp('(cohCon) Displaying plots');
     dispStaircase(stimulus);
     dispStaircaseCatch(stimulus);
@@ -353,6 +397,10 @@ end
 function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
+
+if stimulus.curTrial == 0
+    stimulus.started = mglGetSecs;
+end
 
 if stimulus.mtloc
     % track the trial start time
@@ -406,10 +454,13 @@ elseif task.thistrial.task==2
     if (task.thistrial.contrast + stimulus.live.conDelta) > 1
         stimulus.live.conDelta = 1 - task.thistrial.contrast;
     end
-else
+elseif stimulus.unattended
     % unattended
     stimulus.live.cohDelta = 0;
     stimulus.live.conDelta = 0;
+else
+    warning('Never should get here... debug me');
+    keyboard
 end
 
 if task.thistrial.side==1
@@ -458,10 +509,23 @@ switch task.thistrial.thisseg
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
-    case stimulus.seg.stim
+    case stimulus.seg.rampUP
         stimulus.live.dots = 1;
+        stimulus.live.dotRampDir = 1;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
+        stimulus.live.rampStart = mglGetSecs;
+    case stimulus.seg.stim
+        stimulus.live.dots = 1;
+        stimulus.live.dotRampDir = 0;
+        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.catchFix = 0;
+    case stimulus.seg.rampDOWN
+        stimulus.live.dots = 1;
+        stimulus.live.dotRampDir = -1;
+        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.catchFix = 0;
+        stimulus.live.rampStart = mglGetSecs;
     case stimulus.seg.ISI
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
@@ -471,10 +535,9 @@ switch task.thistrial.thisseg
         stimulus.live.fixColor = stimulus.colors.white;
         stimulus.live.catchFix = 1;
 end
-if task.thistrial.thisseg == stimulus.seg.stim
-    stimulus.live.dots = 1;
-else
-    stimulus.live.dots = 0;
+
+if stimulus.unattended
+    stimulus.live.dotRampDir = 0;
 end
 
 %%
@@ -490,7 +553,7 @@ if stimulus.mtloc && (mglGetSecs > stimulus.mt.nextFlip)
 end
 
 if stimulus.projector
-    mglClearScreen(1/255);
+    mglClearScreen(stimulus.colors.black);
     mglStencilSelect(stimulus.stencil);
     mglFillRect(0,0,[50 50],[.5 .5 .5]);
 else
@@ -526,46 +589,59 @@ end
 function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
-repick = logical(stimulus.mtloc);
+repick = true;
 
-if task.thistrial.side == 1
-    stimulus.dotsL = updateDotsRadial(stimulus.dotsL,task.thistrial.coherence+stimulus.live.cohDelta,myscreen,repick);
-    stimulus.dotsR = updateDotsRadial(stimulus.dotsR,task.thistrial.coherence,myscreen,repick);
-else
-    stimulus.dotsL = updateDotsRadial(stimulus.dotsL,task.thistrial.coherence,myscreen,repick);
-    stimulus.dotsR = updateDotsRadial(stimulus.dotsR,task.thistrial.coherence+stimulus.live.cohDelta,myscreen,repick);
+tCoh = task.thistrial.coherence;
+tCon = task.thistrial.contrast / stimulus.curMaxContrast;
+
+switch stimulus.live.dotRampDir
+    case 0
+        perc = 1;
+    case 1
+        % we are ramping UP
+        perc = (mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg);
+    case -1
+        % we are ramping DOWN        
+        perc = 1-((mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg));
 end
 
-if task.thistrial.side == 1
-    lConDelta = stimulus.live.conDelta;
-    rConDelta = 0;
+perc = perc^3;
+
+if task.thistrial.side==1
+    lCohDel = perc*stimulus.live.cohDelta;
+    rCohDel = 0;
+    lConDel = perc*stimulus.live.conDelta;
+    rConDel = 0;
 else
-    lConDelta = 0;
-    rConDelta = stimulus.live.conDelta;
+    lCohDel = 0;
+    rCohDel = perc*stimulus.live.cohDelta;
+    lConDel = 0;
+    rConDel = perc*stimulus.live.conDelta;
 end
+
+%% Old update code start here
+stimulus.dotsL = updateDotsRadial(stimulus.dotsL,tCoh+lCohDel,myscreen,repick);
+stimulus.dotsR = updateDotsRadial(stimulus.dotsR,tCoh+rCohDel,myscreen,repick);
 
 % Correct values for gamma table adjustments
-correctCon = task.thistrial.contrast / stimulus.curMaxContrast;
-rConDelta = rConDelta / stimulus.curMaxContrast;
-lConDelta = lConDelta / stimulus.curMaxContrast;
-
-% Correct values for size of gamma table
+rConDel = rConDel / stimulus.curMaxContrast;
+lConDel = lConDel / stimulus.curMaxContrast;
 
 % dotsR
 % update +contrast
 
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==1),stimulus.dotsR.ydisp(stimulus.dotsR.con==1),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] - adjustConToTable(correctCon + rConDelta,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] - adjustConToTable(tCon + rConDel,stimulus)/2);
 % update - contrast
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==2),stimulus.dotsR.ydisp(stimulus.dotsR.con==2),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(correctCon + rConDelta,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(tCon + rConDel,stimulus)/2);
 % dotsL
 % update +contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==1),stimulus.dotsL.ydisp(stimulus.dotsL.con==1),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] - adjustConToTable(correctCon + lConDelta,stimulus)/2);
+    stimulus.dotsL.dotsize,[.5 .5 .5] - adjustConToTable(tCon + lConDel,stimulus)/2);
 % update - contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==2),stimulus.dotsL.ydisp(stimulus.dotsL.con==2),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(correctCon + lConDelta,stimulus)/2);
+    stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(tCon + lConDel,stimulus)/2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Adjust contrast to the gamma table %%%%%%%%%%%%%%%
@@ -776,11 +852,20 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dots = initDotsRadial(dots,~)
 
+global stimulus
+
 % maximum depth of points
 dots.minX = 3;
 dots.maxX = 10;
 dots.minY = -5;
 dots.maxY = 5;
+
+if stimulus.mtloc
+    dots.minX = 2.5;
+    dots.maxX = 11;
+    dots.minY = -6;
+    dots.maxY = 6;
+end
 
 dots.dir = 1;
 
