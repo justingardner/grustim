@@ -189,8 +189,8 @@ stimulus.seg.stim = 3;
 stimulus.seg.rampDOWN = 4;
 stimulus.seg.ISI = 5;
 stimulus.seg.resp = 6;
-task{1}{1}.segmin = [.4 .3 .7 .3 .1 1];
-task{1}{1}.segmax = [.8 .3 .7 .3 .4 1];
+task{1}{1}.segmin = [.3 .45 .5 .45 .1 1];
+task{1}{1}.segmax = [.7 .45 .5 .45 .4 1];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -242,12 +242,10 @@ if stimulus.mtloc
 end
 
 %% Run variables
-task{1}{1}.randVars.calculated.task = nan; % Current task (calc per run)
-task{1}{1}.randVars.calculated.deltaPed = nan; % Current task (calc per run)
+task{1}{1}.randVars.calculated.task = nan; % Current task (calc per trial)
+task{1}{1}.randVars.calculated.deltaPed = nan; % Current task (calc per trial)
 task{1}{1}.randVars.calculated.coherence = nan;
-task{1}{1}.randVars.calculated.avgCoherence = nan;
 task{1}{1}.randVars.calculated.contrast = nan;
-task{1}{1}.randVars.calculated.avgContrast = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
 
 %% Tracking
@@ -589,7 +587,7 @@ end
 function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
-repick = true;
+repick = logical(stimulus.mtloc);
 
 tCoh = task.thistrial.coherence;
 tCon = task.thistrial.contrast / stimulus.curMaxContrast;
@@ -913,11 +911,27 @@ dots.oldx = dots.x;
 dots.oldy = dots.y;
 
 % get the coherent and incoherent dots
-if (dots.coherency ~= coherence) || repick
-  dots.incoherent = rand(1,dots.n) > coherence;
-  dots.incoherentn = sum(dots.incoherent);
-  dots.coherent = ~dots.incoherent;
-  dots.coherency = coherence;
+if repick
+    dots.incoherent = rand(1,dots.n) > coherence;
+    dots.incoherentn = sum(dots.incoherent);
+    dots.coherent = ~dots.incoherent;
+    dots.coherency = coherence;
+elseif dots.coherency ~= coherence
+    cohDiff = coherence - dots.coherency;
+    numDots = round(abs(cohDiff) * dots.n); % actual number of dots to flip
+    if numDots > dots.n, numDots = dots.n; end
+    if cohDiff > 0
+        % we need to add more coherent dots
+        flipDots = [zeros(1,numDots) ones(1,sum(dots.incoherent)-numDots)];
+        dots.incoherent(dots.incoherent) = flipDots(randperm(length(flipDots)));
+    else
+        % we need to add more incoherent dots
+        flipDots = [ones(1,numDots) zeros(1,sum(dots.coherent)-numDots)];
+        dots.incoherent(dots.coherent) = flipDots(randperm(length(flipDots)));
+    end
+    dots.incoherentn = sum(dots.incoherent);
+    dots.coherent = ~dots.incoherent;
+    dots.coherency = sum(dots.coherent)/dots.n;
 end
 freq_factor = dots.speed/myscreen.framesPerSecond;
 
