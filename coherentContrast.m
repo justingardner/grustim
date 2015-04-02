@@ -132,14 +132,14 @@ stimulus = rmfield(stimulus,'dots');
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
-stimulus.pedestals.coherence = [.05 .25 .45 .65];
+stimulus.pedestals.coherence = [.05 .15 .3 .5];
 stimulus.pedestals.contrast = exp(-1.5:(1.25/3):-.25);
 
 stimulus.pedestals.initThresh.coherence = .3;
 stimulus.pedestals.initThresh.contrast = .1;
 
-stimulus.pedestals.catch.coherence = [.95 .125 .155 .185 .215 .245];
-stimulus.pedestals.catch.contrast = [.01 .025 .04 .06 .085 .115];
+stimulus.pedestals.catch.coherence = exp([-2.1 -1.9 -1.7 -1.5 -1.3 -1.1]);
+stimulus.pedestals.catch.contrast = exp([-3.5 -3.2 -2.9 -2.6 -2.3]);
 
 if stimulus.mtloc
    stimulus.pedestals.coherence = [0 1];
@@ -272,7 +272,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% myscreen = eyeCalibDisp(myscreen);
+myscreen = eyeCalibDisp(myscreen);
 
 %% Get Ready...
 % clear screen    
@@ -656,16 +656,30 @@ try
     a1 = 1;
     a2 = 0;
     for task = 1:2
-        pedSuccess = zeros(size(stimulus.pedestals.catch.(taskOpts{task})));
-        pedCount = zeros(size(stimulus.pedestals.catch.(taskOpts{task})));
-        for i = 1:length(stimulus.stairCatch{task}.testValues)
-            index = find(stimulus.stairCatch{task}.testValues(i)==stimulus.pedestals.catch.(taskOpts{task}));
-            pedSuccess(index) = pedSuccess(index) + stimulus.stairCatch{task}.response(i);
+        pedSuccess = [];
+        pedCount = [];
+	pedPos = [];
+	testV = [];
+	resp = [];
+	for i = 1:length(stimulus.stairCatch{task})
+	  testV = [testV stimulus.stairCatch{task}(i).testValues];
+	  resp = [resp stimulus.stairCatch{task}(i).response];
+	end
+        for i = 1:length(testV)
+	  index = find(testV(i)==pedPos);
+	  if isempty(index)
+	    pedPos(end+1) = testV(i);
+	    pedSuccess(end+1) = 0;
+	    pedCount(end+1) = 0;
+	    index = length(pedPos);
+	  end
+            pedSuccess(index) = pedSuccess(index) + resp(i);
             pedCount(index) = pedCount(index) + 1;
         end
         success = pedSuccess ./ pedCount;
-        plot(stimulus.pedestals.catch.(taskOpts{task}),success,drawing{task});
-        a = axis;
+	[pedPos is] = sort(pedPos);
+	success = success(is);
+        plot(pedPos,success,drawing{task});
 	a1 = min(a1,min(stimulus.pedestals.catch.(taskOpts{task})));
 	a2 = max(a2,max(stimulus.pedestals.catch.(taskOpts{task})));
         axis([a1 a2 -.05 1.05]);
@@ -729,7 +743,7 @@ taskOpts = {'coherence','contrast'};
 for task = 1:2
     s = stimulus.stairCatch{task};
     if doStaircase('stop',s)
-        stimulus.staircatch{task}(end+1) = doStaircase('init','fixed',...
+        stimulus.stairCatch{task}(end+1) = doStaircase('init','fixed',...
             'fixedVals',stimulus.pedestals.catch.(taskOpts{task}),'nTrials=25');
     end
 end
