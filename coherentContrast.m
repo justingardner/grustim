@@ -144,8 +144,8 @@ stimulus.pedestals.pedOpts = {'coherence','contrast'};
 stimulus.pedestals.coherence = [.05 .15 .3 .5];
 stimulus.pedestals.contrast = exp(-1.5:(1.25/3):-.25);
 
-stimulus.pedestals.initThresh.coherence = .3;
-stimulus.pedestals.initThresh.contrast = .1;
+stimulus.pedestals.initThresh.coherence = .4;
+stimulus.pedestals.initThresh.contrast = .3;
 
 stimulus.pedestals.catch.coherence = exp([-2.1 -1.9 -1.7 -1.5 -1.3 -1.1]);
 stimulus.pedestals.catch.contrast = exp([-3.5 -3.2 -2.9 -2.6 -2.3]);
@@ -189,8 +189,8 @@ stimulus.seg.stim = 3;
 stimulus.seg.rampDOWN = 4;
 stimulus.seg.ISI = 5;
 stimulus.seg.resp = 6;
-task{1}{1}.segmin = [.4 .3 .6 .3 .1 1];
-task{1}{1}.segmax = [.8 .3 .6 .3 .4 1];
+task{1}{1}.segmin = [.4 .3 .7 .3 .1 1];
+task{1}{1}.segmax = [.8 .3 .7 .3 .4 1];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -226,7 +226,7 @@ task{1}{1}.parameter.conPedestal = [1 2 3 4]; % target contrast
 task{1}{1}.parameter.cohPedestal = [1 2 3 4]; % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 145;
+task{1}{1}.numTrials = 140;
 
 if stimulus.scan
     task{1}{1}.numTrials = 50;
@@ -605,7 +605,7 @@ switch stimulus.live.dotRampDir
         perc = 1-((mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg));
 end
 
-perc = perc^3;
+perc = perc^2;
 
 if task.thistrial.side==1
     lCohDel = perc*stimulus.live.cohDelta;
