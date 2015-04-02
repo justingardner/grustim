@@ -116,6 +116,7 @@ y = y ./ max(y);
 y = [zeros(1,101-length(y)) y];
 
 stimulus.sigmoid = y;
+stimulus.sigmoidMu = mean(y);
 
 %% Colors
 stimulus.colors.rmed = 127.75;
@@ -207,11 +208,6 @@ task{1}{1}.segmax = [.7 .55 .4 .55 .4 1];
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
     task{1}{1}.segmax(stimulus.seg.ITI) = 2;
-    % remove ramps
-    task{1}{1}.segmin(stimulus.seg.rampUP) = 0;
-    task{1}{1}.segmax(stimulus.seg.rampUP) = 0;
-    task{1}{1}.segmin(stimulus.seg.rampDOWN) = 0;
-    task{1}{1}.segmax(stimulus.seg.rampDOWN) = 0;
     % remove response
     task{1}{1}.segmin(stimulus.seg.ISI) = 0;
     task{1}{1}.segmax(stimulus.seg.ISI) = 0;
@@ -238,10 +234,10 @@ task{1}{1}.parameter.conPedestal = [1 2 3 4]; % target contrast
 task{1}{1}.parameter.cohPedestal = [1 2 3 4]; % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 140;
+task{1}{1}.numTrials = 120;
 
 if stimulus.scan
-    task{1}{1}.numTrials = 50;
+    task{1}{1}.numTrials = 40;
 end
 if stimulus.unattended
     task{1}{1}.getResponse = [0 0 0 0 0 0];
@@ -259,6 +255,10 @@ task{1}{1}.randVars.calculated.deltaPed = nan; % Current task (calc per trial)
 task{1}{1}.randVars.calculated.coherence = nan;
 task{1}{1}.randVars.calculated.contrast = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
+task{1}{1}.randVars.calculated.avgCohL = nan;
+task{1}{1}.randVars.calculated.avgCohR = nan;
+task{1}{1}.randVars.calculated.avgConL = nan;
+task{1}{1}.randVars.calculated.avgConR = nan;
 
 %% Tracking
 
@@ -364,7 +364,6 @@ mglClearScreen(0.5);
 mglTextDraw('Run complete... please wait.',[0 0]);
 mglFlush
 myscreen.flushMode = 1;
-disp('(cohCon) Run ending...');
 
 if stimulus.plots
     disp('(cohCon) Displaying plots');
@@ -393,7 +392,7 @@ else
 end
 
 if ~s
-    warning('File copy failed for some reason...');
+    disp('File copy failed for some reason...');
     keyboard
 end
 
@@ -410,6 +409,9 @@ global stimulus
 
 if stimulus.curTrial == 0
     stimulus.started = mglGetSecs;
+    if stimulus.scan
+      task.thistrial.seglen(stimulus.seg.ITI) = 7.5;
+    end
 end
 
 if stimulus.mtloc
@@ -473,13 +475,24 @@ else
     keyboard
 end
 
+ramps = task.thistrial.seglen(stimulus.seg.rampUP)*2;
+main = task.thistrial.seglen(stimulus.seg.stim);
+total = ramps+main;
 if task.thistrial.side==1
     % left
+    task.thistrial.avgCohL = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*stimulus.live.cohDelta + main/total*stimulus.live.cohDelta;
+    task.thistrial.avgCohR = task.thistrial.coherence;
+    task.thistrial.avgConL = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*stimulus.live.conDelta + main/total*stimulus.live.conDelta;
+    task.thistrial.avgConR = task.thistrial.contrast;
     disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
         task.thistrial.coherence+stimulus.live.cohDelta,task.thistrial.coherence,...
         task.thistrial.contrast+stimulus.live.conDelta,task.thistrial.contrast));
 else
     % right
+    task.thistrial.avgCohR = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*stimulus.live.cohDelta + main/total*stimulus.live.cohDelta;
+    task.thistrial.avgCohL = task.thistrial.coherence;
+    task.thistrial.avgConR = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*stimulus.live.conDelta + main/total*stimulus.live.conDelta;
+    task.thistrial.avgConL = task.thistrial.contrast;
     disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
         task.thistrial.coherence,task.thistrial.coherence+stimulus.live.cohDelta,...
         task.thistrial.contrast,task.thistrial.contrast+stimulus.live.conDelta));
