@@ -59,7 +59,7 @@
 %             Also, you can set wich displayName to use (see mglEditScreenParams)
 %             mglRetinotopy('displayName=projector');
 %
-function myscreen = mglRetinotopy_proj(varargin)
+function myscreen = gruRetinotopy(varargin)
 
 % evaluate the arguments
 eval(evalargs(varargin,0,0,{'wedges','rings','bars','barAngle','elementAngle','direction','dutyCycle','stepsPerCycle','stimulusPeriod','numCycles','doEyeCalib','initialHalfCycle','volumesPerCycle','displayName','easyFixTask','dispText','barWidth','barSweepExtent','elementSize','barStepsMatchElementSize','synchToVolEachCycle','blanks','fixedRandom','yOffset','xOffset','imageWidth','imageHeight','projector'}));
