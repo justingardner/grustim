@@ -3,6 +3,7 @@
 % This script runs the coherentContrast experiment
 % This revision is for March 2015, data collection for Dan's FYP project.
 
+% Don't modify:
 proj = 'projector=0';
 
 %% Retinotopy + MTLoc
@@ -33,13 +34,13 @@ gruRetinotopy('displayName=fMRIproj32','bars=1','fixedRandom=1','stimulusPeriod=
 % The 32ch coil should be installed.
 
 % mtLoc
-coherentContrast('unattended=1','plots=0','mtloc=1',proj);
+coherentContrast('unattended=1','plots=0','mtloc=1','scan=1',proj);
 
 % unattended
-coherentContrast('unattended=1','plots=0',proj);
-coherentContrast('unattended=1','plots=0',proj);
-coherentContrast('unattended=1','plots=0',proj);
-coherentContrast('unattended=1','plots=0',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
 
 % After running the unattended task collect an in-plane anatomical OR the
 % canonical anatomical (time dependent);
@@ -49,7 +50,7 @@ coherentContrast('unattended=1','plots=0',proj);
 % The 32ch coil should be installed.
 
 % exp script
-coherentContrast(proj);
+coherentContrast('plots=0','scan=1',proj);
 
 % After running the experiment collect an in-plane anatomical OR the
 % canonical anatomical (time dependent);

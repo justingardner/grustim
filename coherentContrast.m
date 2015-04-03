@@ -160,8 +160,8 @@ stimulus.pedestals.contrast = exp(-1.75:(1.25/3):-.5);
 stimulus.pedestals.initThresh.coherence = .5;
 stimulus.pedestals.initThresh.contrast = .2;
 
-stimulus.pedestals.catch.coherence = exp([-1.9 -1.6 -1.3 -1 -.7]);
-stimulus.pedestals.catch.contrast = exp([-3.3 -3 -2.7 -2.4 -2.1]);
+stimulus.pedestals.catch.coherence = exp([-1.9 -1.55 -1.2 -.85]);
+stimulus.pedestals.catch.contrast = exp([-3 -2.7 -2.4 -2.1]);
 
 if stimulus.mtloc
    stimulus.pedestals.coherence = [0 1];
@@ -773,7 +773,7 @@ try
         pedPos = [];
         testV = [];
         resp = [];
-        for ped = 1:5
+        for ped = 1:4
             for i = 1:length(stimulus.stairCatch{task,ped})
                 testV = [testV stimulus.stairCatch{task,ped}(i).testValues];
                 resp = [resp stimulus.stairCatch{task,ped}(i).response];
