@@ -3,6 +3,7 @@
 % This script runs the coherentContrast experiment
 % This revision is for March 2015, data collection for Dan's FYP project.
 
+% Don't modify:
 proj = 'projector=0';
 
 %% Retinotopy + MTLoc
@@ -11,33 +12,35 @@ proj = 'projector=0';
 % collected an in-plane anatomy.
 
 % Retinotopy RINGS 1:
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','rings=1','direction=-1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','rings=1','direction=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','rings=1','direction=-1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','rings=1','direction=1');
 
 % Retinotopy WEDGES 2:
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=-1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=-1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=-1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=-1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=1');
 
 % Retinotopy BARS 3:
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
 
+
+gruRetinotopy('displayName=fMRIproj32','bars=1','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0');
 %% Unattended Task
 
 % The 32ch coil should be installed.
 
 % mtLoc
-coherentContrast('unattended=1','plots=0','mtloc=1',proj);
+coherentContrast('unattended=1','plots=0','mtloc=1','scan=1',proj);
 
 % unattended
-coherentContrast('unattended=1','plots=0',proj);
-coherentContrast('unattended=1','plots=0',proj);
-coherentContrast('unattended=1','plots=0',proj);
-coherentContrast('unattended=1','plots=0',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
+coherentContrast('unattended=1','plots=0','scan=1',proj);
 
 % After running the unattended task collect an in-plane anatomical OR the
 % canonical anatomical (time dependent);
@@ -47,7 +50,7 @@ coherentContrast('unattended=1','plots=0',proj);
 % The 32ch coil should be installed.
 
 % exp script
-coherentContrast(proj);
+coherentContrast('plots=0','scan=1',proj);
 
 % After running the experiment collect an in-plane anatomical OR the
 % canonical anatomical (time dependent);

@@ -160,8 +160,8 @@ stimulus.pedestals.contrast = exp(-1.75:(1.25/3):-.5);
 stimulus.pedestals.initThresh.coherence = .5;
 stimulus.pedestals.initThresh.contrast = .2;
 
-stimulus.pedestals.catch.coherence = [.05 .1 .175 .275 .4 .5];
-stimulus.pedestals.catch.contrast = exp([-3.3 -3 -2.7 -2.4 -2.1 -1.8]);
+stimulus.pedestals.catch.coherence = exp([-1.9 -1.55 -1.2 -.85]);
+stimulus.pedestals.catch.contrast = exp([-3 -2.7 -2.4 -2.1]);
 
 if stimulus.mtloc
    stimulus.pedestals.coherence = [0 1];
@@ -202,8 +202,8 @@ stimulus.seg.stim = 3;
 stimulus.seg.rampDOWN = 4;
 stimulus.seg.ISI = 5;
 stimulus.seg.resp = 6;
-task{1}{1}.segmin = [.3 .55 .4 .55 .1 1];
-task{1}{1}.segmax = [.7 .55 .4 .55 .4 1];
+task{1}{1}.segmin = [.3 .5 .4 .5 .1 1];
+task{1}{1}.segmax = [.7 .5 .4 .5 .4 1];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -216,7 +216,7 @@ if stimulus.unattended
 end
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
-    task{1}{1}.segmax(stimulus.seg.ITI) = 12;
+    task{1}{1}.segmax(stimulus.seg.ITI) = 11;
 end
 if stimulus.mtloc
     % change stim length
@@ -237,7 +237,7 @@ task{1}{1}.random = 1;
 task{1}{1}.numTrials = 120;
 
 if stimulus.scan
-    task{1}{1}.numTrials = 40;
+    task{1}{1}.numTrials = inf;
 end
 if stimulus.unattended
     task{1}{1}.getResponse = [0 0 0 0 0 0];
@@ -564,8 +564,9 @@ if stimulus.unattended
 end
 
 function value = calcPerc(stimulus,perc)
-  value = stimulus.sigmoid(int8(round(perc,2)*100+1));
-
+  value = stimulus.sigmoid(int8(round(perc*100)+1));
+  
+  
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -700,8 +701,8 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         else
             stimulus.live.fixColor = stimulus.colors.black; % we never show information about catch trials
             stimulus.live.catchFix = 0;
-            stimulus.stairCatch{task.thistrial.task} = ...
-                doStaircase('update',stimulus.stairCatch{task.thistrial.task},task.thistrial.correct);
+            stimulus.stairCatch{task.thistrial.task,curPedValue(task)} = ...
+                doStaircase('update',stimulus.stairCatch{task.thistrial.task,curPedValue(task)},task.thistrial.correct);
         end
     else
         disp(sprintf('(cohCon) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
@@ -716,7 +717,7 @@ end
 
 function [deltaPed, stimulus] = getDeltaPed(task,stimulus,taskNum)
 if task.thistrial.catch
-    [deltaPed, stimulus.stairCatch{taskNum}] = doStaircase('testValue',stimulus.stairCatch{taskNum});
+    [deltaPed, stimulus.stairCatch{taskNum,curPedValue(task)}] = doStaircase('testValue',stimulus.stairCatch{taskNum,curPedValue(task)});
 else
     [deltaPed, stimulus.staircase{taskNum,curPedValue(task)}] = doStaircase('testValue',stimulus.staircase{taskNum,curPedValue(task)});
 end
@@ -727,13 +728,22 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 
-stimulus.stairCatch = cell(1,2);
+stimulus.stairCatch = cell(2,length(stimulus.pedestals.catch.coherence));
 stimulus.staircase = cell(2,length(stimulus.pedestals.contrast));
 
-stimulus.stairCatch{1} = doStaircase('init','fixed',...
+% Catch staircases
+stimulus.stairCatch{1,1} = doStaircase('init','fixed',...
     'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=25');
-stimulus.stairCatch{2} = doStaircase('init','fixed',...
+stimulus.stairCatch{2,1} = doStaircase('init','fixed',...
     'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=25');
+for i = 2:length(stimulus.pedestals.catch.coherence)
+    stimulus.stairCatch{1,i} = stimulus.stairCatch{1,1};
+end
+for i = 2:length(stimulus.pedestals.catch.contrast)
+    stimulus.stairCatch{2,i} = stimulus.stairCatch{2,1};
+end
+
+% Main staircases
 for task = 1:2
     stimulus.staircase{task,1} = doStaircase('init','upDown',...
         'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task}),...
@@ -760,30 +770,32 @@ try
     for task = 1:2
         pedSuccess = [];
         pedCount = [];
-	pedPos = [];
-	testV = [];
-	resp = [];
-	for i = 1:length(stimulus.stairCatch{task})
-	  testV = [testV stimulus.stairCatch{task}(i).testValues];
-	  resp = [resp stimulus.stairCatch{task}(i).response];
-	end
+        pedPos = [];
+        testV = [];
+        resp = [];
+        for ped = 1:4
+            for i = 1:length(stimulus.stairCatch{task,ped})
+                testV = [testV stimulus.stairCatch{task,ped}(i).testValues];
+                resp = [resp stimulus.stairCatch{task,ped}(i).response];
+            end
+        end
         for i = 1:length(testV)
-	  index = find(testV(i)==pedPos);
-	  if isempty(index)
-	    pedPos(end+1) = testV(i);
-	    pedSuccess(end+1) = 0;
-	    pedCount(end+1) = 0;
-	    index = length(pedPos);
-	  end
+            index = find(testV(i)==pedPos);
+            if isempty(index)
+                pedPos(end+1) = testV(i);
+                pedSuccess(end+1) = 0;
+                pedCount(end+1) = 0;
+                index = length(pedPos);
+            end
             pedSuccess(index) = pedSuccess(index) + resp(i);
             pedCount(index) = pedCount(index) + 1;
         end
         success = pedSuccess ./ pedCount;
-	[pedPos is] = sort(pedPos);
-	success = success(is);
+        [pedPos is] = sort(pedPos);
+        success = success(is);
         plot(pedPos,success,drawing{task});
-	a1 = min(a1,min(stimulus.pedestals.catch.(taskOpts{task})));
-	a2 = max(a2,max(stimulus.pedestals.catch.(taskOpts{task})));
+        a1 = min(a1,min(stimulus.pedestals.catch.(taskOpts{task})));
+        a2 = max(a2,max(stimulus.pedestals.catch.(taskOpts{task})));
         axis([a1 a2 -.05 1.05]);
     end
     legend(taskOpts);
@@ -843,10 +855,12 @@ function checkStaircaseStop()
 global stimulus
 taskOpts = {'coherence','contrast'};
 for task = 1:2
-    s = stimulus.stairCatch{task};
-    if doStaircase('stop',s)
-        stimulus.stairCatch{task}(end+1) = doStaircase('init','fixed',...
-            'fixedVals',stimulus.pedestals.catch.(taskOpts{task}),'nTrials=25');
+    for ped = 1:length(stimulus.pedestals.catch.(taskOpts{task}))
+        s = stimulus.stairCatch{task,ped};
+        if doStaircase('stop',s)
+            stimulus.stairCatch{task,ped}(end+1) = doStaircase('init','fixed',...
+                'fixedVals',stimulus.pedestals.catch.(taskOpts{task}),'nTrials=25');
+        end
     end
 end
 % Check both staircases
