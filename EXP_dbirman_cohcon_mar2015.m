@@ -11,21 +11,23 @@ proj = 'projector=0';
 % collected an in-plane anatomy.
 
 % Retinotopy RINGS 1:
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','rings=1','direction=-1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','rings=1','direction=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','rings=1','direction=-1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','rings=1','direction=1');
 
 % Retinotopy WEDGES 2:
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=-1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=-1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','wedges=1','direction=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=-1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=-1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','wedges=1','direction=1');
 
 % Retinotopy BARS 3:
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
-mglRetinotopy('displayName=fMRI_proj','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
+mglRetinotopy('displayName=fMRIproj32','doEyeCalib=0','bars=1');
 
+
+gruRetinotopy('displayName=fMRIproj32','bars=1','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0');
 %% Unattended Task
 
 % The 32ch coil should be installed.
