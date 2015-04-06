@@ -756,9 +756,9 @@ for i = 2:length(stimulus.pedestals.coherence)
     stimulus.staircase{1,i} = stimulus.staircase{1,1};
     stimulus.staircase{2,i} = stimulus.staircase{2,1};
 end
-
+%%
 function dispStaircaseCatch(stimulus)
-
+%%
 try
     taskOpts = {'coherence','contrast'};
     drawing = {'--r' '-r'};
