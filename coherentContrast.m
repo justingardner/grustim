@@ -103,7 +103,7 @@ end
 
 myscreen = initStimulus('stimulus',myscreen);
 
-stimulus.responseKeys = [9 10]; % corresponds to LEFT - RIGHT
+stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
 
 % Sigmoid
 x = 0:.015:1;
@@ -156,6 +156,11 @@ stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
 stimulus.pedestals.coherence = [.05 .125 .25 .45];
 stimulus.pedestals.contrast = exp(-1.75:(1.25/3):-.5);
+
+if stimulus.unattended
+stimulus.pedestals.coherence = [.05 .125 .25 .45 .9];
+stimulus.pedestals.contrast = [exp(-1.75:(1.25/3):-.5) .9];
+end
 
 stimulus.pedestals.initThresh.coherence = .5;
 stimulus.pedestals.initThresh.contrast = .2;
@@ -241,6 +246,8 @@ if stimulus.scan
 end
 if stimulus.unattended
     task{1}{1}.getResponse = [0 0 0 0 0 0];
+task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
+task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
 if stimulus.mtloc
     task{1}{1}.parameter.conPedestal = 1;
@@ -336,9 +343,9 @@ mglFlush
 
 % let the user know
 disp(sprintf('(cohCon) Starting run number: %i',stimulus.counter));
-if ~stimulus.unattended
+% if stimulus.unattended
     myscreen.flushMode = 1;
-end
+% end
 
 %% Main Task Loop
 
