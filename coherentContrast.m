@@ -516,8 +516,15 @@ end
 stimulus.dotsL.dir = task.thistrial.dir;
 stimulus.dotsR.dir = task.thistrial.dir;
 
-function ped = curPedValue(task)
-if task.thistrial.task==1
+function ped = curPedValue(task,iscatch)
+switcher = [2 1];
+if iscatch
+    usetask = switcher(task.thistrial.task);
+else
+    usetask = task.thistrial.task;
+end
+    
+if usetask==1
     ped = task.thistrial.cohPedestal;
 else
     ped = task.thistrial.conPedestal;
@@ -703,13 +710,13 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
         disp(sprintf('(cohCon) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
         if ~task.thistrial.catch
-            stimulus.staircase{task.thistrial.task,curPedValue(task)} = ...
-                doStaircase('update',stimulus.staircase{task.thistrial.task,curPedValue(task)},task.thistrial.correct);
+            stimulus.staircase{task.thistrial.task,curPedValue(task,false)} = ...
+                doStaircase('update',stimulus.staircase{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
         else
             stimulus.live.fixColor = stimulus.colors.black; % we never show information about catch trials
             stimulus.live.catchFix = 0;
-            stimulus.stairCatch{task.thistrial.task,curPedValue(task)} = ...
-                doStaircase('update',stimulus.stairCatch{task.thistrial.task,curPedValue(task)},task.thistrial.correct);
+            stimulus.stairCatch{task.thistrial.task,curPedValue(task,true)} = ...
+                doStaircase('update',stimulus.stairCatch{task.thistrial.task,curPedValue(task,true)},task.thistrial.correct);
         end
     else
         disp(sprintf('(cohCon) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
@@ -724,9 +731,9 @@ end
 
 function [deltaPed, stimulus] = getDeltaPed(task,stimulus,taskNum)
 if task.thistrial.catch
-    [deltaPed, stimulus.stairCatch{taskNum,curPedValue(task)}] = doStaircase('testValue',stimulus.stairCatch{taskNum,curPedValue(task)});
+    [deltaPed, stimulus.stairCatch{taskNum,curPedValue(task,true)}] = doStaircase('testValue',stimulus.stairCatch{taskNum,curPedValue(task,true)});
 else
-    [deltaPed, stimulus.staircase{taskNum,curPedValue(task)}] = doStaircase('testValue',stimulus.staircase{taskNum,curPedValue(task)});
+    [deltaPed, stimulus.staircase{taskNum,curPedValue(task,false)}] = doStaircase('testValue',stimulus.staircase{taskNum,curPedValue(task,false)});
 end
 
 
@@ -766,49 +773,6 @@ end
 %%
 function dispStaircaseCatch(stimulus)
 %%
-try
-    taskOpts = {'coherence','contrast'};
-    drawing = {'--r' '-r'};
-    
-    figure
-    hold on
-    a1 = 1;
-    a2 = 0;
-    for task = 1:2
-        pedSuccess = [];
-        pedCount = [];
-        pedPos = [];
-        testV = [];
-        resp = [];
-        for ped = 1:4
-            for i = 1:length(stimulus.stairCatch{task,ped})
-                testV = [testV stimulus.stairCatch{task,ped}(i).testValues];
-                resp = [resp stimulus.stairCatch{task,ped}(i).response];
-            end
-        end
-        for i = 1:length(testV)
-            index = find(testV(i)==pedPos);
-            if isempty(index)
-                pedPos(end+1) = testV(i);
-                pedSuccess(end+1) = 0;
-                pedCount(end+1) = 0;
-                index = length(pedPos);
-            end
-            pedSuccess(index) = pedSuccess(index) + resp(i);
-            pedCount(index) = pedCount(index) + 1;
-        end
-        success = pedSuccess ./ pedCount;
-        [pedPos is] = sort(pedPos);
-        success = success(is);
-        plot(pedPos,success,drawing{task});
-        a1 = min(a1,min(stimulus.pedestals.catch.(taskOpts{task})));
-        a2 = max(a2,max(stimulus.pedestals.catch.(taskOpts{task})));
-        axis([a1 a2 -.05 1.05]);
-    end
-    legend(taskOpts);
-catch
-    disp('(cohCon) Catch figures did not display correctly...');
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispStaircase    %
@@ -816,41 +780,83 @@ end
 function dispStaircase(stimulus)
 
 try
-    taskOpts = {'coherence','contrast'};
+    taskOpts = {'catch - coherence','catch - contrast','coherence','contrast'};
+    drawing = {'--r' '--b' '-r' '-b'};
+    
+    figure
+    hold on
+
+    
+%     for task = 1:2
+%         pedSuccess = [];
+%         pedCount = [];
+%         pedPos = [];
+%         testV = [];
+%         resp = [];
+%         for ped = 1:4
+%             for i = 1:length(stimulus.stairCatch{task,ped})
+%                 testV = [testV stimulus.stairCatch{task,ped}(i).testValues];
+%                 resp = [resp stimulus.stairCatch{task,ped}(i).response];
+%             end
+%         end
+%         for i = 1:length(testV)
+%             index = find(testV(i)==pedPos);
+%             if isempty(index)
+%                 pedPos(end+1) = testV(i);
+%                 pedSuccess(end+1) = 0;
+%                 pedCount(end+1) = 0;
+%                 index = length(pedPos);
+%             end
+%             pedSuccess(index) = pedSuccess(index) + resp(i);
+%             pedCount(index) = pedCount(index) + 1;
+%         end
+%         success = pedSuccess ./ pedCount;
+%         [pedPos is] = sort(pedPos);
+%         success = success(is);
+%         plot(pedPos,success,drawing{task});
+%     end
+    
     
     plotting = zeros(2,4);
+    catchPlot = zeros(2,4);
     
-    drawing = {'-r' '-g' '-b' '-y'
-                '--r' '--g' '--b' '--y'};
+%     drawing = {'-r' '-g' '-b' '-y'
+%                 '--r' '--g' '--b' '--y'};
     for task = 1:2
-        figure % this is the 'staircase' figure
-        title(sprintf('%s, Staircase plot (R->G->B->Y high)',taskOpts{task}));
-        hold on
+%         figure % this is the 'staircase' figure
+%         title(sprintf('%s, Staircase plot (R->G->B->Y high)',taskOpts{task}));
+%         hold on
         for ped = 1:4
+%             try
+%                 testV = [];
+%                 for i = 1:length(stimulus.staircase{task,ped})
+%                     testV = [testV stimulus.staircase{task,ped}(i).testValues];
+%                 end
+%                 testC = [];
+%                 
+% %                 plot(testV,drawing{task,ped});
+%             catch
+%             end
             try
-                testV = [];
-                for i = 1:length(stimulus.staircase{task,ped})
-                    testV = [testV stimulus.staircase{task,ped}(i).testValues];
-                end
-                plot(testV,drawing{task,ped});
-            catch
-            end
-            try
-                out = doStaircase('threshold',stimulus.staircase{task,ped},'type','weibull'); % noise, 1 cue, lowest
+                out = doStaircase('threshold',stimulus.staircase{task,ped},'type','weibull'); % noise
                 plotting(task,ped) = out.threshold;
             catch
                 plotting(task,ped) = -1;
             end
+            try
+                outC = doStaircase('threshold',stimulus.stairCatch{task,ped},'type','weibull');
+                catchPlot(task,ped) = outC.threshold;
+            catch
+                catchPlot(task,ped) = -1;
+            end
         end
     end
-    hold off
-    figure
-    hold on
-    title(sprintf('%s, R->G->B High',taskOpts{task}));
-    plot(stimulus.pedestals.(taskOpts{task})(1:4),plotting(1,:),'-r');
-    plot(stimulus.pedestals.(taskOpts{task})(1:4),plotting(2,:),'--r');
+    plot(stimulus.pedestals.(taskOpts{3})(1:4),catchPlot(1,:),drawing{1});
+    plot(stimulus.pedestals.(taskOpts{4})(1:4),catchPlot(2,:),drawing{2});
+    plot(stimulus.pedestals.(taskOpts{3})(1:4),plotting(1,:),drawing{3});
+    plot(stimulus.pedestals.(taskOpts{4})(1:4),plotting(2,:),drawing{4});
     legend(taskOpts);
-    axis([stimulus.pedestals.(taskOpts{task})(1) stimulus.pedestals.(taskOpts{task})(4) 0 .5]);
+    axis([0 .7 -.05 1.05]);
     hold off
 
 catch
@@ -903,7 +909,12 @@ for task = 1:2
                     vals{stepPos} = val / 3;
                 case 'O'
             end
-            stimulus.staircase{task,ped}(end+1) = doStaircase('init',s,'initialThreshold',vals{threshPos},'initialStepsize',vals{stepPos});
+            if ~length(args) == 8
+                disp('Args incorrect length...');
+                keyboard
+            end
+%             stimulus.staircase{task,ped}(end+1) = doStaircase('init',s,'initialThreshold',vals{threshPos},'initialStepsize',vals{stepPos});
+            stimulus.staircase{task,ped}(end+1) = doStaircase('init','upDown',args{1},vals{1},args{2},vals{2},args{3},vals{3},args{4},vals{4},args{5},vals{5},args{6},vals{6},args{7},vals{7},args{8},vals{8});
         end
     end
 end
