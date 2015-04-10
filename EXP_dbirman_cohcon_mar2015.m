@@ -9,22 +9,32 @@
 % The 16ch head coil should be installed and you should have already
 % collected an in-plane anatomy.
 
-% Retinotopy WEDGES 1:
-mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=-1');
-mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=1');
-
-% Retinotopy RINGS:
-mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','rings=1','direction=-1');
-mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','rings=1','direction=1');
-
-% Retinotopy WEDGES 2:
-mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=-1');
-mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=1');
-
-% Retinotopy BARS x4:
-mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','bars=1');
+% % Retinotopy WEDGES 1:
+% mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=-1');
+% mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=1');
+% 
+% % Retinotopy RINGS:
+% mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','rings=1','direction=-1');
+% mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','rings=1','direction=1');
+% 
+% % Retinotopy WEDGES 2:
+% mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=-1');
+% mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','wedges=1','direction=1');
+% 
+% % Retinotopy BARS x4:
+% mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','stepsPerCycle',17,'blanks=3','doEyeCalib=0','bars=1');
 
 %% Unattended Task
+
+% The 32ch coil should be installed.
+
+% unattended x4-6
+% cohcon('unattended=1','plots=0','scan=1');
+
+% After running the unattended task collect an in-plane anatomical OR the
+% canonical anatomical;
+
+%% MT Localizer
 
 % The 32ch coil should be installed.
 
@@ -32,18 +42,12 @@ mglRetinotopy('displayName=fMRIproj32','fixedRandom=1','stimulusPeriod=24','step
 mtloc('0%',1.4);
 mtloc('0%',.75);
 
-% unattended x4-6
-coherentContrast('unattended=1','plots=0','scan=1');
-
-% After running the unattended task collect an in-plane anatomical OR the
-% canonical anatomical;
-
 %% Full Experiment
 
 % The 32ch coil should be installed.
 
 % exp script
-coherentContrast('plots=0','scan=1');
+cohcon('plots=0','scan=1');
 
 % After running the experiment collect an in-plane anatomical OR the
 % canonical anatomical;
