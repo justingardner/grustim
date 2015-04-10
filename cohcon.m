@@ -21,10 +21,9 @@
 %             coherence, 2 = contrast
 %             projector (0/1) - Masks stimuli using the default projector
 %             mask.
-%             mtloc (0/1) - Runs an mt localizer instead of the actual task
 %             scan (0/1) - Scanner timing
 
-function [myscreen] = coherentContrast(varargin)
+function [myscreen] = cohcon(varargin)
 
 global stimulus
 clear fixStimulus
@@ -37,12 +36,10 @@ unattended = [];
 plots = [];
 overrideTask = [];
 projector = [];
-mtloc = [];
 scan = [];
-getArgs(varargin,{'stimFileNum=-1','unattended=0', 'mtloc=0'...
+getArgs(varargin,{'stimFileNum=-1','unattended=0', ...
     'plots=1','overrideTask=0','projector=0','scan=0'});
 stimulus.projector = projector;
-stimulus.mtloc = mtloc;
 stimulus.unattended = unattended;
 stimulus.scan = scan;
 stimulus.plots = plots;
@@ -51,15 +48,6 @@ stimulus.plots = plots;
 %     warning('Running in scan mode or projector mode without the other... are you sure that''s what you wanted?');
 %     keyboard
 % end
-
-if stimulus.mtloc && (~stimulus.unattended || ~stimulus.scan)
-    warning('Running mtlocalizer attended or without scan... are you sure that''s what you wanted?');
-    keyboard
-end
-
-if stimulus.mtloc
-    stimulus.mt = struct;
-end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 %% Setup Screen
@@ -141,11 +129,6 @@ stimulus.dots.density = 3;
 stimulus.dots.speed = 3.25;
 stimulus.dots.centerOffset = 2;
 
-if stimulus.mtloc
-    stimulus.dots.dotsize = 4;
-    stimulus.dots.density = 3;
-end
-
 stimulus.dotsR = stimulus.dots;
 stimulus.dotsR.mult = 1;
 stimulus.dotsL = stimulus.dots;
@@ -167,11 +150,6 @@ stimulus.pedestals.initThresh.contrast = .2;
 
 stimulus.pedestals.catch.coherence = exp([-1.9 -1.55 -1.2 -.85]);
 stimulus.pedestals.catch.contrast = exp([-3 -2.7 -2.4 -2.1]);
-
-if stimulus.mtloc
-   stimulus.pedestals.coherence = [0 1];
-   stimulus.pedestals.contrast = 1;
-end
 
 stimulus.dotsR = initDotsRadial(stimulus.dotsR,myscreen);
 stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
@@ -223,15 +201,11 @@ if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
     task{1}{1}.segmax(stimulus.seg.ITI) = 11;
 end
-if stimulus.mtloc
-    % change stim length
-    task{1}{1}.segmin(stimulus.seg.stim) = 12;
-    task{1}{1}.segmax(stimulus.seg.stim) = 12;
-    task{1}{1}.segmin(stimulus.seg.ITI) = 0;
-    task{1}{1}.segmax(stimulus.seg.ITI) = 0;
-end
 
 task{1}{1}.synchToVol = [0 0 0 0 0 0];
+if stimulus.scan
+    task{1}{1}.synchToVol = [1 0 0 0 0 0];
+end
 task{1}{1}.getResponse = [0 0 0 0 0 1];
 task{1}{1}.parameter.side = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.dir = [-1 1];
@@ -246,14 +220,8 @@ if stimulus.scan
 end
 if stimulus.unattended
     task{1}{1}.getResponse = [0 0 0 0 0 0];
-task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
-task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
-end
-if stimulus.mtloc
-    task{1}{1}.parameter.conPedestal = 1;
-    task{1}{1}.parameter.cohPedestal = [1 2];
-    task{1}{1}.parameter.catch = 0;
-    task{1}{1}.numTrials = 22;
+    task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
+    task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
 
 %% Run variables
@@ -386,11 +354,7 @@ myscreen = endTask(myscreen,task);
 dFolder = fullfile('~/data/coherentContrast/',mglGetSID);
 files = dir(dFolder);
 cFile = files(end);
-if stimulus.mtloc 
-    nFolder = fullfile('~/data/coherentContrast/',mglGetSID,'unattended');
-    if ~isdir(nFolder), mkdir(nFolder); end
-    s = movefile(fullfile(dFolder,cFile.name),fullfile(nFolder,cFile.name));
-elseif stimulus.unattended
+if stimulus.unattended
     nFolder = fullfile('~/data/coherentContrast/',mglGetSID,'unattended');
     if ~isdir(nFolder), mkdir(nFolder); end
     s = movefile(fullfile(dFolder,cFile.name),fullfile(nFolder,cFile.name));
@@ -416,14 +380,9 @@ global stimulus
 
 if stimulus.curTrial == 0
     stimulus.started = mglGetSecs;
-    if stimulus.scan
+    if stimulus.scan && ~stimulus.unattended
       task.thistrial.seglen(stimulus.seg.ITI) = 7.5;
     end
-end
-
-if stimulus.mtloc
-    % track the trial start time
-    stimulus = mtRandDirs(stimulus);
 end
 
 stimulus.curTrial = stimulus.curTrial + 1;
@@ -446,10 +405,6 @@ end
 
 % Set the missing thistrial vars
 task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedestal);
-if stimulus.mtloc
-    % fix the coherence so it switches
-    task.thistrial.coherence = stimulus.pedestals.coherence(mod(stimulus.curTrial,2)+1);
-end
 task.thistrial.contrast = stimulus.pedestals.contrast(task.thistrial.conPedestal);
 task.thistrial.trialNum = stimulus.curTrial;
 if ~stimulus.unattended
@@ -541,6 +496,7 @@ myscreen.flushMode = 0;
 
 global stimulus
 
+stimulus.live.mt = 0;
 switch task.thistrial.thisseg
     case stimulus.seg.ITI
         stimulus.live.dots = 0;
@@ -589,10 +545,6 @@ function value = calcPerc(stimulus,perc)
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
-if stimulus.mtloc && (mglGetSecs > stimulus.mt.nextFlip)
-    stimulus = mtRandDirs(stimulus);
-end
-
 if stimulus.projector
     mglClearScreen(stimulus.colors.black);
     mglStencilSelect(stimulus.stencil);
@@ -630,7 +582,6 @@ end
 function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
-repick = logical(stimulus.mtloc);
 
 tCoh = task.thistrial.coherence;
 tCon = task.thistrial.contrast / stimulus.curMaxContrast;
@@ -661,8 +612,8 @@ else
 end
 
 %% Old update code start here
-stimulus.dotsL = updateDotsRadial(stimulus.dotsL,tCoh+lCohDel,myscreen,repick);
-stimulus.dotsR = updateDotsRadial(stimulus.dotsR,tCoh+rCohDel,myscreen,repick);
+stimulus.dotsL = updateDotsRadial(stimulus.dotsL,tCoh+lCohDel,myscreen,false);
+stimulus.dotsR = updateDotsRadial(stimulus.dotsR,tCoh+rCohDel,myscreen,false);
 
 % Correct values for gamma table adjustments
 rConDel = rConDel / stimulus.curMaxContrast;
@@ -927,17 +878,10 @@ function dots = initDotsRadial(dots,~)
 global stimulus
 
 % maximum depth of points
-dots.minX = 3;
-dots.maxX = 10;
+dots.minX = 3.5;
+dots.maxX = 11;
 dots.minY = -5;
 dots.maxY = 5;
-
-if stimulus.mtloc
-    dots.minX = 2.5;
-    dots.maxX = 11;
-    dots.minY = -6;
-    dots.maxY = 6;
-end
 
 dots.dir = 1;
 
@@ -1029,16 +973,6 @@ dots.y(offscreen) = dots.y(offscreen) + abs(dots.maxY - dots.minY);
 
 dots.xdisp = dots.mult*dots.x;
 dots.ydisp = dots.y;
-
-function stimulus = mtRandDirs(stimulus)
-
-stimulus.mt.lastFlip = mglGetSecs;
-stimulus.mt.nextFlip = stimulus.mt.lastFlip + 1.5;
-
-dirOpts = [1 0 -1];
-curDir = dirOpts(stimulus.dotsL.dir+2);
-stimulus.dotsL.dir = curDir;
-stimulus.dotsR.dir = curDir;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sets the gamma table so that we can have
