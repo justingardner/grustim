@@ -44,6 +44,13 @@ stimulus.unattended = unattended;
 stimulus.scan = scan;
 stimulus.plots = plots;
 
+if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
+    warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
+    if ~strcmp('y',input('Is this correct? [y/n]'))
+        mglSetParam('ignoreInitialVols',input('Please input the correct value (mux8 = 16, mux2 = 4): '));
+    end
+end
+
 % if (stimulus.projector && ~stimulus.scan) || (stimulus.scan && ~ stimulus.projector)
 %     warning('Running in scan mode or projector mode without the other... are you sure that''s what you wanted?');
 %     keyboard

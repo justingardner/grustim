@@ -9,6 +9,20 @@
 %
 function myscreen = mtloc(type,TR)
 
+if TR == .75
+    if ~mglGetParam('ignoreInitialVols')==16
+        warning('mux8 script: ignoreInitialVols was set incorrectly, setting to 16');
+        mglSetParam('ignoreInitialVols',16);
+    end
+elseif TR == 1.4
+    if ~mglGetParam('ignoreInitialVols')==4
+        warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 16');
+        mglSetParam('ignoreInitialVols',4);
+    end
+else
+    warning('You selected a TR that we don''t normally have a MUX script for... Are you sure?');
+end
+
 % check arguments
 if ~any(nargin == [0 1 2])
   help dotslocnew
