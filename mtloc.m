@@ -7,6 +7,9 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: motion localizer task
 %
+%   TR = .75, total volumes = 368
+%   TR = 1.4, total volumes = 202
+%
 function myscreen = mtloc(type,TR)
 
 if TR == .75
@@ -16,7 +19,7 @@ if TR == .75
     end
 elseif TR == 1.4
     if ~mglGetParam('ignoreInitialVols')==4
-        warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 16');
+        warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 4');
         mglSetParam('ignoreInitialVols',4);
     end
 else

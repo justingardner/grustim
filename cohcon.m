@@ -22,6 +22,9 @@
 %             projector (0/1) - Masks stimuli using the default projector
 %             mask.
 %             scan (0/1) - Scanner timing
+%
+%
+%   TR .75 = 560 volumes (7:00 total)
 
 function [myscreen] = cohcon(varargin)
 
@@ -50,11 +53,6 @@ if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignor
         mglSetParam('ignoreInitialVols',input('Please input the correct value (mux8 = 16, mux2 = 4): '));
     end
 end
-
-% if (stimulus.projector && ~stimulus.scan) || (stimulus.scan && ~ stimulus.projector)
-%     warning('Running in scan mode or projector mode without the other... are you sure that''s what you wanted?');
-%     keyboard
-% end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 %% Setup Screen
@@ -312,7 +310,13 @@ mglWaitSecs(2);
 setGammaTable_flowMax(1);
 mglClearScreen(0.5);
 if ~stimulus.unattended
-    mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
+    if stimulus.scan        
+        mglTextDraw('DO NOT MOVE',[0 1.5]);
+        mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
+    else
+        
+        mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
+    end
 end
 mglFlush
 
