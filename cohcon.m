@@ -129,8 +129,8 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 %% Everything else
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
-stimulus.dots.dotsize = 4;
-stimulus.dots.density = 3;
+stimulus.dots.dotsize = 6;
+stimulus.dots.density = 1;
 stimulus.dots.speed = 3.25;
 stimulus.dots.centerOffset = 2;
 
@@ -146,8 +146,8 @@ stimulus.pedestals.coherence = [.05 .125 .25 .45];
 stimulus.pedestals.contrast = exp(-1.75:(1.25/3):-.5);
 
 if stimulus.unattended
-stimulus.pedestals.coherence = [.05 .125 .25 .45 .9];
-stimulus.pedestals.contrast = [exp(-1.75:(1.25/3):-.5) .9];
+    stimulus.pedestals.coherence = [0 .05 .125 .25 .45 .95];
+    stimulus.pedestals.contrast = [0 exp(-1.75:(1.25/3):-.5) .95];
 end
 
 stimulus.pedestals.initThresh.coherence = .5;
@@ -184,14 +184,14 @@ stimulus.text.cTexK = mglText('C');
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.ITI = 1; % the ITI is either 20s (first time) or 1s
-stimulus.seg.rampUP = 2;
-stimulus.seg.stim = 3;
-stimulus.seg.rampDOWN = 4;
-stimulus.seg.ISI = 5;
-stimulus.seg.resp = 6;
-task{1}{1}.segmin = [.3 .5 .4 .5 .1 1];
-task{1}{1}.segmax = [.7 .5 .4 .5 .4 1];
+stimulus.seg.ITI = 6; % the ITI is either 20s (first time) or 1s
+stimulus.seg.rampUP = 1;
+stimulus.seg.stim = 2;
+stimulus.seg.rampDOWN = 3;
+stimulus.seg.ISI = 4;
+stimulus.seg.resp = 5;
+task{1}{1}.segmin = [.5 .4 .5 .1 1 .3];
+task{1}{1}.segmax = [.5 .4 .5 .4 1 .7];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -419,14 +419,21 @@ task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedest
 task.thistrial.contrast = stimulus.pedestals.contrast(task.thistrial.conPedestal);
 task.thistrial.trialNum = stimulus.curTrial;
 if ~stimulus.unattended
-    [task.thistrial.deltaPed, stimulus] = getDeltaPed(task,stimulus,task.thistrial.task);
+    [conPed, stimulus] = getDeltaPed(task,stimulus,2);
+    [cohPed, stimulus] = getDeltaPed(task,stimulus,2);
 else
-    task.thistrial.deltaPed = 0;
+    conPed = 0;
+    cohPed = 0;
 end
 
 % Assign the deltaPed to the correct locations
-if task.thistrial.task==1
+if stimulus.unattended
+    % unattended
+    stimulus.live.cohDelta = 0;
+    stimulus.live.conDelta = 0;
+elseif task.thistrial.task==1
     % speed
+    task.thistrial.deltaPed = cohPed;
     stimulus.live.cohDelta = task.thistrial.deltaPed;
     stimulus.live.conDelta = 0;
     if (task.thistrial.coherence + stimulus.live.cohDelta) > 0.95
@@ -434,18 +441,24 @@ if task.thistrial.task==1
     end
 elseif task.thistrial.task==2
     % contrast
+    task.thistrial.deltaPed = conPed;
     stimulus.live.cohDelta = 0;
     stimulus.live.conDelta = task.thistrial.deltaPed;
     if (task.thistrial.contrast + stimulus.live.conDelta) > 1
         stimulus.live.conDelta = 1 - task.thistrial.contrast;
     end
-elseif stimulus.unattended
-    % unattended
-    stimulus.live.cohDelta = 0;
-    stimulus.live.conDelta = 0;
 else
     warning('Never should get here... debug me');
     keyboard
+end
+
+if ~stimulus.unattended && task.thistrial.catch
+    if task.thistrial.task==1
+        stimulus.live.conDelta = conPed;
+    elseif task.thistrial.task==2
+        stimulus.live.cohDelta = cohPed;
+    end
+    % add back in the coh/con delta for the main task
 end
 
 ramps = task.thistrial.seglen(stimulus.seg.rampUP)*2;
