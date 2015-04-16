@@ -1,7 +1,7 @@
 
 % cohCon
 %
-%      usage: myscreen=coherentContrast()
+%      usage: myscreen=cohcon()
 %         by: daniel birman
 %       date: 11/10/14
 %    purpose: contrast change detection with cued selective attention.
@@ -64,9 +64,9 @@ if stimulus.projector, stimulus.stencil = mglProjStencil(); end
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/coherentContrast/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/coherentContrast/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/cohcon/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         if stimFileNum == -1
@@ -77,7 +77,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/coherentContrast/%s',mglGetSID))
         else
             fname = files(stimFileNum).name;
         end
-        s = load(sprintf('~/data/coherentContrast/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/cohcon/%s/%s',mglGetSID,fname));
         stimulus.staircase = s.stimulus.staircase;
         stimulus.stairCatch = s.stimulus.stairCatch;
         stimulus.counter = s.stimulus.counter + 1;
@@ -362,11 +362,11 @@ myscreen = endTask(myscreen,task);
 
 % if this was 'unattended' or 'mtloc' mode, we should copy the file we saved
 % to a different folder.
-dFolder = fullfile('~/data/coherentContrast/',mglGetSID);
+dFolder = fullfile('~/data/cohcon/',mglGetSID);
 files = dir(dFolder);
 cFile = files(end);
 if stimulus.unattended
-    nFolder = fullfile('~/data/coherentContrast/',mglGetSID,'unattended');
+    nFolder = fullfile('~/data/cohcon/',mglGetSID,'unattended');
     if ~isdir(nFolder), mkdir(nFolder); end
     s = movefile(fullfile(dFolder,cFile.name),fullfile(nFolder,cFile.name));
 else
