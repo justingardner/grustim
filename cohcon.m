@@ -211,7 +211,7 @@ task{1}{1}.synchToVol = [0 0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol = [1 0 0 0 0 0];
 end
-task{1}{1}.getResponse = [0 0 0 0 0 1];
+task{1}{1}.getResponse = [0 0 0 0 1 0];
 task{1}{1}.parameter.side = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.dir = [-1 1];
 task{1}{1}.parameter.conPedestal = [1 2 3 4]; % target contrast
