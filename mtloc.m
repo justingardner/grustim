@@ -50,8 +50,8 @@ clear global fixStimulus;
 
 num = round(12/TR);
 % a top-up period of the same direction
-task{2}{1}.seglen =     [repmat(TR,1,num) TR*num-.1];
-task{2}{1}.synchToVol = [0 0 0 0 0 0 0 0 0 0 0 0 1];
+task{2}{1}.seglen =     [repmat(TR,1,num) TR*num-.050];
+task{2}{1}.synchToVol = [repmat(TR,0,num) 1];
 task{2}{1}.parameter.coherence = 1;
 task{2}{1}.random = 1;
 task{2}{1}.numTrials = 11;
