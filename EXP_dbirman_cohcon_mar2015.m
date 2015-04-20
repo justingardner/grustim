@@ -37,9 +37,12 @@
 %% MT Localizer
 
 % The 32ch coil should be installed.
+disp(sprintf('Running MT Localizer.'));
+while ~strcmp(input('Have you prepped the mux8 script? [y] ','s'),'y')
+end
 
 % mtLoc x2
-mtloc('0%',1.4);
+% mtloc('0%',1.4);
 mtloc('0%',.75);
 
 %% Full Experiment

@@ -40,12 +40,14 @@ plots = [];
 overrideTask = [];
 projector = [];
 scan = [];
-getArgs(varargin,{'stimFileNum=-1','unattended=0', ...
+noramp = [];
+getArgs(varargin,{'stimFileNum=-1','unattended=0','noramp=0' ...
     'plots=1','overrideTask=0','projector=0','scan=0'});
 stimulus.projector = projector;
 stimulus.unattended = unattended;
 stimulus.scan = scan;
 stimulus.plots = plots;
+stimulus.noramp = noramp;
 
 if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
@@ -98,19 +100,6 @@ myscreen = initStimulus('stimulus',myscreen);
 
 stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
 
-% Sigmoid
-x = 0:.015:1;
-
-y = 1 ./ (1 + exp(-8 * (x - 0.5)));
-y = y - min(y);
-y = y ./ sum(y);
-y = y ./ max(y);
-
-y = [zeros(1,101-length(y)) y];
-
-stimulus.sigmoid = y;
-stimulus.sigmoidMu = mean(y);
-
 %% Colors
 stimulus.colors.rmed = 127.75;
 
@@ -129,8 +118,8 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 %% Everything else
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
-stimulus.dots.dotsize = 6;
-stimulus.dots.density = 1;
+stimulus.dots.dotsize = 4;
+stimulus.dots.density = 2;
 stimulus.dots.speed = 3.25;
 stimulus.dots.centerOffset = 2;
 
@@ -142,15 +131,15 @@ stimulus = rmfield(stimulus,'dots');
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
-stimulus.pedestals.coherence = [.05 .125 .25 .45];
-stimulus.pedestals.contrast = exp(-1.75:(1.25/3):-.5);
+stimulus.pedestals.coherence = .1;
+stimulus.pedestals.contrast = .6;
 
 if stimulus.unattended
     stimulus.pedestals.coherence = [0 .05 .125 .25 .45 .95];
     stimulus.pedestals.contrast = [0 exp(-1.75:(1.25/3):-.5) .95];
 end
 
-stimulus.pedestals.initThresh.coherence = .5;
+stimulus.pedestals.initThresh.coherence = .2;
 stimulus.pedestals.initThresh.contrast = .2;
 
 stimulus.pedestals.catch.coherence = exp([-1.9 -1.55 -1.2 -.85]);
@@ -190,8 +179,17 @@ stimulus.seg.stim = 2;
 stimulus.seg.rampDOWN = 3;
 stimulus.seg.ISI = 4;
 stimulus.seg.resp = 5;
-task{1}{1}.segmin = [.5 .4 .5 .1 1 .3];
-task{1}{1}.segmax = [.5 .4 .5 .4 1 .7];
+task{1}{1}.segmin = [0 .3 .8 .1 1 .3];
+task{1}{1}.segmax = [0 .3 .8 .4 1 .7];
+
+if stimulus.noramp
+    task{1}{1}.segmin(stimulus.seg.rampUP) = 0;
+    task{1}{1}.segmax(stimulus.seg.rampUP) = 0;
+    task{1}{1}.segmin(stimulus.seg.stim) = 1;
+    task{1}{1}.segmax(stimulus.seg.stim) = 1;
+    task{1}{1}.segmin(stimulus.seg.rampDOWN) = 0;
+    task{1}{1}.segmax(stimulus.seg.rampDOWN) = 0;
+end
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -209,13 +207,14 @@ end
 
 task{1}{1}.synchToVol = [0 0 0 0 0 0];
 if stimulus.scan
-    task{1}{1}.synchToVol = [1 0 0 0 0 0];
+    task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
 task{1}{1}.getResponse = [0 0 0 0 1 0];
-task{1}{1}.parameter.side = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
+task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
+task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
-task{1}{1}.parameter.conPedestal = [1 2 3 4]; % target contrast
-task{1}{1}.parameter.cohPedestal = [1 2 3 4]; % target flow coherence
+task{1}{1}.parameter.conPedestal = [1]; % target contrast
+task{1}{1}.parameter.cohPedestal = [1]; % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 120;
@@ -229,11 +228,27 @@ if stimulus.unattended
     task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
 
+%% Sigmoid
+x = 0:.015:1;
+
+y = 1 ./ (1 + exp(-8 * (x - 0.8)));
+y = y - min(y);
+y = y ./ sum(y);
+y = y ./ max(y);
+
+y = [zeros(1,101-length(y)) y];
+
+stimulus.sigmoid = y;
+stimulus.sigmoidMu = mean(y);
+
+
 %% Run variables
-task{1}{1}.randVars.calculated.task = nan; % Current task (calc per trial)
-task{1}{1}.randVars.calculated.deltaPed = nan; % Current task (calc per trial)
+
+task{1}{1}.randVars.calculated.task = nan; % Current task (calc per BLOCK)
 task{1}{1}.randVars.calculated.coherence = nan;
 task{1}{1}.randVars.calculated.contrast = nan;
+task{1}{1}.randVars.calculated.cohDelta = nan;
+task{1}{1}.randVars.calculated.conDelta = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
 task{1}{1}.randVars.calculated.avgCohL = nan;
 task{1}{1}.randVars.calculated.avgCohR = nan;
@@ -418,75 +433,63 @@ end
 task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedestal);
 task.thistrial.contrast = stimulus.pedestals.contrast(task.thistrial.conPedestal);
 task.thistrial.trialNum = stimulus.curTrial;
+
+% Get the pedestals
 if ~stimulus.unattended
-    [conPed, stimulus] = getDeltaPed(task,stimulus,2);
-    [cohPed, stimulus] = getDeltaPed(task,stimulus,2);
+    [cohTh, conTh, stimulus] = getDeltaPed(task,stimulus);
 else
-    conPed = 0;
-    cohPed = 0;
+    conTh = 0;
+    cohTh = 0;
 end
 
-% Assign the deltaPed to the correct locations
-if stimulus.unattended
-    % unattended
-    stimulus.live.cohDelta = 0;
-    stimulus.live.conDelta = 0;
-elseif task.thistrial.task==1
-    % speed
-    task.thistrial.deltaPed = cohPed;
-    stimulus.live.cohDelta = task.thistrial.deltaPed;
-    stimulus.live.conDelta = 0;
-    if (task.thistrial.coherence + stimulus.live.cohDelta) > 0.95
-        stimulus.live.cohDelta = .95 - task.thistrial.coherence;
-    end
-elseif task.thistrial.task==2
-    % contrast
-    task.thistrial.deltaPed = conPed;
-    stimulus.live.cohDelta = 0;
-    stimulus.live.conDelta = task.thistrial.deltaPed;
-    if (task.thistrial.contrast + stimulus.live.conDelta) > 1
-        stimulus.live.conDelta = 1 - task.thistrial.contrast;
-    end
-else
-    warning('Never should get here... debug me');
-    keyboard
+% Reduce if pedestals are too large
+if (task.thistrial.coherence + cohTh) > 0.95
+    cohTh = 0.95 - task.thistrial.coherence;
+end
+if (task.thistrial.contrast + conTh) > 1
+    conTh = 1 - task.thistrial.contrast;
 end
 
-if ~stimulus.unattended && task.thistrial.catch
-    if task.thistrial.task==1
-        stimulus.live.conDelta = conPed;
-    elseif task.thistrial.task==2
-        stimulus.live.cohDelta = cohPed;
-    end
-    % add back in the coh/con delta for the main task
-end
+% Save info
+task.thistrial.conDelta = conTh;
+task.thistrial.cohDelta = cohTh;
 
+% Display info about this run
 ramps = task.thistrial.seglen(stimulus.seg.rampUP)*2;
 main = task.thistrial.seglen(stimulus.seg.stim);
 total = ramps+main;
-if task.thistrial.side==1
-    % left
-    task.thistrial.avgCohL = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*stimulus.live.cohDelta + main/total*stimulus.live.cohDelta;
-    task.thistrial.avgCohR = task.thistrial.coherence;
-    task.thistrial.avgConL = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*stimulus.live.conDelta + main/total*stimulus.live.conDelta;
+
+if task.thistrial.conSide==1
+    task.thistrial.avgConL = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*task.thistrial.conDelta + main/total*task.thistrial.conDelta;
     task.thistrial.avgConR = task.thistrial.contrast;
-    disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
-        task.thistrial.coherence+stimulus.live.cohDelta,task.thistrial.coherence,...
-        task.thistrial.contrast+stimulus.live.conDelta,task.thistrial.contrast));
+    lCon = task.thistrial.contrast+task.thistrial.conDelta;
+    rCon = task.thistrial.contrast;
 else
-    % right
-    task.thistrial.avgCohR = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*stimulus.live.cohDelta + main/total*stimulus.live.cohDelta;
-    task.thistrial.avgCohL = task.thistrial.coherence;
-    task.thistrial.avgConR = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*stimulus.live.conDelta + main/total*stimulus.live.conDelta;
+    task.thistrial.avgConR = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*task.thistrial.conDelta + main/total*task.thistrial.conDelta;
     task.thistrial.avgConL = task.thistrial.contrast;
-    disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
-        task.thistrial.coherence,task.thistrial.coherence+stimulus.live.cohDelta,...
-        task.thistrial.contrast,task.thistrial.contrast+stimulus.live.conDelta));
+    rCon = task.thistrial.contrast+task.thistrial.conDelta;
+    lCon = task.thistrial.contrast;
 end
+
+if task.thistrial.cohSide==1
+    task.thistrial.avgCohL = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*task.thistrial.cohDelta + main/total*task.thistrial.cohDelta;
+    task.thistrial.avgCohR = task.thistrial.coherence;
+    lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+    rCoh = task.thistrial.coherence;
+else
+    task.thistrial.avgCohR = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*task.thistrial.cohDelta + main/total*task.thistrial.cohDelta;
+    task.thistrial.avgCohL = task.thistrial.coherence;
+    rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+    lCoh = task.thistrial.coherence;
+end
+
+disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
+    lCoh,rCoh,...
+    lCon,rCon));
 
 % set the gammaTable for this trial
 if ~stimulus.unattended
-    setGammaTable_flowMax(task.thistrial.contrast + stimulus.live.conDelta);
+    setGammaTable_flowMax(task.thistrial.contrast + task.thistrial.conDelta);
 else
     setGammaTable_flowMax(1);
 end
@@ -494,20 +497,6 @@ end
 % set directions
 stimulus.dotsL.dir = task.thistrial.dir;
 stimulus.dotsR.dir = task.thistrial.dir;
-
-function ped = curPedValue(task,iscatch)
-switcher = [2 1];
-if iscatch
-    usetask = switcher(task.thistrial.task);
-else
-    usetask = task.thistrial.task;
-end
-    
-if usetask==1
-    ped = task.thistrial.cohPedestal;
-else
-    ped = task.thistrial.conPedestal;
-end
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -558,7 +547,7 @@ if stimulus.unattended
 end
 
 function value = calcPerc(stimulus,perc)
-  value = stimulus.sigmoid(int8(round(perc*100)+1));
+value = stimulus.sigmoid(round(perc*100)+1);
   
   
 %%
@@ -588,7 +577,7 @@ function upFix(task,stimulus)
 if ~task.thistrial.catch || stimulus.live.catchFix == 0
     mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 else
-    if task.thistrial.task==1
+    if stimulus.runs.curTask==2
         if stimulus.live.fixColor==stimulus.colors.white
             mglBltTexture(stimulus.text.mTexW,[0 0]);
         else
@@ -616,23 +605,31 @@ switch stimulus.live.dotRampDir
     case 1
         % we are ramping UP
         perc = (mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg);
+        perc = calcPerc(stimulus,perc);
     case -1
         % we are ramping DOWN        
         perc = 1-((mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg));
+        perc = calcPerc(stimulus,perc);
 end
 
-perc = calcPerc(stimulus,perc);
+if stimulus.noramp
+    perc = 1;
+end
 
-if task.thistrial.side==1
-    lCohDel = perc*stimulus.live.cohDelta;
+if task.thistrial.cohSide==1
+    lCohDel = perc*task.thistrial.cohDelta;
     rCohDel = 0;
-    lConDel = perc*stimulus.live.conDelta;
-    rConDel = 0;
 else
     lCohDel = 0;
-    rCohDel = perc*stimulus.live.cohDelta;
+    rCohDel = perc*task.thistrial.cohDelta;
+end
+
+if task.thistrial.conSide==1
+    lConDel = perc*task.thistrial.conDelta;
+    rConDel = 0;
+else
     lConDel = 0;
-    rConDel = perc*stimulus.live.conDelta;
+    rConDel = perc*task.thistrial.conDelta;
 end
 
 %% Old update code start here
@@ -680,7 +677,12 @@ fixColors = {stimulus.colors.red,stimulus.colors.green};
 
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
-        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.side);
+        if task.thistrial.task==1
+            cSide = task.thistrial.cohSide;
+        else
+            cSide = task.thistrial.conSide;
+        end
+        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(cSide);
         % Store whether this was correct
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
         disp(sprintf('(cohCon) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
@@ -702,13 +704,53 @@ end
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%% getDeltaPed
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    getDeltaPed       %
+%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [deltaPed, stimulus] = getDeltaPed(task,stimulus,taskNum)
-if task.thistrial.catch
-    [deltaPed, stimulus.stairCatch{taskNum,curPedValue(task,true)}] = doStaircase('testValue',stimulus.stairCatch{taskNum,curPedValue(task,true)});
+function [cohPed, conPed, stimulus] = getDeltaPed(task,stimulus)
+%%
+if stimulus.runs.curTask == 1
+    % COHERENCE MAIN TASK    
+    [cohPed, stimulus.staircase{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircase{1,curPedVal(task,1)});
+    
+    if task.thistrial.catch
+        [conPed, stimulus.stairCatch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.stairCatch{2,curPedVal(task,2)});
+    else
+        conPed = stimulus.pedestals.catch.contrast(randi(length(stimulus.pedestals.catch.contrast)));
+    end
 else
-    [deltaPed, stimulus.staircase{taskNum,curPedValue(task,false)}] = doStaircase('testValue',stimulus.staircase{taskNum,curPedValue(task,false)});
+    % CONTRAST MAIN TASK
+    [conPed, stimulus.staircase{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircase{2,curPedVal(task,2)});
+    
+    if task.thistrial.catch
+        [cohPed, stimulus.stairCatch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.stairCatch{1,curPedVal(task,1)});
+    else
+        cohPed = stimulus.pedestals.catch.coherence(randi(length(stimulus.pedestals.catch.coherence)));
+    end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    curPedValue       %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+function ped = curPedValue(task,iscatch)
+%%
+switcher = [2 1];
+if iscatch
+    usetask = switcher(task.thistrial.task);
+else
+    usetask = task.thistrial.task;
+end
+
+ped = curPedVal(task,usetask);
+
+function ped = curPedVal(task,taskNum)
+%%
+if taskNum==1
+    ped = task.thistrial.cohPedestal;
+else
+    ped = task.thistrial.conPedestal;
 end
 
 
@@ -716,7 +758,7 @@ end
 %    initStaircase     %
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
-
+%%
 stimulus.stairCatch = cell(2,length(stimulus.pedestals.catch.coherence));
 stimulus.staircase = cell(2,length(stimulus.pedestals.contrast));
 
@@ -760,7 +802,6 @@ try
     
     figure
     hold on
-
     
 %     for task = 1:2
 %         pedSuccess = [];
@@ -790,7 +831,6 @@ try
 %         success = success(is);
 %         plot(pedPos,success,drawing{task});
 %     end
-    
     
     plotting = zeros(2,4);
     catchPlot = zeros(2,4);
@@ -961,27 +1001,27 @@ elseif dots.coherency ~= coherence
     dots.coherent = ~dots.incoherent;
     dots.coherency = sum(dots.coherent)/dots.n;
 end
+
 freq_factor = dots.speed/myscreen.framesPerSecond;
 
 % move coherent dots
 dots.x(dots.coherent) = dots.x(dots.coherent) + dots.dir*freq_factor;
 
 % these are for flipping into the other quadrants
-xmat = [1 1 -1 -1];
-ymat = [1 -1 1 -1];
-xmat = repmat(xmat,1,dots.incoherentn+4-mod(dots.incoherentn,4));
-ymat = repmat(ymat,1,dots.incoherentn+4-mod(dots.incoherentn,4));
-xmat = xmat(randperm(dots.incoherentn));
-ymat = ymat(randperm(dots.incoherentn));
+xmat = repmat([1 1 -1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
+ymat = repmat([1 -1 1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
+perms = randperm(dots.incoherentn);
+xmat = xmat(perms);
+ymat = ymat(perms);
 
 % move incoherent dots
 % get random vectors
-dots.rX = rand(1,dots.incoherentn); % get a random number -1 -> 1 for the x offset
-dots.rY = sqrt(1-dots.rX.^2); % solve for y
-dots.rX = dots.rX .* xmat;
-dots.rY = dots.rY .* ymat;
-dots.rX = dots.rX * freq_factor; % rescale to match the velocity
-dots.rY = dots.rY * freq_factor;
+dots.rX = rand(1,dots.incoherentn);
+dots.rY = sqrt(1-(dots.rX.^2));
+dots.rX = (dots.rX .* xmat) * freq_factor; % rescale to match the velocity
+dots.rY = (dots.rY .* ymat) * freq_factor;
+% dots.rX = (dots.rX .* xmat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2); % rescale to match the velocity
+% dots.rY = (dots.rY .* ymat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2);
 dots.x(dots.incoherent) = dots.x(dots.incoherent) + dots.rX;
 dots.y(dots.incoherent) = dots.y(dots.incoherent) + dots.rY;
 
