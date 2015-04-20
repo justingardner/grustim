@@ -798,7 +798,7 @@ function dispStaircase(stimulus)
 
 try
     taskOpts = {'catch - coherence','catch - contrast','coherence','contrast'};
-    drawing = {'--r' '--b' '-r' '-b'};
+    drawing = {'or' 'ob' '*r' '*b'};
     
     figure
     hold on
@@ -832,8 +832,8 @@ try
 %         plot(pedPos,success,drawing{task});
 %     end
     
-    plotting = zeros(2,4);
-    catchPlot = zeros(2,4);
+    plotting = zeros(2,1);
+    catchPlot = zeros(2,1);
     
 %     drawing = {'-r' '-g' '-b' '-y'
 %                 '--r' '--g' '--b' '--y'};
@@ -841,7 +841,7 @@ try
 %         figure % this is the 'staircase' figure
 %         title(sprintf('%s, Staircase plot (R->G->B->Y high)',taskOpts{task}));
 %         hold on
-        for ped = 1:4
+        for ped = 1
 %             try
 %                 testV = [];
 %                 for i = 1:length(stimulus.staircase{task,ped})
