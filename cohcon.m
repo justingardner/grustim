@@ -25,6 +25,7 @@
 %
 %
 %   TR .75 = 560 volumes (7:00 total)
+%   TR 1.4 = 300 volumes (7:00 total)
 
 function [myscreen] = cohcon(varargin)
 
@@ -139,11 +140,11 @@ if stimulus.unattended
     stimulus.pedestals.contrast = [0 exp(-1.75:(1.25/3):-.5) .95];
 end
 
-stimulus.pedestals.initThresh.coherence = .2;
-stimulus.pedestals.initThresh.contrast = .2;
+stimulus.pedestals.initThresh.coherence = .3;
+stimulus.pedestals.initThresh.contrast = .3;
 
-stimulus.pedestals.catch.coherence = exp([-1.9 -1.55 -1.2 -.85]);
-stimulus.pedestals.catch.contrast = exp([-3 -2.7 -2.4 -2.1]);
+stimulus.pedestals.catch.coherence = exp(-1.36:.25:-.11);
+stimulus.pedestals.catch.contrast = exp([-3.3 -3 -2.7 -2.4 -2.1 -1.8]);
 
 stimulus.dotsR = initDotsRadial(stimulus.dotsR,myscreen);
 stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
@@ -173,18 +174,15 @@ stimulus.text.cTexK = mglText('C');
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.ITI = 6; % the ITI is either 20s (first time) or 1s
-stimulus.seg.rampUP = 1;
-stimulus.seg.stim = 2;
-stimulus.seg.rampDOWN = 3;
-stimulus.seg.ISI = 4;
-stimulus.seg.resp = 5;
-task{1}{1}.segmin = [0 .3 .8 .1 1 .3];
-task{1}{1}.segmax = [0 .3 .8 .4 1 .7];
+stimulus.seg.ITI = 5; % the ITI is either 20s (first time) or 1s
+stimulus.seg.stim = 1;
+stimulus.seg.rampDOWN = 2;
+stimulus.seg.ISI = 3;
+stimulus.seg.resp = 4;
+task{1}{1}.segmin = [.3 .8 .1 1 .3];
+task{1}{1}.segmax = [.3 .8 .4 1 .7];
 
 if stimulus.noramp
-    task{1}{1}.segmin(stimulus.seg.rampUP) = 0;
-    task{1}{1}.segmax(stimulus.seg.rampUP) = 0;
     task{1}{1}.segmin(stimulus.seg.stim) = 1;
     task{1}{1}.segmax(stimulus.seg.stim) = 1;
     task{1}{1}.segmin(stimulus.seg.rampDOWN) = 0;
@@ -205,16 +203,16 @@ if stimulus.scan
     task{1}{1}.segmax(stimulus.seg.ITI) = 11;
 end
 
-task{1}{1}.synchToVol = [0 0 0 0 0 0];
+task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-task{1}{1}.getResponse = [0 0 0 0 1 0];
+task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
-task{1}{1}.parameter.conPedestal = [1]; % target contrast
-task{1}{1}.parameter.cohPedestal = [1]; % target flow coherence
+task{1}{1}.parameter.conPedestal = 1; % target contrast
+task{1}{1}.parameter.cohPedestal = 1; % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 120;
@@ -223,7 +221,7 @@ if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 if stimulus.unattended
-    task{1}{1}.getResponse = [0 0 0 0 0 0];
+    task{1}{1}.getResponse = [0 0 0 0 0];
     task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
     task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
@@ -240,7 +238,6 @@ y = [zeros(1,101-length(y)) y];
 
 stimulus.sigmoid = y;
 stimulus.sigmoidMu = mean(y);
-
 
 %% Run variables
 
