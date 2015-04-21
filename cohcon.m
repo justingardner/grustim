@@ -140,11 +140,11 @@ if stimulus.unattended
     stimulus.pedestals.contrast = [0 exp(-1.75:(1.25/3):-.5) .95];
 end
 
-stimulus.pedestals.initThresh.coherence = .3;
+stimulus.pedestals.initThresh.coherence = .6;
 stimulus.pedestals.initThresh.contrast = .3;
 
-stimulus.pedestals.catch.coherence = exp(-1.36:.25:-.11);
-stimulus.pedestals.catch.contrast = exp([-3.3 -3 -2.7 -2.4 -2.1 -1.8]);
+stimulus.pedestals.catch.coherence = exp(-1.85:.2:-.35);
+stimulus.pedestals.catch.contrast = exp([-3.2 -3 -2.8 -2.6 -2.4 -2.2 -2 -1.8]);
 
 stimulus.dotsR = initDotsRadial(stimulus.dotsR,myscreen);
 stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
@@ -215,7 +215,7 @@ task{1}{1}.parameter.conPedestal = 1; % target contrast
 task{1}{1}.parameter.cohPedestal = 1; % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 120;
+task{1}{1}.numTrials = 100;
 
 if stimulus.scan
     task{1}{1}.numTrials = inf;
@@ -363,14 +363,14 @@ mglTextDraw('Run complete... please wait.',[0 0]);
 mglFlush
 myscreen.flushMode = 1;
 
+% if we got here, we are at the end of the experiment
+myscreen = endTask(myscreen,task);
+
 if stimulus.plots
     disp('(cohCon) Displaying plots');
     dispStaircase(stimulus);
     dispStaircaseCatch(stimulus);
 end
-
-% if we got here, we are at the end of the experiment
-myscreen = endTask(myscreen,task);
 
 % if this was 'unattended' or 'mtloc' mode, we should copy the file we saved
 % to a different folder.
@@ -452,7 +452,7 @@ task.thistrial.conDelta = conTh;
 task.thistrial.cohDelta = cohTh;
 
 % Display info about this run
-ramps = task.thistrial.seglen(stimulus.seg.rampUP)*2;
+ramps = task.thistrial.seglen(stimulus.seg.rampDOWN)*2;
 main = task.thistrial.seglen(stimulus.seg.stim);
 total = ramps+main;
 
@@ -512,12 +512,6 @@ switch task.thistrial.thisseg
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
-    case stimulus.seg.rampUP
-        stimulus.live.dots = 1;
-        stimulus.live.dotRampDir = 1;
-        stimulus.live.fixColor = stimulus.colors.black;
-        stimulus.live.catchFix = 0;
-        stimulus.live.rampStart = mglGetSecs;
     case stimulus.seg.stim
         stimulus.live.dots = 1;
         stimulus.live.dotRampDir = 0;
@@ -890,7 +884,7 @@ for task = 1:2
 end
 % Check both staircases
 for task = 1:2
-    for ped = 1:4
+    for ped = 1
         s = stimulus.staircase{task,ped};
         if doStaircase('stop',s)
             % this is a bit of a pain... you can't pass an initialThreshold
