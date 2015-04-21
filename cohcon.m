@@ -369,7 +369,6 @@ myscreen = endTask(myscreen,task);
 if stimulus.plots
     disp('(cohCon) Displaying plots');
     dispStaircase(stimulus);
-    dispStaircaseCatch(stimulus);
 end
 
 % if this was 'unattended' or 'mtloc' mode, we should copy the file we saved
@@ -779,9 +778,6 @@ for i = 2:length(stimulus.pedestals.coherence)
     stimulus.staircase{2,i} = stimulus.staircase{2,1};
 end
 %%
-function dispStaircaseCatch(stimulus)
-%%
-
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispStaircase    %
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -825,6 +821,7 @@ try
     
     plotting = zeros(2,1);
     catchPlot = zeros(2,1);
+    ci = zeros(2,1);
     
 %     drawing = {'-r' '-g' '-b' '-y'
 %                 '--r' '--g' '--b' '--y'};
@@ -843,12 +840,19 @@ try
 % %                 plot(testV,drawing{task,ped});
 %             catch
 %             end
-            try
-                out = doStaircase('threshold',stimulus.staircase{task,ped},'type','weibull'); % noise
-                plotting(task,ped) = out.threshold;
-            catch
-                plotting(task,ped) = -1;
-            end
+             try
+                each = [];
+                for i = 1:length(stimulus.staircase{task,ped})
+                    if stimulus.staircase{task,ped}(i).trialNum > 0
+                        out = doStaircase('threshold',stimulus.staircase{task,ped}(i),'type','weibull'); % noise
+                        each(end+1) = out.threshold;
+                    end
+                end
+                plotting(task,ped) = mean(each);
+                ci(task,ped) = std(each)/sqrt(length(each))*1.96;
+             catch
+                 plotting(task,ped) = -1;
+             end
             try
                 outC = doStaircase('threshold',stimulus.stairCatch{task,ped},'type','weibull');
                 catchPlot(task,ped) = outC.threshold;
@@ -874,7 +878,7 @@ function checkStaircaseStop()
 global stimulus
 taskOpts = {'coherence','contrast'};
 for task = 1:2
-    for ped = 1:length(stimulus.pedestals.catch.(taskOpts{task}))
+    for ped = 1
         s = stimulus.stairCatch{task,ped};
         if doStaircase('stop',s)
             stimulus.stairCatch{task,ped}(end+1) = doStaircase('init','fixed',...
