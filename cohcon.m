@@ -336,9 +336,9 @@ end
 mglFlush
 
 % let the user know
-disp(sprintf('(cohCon) Starting run number: %i',stimulus.counter));
+disp(sprintf('(cohCon) Starting run number: %i. Current task: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.runs.curTask}));
 % if stimulus.unattended
-    myscreen.flushMode = 1;
+myscreen.flushMode = 1;
 % end
 
 %% Main Task Loop
@@ -866,10 +866,10 @@ try
             end
         end
     end
-    plot(stimulus.pedestals.(taskOpts{3})(1:4),catchPlot(1,:),drawing{1});
-    plot(stimulus.pedestals.(taskOpts{4})(1:4),catchPlot(2,:),drawing{2});
-    plot(stimulus.pedestals.(taskOpts{3})(1:4),plotting(1,:),drawing{3});
-    plot(stimulus.pedestals.(taskOpts{4})(1:4),plotting(2,:),drawing{4});
+    plot(stimulus.pedestals.(taskOpts{3})(1),catchPlot(1,:),drawing{1});
+    plot(stimulus.pedestals.(taskOpts{4})(1),catchPlot(2,:),drawing{2});
+    plot(stimulus.pedestals.(taskOpts{3})(1),plotting(1,:),drawing{3});
+    plot(stimulus.pedestals.(taskOpts{4})(1),plotting(2,:),drawing{4});
     legend(taskOpts);
     axis([0 .7 -.05 1.05]);
     hold off
@@ -938,8 +938,6 @@ end
 % create dots for optic flow
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dots = initDotsRadial(dots,~)
-
-global stimulus
 
 % maximum depth of points
 dots.minX = 3.5;
@@ -1011,15 +1009,13 @@ dots.x(dots.coherent) = dots.x(dots.coherent) + dots.dir*freq_factor;
 xmat = repmat([1 1 -1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
 ymat = repmat([1 -1 1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
 perms = randperm(dots.incoherentn);
-xmat = xmat(perms);
-ymat = ymat(perms);
 
 % move incoherent dots
 % get random vectors
 dots.rX = rand(1,dots.incoherentn);
 dots.rY = sqrt(1-(dots.rX.^2));
-dots.rX = (dots.rX .* xmat) * freq_factor; % rescale to match the velocity
-dots.rY = (dots.rY .* ymat) * freq_factor;
+dots.rX = (dots.rX .* xmat(perms)) * freq_factor; % rescale to match the velocity
+dots.rY = (dots.rY .* ymat(perms)) * freq_factor;
 % dots.rX = (dots.rX .* xmat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2); % rescale to match the velocity
 % dots.rY = (dots.rY .* ymat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2);
 dots.x(dots.incoherent) = dots.x(dots.incoherent) + dots.rX;
