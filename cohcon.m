@@ -179,8 +179,8 @@ stimulus.seg.stim = 1;
 stimulus.seg.rampDOWN = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [.3 .8 .1 1 .3];
-task{1}{1}.segmax = [.3 .8 .4 1 .7];
+task{1}{1}.segmin = [.8 0 .3 1 .3];
+task{1}{1}.segmax = [.8 0 .7 1 .7];
 
 if stimulus.noramp
     task{1}{1}.segmin(stimulus.seg.stim) = 1;
