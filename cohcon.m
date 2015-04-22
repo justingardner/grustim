@@ -41,14 +41,12 @@ plots = [];
 overrideTask = [];
 projector = [];
 scan = [];
-noramp = [];
-getArgs(varargin,{'stimFileNum=-1','unattended=0','noramp=0' ...
+getArgs(varargin,{'stimFileNum=-1','unattended=0', ...
     'plots=1','overrideTask=0','projector=0','scan=0'});
 stimulus.projector = projector;
 stimulus.unattended = unattended;
 stimulus.scan = scan;
 stimulus.plots = plots;
-stimulus.noramp = noramp;
 
 if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
@@ -174,20 +172,12 @@ stimulus.text.cTexK = mglText('C');
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.ITI = 5; % the ITI is either 20s (first time) or 1s
+stimulus.seg.ITI = 4; % the ITI is either 20s (first time) or 1s
 stimulus.seg.stim = 1;
-stimulus.seg.rampDOWN = 2;
-stimulus.seg.ISI = 3;
-stimulus.seg.resp = 4;
-task{1}{1}.segmin = [.8 0 .3 1 .3];
-task{1}{1}.segmax = [.8 0 .7 1 .7];
-
-if stimulus.noramp
-    task{1}{1}.segmin(stimulus.seg.stim) = 1;
-    task{1}{1}.segmax(stimulus.seg.stim) = 1;
-    task{1}{1}.segmin(stimulus.seg.rampDOWN) = 0;
-    task{1}{1}.segmax(stimulus.seg.rampDOWN) = 0;
-end
+stimulus.seg.ISI = 2;
+stimulus.seg.resp = 3;
+task{1}{1}.segmin = [.8 .2 1 .3];
+task{1}{1}.segmax = [.8 .5 1 .7];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -207,7 +197,7 @@ task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-task{1}{1}.getResponse = [0 0 0 1 0];
+task{1}{1}.getResponse = [0 0 1 0];
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
@@ -221,7 +211,7 @@ if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 if stimulus.unattended
-    task{1}{1}.getResponse = [0 0 0 0 0];
+    task{1}{1}.getResponse = [0 0 0 0];
     task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
     task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
@@ -400,13 +390,6 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-if stimulus.curTrial == 0
-    stimulus.started = mglGetSecs;
-    if stimulus.scan && ~stimulus.unattended
-      task.thistrial.seglen(stimulus.seg.ITI) = 7.5;
-    end
-end
-
 stimulus.curTrial = stimulus.curTrial + 1;
 
 %  Set the current task
@@ -418,7 +401,7 @@ else
         task.thistrial.task = switchTasks(stimulus.runs.curTask);
         % edit seglen
         task.thistrial.seglen(stimulus.seg.ISI) = .5;
-        task.thistrial.seglen(stimulus.seg.resp) = 2;
+        task.thistrial.seglen(stimulus.seg.resp) = 3;
         disp('(cohCon) Catch trial.');
     else
         task.thistrial.task = stimulus.runs.curTask;
@@ -450,33 +433,28 @@ end
 task.thistrial.conDelta = conTh;
 task.thistrial.cohDelta = cohTh;
 
-% Display info about this run
-ramps = task.thistrial.seglen(stimulus.seg.rampDOWN)*2;
-main = task.thistrial.seglen(stimulus.seg.stim);
-total = ramps+main;
-
 if task.thistrial.conSide==1
-    task.thistrial.avgConL = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*task.thistrial.conDelta + main/total*task.thistrial.conDelta;
-    task.thistrial.avgConR = task.thistrial.contrast;
     lCon = task.thistrial.contrast+task.thistrial.conDelta;
     rCon = task.thistrial.contrast;
+    task.thistrial.avgConL = lCon;
+    task.thistrial.avgConR = rCon;
 else
-    task.thistrial.avgConR = task.thistrial.contrast + ramps/total*stimulus.sigmoidMu*task.thistrial.conDelta + main/total*task.thistrial.conDelta;
-    task.thistrial.avgConL = task.thistrial.contrast;
     rCon = task.thistrial.contrast+task.thistrial.conDelta;
     lCon = task.thistrial.contrast;
+    task.thistrial.avgConR = rCon;
+    task.thistrial.avgConL = lCon;
 end
 
 if task.thistrial.cohSide==1
-    task.thistrial.avgCohL = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*task.thistrial.cohDelta + main/total*task.thistrial.cohDelta;
-    task.thistrial.avgCohR = task.thistrial.coherence;
     lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
     rCoh = task.thistrial.coherence;
+    task.thistrial.avgCohL = lCoh;
+    task.thistrial.avgCohR = rCoh;
 else
-    task.thistrial.avgCohR = task.thistrial.coherence + ramps/total*stimulus.sigmoidMu*task.thistrial.cohDelta + main/total*task.thistrial.cohDelta;
-    task.thistrial.avgCohL = task.thistrial.coherence;
     rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
     lCoh = task.thistrial.coherence;
+    task.thistrial.avgCohL = lCoh;
+    task.thistrial.avgCohR = rCoh;
 end
 
 disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
@@ -513,15 +491,8 @@ switch task.thistrial.thisseg
         stimulus.live.catchFix = 0;
     case stimulus.seg.stim
         stimulus.live.dots = 1;
-        stimulus.live.dotRampDir = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
-    case stimulus.seg.rampDOWN
-        stimulus.live.dots = 1;
-        stimulus.live.dotRampDir = -1;
-        stimulus.live.fixColor = stimulus.colors.black;
-        stimulus.live.catchFix = 0;
-        stimulus.live.rampStart = mglGetSecs;
     case stimulus.seg.ISI
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
@@ -530,10 +501,6 @@ switch task.thistrial.thisseg
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.white;
         stimulus.live.catchFix = 1;
-end
-
-if stimulus.unattended
-    stimulus.live.dotRampDir = 0;
 end
 
 function value = calcPerc(stimulus,perc)
@@ -589,37 +556,22 @@ function stimulus = upDots(task,stimulus,myscreen)
 tCoh = task.thistrial.coherence;
 tCon = task.thistrial.contrast / stimulus.curMaxContrast;
 
-switch stimulus.live.dotRampDir
-    case 0
-        perc = 1;
-    case 1
-        % we are ramping UP
-        perc = (mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg);
-        perc = calcPerc(stimulus,perc);
-    case -1
-        % we are ramping DOWN        
-        perc = 1-((mglGetSecs-stimulus.live.rampStart) / task.thistrial.seglen(task.thistrial.thisseg));
-        perc = calcPerc(stimulus,perc);
-end
 
-if stimulus.noramp
-    perc = 1;
-end
 
 if task.thistrial.cohSide==1
-    lCohDel = perc*task.thistrial.cohDelta;
+    lCohDel = task.thistrial.cohDelta;
     rCohDel = 0;
 else
     lCohDel = 0;
-    rCohDel = perc*task.thistrial.cohDelta;
+    rCohDel = task.thistrial.cohDelta;
 end
 
 if task.thistrial.conSide==1
-    lConDel = perc*task.thistrial.conDelta;
+    lConDel = task.thistrial.conDelta;
     rConDel = 0;
 else
     lConDel = 0;
-    rConDel = perc*task.thistrial.conDelta;
+    rConDel = task.thistrial.conDelta;
 end
 
 %% Old update code start here
