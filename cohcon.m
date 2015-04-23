@@ -159,6 +159,14 @@ if ~isfield(myscreen,'gammaTable')
 end
 stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
     
+%% Mask
+d = stimulus.dotsL;
+stimulus.mask.x = repmat([d.minX+.125:.25:d.maxX-.125],1,40);
+stimulus.mask.y = [d.minY+.125:.25:d.maxY-.125];
+sz = [.25 .25];
+tmp = repmat(stimulus.mask.y,30,1);
+stimulus.mask.y = transpose(tmp(:));
+
 %% Character textures
 mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
 stimulus.text.mTexW = mglText('M');
@@ -172,12 +180,13 @@ stimulus.text.cTexK = mglText('C');
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.ITI = 4; % the ITI is either 20s (first time) or 1s
+stimulus.seg.ITI = 5; % the ITI is either 20s (first time) or 1s
 stimulus.seg.stim = 1;
-stimulus.seg.ISI = 2;
-stimulus.seg.resp = 3;
-task{1}{1}.segmin = [.8 .2 1 .3];
-task{1}{1}.segmax = [.8 .5 1 .7];
+stimulus.seg.mask = 2;
+stimulus.seg.ISI = 3;
+stimulus.seg.resp = 4;
+task{1}{1}.segmin = [.8 .2 .2 1 .3];
+task{1}{1}.segmax = [.8 .2 .5 1 .7];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -197,7 +206,7 @@ task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-task{1}{1}.getResponse = [0 0 1 0];
+task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
@@ -381,12 +390,12 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
-%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
+%%
 
 global stimulus
 
@@ -472,12 +481,12 @@ end
 stimulus.dotsL.dir = task.thistrial.dir;
 stimulus.dotsR.dir = task.thistrial.dir;
 
-%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
+%%
 
 myscreen.flushMode = 0;
 
@@ -489,30 +498,37 @@ switch task.thistrial.thisseg
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
+        stimulus.live.mask = 0;
     case stimulus.seg.stim
         stimulus.live.dots = 1;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
+        stimulus.live.mask = 0;
+    case stimulus.seg.mask
+        stimulus.live.dots = 0;
+        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.catchFix = 0;
+        stimulus.live.mask = 1;
+        stimulus.live.maskOn = mglGetSecs;
     case stimulus.seg.ISI
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 1;
+        stimulus.live.mask = 0;
     case stimulus.seg.resp
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.white;
         stimulus.live.catchFix = 1;
+        stimulus.live.mask = 0;
 end
 
-function value = calcPerc(stimulus,perc)
-value = stimulus.sigmoid(round(perc*100)+1);
   
-  
-%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
+%%
 global stimulus
 
 if stimulus.projector
@@ -523,13 +539,27 @@ else
     mglClearScreen(0.5);
 end
 
+if stimulus.live.mask==1, stimulus = upMask(stimulus); end
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
 if ~stimulus.unattended, upFix(task,stimulus); end
 
 if stimulus.projector, mglStencilSelect(0); end
 
+
+function stimulus = upMask(stimulus)
 %%
+
+sz = [.25 .25];
+if ((mglGetSecs - stimulus.live.maskOn) > .025) || ~isfield(stimulus.live,'xs')
+    some = randperm(length(stimulus.mask.x));
+    stimulus.live.xs = some(1:round(length(some)/2)); stimulus.live.ys = some(round(length(some)/2)+1:end);
+    stimulus.live.maskOn = mglGetSecs;
+end
+mglFillRect([stimulus.mask.x(stimulus.live.xs) -stimulus.mask.x(stimulus.live.xs)],[stimulus.mask.y(stimulus.live.xs) -stimulus.mask.y(stimulus.live.xs)],sz,[.45 .45 .45]);
+mglFillRect([stimulus.mask.x(stimulus.live.ys) -stimulus.mask.x(stimulus.live.ys)],[stimulus.mask.y(stimulus.live.ys) -stimulus.mask.y(stimulus.live.ys)],sz,[.55 .55 .55]);
+
 function upFix(task,stimulus)
+%%
 
 if ~task.thistrial.catch || stimulus.live.catchFix == 0
     mglFixationCross(1.5,1.5,stimulus.live.fixColor);
