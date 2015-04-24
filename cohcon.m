@@ -41,12 +41,16 @@ plots = [];
 overrideTask = [];
 projector = [];
 scan = [];
-getArgs(varargin,{'stimFileNum=-1','unattended=0', ...
-    'plots=1','overrideTask=0','projector=0','scan=0'});
+training = [];
+nocatch = [];
+getArgs(varargin,{'stimFileNum=-1','unattended=0','nocatch', ...
+    'plots=1','overrideTask=0','projector=0','scan=0','training=0'});
 stimulus.projector = projector;
 stimulus.unattended = unattended;
 stimulus.scan = scan;
 stimulus.plots = plots;
+stimulus.training = training;
+stimulus.nocatch = nocatch;
 
 if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
@@ -138,7 +142,7 @@ if stimulus.unattended
     stimulus.pedestals.contrast = [0 exp(-1.75:(1.25/3):-.5) .95];
 end
 
-stimulus.pedestals.initThresh.coherence = .6;
+stimulus.pedestals.initThresh.coherence = .8;
 stimulus.pedestals.initThresh.contrast = .3;
 
 stimulus.pedestals.catch.coherence = exp(-1.85:.2:-.35);
@@ -185,8 +189,8 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [.8 .2 .2 1 .3];
-task{1}{1}.segmax = [.8 .2 .5 1 .7];
+task{1}{1}.segmin = [.8 .25 .2 1 .3];
+task{1}{1}.segmax = [.8 .25 .5 1 .7];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -223,6 +227,17 @@ if stimulus.unattended
     task{1}{1}.getResponse = [0 0 0 0];
     task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
     task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
+end
+
+if stimulus.nocatch
+    task{1}{1}.parameter.catch = 0;
+end
+
+if stimulus.training
+    task{1}{1}.segmin(stimulus.seg.stim) = 1.2;
+    task{1}{1}.segmax(stimulus.seg.stim) = 1.2;
+    task{1}{1}.segmin(stimulus.seg.ITI) = 1;
+    task{1}{1}.segmax(stimulus.seg.ITI) = 2.5;
 end
 
 %% Sigmoid
@@ -351,10 +366,6 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % flip screen
     myscreen = tickScreen(myscreen,task);
 end
-
-stimulus.ended = mglGetSecs;
-
-disp(sprintf('(cohCon) Run ending... Elapsed time: %3.0f s',stimulus.ended-stimulus.started));
 
 % task ended
 mglClearScreen(0.5);
