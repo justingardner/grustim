@@ -185,8 +185,8 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [.8 .2 .2 1 .3];
-task{1}{1}.segmax = [.8 .2 .5 1 .7];
+task{1}{1}.segmin = [.75 .25 .2 1 .3];
+task{1}{1}.segmax = [.75 .25 .5 1 .7];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -220,7 +220,7 @@ if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 if stimulus.unattended
-    task{1}{1}.getResponse = [0 0 0 0];
+    task{1}{1}.getResponse = [0 0 0 0 0];
     task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
     task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
@@ -354,7 +354,7 @@ end
 
 stimulus.ended = mglGetSecs;
 
-disp(sprintf('(cohCon) Run ending... Elapsed time: %3.0f s',stimulus.ended-stimulus.started));
+% disp(sprintf('(cohCon) Run ending... Elapsed time: %3.0f s',stimulus.ended-stimulus.started));
 
 % task ended
 mglClearScreen(0.5);
@@ -769,8 +769,6 @@ try
     taskOpts = {'catch - coherence','catch - contrast','coherence','contrast'};
     drawing = {'or' 'ob' '*r' '*b'};
     
-    figure
-    hold on
     
 %     for task = 1:2
 %         pedSuccess = [];
@@ -843,12 +841,15 @@ try
             end
         end
     end
+    figure
+    hold on
     plot(stimulus.pedestals.(taskOpts{3})(1),catchPlot(1,:),drawing{1});
     plot(stimulus.pedestals.(taskOpts{4})(1),catchPlot(2,:),drawing{2});
     plot(stimulus.pedestals.(taskOpts{3})(1),plotting(1,:),drawing{3});
     plot(stimulus.pedestals.(taskOpts{4})(1),plotting(2,:),drawing{4});
     legend(taskOpts);
-    axis([0 .7 -.05 1.05]);
+    a = axis;
+    axis([0 .7 a(3) a(4)]);
     hold off
 
 catch
