@@ -736,9 +736,9 @@ stimulus.staircase = cell(2,length(stimulus.pedestals.contrast));
 
 % Catch staircases
 stimulus.stairCatch{1,1} = doStaircase('init','fixed',...
-    'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=25');
+    'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=50');
 stimulus.stairCatch{2,1} = doStaircase('init','fixed',...
-    'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=25');
+    'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=50');
 for i = 2:length(stimulus.pedestals.catch.coherence)
     stimulus.stairCatch{1,i} = stimulus.stairCatch{1,1};
 end
