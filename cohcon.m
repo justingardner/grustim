@@ -149,8 +149,12 @@ stimulus.pedestals.coherence = .1;
 stimulus.pedestals.contrast = .6;
 
 if stimulus.unattended
-    stimulus.pedestals.coherence = [0 .05 .125 .25 .45 .95];
-    stimulus.pedestals.contrast = [0 exp(-1.75:(1.25/3):-.5) .95];
+    stimulus.pedestals.coherence = [.1 .35 .95];
+    stimulus.pedestals.contrast = [.25 .6 .95];
+end
+if stimulus.nocatch
+    stimulus.pedestals.coherence = [.1 .35 .95];
+    stimulus.pedestals.contrast = [.25 .6 .95];
 end
 
 stimulus.pedestals.initThresh.coherence = .8;
@@ -161,6 +165,10 @@ stimulus.pedestals.catch.contrast = exp([-3.2 -3 -2.8 -2.6 -2.4 -2.2 -2 -1.8]);
 
 stimulus.dotsR = initDotsRadial(stimulus.dotsR,myscreen);
 stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
+
+if ~length(stimulus.pedestals.coherence)==length(stimulus.pedestals.contrast)
+    disp('(cohcon) Contrast and coherence have different pedestal #, this can cause errors');
+end
 
 %% Gamma Table Initialization
 
@@ -200,8 +208,8 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [.8 .25 .2 1 .3];
-task{1}{1}.segmax = [.8 .25 .5 1 .7];
+task{1}{1}.segmin = [.75 .25 .2 1 .3];
+task{1}{1}.segmax = [.75 .25 .5 1 .5];
 
 if stimulus.unattended
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -213,8 +221,8 @@ if stimulus.unattended
     task{1}{1}.segmax(stimulus.seg.resp) = 0;
 end
 if stimulus.scan
-    task{1}{1}.segmin(stimulus.seg.ITI) = 1;
-    task{1}{1}.segmax(stimulus.seg.ITI) = 11;
+    task{1}{1}.segmin(stimulus.seg.ITI) = 3;
+    task{1}{1}.segmax(stimulus.seg.ITI) = 10;
 end
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
@@ -225,8 +233,8 @@ task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
-task{1}{1}.parameter.conPedestal = 1; % target contrast
-task{1}{1}.parameter.cohPedestal = 1; % target flow coherence
+task{1}{1}.parameter.conPedestal = 1:length(stimulus.pedestals.contrast); % target contrast
+task{1}{1}.parameter.cohPedestal = 1:length(stimulus.pedestals.coherence); % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 100;
@@ -241,7 +249,7 @@ if stimulus.unattended
 end
 
 if stimulus.nocatch
-    task{1}{1}.parameter.catch = 0;
+    task{1}{1}.parameter.catch = -1;
 end
 
 if stimulus.training
@@ -415,7 +423,7 @@ stimulus.curTrial = stimulus.curTrial + 1;
 if stimulus.unattended
     task.thistrial.task = 3;
 else
-    if task.thistrial.catch
+    if task.thistrial.catch > 0
         switchTasks = [2 1];
         task.thistrial.task = switchTasks(stimulus.runs.curTask);
         % edit seglen
@@ -571,7 +579,7 @@ mglFillRect([stimulus.mask.x(stimulus.live.ys) -stimulus.mask.x(stimulus.live.ys
 function upFix(task,stimulus)
 %%
 
-if ~task.thistrial.catch || stimulus.live.catchFix == 0
+if ~(task.thistrial.catch > 0) || stimulus.live.catchFix == 0
     mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 else
     if stimulus.runs.curTask==2
@@ -668,7 +676,7 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         % Store whether this was correct
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
         disp(sprintf('(cohCon) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
-        if ~task.thistrial.catch
+        if ~(task.thistrial.catch > 0)
             if ~stimulus.nocatch
                 stimulus.staircase{task.thistrial.task,curPedValue(task,false)} = ...
                     doStaircase('update',stimulus.staircase{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
@@ -705,7 +713,7 @@ if stimulus.runs.curTask == 1
         [cohPed, stimulus.nocatchs.staircase{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.nocatchs.staircase{1,curPedVal(task,1)});
     end
     
-    if task.thistrial.catch
+    if task.thistrial.catch > 0
         [conPed, stimulus.stairCatch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.stairCatch{2,curPedVal(task,2)});
     else
         conPed = stimulus.pedestals.catch.contrast(randi(length(stimulus.pedestals.catch.contrast)));
@@ -718,7 +726,7 @@ else
         [conPed, stimulus.nocatchs.staircase{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.nocatchs.staircase{2,curPedVal(task,2)});
     end
     
-    if task.thistrial.catch
+    if task.thistrial.catch > 0
         [cohPed, stimulus.stairCatch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.stairCatch{1,curPedVal(task,1)});
     else
         cohPed = stimulus.pedestals.catch.coherence(randi(length(stimulus.pedestals.catch.coherence)));
@@ -758,11 +766,25 @@ stimulus.stairCatch = cell(2,length(stimulus.pedestals.catch.coherence));
 stimulus.staircase = cell(2,length(stimulus.pedestals.contrast));
 stimulus.nocatchs.staircase = cell(2,length(stimulus.pedestals.contrast));
 
-% Catch staircases
-stimulus.stairCatch{1,1} = doStaircase('init','fixed',...
-    'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=50');
-stimulus.stairCatch{2,1} = doStaircase('init','fixed',...
-    'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=50');
+if stimulus.scan
+    stimulus.stairCatch{1,1} = doStaircase('init','fixed',...
+        'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=50');
+    stimulus.stairCatch{2,1} = doStaircase('init','fixed',...
+        'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=50');
+else
+    % Catch staircases
+    stimulus.stairCatch{1,1} = doStaircase('init','upDown',...
+        'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{1}),...
+        'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{1})/3,...
+        'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
+        'nTrials=50','maxStepsize=.2','minStepsize=.001');
+    stimulus.stairCatch{2,1} = doStaircase('init','upDown',...
+        'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{2}),...
+        'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{2})/3,...
+        'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
+        'nTrials=50','maxStepsize=.2','minStepsize=.001');
+end
+
 for i = 2:length(stimulus.pedestals.catch.coherence)
     stimulus.stairCatch{1,i} = stimulus.stairCatch{1,1};
 end
@@ -811,7 +833,7 @@ try
     nocatchplot = zeros(2,1);
     
     for task = 1:2
-        for ped = 1
+        for ped = 1:length(stimulus.pedestals.contrast)
             try
                 each = [];
                 for i = 1:length(stimulus.nocatchs.staircase{task,ped})
@@ -862,103 +884,77 @@ end
 %% checkStaircaseStop
 function checkStaircaseStop()
 global stimulus
-taskOpts = {'coherence','contrast'};
-for task = 1:2
-    for ped = 1
-        s = stimulus.stairCatch{task,ped};
-        if doStaircase('stop',s)
-            disp('Resetting a catch trial staircase.');
-            stimulus.stairCatch{task,ped}(end+1) = doStaircase('init','fixed',...
-                'fixedVals',stimulus.pedestals.catch.(taskOpts{task}),'nTrials=50');
+if stimulus.scan
+    taskOpts = {'coherence','contrast'};
+    for task = 1:2
+        for ped = 1:length(stimulus.pedestals.contrast)
+            s = stimulus.stairCatch{task,ped};
+            if doStaircase('stop',s)
+                disp('Resetting a catch trial staircase.');
+                stimulus.stairCatch{task,ped}(end+1) = doStaircase('init','fixed',...
+                    'fixedVals',stimulus.pedestals.catch.(taskOpts{task}),'nTrials=50');
+            end
+        end
+    end
+else
+    for task = 1:2
+        for ped = 1:length(stimulus.pedestals.contrast)
+            stimulus.stairCatch{task,ped} = resetStair(stimulus.stairCatch{task,ped});
         end
     end
 end
 % Check both staircases
 for task = 1:2
-    for ped = 1
-        s = stimulus.staircase{task,ped};
-        if doStaircase('stop',s)
-            disp('Resetting a staircase.');
-            % this is a bit of a pain... you can't pass an initialThreshold
-            % argument do doStaircase('init',s, ...), it ignores everything and
-            % resets using the calculated threshold. Because you can't override it
-            [args, vals, ~] = getArgs(s(1).initArgs);
-            threshPos = -1;
-            stepPos = -1;
-            for i = 1:length(args)
-                switch args{i}
-                    case 'initialThreshold'
-                        threshPos = i;
-                    case 'initialStepsize'
-                        stepPos = i;
-                end
-            end
-            out = doStaircase('threshold',s);
-            in = input(sprintf('Resetting Staircase... Estimate is: %1.2f. Reset ([Y]/[C]ustom/[O]riginal): ',out.threshold),'s');
-            switch in
-                case 'Y'
-                    vals{threshPos} = out.threshold;
-                    vals{stepPos} = out.threshold / 3;
-                case 'C'
-                    disp('Original values:');
-                    disp(sprintf('%s: %0.2f',args{threshPos},num2str(vals{threshPos})));
-                    val = str2double(input('New threshold value: ','s'));
-                    vals{threshPos} = val;
-                    vals{stepPos} = val / 3;
-                case 'O'
-            end
-            if ~length(args) == 8
-                disp('Args incorrect length...');
-                keyboard
-            end
-%             stimulus.staircase{task,ped}(end+1) = doStaircase('init',s,'initialThreshold',vals{threshPos},'initialStepsize',vals{stepPos});
-            stimulus.staircase{task,ped}(end+1) = doStaircase('init','upDown',args{1},vals{1},args{2},vals{2},args{3},vals{3},args{4},vals{4},args{5},vals{5},args{6},vals{6},args{7},vals{7},args{8},vals{8});
-        end
+    for ped = 1:length(stimulus.pedestals.contrast)
+        stimulus.staircase{task,ped} = resetStair(stimulus.staircase{task,ped});
     end
 end
 % Check nocatch staircases
 
 for task = 1:2
-    for ped = 1
-        s = stimulus.nocatchs.staircase{task,ped};
-        if doStaircase('stop',s)
-            disp('Resetting a nocatch staircase.');
-            % this is a bit of a pain... you can't pass an initialThreshold
-            % argument do doStaircase('init',s, ...), it ignores everything and
-            % resets using the calculated threshold. Because you can't override it
-            [args, vals, ~] = getArgs(s(1).initArgs);
-            threshPos = -1;
-            stepPos = -1;
-            for i = 1:length(args)
-                switch args{i}
-                    case 'initialThreshold'
-                        threshPos = i;
-                    case 'initialStepsize'
-                        stepPos = i;
-                end
-            end
-            out = doStaircase('threshold',s);
-            in = input(sprintf('Resetting Staircase... Estimate is: %1.2f. Reset ([Y]/[C]ustom/[O]riginal): ',out.threshold),'s');
-            switch in
-                case 'Y'
-                    vals{threshPos} = out.threshold;
-                    vals{stepPos} = out.threshold / 3;
-                case 'C'
-                    disp('Original values:');
-                    disp(sprintf('%s: %0.2f',args{threshPos},num2str(vals{threshPos})));
-                    val = str2double(input('New threshold value: ','s'));
-                    vals{threshPos} = val;
-                    vals{stepPos} = val / 3;
-                case 'O'
-            end
-            if ~length(args) == 8
-                disp('Args incorrect length...');
-                keyboard
-            end
-%             stimulus.staircase{task,ped}(end+1) = doStaircase('init',s,'initialThreshold',vals{threshPos},'initialStepsize',vals{stepPos});
-            stimulus.nocatchs.staircase{task,ped}(end+1) = doStaircase('init','upDown',args{1},vals{1},args{2},vals{2},args{3},vals{3},args{4},vals{4},args{5},vals{5},args{6},vals{6},args{7},vals{7},args{8},vals{8});
+    for ped = 1:length(stimulus.pedestals.contrast)
+        stimulus.nocatchs.staircase{task,ped} = resetStair(stimulus.nocatchs.staircase{task,ped});
+    end
+end
+
+function s = resetStair(s)
+
+if doStaircase('stop',s)
+    disp('Resetting a nocatch staircase.');
+    % this is a bit of a pain... you can't pass an initialThreshold
+    % argument do doStaircase('init',s, ...), it ignores everything and
+    % resets using the calculated threshold. Because you can't override it
+    [args, vals, ~] = getArgs(s(1).initArgs);
+    threshPos = -1;
+    stepPos = -1;
+    for i = 1:length(args)
+        switch args{i}
+            case 'initialThreshold'
+                threshPos = i;
+            case 'initialStepsize'
+                stepPos = i;
         end
     end
+    out = doStaircase('threshold',s);
+    in = input(sprintf('Resetting Staircase... Estimate is: %1.2f. Reset ([Y]/[C]ustom/[O]riginal): ',out.threshold),'s');
+    switch in
+        case 'Y'
+            vals{threshPos} = out.threshold;
+            vals{stepPos} = out.threshold / 3;
+        case 'C'
+            disp('Original values:');
+            disp(sprintf('%s: %0.2f',args{threshPos},num2str(vals{threshPos})));
+            val = str2double(input('New threshold value: ','s'));
+            vals{threshPos} = val;
+            vals{stepPos} = val / 3;
+        case 'O'
+    end
+    if ~length(args) == 8
+        disp('Args incorrect length...');
+        keyboard
+    end
+    %             stimulus.staircase{task,ped}(end+1) = doStaircase('init',s,'initialThreshold',vals{threshPos},'initialStepsize',vals{stepPos});
+    s(end+1) = doStaircase('init','upDown',args{1},vals{1},args{2},vals{2},args{3},vals{3},args{4},vals{4},args{5},vals{5},args{6},vals{6},args{7},vals{7},args{8},vals{8});
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
