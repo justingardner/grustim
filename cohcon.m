@@ -243,7 +243,7 @@ if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 if stimulus.unattended
-    task{1}{1}.getResponse = [0 0 0 0];
+    task{1}{1}.getResponse = [0 0 0 0 0];
     task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
     task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
@@ -824,8 +824,6 @@ try
     taskOpts = {'catch - coherence','catch - contrast','coherence','contrast','Nocatch coherence','Nocatch contrast'};
     drawing = {'or' 'ob' '*r' '*b' '+r' '+b'};
     
-    figure
-    hold on
     
     plotting = zeros(2,1);
     catchPlot = zeros(2,1);
@@ -867,6 +865,8 @@ try
             end
         end
     end
+    figure
+    hold on
     plot(stimulus.pedestals.(taskOpts{3})(1),catchPlot(1,:),drawing{1});
     plot(stimulus.pedestals.(taskOpts{4})(1),catchPlot(2,:),drawing{2});
     plot(stimulus.pedestals.(taskOpts{3})(1),plotting(1,:),drawing{3});
@@ -874,7 +874,8 @@ try
     plot(stimulus.pedestals.(taskOpts{3})(1),nocatchplot(1,:),drawing{5});
     plot(stimulus.pedestals.(taskOpts{4})(1),nocatchplot(2,:),drawing{6});
     legend(taskOpts);
-    axis([0 .7 -.05 1.05]);
+    a = axis;
+    axis([0 .7 a(3) a(4)]);
     hold off
 
 catch
