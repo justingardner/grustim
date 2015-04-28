@@ -36,17 +36,15 @@ global fixStimulus
 
 % add arguments later
 stimFileNum = [];
-unattended = [];
 plots = [];
 overrideTask = [];
 projector = [];
 scan = [];
 training = [];
 nocatch = [];
-getArgs(varargin,{'stimFileNum=-1','unattended=0','nocatch', ...
+getArgs(varargin,{'stimFileNum=-1','nocatch', ...
     'plots=1','overrideTask=0','projector=0','scan=0','training=0'});
 stimulus.projector = projector;
-stimulus.unattended = unattended;
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.training = training;
@@ -148,10 +146,6 @@ stimulus.pedestals.pedOpts = {'coherence','contrast'};
 stimulus.pedestals.coherence = .1;
 stimulus.pedestals.contrast = .6;
 
-if stimulus.unattended
-    stimulus.pedestals.coherence = [.1 .35 .95];
-    stimulus.pedestals.contrast = [.25 .6 .95];
-end
 if stimulus.nocatch
     stimulus.pedestals.coherence = [.1 .35 .95];
     stimulus.pedestals.contrast = [.25 .6 .95];
@@ -211,15 +205,6 @@ stimulus.seg.resp = 4;
 task{1}{1}.segmin = [.75 .25 .2 1 .3];
 task{1}{1}.segmax = [.75 .25 .5 1 .5];
 
-if stimulus.unattended
-    task{1}{1}.segmin(stimulus.seg.ITI) = 1;
-    task{1}{1}.segmax(stimulus.seg.ITI) = 2;
-    % remove response
-    task{1}{1}.segmin(stimulus.seg.ISI) = 0;
-    task{1}{1}.segmax(stimulus.seg.ISI) = 0;
-    task{1}{1}.segmin(stimulus.seg.resp) = 0;
-    task{1}{1}.segmax(stimulus.seg.resp) = 0;
-end
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 3;
     task{1}{1}.segmax(stimulus.seg.ITI) = 10;
@@ -241,11 +226,6 @@ task{1}{1}.numTrials = 100;
 
 if stimulus.scan
     task{1}{1}.numTrials = inf;
-end
-if stimulus.unattended
-    task{1}{1}.getResponse = [0 0 0 0 0];
-    task{1}{1}.parameter.conPedestal = [1 2 3 4 5]; % target contrast
-    task{1}{1}.parameter.cohPedestal = [1 2 3 4 5]; % target flow coherence
 end
 
 if stimulus.nocatch
@@ -301,17 +281,6 @@ else
     stimulus.runs.curTask = stimulus.runs.taskList(stimulus.counter);
 end
 
-%% Unattended Mode
-if stimulus.unattended
-    fixStimulus.diskSize = 0;
-    fixStimulus.stimColor = [.9 .9 0];
-    fixStimulus.responseColor = stimulus.colors.white;
-    fixStimulus.interColor = stimulus.colors.black;
-    fixStimulus.correctColor = stimulus.colors.green;
-    fixStimulus.incorrectColor = stimulus.colors.red;
-    [task{2}, myscreen] = fixStairInitTask(myscreen);
-end
-
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
@@ -342,14 +311,12 @@ myscreen = eyeCalibDisp(myscreen);
 mglWaitSecs(2);
 setGammaTable_flowMax(1);
 mglClearScreen(0.5);
-if ~stimulus.unattended
-    if stimulus.scan        
-        mglTextDraw('DO NOT MOVE',[0 1.5]);
-        mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
-    else
-        
-        mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
-    end
+if stimulus.scan        
+    mglTextDraw('DO NOT MOVE',[0 1.5]);
+    mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
+else
+
+    mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
 end
 mglFlush
 
@@ -366,10 +333,6 @@ phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % update the task
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
-    % update the fixation task
-    if stimulus.unattended
-        [task{2}, myscreen] = updateTask(task{2},myscreen,1);
-    end
     % flip screen
     myscreen = tickScreen(myscreen,task);
 end
@@ -388,24 +351,6 @@ if stimulus.plots
     dispStaircase(stimulus);
 end
 
-% if this was 'unattended' or 'mtloc' mode, we should copy the file we saved
-% to a different folder.
-dFolder = fullfile('~/data/cohcon/',mglGetSID);
-files = dir(dFolder);
-cFile = files(end);
-if stimulus.unattended
-    nFolder = fullfile('~/data/cohcon/',mglGetSID,'unattended');
-    if ~isdir(nFolder), mkdir(nFolder); end
-    s = movefile(fullfile(dFolder,cFile.name),fullfile(nFolder,cFile.name));
-else
-    s = 1;
-end
-
-if ~s
-    disp('File copy failed for some reason...');
-    keyboard
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -420,19 +365,16 @@ global stimulus
 stimulus.curTrial = stimulus.curTrial + 1;
 
 %  Set the current task
-if stimulus.unattended
-    task.thistrial.task = 3;
+
+if task.thistrial.catch > 0
+    switchTasks = [2 1];
+    task.thistrial.task = switchTasks(stimulus.runs.curTask);
+    % edit seglen
+    task.thistrial.seglen(stimulus.seg.ISI) = .5;
+    task.thistrial.seglen(stimulus.seg.resp) = 3;
+    disp('(cohCon) Catch trial.');
 else
-    if task.thistrial.catch > 0
-        switchTasks = [2 1];
-        task.thistrial.task = switchTasks(stimulus.runs.curTask);
-        % edit seglen
-        task.thistrial.seglen(stimulus.seg.ISI) = .5;
-        task.thistrial.seglen(stimulus.seg.resp) = 3;
-        disp('(cohCon) Catch trial.');
-    else
-        task.thistrial.task = stimulus.runs.curTask;
-    end
+    task.thistrial.task = stimulus.runs.curTask;
 end
 
 % Set the missing thistrial vars
@@ -441,12 +383,8 @@ task.thistrial.contrast = stimulus.pedestals.contrast(task.thistrial.conPedestal
 task.thistrial.trialNum = stimulus.curTrial;
 
 % Get the pedestals
-if ~stimulus.unattended
-    [cohTh, conTh, stimulus] = getDeltaPed(task,stimulus);
-else
-    conTh = 0;
-    cohTh = 0;
-end
+[cohTh, conTh, stimulus] = getDeltaPed(task,stimulus);
+
 
 % Reduce if pedestals are too large
 if (task.thistrial.coherence + cohTh) > 0.95
@@ -489,11 +427,8 @@ disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: 
     lCon,rCon));
 
 % set the gammaTable for this trial
-if ~stimulus.unattended
-    setGammaTable_flowMax(task.thistrial.contrast + task.thistrial.conDelta);
-else
-    setGammaTable_flowMax(1);
-end
+setGammaTable_flowMax(task.thistrial.contrast + task.thistrial.conDelta);
+
 
 % set directions
 stimulus.dotsL.dir = task.thistrial.dir;
@@ -559,7 +494,7 @@ end
 
 if stimulus.live.mask==1, stimulus = upMask(stimulus); end
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
-if ~stimulus.unattended, upFix(task,stimulus); end
+upFix(task,stimulus);
 
 if stimulus.projector, mglStencilSelect(0); end
 
