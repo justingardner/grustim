@@ -31,7 +31,6 @@ function [myscreen] = cohcon(varargin)
 
 global stimulus
 clear fixStimulus
-global fixStimulus
 %% Initialize Variables
 
 % add arguments later
@@ -143,12 +142,13 @@ stimulus = rmfield(stimulus,'dots');
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
-stimulus.pedestals.coherence = .1;
-stimulus.pedestals.contrast = .6;
 
 if stimulus.nocatch
-    stimulus.pedestals.coherence = [.1 .35 .95];
-    stimulus.pedestals.contrast = [.25 .6 .95];
+    stimulus.pedestals.coherence = [0 .1 .2 .4];
+    stimulus.pedestals.contrast = [.2 .4 .6 .8];
+else
+    stimulus.pedestals.coherence = .1;
+    stimulus.pedestals.contrast = .6;
 end
 
 stimulus.pedestals.initThresh.coherence = .8;
@@ -180,7 +180,6 @@ stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
 d = stimulus.dotsL;
 stimulus.mask.x = repmat([d.minX+.125:.25:d.maxX-.125],1,40);
 stimulus.mask.y = [d.minY+.125:.25:d.maxY-.125];
-sz = [.25 .25];
 tmp = repmat(stimulus.mask.y,30,1);
 stimulus.mask.y = transpose(tmp(:));
 
@@ -697,33 +696,27 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 %%
-stimulus.stairCatch = cell(2,length(stimulus.pedestals.catch.coherence));
+stimulus.stairCatch = cell(2,length(stimulus.pedestals.coherence));
 stimulus.staircase = cell(2,length(stimulus.pedestals.contrast));
 stimulus.nocatchs.staircase = cell(2,length(stimulus.pedestals.contrast));
 
-if stimulus.scan
-    stimulus.stairCatch{1,1} = doStaircase('init','fixed',...
-        'fixedVals',stimulus.pedestals.catch.coherence,'nTrials=50');
-    stimulus.stairCatch{2,1} = doStaircase('init','fixed',...
-        'fixedVals',stimulus.pedestals.catch.contrast,'nTrials=50');
-else
-    % Catch staircases
-    stimulus.stairCatch{1,1} = doStaircase('init','upDown',...
-        'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{1}),...
-        'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{1})/3,...
-        'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
-        'nTrials=50','maxStepsize=.2','minStepsize=.001');
-    stimulus.stairCatch{2,1} = doStaircase('init','upDown',...
-        'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{2}),...
-        'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{2})/3,...
-        'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
-        'nTrials=50','maxStepsize=.2','minStepsize=.001');
-end
+% Catch staircases
+stimulus.stairCatch{1,1} = doStaircase('init','upDown',...
+    'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{1}),...
+    'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{1})/3,...
+    'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
+    'nTrials=50','maxStepsize=.2','minStepsize=.001');
+stimulus.stairCatch{2,1} = doStaircase('init','upDown',...
+    'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{2}),...
+    'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{2})/3,...
+    'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
+    'nTrials=50','maxStepsize=.2','minStepsize=.001');
 
-for i = 2:length(stimulus.pedestals.catch.coherence)
+
+for i = 2:length(stimulus.pedestals.coherence)
     stimulus.stairCatch{1,i} = stimulus.stairCatch{1,1};
 end
-for i = 2:length(stimulus.pedestals.catch.contrast)
+for i = 2:length(stimulus.pedestals.contrast)
     stimulus.stairCatch{2,i} = stimulus.stairCatch{2,1};
 end
 
