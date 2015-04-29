@@ -62,19 +62,19 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
-stimulus.pedestals.coherence = .1;
-stimulus.pedestals.contrast = .6;
-
-if stimulus.unattended
+if stimulus.nocatch && stimulus.scan
     stimulus.pedestals.coherence = [0 .1 .2 .4];
     stimulus.pedestals.contrast = [.2 .4 .6 .8];
+else
+    stimulus.pedestals.coherence = .1;
+    stimulus.pedestals.contrast = .6;
 end
 
 stimulus.pedestals.initThresh.coherence = .8;
 stimulus.pedestals.initThresh.contrast = .3;
 
-stimulus.pedestals.catch.coherence = exp(-1.45:.15:-.4);
-stimulus.pedestals.catch.contrast = exp(-4:.25:-2.25);
+stimulus.pedestals.catch.coherence = [0 exp(-3:.33:-.6)];
+stimulus.pedestals.catch.contrast = [0 exp(-4:.33:-1.6)];
 
 %% Setup Screen
 
