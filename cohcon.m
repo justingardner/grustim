@@ -57,6 +57,25 @@ if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignor
 end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
+
+%% Useful stimulus stuff
+
+stimulus.pedestals.pedOpts = {'coherence','contrast'};
+
+stimulus.pedestals.coherence = .1;
+stimulus.pedestals.contrast = .6;
+
+if stimulus.unattended
+    stimulus.pedestals.coherence = [0 .1 .2 .4];
+    stimulus.pedestals.contrast = [.2 .4 .6 .8];
+end
+
+stimulus.pedestals.initThresh.coherence = .8;
+stimulus.pedestals.initThresh.contrast = .3;
+
+stimulus.pedestals.catch.coherence = exp(-1.45:.15:-.4);
+stimulus.pedestals.catch.contrast = exp(-4:.25:-2.25);
+
 %% Setup Screen
 
 myscreen = initScreen();
@@ -83,10 +102,10 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
         stimulus.staircase = s.stimulus.staircase;
         stimulus.stairCatch = s.stimulus.stairCatch;
         if ~isfield(s.stimulus,'nocatch')
-            for task = 1:2
-                stimulus.nocatchs.staircase{task,1} = doStaircase('init','upDown',...
-                    'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task}),...
-                    'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task})/3,...
+            for t = 1:2
+                stimulus.nocatchs.staircase{t,1} = doStaircase('init','upDown',...
+                    'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{t}),...
+                    'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{t})/3,...
                     'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
                     'nTrials=50','maxStepsize=.2','minStepsize=.001');
             end
@@ -139,23 +158,6 @@ stimulus.dotsR.mult = 1;
 stimulus.dotsL = stimulus.dots;
 stimulus.dotsL.mult = -1;
 stimulus = rmfield(stimulus,'dots');
-
-stimulus.pedestals.pedOpts = {'coherence','contrast'};
-
-
-if stimulus.nocatch && stimulus.scan
-    stimulus.pedestals.coherence = [0 .1 .2 .4];
-    stimulus.pedestals.contrast = [.2 .4 .6 .8];
-else
-    stimulus.pedestals.coherence = .1;
-    stimulus.pedestals.contrast = .6;
-end
-
-stimulus.pedestals.initThresh.coherence = .8;
-stimulus.pedestals.initThresh.contrast = .3;
-
-stimulus.pedestals.catch.coherence = exp(-1.85:.2:-.35);
-stimulus.pedestals.catch.contrast = exp([-3.2 -3 -2.8 -2.6 -2.4 -2.2 -2 -1.8]);
 
 stimulus.dotsR = initDotsRadial(stimulus.dotsR,myscreen);
 stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
