@@ -143,7 +143,7 @@ stimulus = rmfield(stimulus,'dots');
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
 
-if stimulus.nocatch
+if stimulus.nocatch && stimulus.scan
     stimulus.pedestals.coherence = [0 .1 .2 .4];
     stimulus.pedestals.contrast = [.2 .4 .6 .8];
 else
