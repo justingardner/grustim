@@ -41,7 +41,7 @@ projector = [];
 scan = [];
 training = [];
 nocatch = [];
-getArgs(varargin,{'stimFileNum=-1','nocatch', ...
+getArgs(varargin,{'stimFileNum=-1','nocatch=0', ...
     'plots=1','overrideTask=0','projector=0','scan=0','training=0'});
 stimulus.projector = projector;
 stimulus.scan = scan;
@@ -207,6 +207,8 @@ task{1}{1}.segmax = [.75 .25 .5 1 .5];
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 3;
     task{1}{1}.segmax(stimulus.seg.ITI) = 10;
+    task{1}{1}.segmin(stimulus.seg.ISI) = .2;
+    task{1}{1}.segmax(stimulus.seg.ISI) = 1;
 end
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
@@ -244,11 +246,6 @@ task{1}{1}.randVars.calculated.coherence = nan;
 task{1}{1}.randVars.calculated.contrast = nan;
 task{1}{1}.randVars.calculated.cohDelta = nan;
 task{1}{1}.randVars.calculated.conDelta = nan;
-task{1}{1}.randVars.calculated.avgCohL = nan;
-task{1}{1}.randVars.calculated.avgCohR = nan;
-task{1}{1}.randVars.calculated.avgConL = nan;
-task{1}{1}.randVars.calculated.avgConR = nan;
-
 %% Tracking
 
 % these are variables that we want to track for later analysis.
@@ -400,25 +397,17 @@ task.thistrial.cohDelta = cohTh;
 if task.thistrial.conSide==1
     lCon = task.thistrial.contrast+task.thistrial.conDelta;
     rCon = task.thistrial.contrast;
-    task.thistrial.avgConL = lCon;
-    task.thistrial.avgConR = rCon;
 else
     rCon = task.thistrial.contrast+task.thistrial.conDelta;
     lCon = task.thistrial.contrast;
-    task.thistrial.avgConR = rCon;
-    task.thistrial.avgConL = lCon;
 end
 
 if task.thistrial.cohSide==1
     lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
     rCoh = task.thistrial.coherence;
-    task.thistrial.avgCohL = lCoh;
-    task.thistrial.avgCohR = rCoh;
 else
     rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
     lCoh = task.thistrial.coherence;
-    task.thistrial.avgCohL = lCoh;
-    task.thistrial.avgCohR = rCoh;
 end
 
 disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
@@ -741,6 +730,9 @@ for task = 1:2
         'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task})/3,...
         'minThreshold=0.001','maxThreshold=0.5','stepRule','pest', ...
         'nTrials=50','maxStepsize=.2','minStepsize=.001');
+    for p = 2:length(stimulus.pedestals.coherence)
+        stimulus.nocatchs.staircase{task,p} = stimulus.nocatchs.staircase{task,1};
+    end
 end
 %%
 %%%%%%%%%%%%%%%%%%%%%%%
