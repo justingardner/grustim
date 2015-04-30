@@ -218,6 +218,10 @@ task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% ch
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 100;
 
+if stimulus.nocatch
+    task{1}{1}.numtrials = 65;
+end
+
 if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
