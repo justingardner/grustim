@@ -219,7 +219,7 @@ task{1}{1}.random = 1;
 task{1}{1}.numTrials = 100;
 
 if stimulus.nocatch
-    task{1}{1}.numtrials = 65;
+    task{1}{1}.numTrials = 65;
 end
 
 if stimulus.scan
