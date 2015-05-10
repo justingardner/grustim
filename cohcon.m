@@ -119,7 +119,11 @@ disp(sprintf('(cohCon) This is run #%i',stimulus.counter));
 
 myscreen = initStimulus('stimulus',myscreen);
 
-stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
+if stimulus.scan
+    stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
+else
+    stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
+end
 
 %% Colors
 stimulus.colors.rmed = 127.75;
@@ -198,7 +202,7 @@ task{1}{1}.segmin = [.75 .25 .2 1 .3];
 task{1}{1}.segmax = [.75 .25 .5 1 .5];
 
 if stimulus.scan
-    task{1}{1}.segmin(stimulus.seg.ITI) = 3;
+    task{1}{1}.segmin(stimulus.seg.ITI) = 2;
     task{1}{1}.segmax(stimulus.seg.ITI) = 10;
     task{1}{1}.segmin(stimulus.seg.ISI) = .2;
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
