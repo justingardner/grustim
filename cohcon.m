@@ -301,7 +301,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% myscreen = eyeCalibDisp(myscreen);
+if ~stimulus.scan
+    myscreen = eyeCalibDisp(myscreen);
+end
 
 %% Get Ready...
 % clear screen    
@@ -688,7 +690,11 @@ function stimulus = initStaircase(stimulus)
 %%
 stimulus.stairCatch = cell(2,1);
 stimulus.staircase = cell(2,1);
-stimulus.nocatchs.staircase = cell(2,length(stimulus.pedestals.contrast));
+if stimulus.scan
+    stimulus.nocatchs.staircase = cell(2,4);
+else
+    stimulus.nocatchs.staircase = cell(2,1);
+end
 
 % Catch && Main staircases
 for task = 1:2
@@ -712,8 +718,10 @@ for task = 1:2
         'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task})/3,...
         'minThreshold=0.001','maxThreshold=0.85','stepRule','pest', ...
         'nTrials=50','maxStepsize=.2','minStepsize=.001');
-    for p = 2:length(stimulus.pedestals.coherence)
-        stimulus.nocatchs.staircase{task,p} = stimulus.nocatchs.staircase{task,1};
+    if stimulus.scan
+        for p = 2:4
+            stimulus.nocatchs.staircase{task,p} = stimulus.nocatchs.staircase{task,1};
+        end
     end
 end
 %%
@@ -787,36 +795,23 @@ end
 %% checkStaircaseStop
 function checkStaircaseStop()
 global stimulus
-if stimulus.scan
-    taskOpts = {'coherence','contrast'};
-    for task = 1:2
-        for ped = 1:length(stimulus.pedestals.contrast)
-            s = stimulus.stairCatch{task,ped};
-            if doStaircase('stop',s)
-                disp('Resetting a catch trial staircase.');
-                stimulus.stairCatch{task,ped}(end+1) = doStaircase('init','fixed',...
-                    'fixedVals',stimulus.pedestals.catch.(taskOpts{task}),'nTrials=50');
-            end
-        end
-    end
-else
-    for task = 1:2
-        for ped = 1:length(stimulus.pedestals.contrast)
-            stimulus.stairCatch{task,ped} = resetStair(stimulus.stairCatch{task,ped});
-        end
-    end
+
+for task = 1:2
+    stimulus.stairCatch{task,1} = resetStair(stimulus.stairCatch{task,1});
 end
 % Check both staircases
 for task = 1:2
-    for ped = 1:length(stimulus.pedestals.contrast)
-        stimulus.staircase{task,ped} = resetStair(stimulus.staircase{task,ped});
-    end
+    stimulus.staircase{task,1} = resetStair(stimulus.staircase{task,1});
 end
 % Check nocatch staircases
 
 for task = 1:2
-    for ped = 1:length(stimulus.pedestals.contrast)
-        stimulus.nocatchs.staircase{task,ped} = resetStair(stimulus.nocatchs.staircase{task,ped});
+    if stimulus.scan
+        for p = 1:size(stimulus.nocatchs.staircase,2)
+            stimulus.nocatchs.staircase{task,p} = resetStair(stimulus.nocatchs.staircase{task,p});
+        end
+    else
+        stimulus.nocatchs.staircase{task,1} = resetStair(stimulus.nocatchs.staircase{task,1});
     end
 end
 
