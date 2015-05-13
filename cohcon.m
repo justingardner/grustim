@@ -818,7 +818,6 @@ end
 function s = resetStair(s)
 
 if doStaircase('stop',s)
-    disp('Resetting a nocatch staircase.');
     % this is a bit of a pain... you can't pass an initialThreshold
     % argument do doStaircase('init',s, ...), it ignores everything and
     % resets using the calculated threshold. Because you can't override it
