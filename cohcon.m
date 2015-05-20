@@ -253,6 +253,10 @@ task{1}{1}.randVars.calculated.conDelta = nan;
 task{1}{1}.randVars.calculated.task = nan; % Current task (calc per BLOCK)
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
+task{1}{1}.randVars.calculated.lCoh = nan;
+task{1}{1}.randVars.calculated.rCoh = nan;
+task{1}{1}.randVars.calculated.lCon = nan;
+task{1}{1}.randVars.calculated.rCon = nan;
 
 stimulus.curTrial = 0;
 
@@ -398,24 +402,24 @@ task.thistrial.conDelta = conTh;
 task.thistrial.cohDelta = cohTh;
 
 if task.thistrial.conSide==1
-    lCon = task.thistrial.contrast+task.thistrial.conDelta;
-    rCon = task.thistrial.contrast;
+    task.thistrial.lCon = task.thistrial.contrast+task.thistrial.conDelta;
+    task.thistrial.rCon = task.thistrial.contrast;
 else
-    rCon = task.thistrial.contrast+task.thistrial.conDelta;
-    lCon = task.thistrial.contrast;
+    task.thistrial.rCon = task.thistrial.contrast+task.thistrial.conDelta;
+    task.thistrial.lCon = task.thistrial.contrast;
 end
 
 if task.thistrial.cohSide==1
-    lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-    rCoh = task.thistrial.coherence;
+    task.thistrial.lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+    task.thistrial.rCoh = task.thistrial.coherence;
 else
-    rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-    lCoh = task.thistrial.coherence;
+    task.thistrial.rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+    task.thistrial.lCoh = task.thistrial.coherence;
 end
 
 disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
-    lCoh,rCoh,...
-    lCon,rCon));
+    task.thistrial.lCoh,task.thistrial.rCoh,...
+    task.thistrial.lCon,task.thistrial.rCon));
 
 % set the gammaTable for this trial
 setGammaTable_flowMax(task.thistrial.contrast + task.thistrial.conDelta);
