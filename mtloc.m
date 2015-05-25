@@ -7,24 +7,30 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: motion localizer task
 %
+%   TR = .5, total volumes = 544
 %   TR = .75, total volumes = 368
 %   TR = 1.4, total volumes = 202
 %
 function myscreen = mtloc(type,TR)
 
-if TR == .75
-    if ~mglGetParam('ignoreInitialVols')==16
-        warning('mux8 script: ignoreInitialVols was set incorrectly, setting to 16');
-        mglSetParam('ignoreInitialVols',16);
-    end
-elseif TR == 1.4
-    if ~mglGetParam('ignoreInitialVols')==4
-        warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 4');
-        mglSetParam('ignoreInitialVols',4);
-    end
-else
-    warning('You selected a TR that we don''t normally have a MUX script for... Are you sure?');
-end
+% if TR == .75
+%     if ~mglGetParam('ignoreInitialVols')==16
+%         warning('mux8 script: ignoreInitialVols was set incorrectly, setting to 16');
+%         mglSetParam('ignoreInitialVols',16);
+%     end
+% elseif TR == 1.4
+%     if ~mglGetParam('ignoreInitialVols')==4
+%         warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 4');
+%         mglSetParam('ignoreInitialVols',4);
+%     end
+% elseif TR == .5
+%     if ~mglGetParam('ignoreInitialVols')==16
+%         warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 16');
+%         mglSetParam('ignoreInitialVols',16);
+%     end
+% else
+%     warning('You selected a TR that we don''t normally have a MUX script for... Are you sure?');
+% end
 
 % check arguments
 if ~any(nargin == [0 1 2])
@@ -50,8 +56,8 @@ clear global fixStimulus;
 
 num = round(12/TR);
 % a top-up period of the same direction
-task{2}{1}.seglen =     [repmat(TR,1,num) TR*num-.050];
-task{2}{1}.synchToVol = [repmat(TR,0,num) 1];
+task{2}{1}.seglen =     [repmat(TR,1,num) TR*num];
+task{2}{1}.synchToVol = [zeros(1,num) 1];
 task{2}{1}.parameter.coherence = 1;
 task{2}{1}.random = 1;
 task{2}{1}.numTrials = 11;
