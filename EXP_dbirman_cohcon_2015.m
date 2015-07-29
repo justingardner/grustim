@@ -1,3 +1,4 @@
+
 %% Intro
 
 % This script runs the coherentContrast experiment
@@ -31,8 +32,8 @@
 % end
 % 
 % % mtLoc x2
-% % mtloc('0%',1.4);
-% mtloc('0%',.75);
+% mtloc('0%',1.4);
+%mtloc('0%',.5);
 
 %% Full Experiment
 
@@ -48,40 +49,17 @@
 % You should be using the 2.5mm mux8 sequence. Total volumes = 840 (7:00).
 %%
 cohcon('plots=0','scan=1','nocatch=1');
-%%
-cohcon('plots=0','scan=1','nocatch=1');
-%%
-cohcon('plots=0','scan=1','nocatch=1');
-%%
-cohcon('plots=0','scan=1','nocatch=1');
+%cohcon('plots=0','scan=1','nocatch=1');
+%cohcon('plots=0','scan=1','nocatch=1');
+%cohcon('plots=0','scan=1','nocatch=1');
 
 % Then run four of these:
 %%
-cohcon('plots=0','scan=1');
-%%
-cohcon('plots=0','scan=1');
-%%
-cohcon('plots=0','scan=1');
-%%
-cohcon('plots=0','scan=1');
+%cohcon('plots=0','scan=1');
+%cohcon('plots=0','scan=1');
+%cohcon('plots=0','scan=1');
+%cohcon('plots=0','scan=1');
 
 % Then run four more of those first ones:
 %%
-cohcon('plots=0','scan=1','nocatch=1');
-%%
-cohcon('plots=0','scan=1','nocatch=1');
-%%
-cohcon('plots=0','scan=1','nocatch=1');
-%%
-cohcon('plots=0','scan=1','nocatch=1');
-
-% Then two more of these:
-%%
-cohcon('plots=0','scan=1');
-%%
-cohcon('plots=0','scan=1');
-
-% Now just run as many of these as possible until I collapse and die.
-% Please give me breaks once in a while.
-%%
-cohcon('plots=0','scan=1','nocatch=1');
+% cohcon('plots=0','scan=1','nocatch=1');
