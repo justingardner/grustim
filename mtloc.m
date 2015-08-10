@@ -7,9 +7,7 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: motion localizer task
 %
-%   TR = .5, total volumes = 544
-%   TR = .75, total volumes = 368
-%   TR = 1.4, total volumes = 202
+%   TR = .5, total volumes = 556
 %
 function myscreen = mtloc(type,TR)
 
