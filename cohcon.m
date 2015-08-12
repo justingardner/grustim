@@ -144,7 +144,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 4;
-stimulus.dots.density = 2;
+stimulus.dots.density = 1.4;
 stimulus.dots.speed = 3.25;
 stimulus.dots.centerOffset = 2;
 
