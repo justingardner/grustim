@@ -42,8 +42,7 @@ scan = [];
 training = [];
 nocatch = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0', ...
-    'plots=1','overrideTask=0','projector=0','scan=0','training=0'});
-stimulus.projector = projector;
+    'plots=1','overrideTask=0','scan=0','training=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.training = training;
@@ -79,8 +78,6 @@ stimulus.pedestals.catch.contrast = [0 exp(-4:.33:-1.3)];
 %% Setup Screen
 
 myscreen = initScreen();
-
-if stimulus.projector, stimulus.stencil = mglProjStencil(); end
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -479,19 +476,12 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-if stimulus.projector
-    mglClearScreen(stimulus.colors.black);
-    mglStencilSelect(stimulus.stencil);
-    mglFillRect(0,0,[50 50],[.5 .5 .5]);
-else
-    mglClearScreen(0.5);
-end
+
+mglClearScreen(0.5);
 
 if stimulus.live.mask==1, stimulus = upMask(stimulus); end
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
 upFix(task,stimulus);
-
-if stimulus.projector, mglStencilSelect(0); end
 
 
 function stimulus = upMask(stimulus)
