@@ -127,9 +127,9 @@ stimulus.colors.rmed = 127.75;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [1 1 1; 0 0 0]; % fixation cross colors
+stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
 stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
-stimulus.colors.black = 1/255; stimulus.colors.white = 0/255;
+stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
 stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
 stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
 stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
