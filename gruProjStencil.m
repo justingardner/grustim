@@ -1,4 +1,4 @@
-function stencil = mglProjStencil()
+function gruProjStencil(myscreen)
 %MGLPROJSTENCIL Generate a mask stencil for the GE projecter @ Stanford
 %   Builds a stencil based on the input list, which corresponds to the
 %   visual eccentricity at angles [90, -90, 0, 15, 30, 45, 60, 75, -15, -30, -45, -60, -75]
@@ -21,8 +21,6 @@ function stencil = mglProjStencil()
 eccArray = [11, 14, 21, 17, 15, 13, 12, 11, 25, 23, 16,15, 14]*32/21;
 
 
-stencil = 99;
-
 angles = [90, -90, 0, 15, 30, 45, 60, 75, -15, -30, -45, -60, -75];
 angles2 = [180-angles(3:8) angles(9:end)-90];
 angles = [angles angles2];
@@ -32,9 +30,6 @@ eccArray = [eccArray eccArray(3:8) fliplr(eccArray(9:end))];
 if length(eccArray) ~= length(angles)
     error('Eccentricity array has incorrect length.');
 end
-
-mglClearScreen;
-mglStencilCreateBegin(stencil);
 
 % we will draw partial disks at every 3 deg angle, and using the linear
 % interpolated position based on the eccArray
@@ -61,8 +56,6 @@ end
 mglGluPartialDisk(xs,ys,zeros(size(xs)),eccs,sAs,ones(size(xs))*2,ones(3,size(xs,2)));
 mglGluPartialDisk(xs,ys,zeros(size(xs)),eccs,sAs,-ones(size(xs))*2,ones(3,size(xs,2)));
 
-mglStencilCreateEnd;
-mglClearScreen();
 
 
 end
