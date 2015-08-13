@@ -125,11 +125,9 @@ mglClearScreen;
 stimulus.dots = feval(sprintf('updateDots%s',stimulus.dots.type),stimulus.dots,stimulus.coherence,myscreen);
 
 % draw the dots
-if stimulus.dots.mask,mglStencilSelect(1);end
 %mglPoints2(stimulus.dots.x(stimulus.dots.color==1),stimulus.dots.y(stimulus.dots.color==1),stimulus.dots.dotsize,[1 1 1]);
 %mglPoints2(stimulus.dots.x(stimulus.dots.color==0),stimulus.dots.y(stimulus.dots.color==0),stimulus.dots.dotsize,[0 0 0]);
 mglPoints2(stimulus.dots.x,stimulus.dots.y,stimulus.dots.dotsize,[1 1 1]);
-if stimulus.dots.mask,mglStencilSelect(0);end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus
@@ -146,7 +144,6 @@ if ~isfield(stimulus.dots,'density'), stimulus.dots.density = 5;,end
 if ~isfield(stimulus.dots,'coherence'), stimulus.dots.coherence = 1;,end
 if ~isfield(stimulus.dots,'speed'), stimulus.dots.speed = stimulus.speed;,end
 if ~isfield(stimulus.dots,'dir'), stimulus.dots.dir = 0;,end
-if ~isfield(stimulus.dots,'mask'), stimulus.dots.mask = 1;,end
 
 % update the dots
 stimulus.dots = feval(sprintf('initDots%s',stimulus.dots.type),stimulus.dots,myscreen);
@@ -154,16 +151,6 @@ stimulus.dots = feval(sprintf('initDots%s',stimulus.dots.type),stimulus.dots,mys
 % set color
 stimulus.dots.color = ones(stimulus.dots.n,1);
 %stimulus.dots.color(rand(1,stimulus.dots.n)>0.5) = 1;
-
-% create stencil
-if stimulus.dots.mask
-  mglClearScreen;
-  mglStencilCreateBegin(1);
-  % and draw that oval
-  mglGluDisk(stimulus.dots.xcenter,stimulus.dots.ycenter,[stimulus.dots.rmax stimulus.dots.rmax]/2,[1 1 1],60);
-  mglStencilCreateEnd;
-  mglClearScreen;
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set the dots speed

@@ -42,8 +42,7 @@ scan = [];
 training = [];
 nocatch = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0', ...
-    'plots=1','overrideTask=0','projector=0','scan=0','training=0'});
-stimulus.projector = projector;
+    'plots=1','overrideTask=0','scan=0','training=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.training = training;
@@ -79,8 +78,6 @@ stimulus.pedestals.catch.contrast = [0 exp(-4:.33:-1.3)];
 %% Setup Screen
 
 myscreen = initScreen();
-
-if stimulus.projector, stimulus.stencil = mglProjStencil(); end
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -130,9 +127,9 @@ stimulus.colors.rmed = 127.75;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [1 1 1; 0 0 0]; % fixation cross colors
+stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
 stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
-stimulus.colors.black = 1/255; stimulus.colors.white = 0/255;
+stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
 stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
 stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
 stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
@@ -144,7 +141,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 4;
-stimulus.dots.density = 2;
+stimulus.dots.density = 1.4;
 stimulus.dots.speed = 3.25;
 stimulus.dots.centerOffset = 2;
 
@@ -479,19 +476,12 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-if stimulus.projector
-    mglClearScreen(stimulus.colors.black);
-    mglStencilSelect(stimulus.stencil);
-    mglFillRect(0,0,[50 50],[.5 .5 .5]);
-else
-    mglClearScreen(0.5);
-end
+
+mglClearScreen(0.5);
 
 if stimulus.live.mask==1, stimulus = upMask(stimulus); end
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
 upFix(task,stimulus);
-
-if stimulus.projector, mglStencilSelect(0); end
 
 
 function stimulus = upMask(stimulus)
