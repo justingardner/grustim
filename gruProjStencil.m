@@ -1,37 +1,46 @@
+% gruProjStencil.m
+%
+%        $Id:$ 
+%      usage: gruProjStencil(myscreen)
+%         by: Dan Birman
+%       date: 08/13/15
+%    purpose: Generate a mask stencil for the GE projecter @ Stanford
+%             Builds a stencil based on the hardcoded list of 
+%             eccentricities (mesEcc) that could be seen at the far
+%             extremes of each polar angle (mesAngles) in the magnet
+%             with the projection screen.
+%
+%             This is the screenMaskFunction we use in mglEditScreenParams
+%             and gets called by initScreen
+%             
+%             It adjusts to compensate for flipping, shifting or scaling
+%             the screen.
+%
 function gruProjStencil(myscreen)
-%MGLPROJSTENCIL Generate a mask stencil for the GE projecter @ Stanford
-%   Builds a stencil based on the input list, which corresponds to the
-%   visual eccentricity at angles [90, -90, 0, 15, 30, 45, 60, 75, -15, -30, -45, -60, -75]
-% use by adding mglStencilSelect(1); and then mglStencilSelect(0); to turn
-% off
 
-% This approximates the full screen (needs to be adjusted):
-
-% botangs1 = [-15 -30];
-% botangs2 = [-45 -60 -75];
-% transEccs = [10./cos(deg2rad(abs(botangs1))) 10./cos(deg2rad(90+botangs2))];
-% eccArray = [15,15,12.5,27,24,21,18,15, transEccs];
-% eccArray = eccArray;
-
-% This is the actual recordings we made for what you can see in the 32
-% channel coil:
-
-% eccArray = [5.5, 7.5, 17, 18, 19, 11, 8, 6,14 , 15, 11, 8, 7.5];
+% check input arguments
+if nargin ~= 1
+  help gruProjStencil
+  return
+end
 
 % polar angles where eccentricity was measured
-angles = [90, -90, 0, 15, 30, 45, 60, 75, -15, -30, -45, -60, -75];
+mesAngles =  [-15 0 15 30 45 60 75 90];
+% eccentricity measured at the above angles
+mesEcc = [25 21 17 15 13 12 11 11]*32/21;
+
+% check match of eccentricity and angles
+if length(mesEcc) ~= length(mesAngles)
+  error('Eccentricity array has incorrect length.');
+end
+
+% linear interpolate (in radial coordinates) to make smoother
+angles = -15:90;
+ecc = interp1(mesAngles,mesEcc,angles,'linear');
 
 % width and height of screen in degrees when measured
 mesWidth = 51.5;
 mesHeight = 29.8;
-
-% eccentricity measured at the above angles
-eccArray = [11, 14, 21, 17, 15, 13, 12, 11, 25, 23, 16,15, 14]*32/21;
-
-% check match of eccArray and angles
-if length(eccArray) ~= length(angles)
-  error('Eccentricity array has incorrect length.');
-end
 
 % get current size of display (note that we do not
 % use imageWidth and imageHeight in myscreen since these values
@@ -39,57 +48,28 @@ end
 curWidth = mglGetParam('deviceWidth');
 curHeight = mglGetParam('deviceHeight');
 
-% rescale eccArray to current display size
-for iAngle = 1:length(angles)
-  % get the angle
-  thisAngle = pi*angles(iAngle)/180;
-  % get ratio of original measurement to this screen
-  mesLen = sqrt((cos(thisAngle)*mesWidth)^2 + (sin(thisAngle)*mesHeight)^2);
-  curLen = sqrt((cos(thisAngle)*curWidth)^2 + (sin(thisAngle)*curHeight)^2);
-  % scale the eccArray accordingly
-  eccArray(iAngle) = eccArray(iAngle)*curLen/mesLen;
-end
+% convert to cartesian and adjust for difference in screen size
+x = (curWidth/mesWidth) * cos(pi*angles/180).*ecc;
+y = (curHeight/mesHeight) * sin(pi*angles/180).*ecc;
 
-% make the other side as a symmetric copy of the side measured
-angles2 = [180-angles(3:8) angles(9:end)-90];
-angles = [angles angles2];
-angles = mod(angles-90,360);
-eccArray = [eccArray eccArray(3:8) fliplr(eccArray(9:end))];
+% now flip it left/right to get the other side and add bottom corners
+% note that the curvature is just at the top so this uses the
+% bottom corneres to make the bottom square
+x = [-curWidth/2 -x fliplr(x) curWidth/2];
+y = [-curHeight/2 y fliplr(y) -curHeight/2];
 
-% we will draw partial disks at every 3 deg angle, and using the linear
-% interpolated position based on the eccArray
+% account for origin shift
+x = x-myscreen.shiftOrigin(1);
+y = y-myscreen.shiftOrigin(2);
 
-xs = [];
-ys = [];
-eccs = [];
-sAs = [];
+% flip if necessary
+if myscreen.flipHV(1),x = -x;end
+if myscreen.flipHV(2),y = -y;end
 
-for curBlock = 0:15:345
-  for withinB = 0:0.5:14.5
-    % all gluPartial disks will start in the center of the screen
-    % note that we use the shiftOrigin values of myscreen
-    % to make sure that we keep the stencil in the same location
-    % even if we move the origin
-    xs = [xs -myscreen.shiftOrigin(1)];
-    ys = [ys -myscreen.shiftOrigin(2)];
-    % add on the current start angle to the list of start angles
-    cSA = curBlock+withinB;
-    sAs = [sAs cSA];
-    % linearly interpolate the eccentricity array for this set of angles
-    origEcc = eccArray(angles==curBlock);
-    finalEcc = eccArray(angles==mod(curBlock+15,360));
-    interpEcc = (finalEcc-origEcc) * withinB / 15 + origEcc;
-    %         disp(sprintf('%i: %.03f',curBlock,interpEcc));
-    % add add to the eccentricity list
-    eccs = [eccs interpEcc];
-  end
-end
-
-% draw the partial disks for one side
-mglGluPartialDisk(xs,ys,zeros(size(xs)),eccs,sAs,ones(size(xs))*2,ones(3,size(xs,2)));
-% and the other
-mglGluPartialDisk(xs,ys,zeros(size(xs)),eccs,sAs,-ones(size(xs))*2,ones(3,size(xs,2)));
-
+% draw the shape in white - shifting to offset any shiftOrigin
+% so that the stencil stays locked to screen even if we shift
+% the origin to deal with subject issues
+mglPolygon(x,y,1);
 
 
 
