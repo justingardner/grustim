@@ -27,7 +27,7 @@ end
 % polar angles where eccentricity was measured
 mesAngles =  [-15 0 15 30 45 60 75 90];
 % eccentricity measured at the above angles
-mesEcc = [25 21 17 15 13 12 11 11]*32/21;
+mesEcc = [38 35 30 26 24 22 21 21];
 
 % check match of eccentricity and angles
 if length(mesEcc) ~= length(mesAngles)
@@ -39,8 +39,8 @@ angles = -15:90;
 ecc = interp1(mesAngles,mesEcc,angles,'linear');
 
 % width and height of screen in degrees when measured
-mesWidth = 51.5;
-mesHeight = 29.8;
+mesWidth = 58;
+mesHeight = 32.625;
 
 % get current size of display (note that we do not
 % use imageWidth and imageHeight in myscreen since these values
@@ -55,8 +55,17 @@ y = (curHeight/mesHeight) * sin(pi*angles/180).*ecc;
 % now flip it left/right to get the other side and add bottom corners
 % note that the curvature is just at the top so this uses the
 % bottom corneres to make the bottom square
-x = [-curWidth/2 -x fliplr(x) curWidth/2];
-y = [-curHeight/2 y fliplr(y) -curHeight/2];
+
+% dan's fix: adjusts the corners based on the relative size, so that the
+% stencil displays outside the screen if necessary
+lx = -curWidth/2*(curWidth/mesWidth);
+rx = curWidth/2*(curWidth/mesWidth);
+ly = -curHeight/2*(curHeight/mesHeight);
+ry = -curHeight/2*(curHeight/mesHeight);
+x = [lx -x fliplr(x) rx];
+y = [ly y fliplr(y) ry];
+x = [-x fliplr(x)];
+y = [y fliplr(y)];
 
 % account for origin shift
 x = x-myscreen.shiftOrigin(1);
