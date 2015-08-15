@@ -7,7 +7,9 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: motion localizer task
 %
-%   TR = .5, total volumes = 556
+%   TR = .5, total volumes = 555
+%
+%   mtloc('0%',0.5);
 %
 function myscreen = mtloc(type,TR)
 
@@ -21,14 +23,18 @@ function myscreen = mtloc(type,TR)
 %         warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 4');
 %         mglSetParam('ignoreInitialVols',4);
 %     end
-% elseif TR == .5
-%     if ~mglGetParam('ignoreInitialVols')==16
-%         warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 16');
-%         mglSetParam('ignoreInitialVols',16);
-%     end
-% else
-%     warning('You selected a TR that we don''t normally have a MUX script for... Are you sure?');
-% end
+if ~TR==.5
+    warning('TR is not set to 0.5... Are you sure?');
+    return
+end
+if TR == .5
+    if ~mglGetParam('ignoreInitialVols')==16
+        warning('mux2 script: ignoreInitialVols was set incorrectly, setting to 16');
+        mglSetParam('ignoreInitialVols',16);
+    end
+else
+    warning('You selected a TR that we don''t normally have a MUX script for... Are you sure?');
+end
 
 % check arguments
 if ~any(nargin == [0 1 2])
@@ -45,16 +51,15 @@ end
 % initalize the screen
 % myscreen.autoCloseScreen = 1;
 % myscreen.displayname = 'projector';
-myscreen.background = 'black';
-myscreen = initScreen(myscreen);
+myscreen = initScreen('fMRIprojFlex');
 
 % set the first task to be the fixation staircase task
 clear global fixStimulus;
 [task{1} myscreen] = fixStairInitTask(myscreen);
 
-num = round(12/TR);
+num = 12;
 % a top-up period of the same direction
-task{2}{1}.seglen =     [repmat(TR,1,num) TR*num];
+task{2}{1}.seglen =     [ones(1,num) 1*num];
 task{2}{1}.synchToVol = [zeros(1,num) 1];
 task{2}{1}.parameter.coherence = 1;
 task{2}{1}.random = 1;
@@ -72,6 +77,8 @@ clear global stimulus;
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 stimulus.dots.type = 'Opticflow';
+% stimulus.dots.type = 'Linear';
+% stimulus.dots.type = 'ComboLoc';
 stimulus = initDots(stimulus,myscreen);
 stimulus.type = type;
 
@@ -134,13 +141,13 @@ mglPoints2(stimulus.dots.x,stimulus.dots.y,stimulus.dots.dotsize,[1 1 1]);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initDots(stimulus,myscreen)
 
-stimulus.speed = 4;
+stimulus.speed = 3.25;
 % convert the passed in parameters to real units
 if ~isfield(stimulus,'dots') || ~isfield(stimulus.dots,'rmax'), stimulus.dots.rmax = min(myscreen.imageWidth,myscreen.imageHeight);,end
 if ~isfield(stimulus.dots,'xcenter'), stimulus.dots.xcenter = 0;,end
 if ~isfield(stimulus.dots,'ycenter'), stimulus.dots.ycenter = 0;,end
 if ~isfield(stimulus.dots,'dotsize'), stimulus.dots.dotsize = 4;,end
-if ~isfield(stimulus.dots,'density'), stimulus.dots.density = 5;,end
+if ~isfield(stimulus.dots,'density'), stimulus.dots.density = 4;,end
 if ~isfield(stimulus.dots,'coherence'), stimulus.dots.coherence = 1;,end
 if ~isfield(stimulus.dots,'speed'), stimulus.dots.speed = stimulus.speed;,end
 if ~isfield(stimulus.dots,'dir'), stimulus.dots.dir = 0;,end
@@ -151,6 +158,164 @@ stimulus.dots = feval(sprintf('initDots%s',stimulus.dots.type),stimulus.dots,mys
 % set color
 stimulus.dots.color = ones(stimulus.dots.n,1);
 %stimulus.dots.color(rand(1,stimulus.dots.n)>0.5) = 1;
+
+%%%%%%%%%%%%% COMBOLOC %%%%%%%%%%%
+
+
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set the dots speed
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = setDotsSpeedComboLoc(dots,speed,myscreen)
+
+% get the step size
+dots.speed = speed;
+dots.T = [0 0 dots.speed/myscreen.framesPerSecond];
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set the dots direction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = setDotsDirComboLoc(dots,direction,myscreen)
+
+% dots.of.T = [0 0 direction*dots.speed/myscreen.framesPerSecond];
+% dots.ro.T = [0 0 direction*dots.speed/myscreen.framesPerSecond];
+dots.T = [0 0 direction*dots.speed/myscreen.framesPerSecond];
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% step dots for opticflow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = updateDotsComboLoc(dots,coherence,myscreen)
+
+% get the coherent and incoherent dots
+%if (dots.coherency ~= coherence)
+  dots.incoherent = rand(1,dots.n) > coherence;
+  dots.incoherentn = sum(dots.incoherent);
+  dots.coherent = ~dots.incoherent;
+  dots.coherency = coherence;
+  % generate a random transformation matrix for each incoherent point
+  dots.randT = rand(3,dots.incoherentn)-0.5;
+  % and normalize the transformation to have the same length
+  % (i.e. speed) as the real transformation matrix
+  dots.randT = sqrt(sum(dots.T.^2))*dots.randT./([1 1 1]'*sqrt(sum(dots.randT.^2)));
+%end
+
+% update relative position of dots in 3-space to observer
+dots.X(dots.coherent) = dots.X(dots.coherent)-dots.T(1);
+dots.Y(dots.coherent) = dots.Y(dots.coherent)-dots.T(2);
+dots.Z(dots.coherent) = dots.Z(dots.coherent)-dots.T(3);
+
+% now move the incoherent points according to the random trasnformation
+dots.X(dots.incoherent) = dots.X(dots.incoherent)-dots.randT(1,:);
+dots.Y(dots.incoherent) = dots.Y(dots.incoherent)-dots.randT(2,:);
+dots.Z(dots.incoherent) = dots.Z(dots.incoherent)-dots.randT(3,:);
+
+% get all points that have fallen off the screen
+offscreen = dots.Z<dots.minZ;
+
+% and put them at the furthest distance
+dots.Z(offscreen) = dots.maxZ;
+
+% get all points that have fallen out of view
+offscreen = dots.Z>dots.maxZ;
+% and move them to the front plane
+dots.Z(offscreen) = dots.minZ;
+
+% put points fallen off the X edge back
+offscreen = dots.X < -dots.maxX;
+dots.X(offscreen) = dots.X(offscreen)+2*dots.maxX;
+offscreen = dots.X > dots.maxX;
+dots.X(offscreen) = dots.X(offscreen)-2*dots.maxX;
+
+% put points fallen off the Y edge back
+offscreen = dots.Y < -dots.maxY;
+dots.Y(offscreen) = dots.Y(offscreen)+2*dots.maxY;
+offscreen = dots.Y > dots.maxY;
+dots.Y(offscreen) = dots.Y(offscreen)-2*dots.maxY;
+
+% project on to screen
+dots.xproj = dots.f*dots.X./dots.Z;
+dots.yproj = dots.f*dots.Y./dots.Z;
+
+% stuff to compute median speed
+dots.oldx = dots.x;
+dots.oldy = dots.y;
+
+% get actual screen coordinates
+dots.x = dots.xproj*myscreen.imageWidth;
+dots.y = dots.yproj*myscreen.imageHeight;
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% create dots for optic flow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = initDotsComboLoc(dots,myscreen)
+
+% focal length to projection plane
+% projection plane is defined to be 
+% 1 unit wide and high, so with 
+% this focal length, we are looking at
+% a view of the world with a 90 deg fov
+dots.f = .5;
+
+% translation and rotation matrices
+dots.T = [0 0 dots.speed/myscreen.framesPerSecond];
+dots.R = [0 0 0];
+
+% maximum depth of points
+dots.maxZ = 10;dots.minZ = dots.f;
+dots.maxX = 10;
+dots.maxY = 10;
+
+% make a brick of points
+dots.n = round(myscreen.imageWidth*myscreen.imageHeight*dots.density);
+
+dots.group = randi(3,1,dots.n);
+
+% group 1 = optic flow
+% group 2 = rotation CW
+% group 3 = rotation CCW
+
+dots.X = zeros(1,dots.n);
+dots.Y = zeros(1,dots.n);
+dots.Z = zeros(1,dots.n);
+
+dots.X(dots.group==1) = 1;
+
+% initial position of dots
+dots.X = 2*dots.maxX*rand(1,dots.n)-dots.maxX;
+dots.Y = 2*dots.maxY*rand(1,dots.n)-dots.maxY;
+dots.Z = (dots.maxZ-dots.minZ)*rand(1,dots.n)+dots.minZ;
+
+% get projection on to plane
+dots.xproj = dots.f*dots.X./dots.Z;
+dots.yproj = dots.f*dots.Y./dots.Z;
+
+% put into screen coordinates
+dots.x = dots.xproj*myscreen.imageWidth;
+dots.y = dots.yproj*myscreen.imageHeight;
+
+% set incoherent dots to 0
+dots.coherency = 1;
+dots.incoherent = rand(1,dots.n) > dots.coherency;
+dots.incoherentn = sum(dots.incoherent);
+dots.coherent = ~dots.incoherent;
+
+dots.randT = zeros(3,dots.incoherentn);
+%%%% OLD CODE
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set the dots speed
@@ -164,7 +329,7 @@ dots.stepsize = speed/myscreen.framesPerSecond;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set the dots direction
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dots = setDotsDirectionLinear(dots,direction,myscreen)
+function dots = setDotsDirLinear(dots,direction,myscreen)
 
 % get the step size
 dots.dir = direction;
