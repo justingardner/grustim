@@ -69,16 +69,16 @@ task{2}{1}.waitForBacktick = 1;
 
 % initialize our task
 for phaseNum = 1:length(task{2})
-  [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback);
+  [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback,[],@startTrialCallback);
 end
 
 % init the stimulus
 clear global stimulus;
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
-stimulus.dots.type = 'Opticflow';
+% stimulus.dots.type = 'Opticflow';
 % stimulus.dots.type = 'Linear';
-% stimulus.dots.type = 'ComboLoc';
+stimulus.dots.type = 'ComboLoc';
 stimulus = initDots(stimulus,myscreen);
 stimulus.type = type;
 
@@ -109,6 +109,7 @@ myscreen = endTask(myscreen,task);
 function [task myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus;
+myscreen.flushMode = 0;
 if (task.thistrial.thisseg < length(task.seglen))
   stimulus.coherence = task.thistrial.coherence;
   % set speed
@@ -135,6 +136,15 @@ stimulus.dots = feval(sprintf('updateDots%s',stimulus.dots.type),stimulus.dots,s
 %mglPoints2(stimulus.dots.x(stimulus.dots.color==1),stimulus.dots.y(stimulus.dots.color==1),stimulus.dots.dotsize,[1 1 1]);
 %mglPoints2(stimulus.dots.x(stimulus.dots.color==0),stimulus.dots.y(stimulus.dots.color==0),stimulus.dots.dotsize,[0 0 0]);
 mglPoints2(stimulus.dots.x,stimulus.dots.y,stimulus.dots.dotsize,[1 1 1]);
+
+function [task myscreen] = startTrialCallback(task, myscreen)
+
+global stimulus
+disp('Putting dots up');
+mglClearScreen
+mglPoints2(stimulus.dots.x,stimulus.dots.y,stimulus.dots.dotsize,[1 1 1]);
+mglFlush
+myscreen.flushMode = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus
@@ -187,7 +197,7 @@ function dots = setDotsDirComboLoc(dots,direction,myscreen)
 % dots.of.T = [0 0 direction*dots.speed/myscreen.framesPerSecond];
 % dots.ro.T = [0 0 direction*dots.speed/myscreen.framesPerSecond];
 dots.T = [0 0 direction*dots.speed/myscreen.framesPerSecond];
-
+dots.dir = direction;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step dots for opticflow
@@ -196,26 +206,43 @@ function dots = updateDotsComboLoc(dots,coherence,myscreen)
 
 % get the coherent and incoherent dots
 %if (dots.coherency ~= coherence)
-  dots.incoherent = rand(1,dots.n) > coherence;
-  dots.incoherentn = sum(dots.incoherent);
-  dots.coherent = ~dots.incoherent;
-  dots.coherency = coherence;
-  % generate a random transformation matrix for each incoherent point
-  dots.randT = rand(3,dots.incoherentn)-0.5;
-  % and normalize the transformation to have the same length
-  % (i.e. speed) as the real transformation matrix
-  dots.randT = sqrt(sum(dots.T.^2))*dots.randT./([1 1 1]'*sqrt(sum(dots.randT.^2)));
-%end
+dots.incoherent = rand(1,dots.n) > coherence;
+dots.incoherentn = sum(dots.incoherent);
+dots.coherent = ~dots.incoherent;
+dots.coherency = coherence;
+% generate a random transformation matrix for each incoherent point
+dots.randT = rand(3,dots.incoherentn)-0.5;
+% and normalize the transformation to have the same length
+% (i.e. speed) as the real transformation matrix
+dots.randT = sqrt(sum(dots.T.^2))*dots.randT./([1 1 1]'*sqrt(sum(dots.randT.^2)));
 
-% update relative position of dots in 3-space to observer
-dots.X(dots.coherent) = dots.X(dots.coherent)-dots.T(1);
-dots.Y(dots.coherent) = dots.Y(dots.coherent)-dots.T(2);
-dots.Z(dots.coherent) = dots.Z(dots.coherent)-dots.T(3);
+% GROUP 1: Optic Flow
+
+if sum(dots.coherent)>0
+    % update relative position of dots in 3-space to observer
+    dots.X(logical((dots.coherent).*(dots.group==1))) = dots.X(logical((dots.coherent).*(dots.group==1)))-dots.T(1);
+    dots.Y(logical((dots.coherent).*(dots.group==1))) = dots.Y(logical((dots.coherent).*(dots.group==1)))-dots.T(2);
+    dots.Z(logical((dots.coherent).*(dots.group==1))) = dots.Z(logical((dots.coherent).*(dots.group==1)))-dots.T(3);
+
+    % GROUP 2: Rotation
+
+    % for group 2 (rotation) we need the polar angle, we add + 90 for the
+    % direction of rotation, then get speed = rand*2pi*ecc
+
+dots.X(dots.group==2) = dots.ecc.*cos(dots.ang);
+dots.Y(dots.group==2) = dots.ecc.*sin(dots.ang);
+dots.Z(dots.group==2) = 2;
+    % dots.Z(logical((dots.coherent).*(dots.group==2))) = 0;
+end
+
+% INCOHERENT
 
 % now move the incoherent points according to the random trasnformation
 dots.X(dots.incoherent) = dots.X(dots.incoherent)-dots.randT(1,:);
 dots.Y(dots.incoherent) = dots.Y(dots.incoherent)-dots.randT(2,:);
-dots.Z(dots.incoherent) = dots.Z(dots.incoherent)-dots.randT(3,:);
+if ~sum(dots.group==1)==0
+    dots.Z(logical((dots.incoherent).*(dots.group==1))) = dots.Z(logical((dots.incoherent).*(dots.group==1)))-dots.randT(3,dots.group==1);
+end
 
 % get all points that have fallen off the screen
 offscreen = dots.Z<dots.minZ;
@@ -265,6 +292,7 @@ function dots = initDotsComboLoc(dots,myscreen)
 % 1 unit wide and high, so with 
 % this focal length, we are looking at
 % a view of the world with a 90 deg fov
+dots.dir = 1;
 dots.f = .5;
 
 % translation and rotation matrices
@@ -272,33 +300,37 @@ dots.T = [0 0 dots.speed/myscreen.framesPerSecond];
 dots.R = [0 0 0];
 
 % maximum depth of points
-dots.maxZ = 10;dots.minZ = dots.f;
-dots.maxX = 10;
-dots.maxY = 10;
+dots.maxZ = 10; dots.minZ = dots.f;
+dots.maxX = 3;
+dots.maxY = 3;
 
 % make a brick of points
 dots.n = round(myscreen.imageWidth*myscreen.imageHeight*dots.density);
 
-dots.group = randi(3,1,dots.n);
+dots.group = randi(2,1,dots.n);
+% dots.group = ones(1,dots.n)*2;
 
 % group 1 = optic flow
 % group 2 = rotation CW
-% group 3 = rotation CCW
 
 dots.X = zeros(1,dots.n);
 dots.Y = zeros(1,dots.n);
 dots.Z = zeros(1,dots.n);
 
-dots.X(dots.group==1) = 1;
-
 % initial position of dots
-dots.X = 2*dots.maxX*rand(1,dots.n)-dots.maxX;
-dots.Y = 2*dots.maxY*rand(1,dots.n)-dots.maxY;
-dots.Z = (dots.maxZ-dots.minZ)*rand(1,dots.n)+dots.minZ;
+dots.X(dots.group==1) = 2*dots.maxX*rand(1,sum(dots.group==1))-dots.maxX;
+dots.Y(dots.group==1) = 2*dots.maxY*rand(1,sum(dots.group==1))-dots.maxY;
+dots.Z(dots.group==1) = (dots.maxZ-dots.minZ)*rand(1,sum(dots.group==1))+dots.minZ;
+
+dots.ang = rand(1,sum(dots.group==2))*pi*2;
+dots.ecc = rand*10;
+dots.X(dots.group==2) = dots.ecc.*cos(dots.ang);
+dots.Y(dots.group==2) = dots.ecc.*sin(dots.ang);
+dots.Z(dots.group==2) = 2;
 
 % get projection on to plane
-dots.xproj = dots.f*dots.X./dots.Z;
-dots.yproj = dots.f*dots.Y./dots.Z;
+dots.xproj = dots.f*(dots.X./dots.Z);
+dots.yproj = dots.f*(dots.Y./dots.Z);
 
 % put into screen coordinates
 dots.x = dots.xproj*myscreen.imageWidth;
