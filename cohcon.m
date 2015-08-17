@@ -77,7 +77,11 @@ stimulus.pedestals.catch.contrast = [0 exp(-4:.33:-1.3)];
 
 %% Setup Screen
 
-myscreen = initScreen();
+if stimulus.scan
+    myscreen = initScreen('fMRIprojFlex');
+else
+    myscreen = initScreen('VPixx');
+end
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
