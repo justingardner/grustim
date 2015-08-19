@@ -27,7 +27,7 @@ end
 % polar angles where eccentricity was measured
 mesAngles =  [-15 0 15 30 45 60 75 90];
 % eccentricity measured at the above angles
-mesEcc = [38 35 30 26 24 22 21 21];
+mesEcc = [38 35 30 26 24 22 21 21]-1;
 
 % check match of eccentricity and angles
 if length(mesEcc) ~= length(mesAngles)
@@ -39,8 +39,8 @@ angles = -15:90;
 ecc = interp1(mesAngles,mesEcc,angles,'linear');
 
 % width and height of screen in degrees when measured
-mesWidth = 58;
-mesHeight = 32.625;
+mesWidth = 74.9675043592654;
+mesHeight = 44.4029738290369;
 
 % get current size of display (note that we do not
 % use imageWidth and imageHeight in myscreen since these values
