@@ -29,10 +29,10 @@
 %             memorycontrast( 'ab', 1, 'ori=[0 90]', 'sf=0.5')
 %
 
-function [  ]=cogneuro_memory( subject, tasktype, varargin )
+function [  ]=cogneuro_memory( tasktype, varargin )
 
 % check arguments
-if nargin < 2
+if nargin < 1
     help memorycontrast
   return
 end
@@ -45,14 +45,10 @@ if ieNotDefined('debug'),debug=1;end
 if ieNotDefined('sf'),sf=0.75;end
 if ieNotDefined('ori'),ori=[45 135];end
 if ieNotDefined('sd'),sd=0; end % if sd=0, make a circular NOT gaussian patch
+if ieNotDefined('scan'),scan=0; end % if sd=0, make a circular NOT gaussian patch
 
 % scanning params
-if ieNotDefined('TR'),TR=1.5;end
-
-% subject
-if ~exist('subject', 'var')
-  subject = input('please enter subject initials: ','s');
-end
+if ieNotDefined('TR'),TR=0.5;end
 
 % which task
 if ~exist('tasktype','var')
@@ -70,25 +66,15 @@ myscreen.allowpause = 0;
 myscreen.eatkeys = 1;
 myscreen.displayname = 'projector';
 myscreen.background = 'gray';
-myscreen.TR = TR; % TR = 1000ms for scanner / for psychophysics set to 1.0
-myscreen.subject = subject;
+TR = TR; % TR = 1000ms for scanner / for psychophysics set to 1.0
 myscreen.tasktype = tasktype;
 
-% debug on laptop
-% myscreen.screenParams{1} = {'oceanus.local',[],0,800,600,57,[31 23],60,1,1,1.4,[],[0 0]};
-% debug on eagle
-% myscreen.screenParams{1} = {gethostname(),[],0,800,600,57,[31 23],60,1,1,1.4,[],[0 0]}; %gethostname and then display the stimulus on the corresponding screen
-% myscreen = initScreen(myscreen);
-if debug
-  %gethostname and then display the stimulus on the corresponding screen
-  myscreen.screenParams{1} = {gethostname(),[],0,800,600,57,[31 23],60,1,1,1.4,[],[0 0]};
+if scan
+    myscreen = initScreen('fMRIproj32');
 else
-  % running at 3T for experiment
-  defaultMonitorGamma = 1.8; % e.g.
-  myscreen.screenParams{1} = {gethostname(),'',2,1024,768,231,[83 3*83/4],60,1,1,defaultMonitorGamma,'',[0 0]}; % 3T nottingham
+    myscreen = initScreen('VPixx');
 end
 
-myscreen = initScreen(myscreen);
 myscreen.keyboard.backtick = mglCharToKeycode({'5'}); %TR = 1500ms
 myscreen.keyboard.nums = mglCharToKeycode({'1' '2' '3' '4'    '6' '7' '8' '9' '0'});
 
@@ -151,9 +137,9 @@ task{1}{1}.randVars.uniform.ori = [0]; % flip direction?
 
 % the second phase
 
-% task{2}{2}.segmin = [1 1 3]*myscreen.TR;%[1 0.5]*myscreen.TR;
-% task{2}{2}.segmax = [1 1 5]*myscreen.TR;%[1 1]*myscreen.TR;
-% task{2}{2}.segquant = [0 0 1]*myscreen.TR;%[0 0]*myscreen.TR;
+% task{2}{2}.segmin = [1 1 3]*TR;%[1 0.5]*TR;
+% task{2}{2}.segmax = [1 1 5]*TR;%[1 1]*TR;
+% task{2}{2}.segquant = [0 0 1]*TR;%[0 0]*TR;
 
 task{1}{2}.parameter.contrast = stimulus.outcontrasts; % two contrast levels for now
 task{1}{2}.randVars.uniform.ori = ori; % flip direction? suggested orientation
@@ -173,23 +159,23 @@ switch tasktype
         % for now we only have two contrast levels: stm1 and stim2
                            %pre st1 st2   cue re cp resp iti
         %                  1  2 3   4 5   6 7 8 9 10
-        task{1}{2}.segmin = [1 1 0.2 1 0.2 1 5.6 1 1 3]*myscreen.TR;
-        task{1}{2}.segmax = [1 1 0.2 1 0.2 1 5.6 1 1 5]*myscreen.TR;
-        task{1}{2}.segquant = [0 0 0 0 0 0 0 0 0 1]*myscreen.TR;
+        task{1}{2}.segmin = [1 1 0.2 1 0.2 1 5.6 1 1 3]*TR;
+        task{1}{2}.segmax = [1 1 0.2 1 0.2 1 5.6 1 1 5]*TR;
+        task{1}{2}.segquant = [0 0 0 0 0 0 0 0 0 1]*TR;
         task{1}{2}.getResponse = [0 0 0 0 0 0 0 0 1 0];
 
     otherwise
-        task{1}{2}.segmin = [1 1 0.2 1 0.2 1 6 3]*myscreen.TR;
-        task{1}{2}.segmax = [1 1 0.2 1 0.2 1 6 5]*myscreen.TR;
+        task{1}{2}.segmin = [1 1 0.2 1 0.2 1 6 3]*TR;
+        task{1}{2}.segmax = [1 1 0.2 1 0.2 1 6 5]*TR;
         task{1}{2}.segquant = [0 0 0 0 0 0 0 1];
 end
 
 %                    pre stim1 d1 stim2 d2 stim3 d4 cue ret comp_st response iti
 %                    1 2  3  4  5  6 7   8 9 10 11 12
-% task{2}{2}.segmin = [1 1 0.2 1 0.2 1 0.2 1 6 1 1 3]*myscreen.TR;
-% task{2}{2}.segmax = [1 1 0.2 1 0.2 1 0.2 1 6 1 1 5]*myscreen.TR;
-% task{2}{2}.segquant = [0 0 0 0 0 0 0 0 0 0 0 1]*myscreen.TR;
-% task{2}{2}.getResponse = [0 0 0 0 0 0 0 0 0 0 1 0]*myscreen.TR;
+% task{2}{2}.segmin = [1 1 0.2 1 0.2 1 0.2 1 6 1 1 3]*TR;
+% task{2}{2}.segmax = [1 1 0.2 1 0.2 1 0.2 1 6 1 1 5]*TR;
+% task{2}{2}.segquant = [0 0 0 0 0 0 0 0 0 0 0 1]*TR;
+% task{2}{2}.getResponse = [0 0 0 0 0 0 0 0 0 0 1 0]*TR;
 
 task{1}{2}.random = 1;
 task{1}{2}.numTrials = 40; % number of trials to go through
