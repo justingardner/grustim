@@ -29,7 +29,7 @@
 %             memorycontrast( 'ab', 1, 'ori=[0 90]', 'sf=0.5')
 %
 
-function [  ]=memorycontrast( subject, tasktype, varargin )
+function [  ]=cogneuro_memory( subject, tasktype, varargin )
 
 % check arguments
 if nargin < 2

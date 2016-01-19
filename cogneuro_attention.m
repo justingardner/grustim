@@ -40,13 +40,10 @@ overrideTask = [];
 projector = [];
 scan = [];
 training = [];
-nocatch = [];
-getArgs(varargin,{'stimFileNum=-1','nocatch=0', ...
-    'plots=1','overrideTask=0','scan=0','training=0'});
-stimulus.scan = scan;
+getArgs(varargin,{'stimFileNum=-1', ...
+    'plots=1','overrideTask=0'});
 stimulus.plots = plots;
-stimulus.training = training;
-stimulus.nocatch = nocatch;
+stimulus.scan = 1;
 
 if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
@@ -61,19 +58,9 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
-if stimulus.nocatch && stimulus.scan
-    stimulus.pedestals.coherence = [1];
-    stimulus.pedestals.contrast = [1];
-else
-    stimulus.pedestals.coherence = 1;
-    stimulus.pedestals.contrast = 1;
-end
+stimulus.pedestals.coherence = .51;
 
-stimulus.pedestals.initThresh.coherence = 0;
-stimulus.pedestals.initThresh.contrast = 0;
-
-stimulus.pedestals.catch.coherence = [0 exp(-3:.33:-.3)];
-stimulus.pedestals.catch.contrast = [0 exp(-4:.33:-1.3)];
+stimulus.pedestals.initThresh.coherence = .4;
 
 %% Setup Screen
 
@@ -86,9 +73,9 @@ end
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/cn_att/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/cohcon/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/cn_att/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         if stimFileNum == -1
@@ -99,10 +86,8 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
         else
             fname = files(stimFileNum).name;
         end
-        s = load(sprintf('~/data/cohcon/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/cn_att/%s/%s',mglGetSID,fname));
         stimulus.staircase = s.stimulus.staircase;
-        stimulus.stairCatch = s.stimulus.stairCatch;
-        stimulus.nocatchs.staircase = s.stimulus.nocatchs.staircase;
         stimulus.counter = s.stimulus.counter + 1;
 
         % load blocks too
@@ -111,35 +96,17 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
 
         clear s;
         stimulus.initStair = 0;
-        disp(sprintf('(cohCon) Data file: %s loaded.',fname));
+        disp(sprintf('(cogneuro_att) Data file: %s loaded.',fname));
     end
 end
-disp(sprintf('(cohCon) This is run #%i',stimulus.counter));
+disp(sprintf('(cogneuro_att) This is run #%i',stimulus.counter));
 
 %% Initialize Stimulus
 
 myscreen = initStimulus('stimulus',myscreen);
 
-if stimulus.scan
-    stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
-else
-    stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
-end
+stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
 
-%% Colors
-stimulus.colors.rmed = 127.75;
-
-% We're going to add an equal number of reserved colors to the top and
-% bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
-stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
-stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
-stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
-stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
-stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
-
-stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
-stimulus.colors.mrmin = stimulus.colors.nReserved;
 
 %% Everything else
 stimulus.dots.xcenter = 0;
@@ -158,74 +125,42 @@ stimulus = rmfield(stimulus,'dots');
 stimulus.dotsR = initDotsRadial(stimulus.dotsR,myscreen);
 stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
 
-if ~length(stimulus.pedestals.coherence)==length(stimulus.pedestals.contrast)
-    disp('(cohcon) Contrast and coherence have different pedestal #, this can cause errors');
-end
-
-%% Gamma Table Initialization
-
-% get gamma table
-if ~isfield(myscreen,'gammaTable')
-  stimulus.linearizedGammaTable = mglGetGammaTable;
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-  disp(sprintf('(cuecon:initGratings) No gamma table found in myscreen. Contrast displays like this'));
-  disp(sprintf('         should be run with a valid calibration made by moncalib for this monitor.'));
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-end
-stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
-    
-%% Mask
-d = stimulus.dotsL;
-stimulus.mask.x = repmat([d.minX+.125:.25:d.maxX-.125],1,40);
-stimulus.mask.y = [d.minY+.125:.25:d.maxY-.125];
-tmp = repmat(stimulus.mask.y,30,1);
-stimulus.mask.y = transpose(tmp(:));
-
-%% Character textures
-mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
-stimulus.text.mTexW = mglText('M');
-stimulus.text.cTexW = mglText('C');
-
-mglTextSet('Helvetica',32,stimulus.colors.black,0,0,0,0,0,0,0);
-stimulus.text.mTexK = mglText('M');
-stimulus.text.cTexK = mglText('C');
 %% Setup Task
 
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.ITI = 5; % the ITI is either 20s (first time) or 1s
+stimulus.seg.ITI = 3; % the ITI is either 20s (first time) or 1s
 stimulus.seg.stim = 1;
-stimulus.seg.mask = 2;
-stimulus.seg.ISI = 3;
-stimulus.seg.resp = 4;
-task{1}{1}.segmin = [2 0 0 1.5 6];
-task{1}{1}.segmax = [2 0 0 1.5 15];
+stimulus.seg.resp = 2;
+task{1}{1}.segmin = [2 2 5];
+task{1}{1}.segmax = [2 2 11];
 
-task{1}{1}.synchToVol = [0 0 0 0 0];
-if stimulus.scan
-    task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
-end
-task{1}{1}.getResponse = [0 0 0 1 0];
+task{1}{1}.synchToVol = [0 0 1];
+
+task{1}{1}.getResponse = [0 1 0];
 task{1}{1}.parameter.dirL = [1 2];
 task{1}{1}.parameter.dirR = [1 2];
+task{1}{1}.parameter.cohPedestal = 1; % target flow coherence
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 25;
+task{1}{1}.numTrials = 10;
 
 if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 
-if stimulus.nocatch
-    task{1}{1}.parameter.catch = -1;
-end
+%% Run variables
 
+task{1}{1}.randVars.calculated.coherence = nan;
+task{1}{1}.randVars.calculated.cohDelta = nan;
 %% Tracking
 
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.task = nan; % Current task (calc per BLOCK)
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
+task{1}{1}.randVars.calculated.lCoh = nan;
+task{1}{1}.randVars.calculated.rCoh = nan;
 
 stimulus.curTrial = 0;
 
@@ -257,6 +192,19 @@ for phaseNum = 1:length(task{1})
     [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% init staircase
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if stimulus.initStair
+    % We are starting our staircases from scratch
+    disp(sprintf('(cogneuro_att) Initializing staircases'));
+    stimulus = initStaircase(stimulus);
+else
+    disp('(cogneuro_att) Re-using staircase from previous run...');
+    % Reset staircase if necessary
+    checkStaircaseStop();
+end
+
 %% Get Ready...
 % clear screen    
 mglWaitSecs(2);
@@ -265,13 +213,12 @@ if stimulus.scan
     mglTextDraw('DO NOT MOVE',[0 1.5]);
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
 else
-
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
 end
 mglFlush
 
 % let the user know
-disp(sprintf('(cohCon) Starting run number: %i. Current task: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.runs.curTask}));
+disp(sprintf('(cogneuro_att) Starting run number: %i. Current task: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.runs.curTask}));
 % if stimulus.unattended
 myscreen.flushMode = 1;
 % end
@@ -317,9 +264,28 @@ stimulus.curTrial = stimulus.curTrial + 1;
 %  Set the current task
 task.thistrial.task = stimulus.runs.curTask;
 
-
 % Set the missing thistrial vars
+task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedestal);
 task.thistrial.trialNum = stimulus.curTrial;
+
+% Get the pedestals
+[cohTh, stimulus] = getDeltaPed(task,stimulus);
+
+
+% Reduce if pedestals are too large
+if (task.thistrial.coherence + cohTh) > 0.95
+    cohTh = 0.95 - task.thistrial.coherence;
+end
+
+% Save info
+task.thistrial.cohDelta = cohTh;
+
+task.thistrial.lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+task.thistrial.rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+
+disp(sprintf('(cogneuro_att) Trial %i starting. Coherence: L %.02f; R %.02f',task.thistrial.trialNum,...
+    task.thistrial.lCoh,task.thistrial.rCoh));
+
 
 % set directions
 flip = [-1 1];
@@ -332,30 +298,20 @@ stimulus.dotsR.dir = flip(task.thistrial.dirR);
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 %%
-
 myscreen.flushMode = 0;
-
 global stimulus
 
-stimulus.live.mt = 0;
 switch task.thistrial.thisseg
     case stimulus.seg.ITI
         stimulus.live.dots = 0;
-        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.fixColor = 0;
     case stimulus.seg.stim
         stimulus.live.dots = 1;
-        stimulus.live.fixColor = stimulus.colors.black;
-    case stimulus.seg.mask
-        stimulus.live.dots = 0;
-        stimulus.live.fixColor = stimulus.colors.black;
-    case stimulus.seg.ISI
-        stimulus.live.dots = 0;
-        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.fixColor = 0;
     case stimulus.seg.resp
         stimulus.live.dots = 0;
-        stimulus.live.fixColor = stimulus.colors.white;
+        stimulus.live.fixColor = 1;
 end
-
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -364,71 +320,52 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
-
 mglClearScreen(0.5);
-
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
-upFix(task,stimulus);
+upFix(stimulus);
 
-function upFix(task,stimulus)
+function upFix(stimulus)
 %%
+mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 
-if ~(task.thistrial.catch > 0) || stimulus.live.catchFix == 0
-    mglFixationCross(1.5,1.5,stimulus.live.fixColor);
-else
-    if stimulus.runs.curTask==2
-        if stimulus.live.fixColor==stimulus.colors.white
-            mglBltTexture(stimulus.text.mTexW,[0 0]);
-        else
-            mglBltTexture(stimulus.text.mTexK,[0 0]);
-        end
-    else
-        if stimulus.live.fixColor==stimulus.colors.white
-            mglBltTexture(stimulus.text.cTexW,[0 0]);
-        else
-            mglBltTexture(stimulus.text.cTexK,[0 0]);
-        end
-    end
-end
 
 function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
 
-tCoh = 1;
-tCon = 1;
+tCoh = task.thistrial.coherence;
+coh = tCoh + task.thistrial.cohDelta;
 
-%% Old update code start here
-stimulus.dotsL = updateDotsRadial(stimulus.dotsL,tCoh,myscreen,false);
-stimulus.dotsR = updateDotsRadial(stimulus.dotsR,tCoh,myscreen,false);
+stimulus.dotsL = updateDotsRadial(stimulus.dotsL,coh,myscreen,false);
+stimulus.dotsR = updateDotsRadial(stimulus.dotsR,coh,myscreen,false);
 
 % dotsR
 % update +contrast
 
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==1),stimulus.dotsR.ydisp(stimulus.dotsR.con==1),...
-    stimulus.dotsR.dotsize,[0 0 0]);
+    stimulus.dotsR.dotsize,[1 1 1]);
 % update - contrast
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==2),stimulus.dotsR.ydisp(stimulus.dotsR.con==2),...
-    stimulus.dotsR.dotsize,[1 1 1]);
+    stimulus.dotsR.dotsize,[0 0 0]);
 % dotsL
 % update +contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==1),stimulus.dotsL.ydisp(stimulus.dotsL.con==1),...
-    stimulus.dotsL.dotsize,[0 0 0]);
+    stimulus.dotsL.dotsize,[1 1 1]);
 % update - contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==2),stimulus.dotsL.ydisp(stimulus.dotsL.con==2),...
-    stimulus.dotsL.dotsize,[1 1 1]);
+    stimulus.dotsL.dotsize,[0 0 0]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%
+
 function [task, myscreen] = getResponseCallback(task, myscreen)
 
 global stimulus
 
 responseText = {'Incorrect','Correct'};
 responsePos = {'Left','Right'};
-fixColors = {stimulus.colors.red,stimulus.colors.green};
+fixColors = {[1 0 0],[0 1 0]};
 
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
@@ -438,11 +375,12 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
             cSide = task.thistrial.dirR;
         end
         task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(cSide);
+        stimulus.staircase{task.thistrial.task} = doStaircase('update',stimulus.staircase{task.thistrial.task},task.thistrial.correct);
         % Store whether this was correct
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-        disp(sprintf('(cohCon) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
+        disp(sprintf('(cogneuro_att) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
     else
-        disp(sprintf('(cohCon) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
+        disp(sprintf('(cogneuro_att) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
     end
 end
 
@@ -454,125 +392,39 @@ end
 %    getDeltaPed       %
 %%%%%%%%%%%%%%%%%%%%%%%%
 
-function [cohPed, conPed, stimulus] = getDeltaPed(task,stimulus)
-%%
-if stimulus.runs.curTask == 1
-    % COHERENCE MAIN TASK    
-    if ~stimulus.nocatch
-        [cohPed, stimulus.staircase{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircase{1,curPedVal(task,1)});
-    else
-        [cohPed, stimulus.nocatchs.staircase{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.nocatchs.staircase{1,curPedVal(task,1)});
-    end
-    
-    if task.thistrial.catch > 0
-        [conPed, stimulus.stairCatch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.stairCatch{2,curPedVal(task,2)});
-    else
-        conPed = stimulus.pedestals.catch.contrast(randi(length(stimulus.pedestals.catch.contrast)));
-    end
-else
-    % CONTRAST MAIN TASK
-    if ~stimulus.nocatch
-        [conPed, stimulus.staircase{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircase{2,curPedVal(task,2)});
-    else
-        [conPed, stimulus.nocatchs.staircase{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.nocatchs.staircase{2,curPedVal(task,2)});
-    end
-    
-    if task.thistrial.catch > 0
-        [cohPed, stimulus.stairCatch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.stairCatch{1,curPedVal(task,1)});
-    else
-        cohPed = stimulus.pedestals.catch.coherence(randi(length(stimulus.pedestals.catch.coherence)));
-    end
-end
+function [cohPed, stimulus] = getDeltaPed(stimulus)
+[cohPed, stimulus.staircase{stimulus.runs.curTask}] = doStaircase('testValue',stimulus.staircase{stimulus.runs.curTask});
 
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    initStaircase     %
+%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initStaircase(stimulus)
+%%
+stimulus.staircase = cell(2,1);
+
+% Main staircases
+for task = 1:2
+    stimulus.staircase{task} = doStaircase('init','upDown',...
+        'initialThreshold',stimulus.pedestals.initThresh.coherence,...
+        'initialStepsize',stimulus.pedestals.initThresh.coherence/3,...
+        'minThreshold=0.001','maxThreshold=0.4','stepRule','pest', ...
+        'nTrials=50','maxStepsize=.2','minStepsize=.001');
+end
+disp('(cogneuro_att) New staircase: nTrials=50, max=.4');
 %%
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispStaircase    %
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispStaircase(stimulus)
-
-try
-    taskOpts = {'catch - coherence','catch - contrast','coherence','contrast','Nocatch coherence','Nocatch contrast'};
-    drawing = {'or' 'ob' '*r' '*b' '+r' '+b'};
-    
-    
-    plotting = zeros(2,1);
-    catchPlot = zeros(2,1);
-    ci = zeros(2,1);
-    nocatchplot = zeros(2,1);
-    
-    for task = 1:2
-        for ped = 1:length(stimulus.pedestals.contrast)
-            try
-                each = [];
-                for i = 1:length(stimulus.nocatchs.staircase{task,ped})
-                    if stimulus.nocatchs.staircase{task,ped}(i).trialNum > 0
-                        out = doStaircase('threshold',stimulus.nocatchs.staircase{task,ped}(i),'type','weibull'); % noise
-                        each(end+1) = out.threshold;
-                    end
-                end
-                nocatchplot(task,ped) = mean(each);
-            catch
-                nocatchplot(task,ped) = -1;
-            end
-            try
-                each = [];
-                for i = 1:length(stimulus.staircase{task,ped})
-                    if stimulus.staircase{task,ped}(i).trialNum > 0
-                        out = doStaircase('threshold',stimulus.staircase{task,ped}(i),'type','weibull'); % noise
-                        each(end+1) = out.threshold;
-                    end
-                end
-                plotting(task,ped) = mean(each);
-                ci(task,ped) = std(each)/sqrt(length(each))*1.96;
-            catch
-                plotting(task,ped) = -1;
-            end
-            try
-                outC = doStaircase('threshold',stimulus.stairCatch{task,ped},'type','weibull');
-                catchPlot(task,ped) = outC.threshold;
-            catch
-                catchPlot(task,ped) = -1;
-            end
-        end
-    end
-    figure
-    hold on
-    plot(stimulus.pedestals.(taskOpts{3})(1),catchPlot(1,:),drawing{1});
-    plot(stimulus.pedestals.(taskOpts{4})(1),catchPlot(2,:),drawing{2});
-    plot(stimulus.pedestals.(taskOpts{3})(1),plotting(1,:),drawing{3});
-    plot(stimulus.pedestals.(taskOpts{4})(1),plotting(2,:),drawing{4});
-    plot(stimulus.pedestals.(taskOpts{3})(1),nocatchplot(1,:),drawing{5});
-    plot(stimulus.pedestals.(taskOpts{4})(1),nocatchplot(2,:),drawing{6});
-    legend(taskOpts);
-    a = axis;
-    axis([0 .7 a(3) a(4)]);
-    hold off
-
-catch
-    disp('(cohCon) Figures were not generated successfully.');
-end
+disp('(cogneuro_att) Todo: Implement');
 
 %% checkStaircaseStop
 function checkStaircaseStop()
 global stimulus
 
-for task = 1:2
-    stimulus.stairCatch{task,1} = resetStair(stimulus.stairCatch{task,1});
-end
 % Check both staircases
 for task = 1:2
     stimulus.staircase{task,1} = resetStair(stimulus.staircase{task,1});
-end
-% Check nocatch staircases
-
-for task = 1:2
-    if stimulus.scan
-        for p = 1:size(stimulus.nocatchs.staircase,2)
-            stimulus.nocatchs.staircase{task,p} = resetStair(stimulus.nocatchs.staircase{task,p});
-        end
-    else
-        stimulus.nocatchs.staircase{task,1} = resetStair(stimulus.nocatchs.staircase{task,1});
-    end
 end
 
 function s = resetStair(s)
@@ -642,10 +494,10 @@ dots.xdisp = dots.mult*dots.x;
 dots.ydisp = dots.y;
 
 % set incoherent dots to 0
-dots.coherency = 1;
-dots.incoherent = rand(1,dots.n) > dots.coherency;
-dots.incoherentn = sum(dots.incoherent);
-dots.coherent = ~dots.incoherent;
+dots.coherency = 0.5;
+dots.moveright = rand(1,dots.n) < dots.coherency;
+dots.moverightn = sum(dots.moveright);
+dots.moveleft = ~dots.moveright;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step dots for Radial
@@ -658,48 +510,33 @@ dots.oldy = dots.y;
 
 % get the coherent and incoherent dots
 if repick
-    dots.incoherent = rand(1,dots.n) > coherence;
-    dots.incoherentn = sum(dots.incoherent);
-    dots.coherent = ~dots.incoherent;
-    dots.coherency = coherence;
+    dots.moveright = rand(1,dots.n) < dots.coherency;
+    dots.moverightn = sum(dots.moveright);
+    dots.moveleft = ~dots.moveright;
+    dots.coherency = 0.5;
 elseif dots.coherency ~= coherence
     cohDiff = coherence - dots.coherency;
     numDots = round(abs(cohDiff) * dots.n); % actual number of dots to flip
     if numDots > dots.n, numDots = dots.n; end
     if cohDiff > 0
         % we need to add more coherent dots
-        flipDots = [zeros(1,numDots) ones(1,sum(dots.incoherent)-numDots)];
-        dots.incoherent(dots.incoherent) = flipDots(randperm(length(flipDots)));
+        flipDots = [zeros(1,numDots) ones(1,sum(dots.moveright)-numDots)];
+        dots.moveright(dots.moveright) = flipDots(randperm(length(flipDots)));
     else
         % we need to add more incoherent dots
-        flipDots = [ones(1,numDots) zeros(1,sum(dots.coherent)-numDots)];
-        dots.incoherent(dots.coherent) = flipDots(randperm(length(flipDots)));
+        flipDots = [ones(1,numDots) zeros(1,sum(dots.moveleft)-numDots)];
+        dots.moveright(dots.moveleft) = flipDots(randperm(length(flipDots)));
     end
-    dots.incoherentn = sum(dots.incoherent);
-    dots.coherent = ~dots.incoherent;
-    dots.coherency = sum(dots.coherent)/dots.n;
+    dots.moverightn = sum(dots.moveright);
+    dots.moveleft = ~dots.moveright;
+    dots.coherency = sum(dots.moveleft)/dots.n;
 end
 
 freq_factor = dots.speed/myscreen.framesPerSecond;
 
 % move coherent dots
-dots.x(dots.coherent) = dots.x(dots.coherent) + dots.dir*freq_factor;
-
-% these are for flipping into the other quadrants
-xmat = repmat([1 1 -1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
-ymat = repmat([1 -1 1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
-perms = randperm(dots.incoherentn);
-
-% move incoherent dots
-% get random vectors
-dots.rX = rand(1,dots.incoherentn);
-dots.rY = sqrt(1-(dots.rX.^2));
-dots.rX = (dots.rX .* xmat(perms)) * freq_factor; % rescale to match the velocity
-dots.rY = (dots.rY .* ymat(perms)) * freq_factor;
-% dots.rX = (dots.rX .* xmat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2); % rescale to match the velocity
-% dots.rY = (dots.rY .* ymat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2);
-dots.x(dots.incoherent) = dots.x(dots.incoherent) + dots.rX;
-dots.y(dots.incoherent) = dots.y(dots.incoherent) + dots.rY;
+dots.x(dots.moveright) = dots.x(dots.moveright) + dots.dir*freq_factor;
+dots.x(dots.moveleft) = dots.x(dots.moveleft) + dots.dir*freq_factor;
 
 offscreen = dots.x > dots.maxX;
 dots.x(offscreen) = dots.x(offscreen) - abs(dots.maxX - dots.minX);
@@ -713,60 +550,3 @@ dots.y(offscreen) = dots.y(offscreen) + abs(dots.maxY - dots.minY);
 
 dots.xdisp = dots.mult*dots.x;
 dots.ydisp = dots.y;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% sets the gamma table so that we can have
-% finest possible control over the stimulus contrast.
-%
-% stimulus.colors.reservedColors should be set to the reserved colors (for cue colors, etc).
-% maxContrast is the maximum contrast you want to be able to display.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function setGammaTable_flowMax(maxContrast)
-
-global stimulus;
-
-% set the bottom
-gammaTable(1:size(stimulus.colors.reservedBottom,1),1:size(stimulus.colors.reservedBottom,2)) = stimulus.colors.reservedBottom;
-
-% set the gamma table
-if maxContrast == 1
-    % create the rest of the gamma table
-    cmax = 1;cmin = 0;
-    luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
-
-    % now get the linearized range
-    redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-    greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-    blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
-elseif maxContrast > 0
-    % create the rest of the gamma table
-    cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
-    luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
-
-    % now get the linearized range
-    redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-    greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-    blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
-else
-    % if we are asked for 0 contrast then simply set all the values to gray
-    redLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-    greenLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-    blueLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-end
-
-% add to the table!
-gammaTable((stimulus.colors.mrmin:stimulus.colors.mrmax)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
-
-% set the top
-gammaTable = [gammaTable; stimulus.colors.reservedTop];
-
-if size(gammaTable,1)~=256
-    disp('(setGammaTable) Failure: Incorrect number of colors in gamma table produced');
-    keyboard
-end
-
-% set the gamma table
-mglSetGammaTable(gammaTable);
-
-% remember what the current maximum contrast is that we can display
-stimulus.curMaxContrast = maxContrast;
