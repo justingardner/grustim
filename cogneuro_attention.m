@@ -33,17 +33,20 @@ global stimulus
 clear fixStimulus
 %% Initialize Variables
 
+disp('****************************************');
+disp('** NEPR Into Cog Neuro Attention Task **');
+disp('****************************************');
 % add arguments later
 stimFileNum = [];
 plots = [];
 overrideTask = [];
-projector = [];
 scan = [];
-training = [];
-getArgs(varargin,{'stimFileNum=-1', ...
-    'plots=1','overrideTask=0'});
+testing = [];
+getArgs(varargin,{'stimFileNum=-1','testing=0' ...
+    'plots=1','overrideTask=0','scan=0'});
 stimulus.plots = plots;
-stimulus.scan = 1;
+stimulus.scan = scan;
+stimulus.testing = testing;
 
 if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
@@ -55,8 +58,6 @@ end
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 %% Useful stimulus stuff
-
-stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
 stimulus.pedestals.coherence = .51;
 
@@ -73,10 +74,10 @@ end
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/cn_att/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_attention/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/cn_att/%s/1*mat',mglGetSID));
-
+    files = dir(sprintf('~/data/cogneuro_attention/%s/1*mat',mglGetSID));
+    
     if length(files) >= 1
         if stimFileNum == -1
             if length(files) > 1
@@ -86,14 +87,14 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cn_att/%s',mglGetSID))
         else
             fname = files(stimFileNum).name;
         end
-        s = load(sprintf('~/data/cn_att/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/cogneuro_attention/%s/%s',mglGetSID,fname));
         stimulus.staircase = s.stimulus.staircase;
         stimulus.counter = s.stimulus.counter + 1;
-
+        
         % load blocks too
         stimulus.runs = s.stimulus.runs;
         stimulus.runs.loaded = 1;
-
+        
         clear s;
         stimulus.initStair = 0;
         disp(sprintf('(cogneuro_att) Data file: %s loaded.',fname));
@@ -113,7 +114,7 @@ stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 4;
 stimulus.dots.density = 1.4;
-stimulus.dots.speed = 3.25;
+stimulus.dots.speed = 5;
 stimulus.dots.centerOffset = 2;
 
 stimulus.dotsR = stimulus.dots;
@@ -133,10 +134,17 @@ task{1}{1}.waitForBacktick = 1;
 stimulus.seg.ITI = 3; % the ITI is either 20s (first time) or 1s
 stimulus.seg.stim = 1;
 stimulus.seg.resp = 2;
-task{1}{1}.segmin = [2 2 5];
-task{1}{1}.segmax = [2 2 11];
+task{1}{1}.segmin = [1 1.5 1];
+task{1}{1}.segmax = [1 1.5 2];
+if stimulus.scan
+task{1}{1}.segmin = [2 1.5 5];
+task{1}{1}.segmax = [2 1.5 12];
+end
 
+task{1}{1}.synchToVol = [0 0 0];
+if stimulus.scan
 task{1}{1}.synchToVol = [0 0 1];
+end
 
 task{1}{1}.getResponse = [0 1 0];
 task{1}{1}.parameter.dirL = [1 2];
@@ -206,10 +214,10 @@ else
 end
 
 %% Get Ready...
-% clear screen    
+% clear screen
 mglWaitSecs(2);
 mglClearScreen(0.5);
-if stimulus.scan        
+if stimulus.scan
     mglTextDraw('DO NOT MOVE',[0 1.5]);
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
 else
@@ -269,7 +277,7 @@ task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedest
 task.thistrial.trialNum = stimulus.curTrial;
 
 % Get the pedestals
-[cohTh, stimulus] = getDeltaPed(task,stimulus);
+[cohTh, stimulus] = getDeltaPed(stimulus);
 
 
 % Reduce if pedestals are too large
@@ -288,9 +296,10 @@ disp(sprintf('(cogneuro_att) Trial %i starting. Coherence: L %.02f; R %.02f',tas
 
 
 % set directions
-flip = [-1 1];
-stimulus.dotsL.dir = flip(task.thistrial.dirL);
-stimulus.dotsR.dir = flip(task.thistrial.dirR);
+flipR = [-1 1];
+flipL = [1 -1];
+stimulus.dotsL.dir = flipR(task.thistrial.dirL);
+stimulus.dotsR.dir = flipL(task.thistrial.dirR);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -312,7 +321,7 @@ switch task.thistrial.thisseg
         stimulus.live.dots = 0;
         stimulus.live.fixColor = 1;
 end
-  
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -536,7 +545,7 @@ freq_factor = dots.speed/myscreen.framesPerSecond;
 
 % move coherent dots
 dots.x(dots.moveright) = dots.x(dots.moveright) + dots.dir*freq_factor;
-dots.x(dots.moveleft) = dots.x(dots.moveleft) + dots.dir*freq_factor;
+dots.x(dots.moveleft) = dots.x(dots.moveleft) - dots.dir*freq_factor;
 
 offscreen = dots.x > dots.maxX;
 dots.x(offscreen) = dots.x(offscreen) - abs(dots.maxX - dots.minX);
