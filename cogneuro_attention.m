@@ -24,10 +24,9 @@
 %             scan (0/1) - Scanner timing
 %
 %
-%   TR .75 = 560 volumes (7:00 total)
-%   TR 1.4 = 300 volumes (7:00 total)
+%   TR .5 = 296 volumes (10 * 14 * 2 + 16)
 
-function [myscreen] = cohcon(varargin)
+function [myscreen] = cogneuro_attention(varargin)
 
 global stimulus
 clear fixStimulus
@@ -91,10 +90,6 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_attention/%s',mglGetSID
         stimulus.staircase = s.stimulus.staircase;
         stimulus.counter = s.stimulus.counter + 1;
         
-        % load blocks too
-        stimulus.runs = s.stimulus.runs;
-        stimulus.runs.loaded = 1;
-        
         clear s;
         stimulus.initStair = 0;
         disp(sprintf('(cogneuro_att) Data file: %s loaded.',fname));
@@ -131,40 +126,31 @@ stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.ITI = 3; % the ITI is either 20s (first time) or 1s
-stimulus.seg.stim = 1;
-stimulus.seg.resp = 2;
-task{1}{1}.segmin = [1 1.5 1];
-task{1}{1}.segmax = [1 1.5 2];
+stimulus.seg.cue = 1;
+stimulus.seg.ITI = [4,7,10]; % the ITI is either 20s (first time) or 1s
+stimulus.seg.stim = [2,5,8];
+stimulus.seg.resp = [3, 6, 9];
+
+l_b = 2;
+l_s = .5;
+l_r = 1;
+l_i = 0;
+task{1}{1}.seglen = [l_b l_s l_r l_i l_s l_r l_i l_s l_r l_i];
+
+task{1}{1}.synchToVol = [0 0 0 0 0 0 0 0 0 0];
 if stimulus.scan
-task{1}{1}.segmin = [2 1.5 5];
-task{1}{1}.segmax = [2 1.5 12];
+    task{1}{1}.synchToVol(end) = 1;
 end
 
-task{1}{1}.synchToVol = [0 0 0];
-if stimulus.scan
-task{1}{1}.synchToVol = [0 0 1];
-end
-
-task{1}{1}.getResponse = [0 1 0];
-task{1}{1}.parameter.dirL = [1 2];
-task{1}{1}.parameter.dirR = [1 2];
+task{1}{1}.getResponse = [0 0 1 0 0 1 0 0 1 0];
+task{1}{1}.parameter.task = [1 2];
 task{1}{1}.parameter.cohPedestal = 1; % target flow coherence
-task{1}{1}.random = 1;
+task{1}{1}.random = 0;
 task{1}{1}.numTrials = 10;
 
-if stimulus.scan
-    task{1}{1}.numTrials = inf;
-end
-
-%% Run variables
-
-task{1}{1}.randVars.calculated.coherence = nan;
-task{1}{1}.randVars.calculated.cohDelta = nan;
 %% Tracking
 
 % these are variables that we want to track for later analysis.
-task{1}{1}.randVars.calculated.task = nan; % Current task (calc per BLOCK)
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
 task{1}{1}.randVars.calculated.lCoh = nan;
@@ -176,22 +162,11 @@ stimulus.curTrial = 0;
 if isfield(stimulus,'runs') && isfield(stimulus.runs,'loaded')
     % We already have our blocks
     stimulus.runs = rmfield(stimulus.runs,'loaded'); % remove the load field, otherwise it gets saved across runs
-    if stimulus.counter > length(stimulus.runs.taskList)
-        stimulus.runs.taskList  = repmat(stimulus.runs.taskList,1,2);
-    end
 else
     % This is the first run, build up the blocks.
     stimulus.runs = struct;
     stimulus.runs.taskOpts = [1 2];
     stimulus.runs.taskOptsText = {'Attend Left','Attend Right'};
-    stimulus.runs.taskList = stimulus.runs.taskOpts(randperm(2));
-end
-
-%% Task Override
-if overrideTask > 0
-    stimulus.runs.curTask = overrideTask;
-else
-    stimulus.runs.curTask = stimulus.runs.taskList(stimulus.counter);
 end
 
 %% Full Setup
@@ -217,16 +192,11 @@ end
 % clear screen
 mglWaitSecs(2);
 mglClearScreen(0.5);
-if stimulus.scan
-    mglTextDraw('DO NOT MOVE',[0 1.5]);
-    mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
-else
-    mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
-end
+mglTextDraw('DO NOT MOVE',[0 1.5]);
 mglFlush
 
 % let the user know
-disp(sprintf('(cogneuro_att) Starting run number: %i. Current task: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.runs.curTask}));
+disp(sprintf('(cogneuro_att) Starting run number: %i',stimulus.counter));
 % if stimulus.unattended
 myscreen.flushMode = 1;
 % end
@@ -268,58 +238,78 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
 stimulus.curTrial = stimulus.curTrial + 1;
-
-%  Set the current task
-task.thistrial.task = stimulus.runs.curTask;
-
-% Set the missing thistrial vars
-task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedestal);
 task.thistrial.trialNum = stimulus.curTrial;
+disp(sprintf('(cogneuro_att) Block %i starting.',stimulus.curTrial));
 
-% Get the pedestals
-[cohTh, stimulus] = getDeltaPed(stimulus);
+stimulus.live.group = 0;
+stimulus.live.upgroup = 0;
 
-
-% Reduce if pedestals are too large
-if (task.thistrial.coherence + cohTh) > 0.95
-    cohTh = 0.95 - task.thistrial.coherence;
-end
-
-% Save info
-task.thistrial.cohDelta = cohTh;
-
-task.thistrial.lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-task.thistrial.rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-
-disp(sprintf('(cogneuro_att) Trial %i starting. Coherence: L %.02f; R %.02f',task.thistrial.trialNum,...
-    task.thistrial.lCoh,task.thistrial.rCoh));
-
-
-% set directions
-flipR = [-1 1];
-flipL = [1 -1];
-stimulus.dotsL.dir = flipR(task.thistrial.dirL);
-stimulus.dotsR.dir = flipL(task.thistrial.dirR);
+stimulus.live.dirsL = randi(2,1,3);
+stimulus.live.dirsR = randi(2,1,3);
+disp(sprintf('(cogneuro_att) Current task: %s',stimulus.runs.taskOptsText{task.thistrial.task}));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [lCoh, rCoh, stimulus] = getCurrentThresholds(task,stimulus)
+% Set the missing thistrial vars
+task.thistrial.coherence = stimulus.pedestals.coherence(task.thistrial.cohPedestal);
+
+[lCoh, stimulus] = getDeltaPed(task,1,stimulus);
+[rCoh, stimulus] = getDeltaPed(task,2,stimulus);
+
+if (task.thistrial.coherence + lCoh) > 0.95
+    lCoh = 0.95 - task.thistrial.coherence;
+end
+if (task.thistrial.coherence + rCoh) > 0.95
+    rCoh = 0.95 - task.thistrial.coherence;
+end
+
+lCoh = task.thistrial.coherence + lCoh;
+rCoh = task.thistrial.coherence + rCoh;
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    getDeltaPed       %
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [cohPed, stimulus] = getDeltaPed(task,ct, stimulus)
+[cohPed, stimulus.staircase{ct}] = doStaircase('testValue',stimulus.staircase{ct});
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 %%
 myscreen.flushMode = 0;
 global stimulus
 
-switch task.thistrial.thisseg
-    case stimulus.seg.ITI
-        stimulus.live.dots = 0;
-        stimulus.live.fixColor = 0;
-    case stimulus.seg.stim
-        stimulus.live.dots = 1;
-        stimulus.live.fixColor = 0;
-    case stimulus.seg.resp
-        stimulus.live.dots = 0;
-        stimulus.live.fixColor = 1;
+flipR = [-1 1];
+flipL = [1 -1];
+dirT = {'<-','->'};
+stimulus.live.cue = 0;
+stimulus.live.dots = 0;
+stimulus.live.fixColor = 0;
+if any(stimulus.seg.cue==task.thistrial.thisseg)
+    stimulus.live.cue = 1;
+end
+if any(stimulus.seg.stim==task.thistrial.thisseg)
+    if ~stimulus.live.upgroup
+        stimulus.live.group = stimulus.live.group + 1;
+        stimulus.live.upgroup = 1;
+        stimulus.live.cdirL = stimulus.live.dirsL(stimulus.live.group);
+        stimulus.live.cdirR = stimulus.live.dirsR(stimulus.live.group);
+        stimulus.dotsL.dir = flipR(stimulus.live.cdirL);
+        stimulus.dotsR.dir = flipL(stimulus.live.cdirR);
+        [lc, rc, s] = getCurrentThresholds(task,stimulus);
+        stimulus = s;
+        stimulus.live.lCoh = lc;
+        stimulus.live.rCoh = rc;
+        disp(sprintf('(cogneuro_att) Group: %i',stimulus.live.group));
+        disp(sprintf('(cogneuro_att) Left dir: %s, Right dir: %s',dirT{stimulus.live.cdirL},dirT{stimulus.live.cdirR}));
+        disp(sprintf('(cogneuro_att) Left coherence: %0.2f, Right coherence: %0.2f',stimulus.live.lCoh,stimulus.live.rCoh));
+    end
+    stimulus.live.dots = 1;
+end
+if any(stimulus.seg.resp==task.thistrial.thisseg)
+    stimulus.live.fixColor = 1;
+    stimulus.live.upgroup = 0;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -331,7 +321,12 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0.5);
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
+if stimulus.live.cue, upCue(task,stimulus); end
 upFix(stimulus);
+
+function upCue(task,stimulus)
+%%
+mglTextDraw(stimulus.runs.taskOptsText{task.thistrial.task},[0 1.5]);
 
 function upFix(stimulus)
 %%
@@ -342,11 +337,8 @@ function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
 
-tCoh = task.thistrial.coherence;
-coh = tCoh + task.thistrial.cohDelta;
-
-stimulus.dotsL = updateDotsRadial(stimulus.dotsL,coh,myscreen,false);
-stimulus.dotsR = updateDotsRadial(stimulus.dotsR,coh,myscreen,false);
+stimulus.dotsL = updateDotsRadial(stimulus.dotsL,stimulus.live.lCoh,myscreen,false);
+stimulus.dotsR = updateDotsRadial(stimulus.dotsR,stimulus.live.rCoh,myscreen,false);
 
 % dotsR
 % update +contrast
@@ -377,17 +369,19 @@ responsePos = {'Left','Right'};
 fixColors = {[1 0 0],[0 1 0]};
 
 if any(task.thistrial.whichButton == stimulus.responseKeys)
-    if task.thistrial.gotResponse == 0
+    if task.thistrial.gotResponse < 3
         if task.thistrial.task==1
-            cSide = task.thistrial.dirL;
+            cSide = stimulus.live.cdirL;
         else
-            cSide = task.thistrial.dirR;
+            cSide = stimulus.live.cdirR;
         end
-        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(cSide);
-        stimulus.staircase{task.thistrial.task} = doStaircase('update',stimulus.staircase{task.thistrial.task},task.thistrial.correct);
+        corr = task.thistrial.whichButton == stimulus.responseKeys(cSide);
+        if isnan(task.thistrial.correct), task.thistrial.correct=0; end
+        task.thistrial.correct = task.thistrial.correct + 10^(stimulus.live.group-1)*corr;
         % Store whether this was correct
-        stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-        disp(sprintf('(cogneuro_att) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
+        stimulus.staircase{task.thistrial.task} = doStaircase('update',stimulus.staircase{task.thistrial.task},corr);
+        stimulus.live.fixColor = fixColors{corr+1};
+        disp(sprintf('(cogneuro_att) Response %s: %s',responseText{corr+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
     else
         disp(sprintf('(cogneuro_att) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
     end
@@ -397,12 +391,6 @@ end
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%%%%%%%%%%%%%%%%%%%%%%%%
-%    getDeltaPed       %
-%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [cohPed, stimulus] = getDeltaPed(stimulus)
-[cohPed, stimulus.staircase{stimulus.runs.curTask}] = doStaircase('testValue',stimulus.staircase{stimulus.runs.curTask});
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    initStaircase     %
