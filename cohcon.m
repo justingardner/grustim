@@ -62,8 +62,8 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
 if stimulus.nocatch && stimulus.scan
-    stimulus.pedestals.coherence = [.05 .1 .15 .2 .25 .3 .35 .4];
-    stimulus.pedestals.contrast = [.2 .3 .4 .5 .6 .7 .8];
+    stimulus.pedestals.coherence = [.1 .15 .2 .25 .3 .35 .4];
+    stimulus.pedestals.contrast = [.1 .2 .3 .4 .5 .6 .7 .85];
 else
     stimulus.pedestals.coherence = .1;
     stimulus.pedestals.contrast = .6;
@@ -199,8 +199,8 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [1 .25 .2 1 .3];
-task{1}{1}.segmax = [1 .25 .5 1 .5];
+task{1}{1}.segmin = [.75 .25 .2 1 .2];
+task{1}{1}.segmax = [.75 .25 .5 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
@@ -209,6 +209,8 @@ if stimulus.scan
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
     task{1}{1}.segmin(stimulus.seg.stim) = 1.5;
     task{1}{1}.segmax(stimulus.seg.stim) = 1.5;
+    task{1}{1}.segmin(stimulus.seg.mask) = 0;
+    task{1}{1}.segmax(stimulus.seg.mask) = 0;
 end
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
