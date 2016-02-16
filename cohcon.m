@@ -37,16 +37,19 @@ clear fixStimulus
 stimFileNum = [];
 plots = [];
 overrideTask = [];
-projector = [];
 scan = [];
 training = [];
 nocatch = [];
-getArgs(varargin,{'stimFileNum=-1','nocatch=0', ...
-    'plots=1','overrideTask=0','scan=0','training=0'});
+test = 0;
+stableContrast = [];
+getArgs(varargin,{'stimFileNum=-1','nocatch=0', 'test=0', ...
+    'plots=1','overrideTask=0','scan=0','training=0',...
+    'stableContrast=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.training = training;
 stimulus.nocatch = nocatch;
+stimulus.stablecon = stableContrast;
 
 if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
@@ -62,11 +65,18 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
 if stimulus.nocatch && stimulus.scan
-    stimulus.pedestals.coherence = [.1 .15 .2 .25 .3 .35 .4];
+    stimulus.pedestals.coherence = [.1 .2 .4 .6 .8];
+    stimulus.pedestals.contrast = [.1 .2 .3 .4 .5 .6 .7 .85];
+elseif stimulus.nocatch
+    stimulus.pedestals.coherence = [.1 .2 .4 .6 .8];
     stimulus.pedestals.contrast = [.1 .2 .3 .4 .5 .6 .7 .85];
 else
-    stimulus.pedestals.coherence = .1;
-    stimulus.pedestals.contrast = .6;
+    stimulus.pedestals.coherence = .2;
+    stimulus.pedestals.contrast = .5;
+end
+
+if stimulus.stablecon
+    stimulus.pedestals.contrast = .5;
 end
 
 stimulus.pedestals.initThresh.coherence = .8;
@@ -144,9 +154,9 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 %% Everything else
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
-stimulus.dots.dotsize = 4;
-stimulus.dots.density = 1.4;
-stimulus.dots.speed = 3.25;
+stimulus.dots.dotsize = 2;
+stimulus.dots.density = 1.5;
+stimulus.dots.speed = 5;
 stimulus.dots.centerOffset = 2;
 
 stimulus.dotsR = stimulus.dots;
@@ -176,10 +186,11 @@ stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
     
 %% Mask
 d = stimulus.dotsL;
-stimulus.mask.x = repmat([d.minX+.125:.25:d.maxX-.125],1,40);
+stimulus.mask.x = repmat([d.minX+.125:.25:d.maxX-.125],1,4*(d.maxY-d.minY));
 stimulus.mask.y = [d.minY+.125:.25:d.maxY-.125];
-tmp = repmat(stimulus.mask.y,30,1);
+tmp = repmat(stimulus.mask.y,4*(d.maxX-d.minX),1);
 stimulus.mask.y = transpose(tmp(:));
+clear d tmp
 
 %% Character textures
 mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
@@ -199,16 +210,16 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [.75 .25 .2 1 .2];
-task{1}{1}.segmax = [.75 .25 .5 1 .4];
+task{1}{1}.segmin = [3 .5 .2 1 .2];
+task{1}{1}.segmax = [3 .5 .5 1 .4];
 
 if stimulus.scan
-    task{1}{1}.segmin(stimulus.seg.ITI) = 2;
+    task{1}{1}.segmin(stimulus.seg.ITI) = 4;
     task{1}{1}.segmax(stimulus.seg.ITI) = 10;
     task{1}{1}.segmin(stimulus.seg.ISI) = .2;
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
-    task{1}{1}.segmin(stimulus.seg.stim) = 1.5;
-    task{1}{1}.segmax(stimulus.seg.stim) = 1.5;
+    task{1}{1}.segmin(stimulus.seg.stim) = 3;
+    task{1}{1}.segmax(stimulus.seg.stim) = 3;
     task{1}{1}.segmin(stimulus.seg.mask) = 0;
     task{1}{1}.segmax(stimulus.seg.mask) = 0;
 end
@@ -239,7 +250,7 @@ if stimulus.nocatch
     task{1}{1}.parameter.catch = -1;
 end
 
-if stimulus.training
+if test
     task{1}{1}.segmin(stimulus.seg.stim) = 1.2;
     task{1}{1}.segmax(stimulus.seg.stim) = 1.2;
     task{1}{1}.segmin(stimulus.seg.ITI) = 1;
@@ -714,16 +725,22 @@ end
 
 
 % NoCatch staircases: Warning, these have different sizes in scan sessions
+
+% motion first then contrast
+taskOpts = {[.05 .1 .15 .2],[.005 .001 .0015 .002]};
 for task = 1:2
-    stimulus.nocatchs.staircase{task,1} = doStaircase('init','upDown',...
-        'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task}),...
-        'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task})/3,...
-        'minThreshold=0.001','maxThreshold=0.85','stepRule','pest', ...
-        'nTrials=50','maxStepsize=.2','minStepsize=.001');
     if stimulus.scan
-        for p = 2:4
-            stimulus.nocatchs.staircase{task,p} = stimulus.nocatchs.staircase{task,1};
-        end
+        stimulus.nocatchs.staircase{task,1} = doStaircase('init','fixed',...
+            'fixedVals',taskOpts{task});
+    else
+        stimulus.nocatchs.staircase{task,1} = doStaircase('init','upDown',...
+            'initialThreshold',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task}),...
+            'initialStepsize',stimulus.pedestals.initThresh.(stimulus.pedestals.pedOpts{task})/3,...
+            'minThreshold=0.001','maxThreshold=0.85','stepRule','pest', ...
+            'nTrials=50','maxStepsize=.2','minStepsize=.001');
+    end
+    for p = 2:length(stimulus.pedestals.pedOpts{task})
+        stimulus.nocatchs.staircase{task,p} = stimulus.nocatchs.staircase{task,1};
     end
 end
 %%
@@ -863,9 +880,9 @@ function dots = initDotsRadial(dots,~)
 
 % maximum depth of points
 dots.minX = 3.5;
-dots.maxX = 11;
-dots.minY = -5;
-dots.maxY = 5;
+dots.maxX = 12;
+dots.minY = -6;
+dots.maxY = 6;
 
 dots.dir = 1;
 
@@ -921,11 +938,12 @@ elseif dots.coherency ~= coherence
     dots.coherent = ~dots.incoherent;
     dots.coherency = sum(dots.coherent)/dots.n;
 end
+dots.coherentn = dots.n-dots.incoherentn;
 
 freq_factor = dots.speed/myscreen.framesPerSecond;
 
 % move coherent dots
-dots.x(dots.coherent) = dots.x(dots.coherent) + dots.dir*freq_factor;
+dots.x(dots.coherent) = dots.x(dots.coherent) + dots.dir*(1+randn(1,dots.coherentn)/3)*freq_factor;
 
 % these are for flipping into the other quadrants
 xmat = repmat([1 1 -1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
@@ -936,8 +954,8 @@ perms = randperm(dots.incoherentn);
 % get random vectors
 dots.rX = rand(1,dots.incoherentn);
 dots.rY = sqrt(1-(dots.rX.^2));
-dots.rX = (dots.rX .* xmat(perms)) * freq_factor; % rescale to match the velocity
-dots.rY = (dots.rY .* ymat(perms)) * freq_factor;
+dots.rX = (dots.rX .* xmat(perms)) .* (freq_factor*(1+randn(1,dots.incoherentn)/3)); % rescale to match the velocity
+dots.rY = (dots.rY .* ymat(perms)) .* (freq_factor*(1+randn(1,dots.incoherentn)/3));
 % dots.rX = (dots.rX .* xmat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2); % rescale to match the velocity
 % dots.rY = (dots.rY .* ymat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2);
 dots.x(dots.incoherent) = dots.x(dots.incoherent) + dots.rX;
