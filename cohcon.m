@@ -210,16 +210,16 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [3 .5 .2 1 .2];
-task{1}{1}.segmax = [3 .5 .5 1 .4];
+task{1}{1}.segmin = [2.5 .5 .2 1 .2];
+task{1}{1}.segmax = [2.5 .5 .5 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 4;
     task{1}{1}.segmax(stimulus.seg.ITI) = 10;
     task{1}{1}.segmin(stimulus.seg.ISI) = .2;
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
-    task{1}{1}.segmin(stimulus.seg.stim) = 3;
-    task{1}{1}.segmax(stimulus.seg.stim) = 3;
+    task{1}{1}.segmin(stimulus.seg.stim) = 2.5;
+    task{1}{1}.segmax(stimulus.seg.stim) = 2.5;
     task{1}{1}.segmin(stimulus.seg.mask) = 0;
     task{1}{1}.segmax(stimulus.seg.mask) = 0;
 end
@@ -413,9 +413,13 @@ if (task.thistrial.contrast + conTh) > 1
     conTh = 1 - task.thistrial.contrast;
 end
 
+if stimulus.stablecon
+    conTh = 0;
+end
 % Save info
 task.thistrial.conDelta = conTh;
 task.thistrial.cohDelta = cohTh;
+
 
 if task.thistrial.conSide==1
     task.thistrial.lCon = task.thistrial.contrast+task.thistrial.conDelta;
