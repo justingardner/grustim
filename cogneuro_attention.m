@@ -162,6 +162,7 @@ task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
 task{1}{1}.randVars.calculated.attend = nan;
 task{1}{1}.randVars.calculated.dir = nan;
+task{1}{1}.randVars.calculated.rot = nan;
 
 stimulus.curTrial = 0;
 
@@ -253,7 +254,7 @@ else
 end
 
 [rot, stimulus] = getDeltaPed(stimulus);
-
+task.thistrial.rot = rot;
 aT = {'left','right'}; aR = {'right','','left'};
 disp(sprintf('(cogneuro_att) Attending: %s, Respond: %s, Rot: %2.2f deg',aT{task.thistrial.attend},aR{task.thistrial.dir+2},rot));
 
