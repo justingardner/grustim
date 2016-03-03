@@ -59,24 +59,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% other screen parameters
-myscreen.autoCloseScreen = 1;
-myscreen.saveData = 1;
-myscreen.allowpause = 0;
-myscreen.eatkeys = 1;
-myscreen.displayname = 'projector';
-myscreen.background = 'gray';
-TR = TR; % TR = 1000ms for scanner / for psychophysics set to 1.0
-myscreen.tasktype = tasktype;
-
 if scan
     myscreen = initScreen('fMRIproj32');
 else
     myscreen = initScreen('VPixx');
 end
-
-myscreen.keyboard.backtick = mglCharToKeycode({'5'}); %TR = 1500ms
-myscreen.keyboard.nums = mglCharToKeycode({'1' '2' '3' '4'    '6' '7' '8' '9' '0'});
+% other screen parameters
+myscreen.tasktype = tasktype;
 
 % init the stimulus
 global stimulus
@@ -178,7 +167,7 @@ end
 % task{2}{2}.getResponse = [0 0 0 0 0 0 0 0 0 0 1 0]*TR;
 
 task{1}{2}.random = 1;
-task{1}{2}.numTrials = 40; % number of trials to go through
+task{1}{2}.numTrials = inf; % number of trials to go through
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -448,6 +437,7 @@ global  stimulus fixStimulus
 % a button has been pressed, set the responded flag
 stimulus.responded = 1;
 
+disp(task.thistrial.whichButton);
 % collect observer response and display it
 %task.getResponse(task.thistrial.thisseg==11);
 disp(sprintf('task.thistrial.whichButton %d', task.thistrial.whichButton));
