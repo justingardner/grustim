@@ -14,13 +14,12 @@ if ~any(nargin == [0])
   return
 end
 
-waitForBacktick = 0;
-
-debugMode = 1;
+waitForBacktick = 1;
+debugMode = 0;
 
 % stimulus parameters
 global stimulus;
-stimulus.contrast = 0.1;
+stimulus.contrast = 0.2;
 stimulus.innerWidth = 0.5;
 stimulus.outerWidth = 10;
 stimulus.sf = 1;
