@@ -79,7 +79,7 @@ stimulus.pedestals.angle = 90;
 
 stimulus.pedestals.initThresh.angle = 10.0;
 
-stimulus.contrast = .04; % everythingw ill be at 2% contrast
+stimulus.contrast = .035; % everythingw ill be at 2% contrast
 
 %% Setup Screen
 
@@ -303,8 +303,8 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0.5);
 if stimulus.live.grate, stimulus = upGrate(stimulus); end
-if stimulus.live.cue, upCue(task); end
 upFix(stimulus);
+if stimulus.live.cue, upCue(task); end
 
 function upCue(task)
 %%
@@ -312,14 +312,14 @@ function upCue(task)
 %mglTextDraw(atex{task.thistrial.attend},[0 1.5]);
 if task.thistrial.attend==1
     % left
-    mglLines2(-2,0,-4,0,1,0);
+    mglLines2(0,0,-.75,0,1,1/255);
 else
-    mglLines2(2,0,4,0,1,0);
+    mglLines2(0,0,.75,0,1,1/255);
 end
 
 function upFix(stimulus)
 %%
-mglFixationCross(1.5,1.5,stimulus.live.fixColor);
+mglFixationCross(1.5,1,stimulus.live.fixColor);
 
 
 function stimulus = upGrate(stimulus)
@@ -342,11 +342,11 @@ fixColors = {254/255,1};
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse < 2
         if task.thistrial.dir==-1
-            cSide = 2;
+            cButt = 2;
         else
-            cSide = 1;
+            cButt = 1;
         end
-        corr = task.thistrial.whichButton == cSide;
+        corr = task.thistrial.whichButton == cButt;
 
         task.thistrial.correct = corr;
         % Store whether this was correct
@@ -371,10 +371,8 @@ function stimulus = initStaircase(stimulus)
 stimulus.staircase = doStaircase('init','upDown',...
         'initialThreshold',stimulus.pedestals.initThresh.angle,...
         'initialStepsize',stimulus.pedestals.initThresh.angle/3,...
-        'minThreshold=0.001','maxThreshold=0.4','stepRule','pest', ...
-        'nTrials=50','maxStepsize=.2','minStepsize=.001');
-
-disp('(cogneuro_att) New staircase: nTrials=50, max=.4');
+        'minThreshold=0.001','maxThreshold=20','stepRule','pest', ...
+        'nTrials=50','maxStepsize=5','minStepsize=.001');
 %%
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispStaircase    %
@@ -438,6 +436,10 @@ end
 function setGammaTable_flowMax(maxContrast)
 
 global stimulus;
+
+if ~isfield(stimulus,'linearizedGammaTable')
+    stimulus.linearizedGammaTable = mglGetGammaTable;
+end
 
 % set the bottom
 gammaTable(1:size(stimulus.colors.reservedBottom,1),1:size(stimulus.colors.reservedBottom,2)) = stimulus.colors.reservedBottom;
