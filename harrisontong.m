@@ -41,7 +41,8 @@ if debugMode
   stimulus.constantVals = 25;
 end
 % initalize the screen
-myscreen = initScreen;
+myscreen.background = 0.5;
+myscreen = initScreen(myscreen);
 
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
