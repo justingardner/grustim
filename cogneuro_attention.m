@@ -62,8 +62,8 @@ stimulus.colors.rmed = 127.75;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
-stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
+stimulus.colors.reservedBottom = [0 0 0; .55 .55 .55]; % fixation cross colors
+stimulus.colors.reservedTop = [.55 0 0; 0 .55 0]; % correct/incorrect colors
 stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
 stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
 stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
@@ -79,7 +79,7 @@ stimulus.pedestals.angle = 90;
 
 stimulus.pedestals.initThresh.angle = 10.0;
 
-stimulus.contrast = .035; % everythingw ill be at 2% contrast
+stimulus.contrast = .0065; % everythingw ill be at 2% contrast
 
 %% Setup Screen
 
@@ -134,8 +134,8 @@ stimulus.seg.stim = 3;
 stimulus.seg.resp = 4;
 stimulus.seg.ITI = 5;
 
-task{1}{1}.segmin = [0.5 0.5 1 2 3];
-task{1}{1}.segmax = [0.5 0.5 1 2 3];
+task{1}{1}.segmin = [0.5 1 1 2 1];
+task{1}{1}.segmax = [0.5 1 1 2 1];
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
@@ -146,12 +146,12 @@ task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.dir1 = [-1 1];
 task{1}{1}.parameter.dir2 = [-1 1];
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 10;
+task{1}{1}.numTrials = 50;
 if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 
-stimulus.live.num_attend = 8;
+stimulus.live.num_attend = 3;
 stimulus.live.cur_attend = 1;
 stimulus.live.cur_attend_ = 1;
 
