@@ -62,7 +62,7 @@ stimulus.colors.rmed = 127.75;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; .55 .55 .55]; % fixation cross colors
+stimulus.colors.reservedBottom = [0 0 0; .6 .6 .6]; % fixation cross colors
 stimulus.colors.reservedTop = [.55 0 0; 0 .55 0]; % correct/incorrect colors
 stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
 stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
@@ -317,14 +317,14 @@ function upCue(task)
 %mglTextDraw(atex{task.thistrial.attend},[0 1.5]);
 if task.thistrial.attend==1
     % left
-    mglLines2(0,0,-.75,0,1,1/255);
+    mglLines2(0,0,-.75,0,1.5,1/255);
 else
-    mglLines2(0,0,.75,0,1,1/255);
+    mglLines2(0,0,.75,0,1.5,1/255);
 end
 
 function upFix(stimulus)
 %%
-mglFixationCross(1.5,1,stimulus.live.fixColor);
+mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 
 
 function stimulus = upGrate(stimulus)
