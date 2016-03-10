@@ -14,7 +14,7 @@ if ~any(nargin == [0])
   return
 end
 
-waitForBacktick = 1;
+waitForBacktick = 0;
 debugMode = 0;
 
 % stimulus parameters
@@ -24,21 +24,22 @@ stimulus.innerWidth = 1.5;
 stimulus.outerWidth = 10;
 stimulus.sf = 1;
 % set to false for sharp edged stimulus
-stimulus.gabor = 1;
+stimulus.gabor = 0;
 % fixation width
 stimulus.fixWidth = 1.5;
 
 % orientations to display
 stimulus.orientations = [25 115];
 stimulus.orientationJitter = 3;
-stimulus.constantVals = [3 6];
+stimulus.constantVals = [4 8];
 
 % delay interval in seconds
 stimulus.delayInterval = 11;
 
 if debugMode
-  stimulus.delayInterval = 2;
-  stimulus.constantVals = 25;
+  stimulus.delayInterval = 5;
+%   stimulus.constantVals = [20 30];
+%   stimulus.constantVals = 25;
 end
 % initalize the screen
 myscreen.background = 128/255;
@@ -47,7 +48,7 @@ myscreen = initScreen(myscreen);
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
 % signal that the scanner has started collecting data)
-task{1}.waitForBacktick = waitForBacktick;
+task{1}.waitForBacktick = 1;
 task{1}.segmin = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5];
 task{1}.segmax = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5];
 task{1}.getResponse = [0 0 0 0 0 0 0 1];
@@ -158,10 +159,12 @@ function [task myscreen] = responseCallback(task,myscreen)
 
 global stimulus
 
+butts = [2 0 1];
+corrButt = butts(task.thistrial.clockwiseCounterclockwise+2);
 % here, we just check whether this is the first time we got a response
 % this trial and display what the subject's response was and the reaction time
 if task.thistrial.gotResponse < 1
-  if task.thistrial.whichButton == task.thistrial.cue
+  if task.thistrial.whichButton == corrButt
     disp(sprintf('Trial %i: Correct (reaction time: %0.2fs)',task.trialnum,task.thistrial.reactionTime));
     stimulus.fixColor = [0 1 0];
     stimulus.s = doStaircase('update',stimulus.s,1);
