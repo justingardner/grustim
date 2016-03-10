@@ -67,7 +67,7 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% CONTROL BASE CONTRAST %%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-base_con = .1;
+base_con = .25;
 base_coh = .2;
 
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
@@ -157,12 +157,12 @@ else
 end
 
 %% Colors
-stimulus.colors.rmed = 127.75;
+stimulus.colors.rmed = 127.5;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
-stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
+stimulus.colors.reservedBottom = [0 0 0; .5 .5 .5]; % fixation cross colors
+stimulus.colors.reservedTop = [.5 0 0; 0 .5 0]; % correct/incorrect colors
 stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
 stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
 stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
@@ -174,7 +174,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 %% Everything else
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
-stimulus.dots.dotsize = 2;
+stimulus.dots.dotsize = 3;
 stimulus.dots.density = 1.5;
 stimulus.dots.speed = 5;
 stimulus.dots.centerOffset = 2;
@@ -234,12 +234,10 @@ task{1}{1}.segmin = [2.5 .5 .2 1 .2];
 task{1}{1}.segmax = [2.5 .5 .5 1 .4];
 
 if stimulus.scan
-    task{1}{1}.segmin(stimulus.seg.ITI) = 4;
+    task{1}{1}.segmin(stimulus.seg.ITI) = 2;
     task{1}{1}.segmax(stimulus.seg.ITI) = 10;
     task{1}{1}.segmin(stimulus.seg.ISI) = .2;
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
-    task{1}{1}.segmin(stimulus.seg.stim) = 2.5;
-    task{1}{1}.segmax(stimulus.seg.stim) = 2.5;
     task{1}{1}.segmin(stimulus.seg.mask) = 0;
     task{1}{1}.segmax(stimulus.seg.mask) = 0;
 end
@@ -600,14 +598,14 @@ lConDel = lConDel / stimulus.curMaxContrast;
 % update +contrast
 
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==1),stimulus.dotsR.ydisp(stimulus.dotsR.con==1),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(tCon - rConDel,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] - adjustConToTable(tCon + rConDel,stimulus)/2);
 % update - contrast
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==2),stimulus.dotsR.ydisp(stimulus.dotsR.con==2),...
     stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(tCon + rConDel,stimulus)/2);
 % dotsL
 % update +contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==1),stimulus.dotsL.ydisp(stimulus.dotsL.con==1),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(tCon - lConDel,stimulus)/2);
+    stimulus.dotsL.dotsize,[.5 .5 .5] - adjustConToTable(tCon + lConDel,stimulus)/2);
 % update - contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==2),stimulus.dotsL.ydisp(stimulus.dotsL.con==2),...
     stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(tCon + lConDel,stimulus)/2);
@@ -731,9 +729,9 @@ function stimulus = initStaircase(stimulus)
 stimulus.stairCatch = cell(2,1);
 stimulus.staircase = cell(2,1);
 if stimulus.scan
-    stimulus.nocatchs.staircase = cell(2,4);
+    stimulus.nocatchs.staircase = cell(2,5);
 else
-    stimulus.nocatchs.staircase = cell(2,1);
+    stimulus.nocatchs.staircase = cell(2,5);
 end
 
 % Catch && Main staircases
@@ -766,7 +764,7 @@ for task = 1:2
             'minThreshold=0.001','maxThreshold=0.85','stepRule','pest', ...
             'nTrials=50','maxStepsize=.2','minStepsize=.001');
     end
-    for p = 2:length(stimulus.pedestals.pedOpts{task})
+    for p = 2:length(stimulus.pedestals.(stimulus.pedestals.pedOpts{task}))
         stimulus.nocatchs.staircase{task,p} = stimulus.nocatchs.staircase{task,1};
     end
 end
@@ -862,6 +860,10 @@ for task = 1:2
 end
 
 function s = resetStair(s)
+
+if isempty(s)
+    return
+end
 
 if doStaircase('stop',s)
     % this is a bit of a pain... you can't pass an initialThreshold

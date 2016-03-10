@@ -19,14 +19,14 @@ debugMode = 0;
 
 % stimulus parameters
 global stimulus;
-stimulus.contrast = 0.2;
-stimulus.innerWidth = 0.5;
+stimulus.contrast = 0.1;
+stimulus.innerWidth = 1.5;
 stimulus.outerWidth = 10;
 stimulus.sf = 1;
 % set to false for sharp edged stimulus
 stimulus.gabor = 1;
 % fixation width
-stimulus.fixWidth = 0.5;
+stimulus.fixWidth = 1.5;
 
 % orientations to display
 stimulus.orientations = [25 115];
@@ -41,7 +41,7 @@ if debugMode
   stimulus.constantVals = 25;
 end
 % initalize the screen
-myscreen.background = 0.5;
+myscreen.background = 128/255;
 myscreen = initScreen(myscreen);
 
 % by waiting for the backtick key to be pressed before starting the experiment
@@ -144,11 +144,11 @@ elseif task.thistrial.thisseg == 7
   mglBltTexture(stimulus.tex,[0 0],0,0,stimulus.matchOrientation);
 elseif (task.thistrial.thisseg == 5)
   % put up text
-  mglBltTexture(stimulus.text(task.thistrial.cue),[0 1],0,0,0);
+  mglBltTexture(stimulus.text(task.thistrial.cue),[0 1.5],0,0,0);
 end  
 
 % put up fixation cross
-mglGluDisk(0,0,stimulus.innerWidth,0.5,48)
+%mglGluDisk(0,0,stimulus.innerWidth,0.5,48)
 mglFixationCross(stimulus.fixWidth,1,stimulus.fixColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -180,21 +180,19 @@ function stimulus = myInitStimulus(stimulus,myscreen)
 % compute the grating
 grating = mglMakeGrating(stimulus.outerWidth,stimulus.outerWidth,stimulus.sf,0,0);
 
-if stimulus.gabor
-  [gaussian xMesh yMesh] = mglMakeGaussian(stimulus.outerWidth,stimulus.outerWidth,stimulus.outerWidth/8,stimulus.outerWidth/8); 
-  % calculate radius of each point
-  r = sqrt(xMesh.^2 + yMesh.^2);
-  % now calculate gaussian centered on width of stimulus
-  gaussianRing = exp(-((r-(stimulus.outerWidth/4)).^2)/(stimulus.outerWidth/8)^2);
-  gabor = round(255*(stimulus.contrast*grating.*gaussianRing+1)/2);
-  stimulus.tex = mglCreateTexture(gabor);
-else
-  gaussian = mglMakeGaussian(stimulus.outerWidth,stimulus.outerWidth,stimulus.outerWidth/2,stimulus.outerWidth/2); 
-  grating = 255*(grating.*(gaussian>exp(-2))+1);
-  keyboard
-  grating = 255*(gaussian>exp(-2))
-  stimulus.tex = mglCreateTexture(grating);
-end  
+[gaussian xMesh yMesh] = mglMakeGaussian(stimulus.outerWidth,stimulus.outerWidth,stimulus.outerWidth/8,stimulus.outerWidth/8); 
+% calculate radius of each point
+r = sqrt(xMesh.^2 + yMesh.^2);
+% now calculate gaussian centered on width of stimulus
+gaussianRing = exp(-((r-(stimulus.outerWidth/4)).^2)/(stimulus.outerWidth/10)^2);
+gaussianRing(gaussianRing < 0.01) = 0;
+% hard edge
+if ~stimulus.gabor
+    gaussianRing(gaussianRing>0) = 1;
+    gaussianRing(r<stimulus.innerWidth/2) = 0;
+end
+gabor = round(255*(stimulus.contrast*grating.*gaussianRing+1)/2);
+stimulus.tex = mglCreateTexture(gabor);
 
 % make text
 mglTextSet('Helvetica',32,[1 1 1],0,0,0);
