@@ -41,15 +41,17 @@ scan = [];
 training = [];
 nocatch = [];
 test = 0;
-stableContrast = [];
+stablecon = [];
+stablecoh = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0', 'test=0', ...
     'plots=1','overrideTask=0','scan=0','training=0',...
-    'stableContrast=0'});
+    'stablecon=0','stablecoh=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.training = training;
 stimulus.nocatch = nocatch;
-stimulus.stablecon = stableContrast;
+stimulus.stablecon = stablecon;
+stimulus.stablecoh = stablecoh;
 
 if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
@@ -62,25 +64,43 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 %% Useful stimulus stuff
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% CONTROL BASE CONTRAST %%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+base_con = .1;
+base_coh = .2;
+
 stimulus.pedestals.pedOpts = {'coherence','contrast'};
 
 if stimulus.nocatch && stimulus.scan
     stimulus.pedestals.coherence = [.1 .2 .4 .6 .8];
-    stimulus.pedestals.contrast = [.1 .2 .3 .4 .5 .6 .7 .85];
+    stimulus.pedestals.contrast = [.05 .1 .2 .4 .8];
 elseif stimulus.nocatch
-    stimulus.pedestals.coherence = [.1 .2 .4 .6 .8];
-    stimulus.pedestals.contrast = [.1 .2 .3 .4 .5 .6 .7 .85];
+    stimulus.pedestals.coherence = [.1 .2 .3 .4 .5];
+    stimulus.pedestals.contrast = [.05 .1 .2 .4 .8];
 else
-    stimulus.pedestals.coherence = .2;
-    stimulus.pedestals.contrast = .5;
+    stimulus.pedestals.coherence = base_coh;
+    stimulus.pedestals.contrast = base_con;
 end
 
 if stimulus.stablecon
-    stimulus.pedestals.contrast = .5;
+    stimulus.pedestals.contrast = base_con;
+end
+if stimulus.stablecoh
+    stimulus.pedestals.coherence = base_coh;
 end
 
-stimulus.pedestals.initThresh.coherence = .8;
-stimulus.pedestals.initThresh.contrast = .3;
+if stimulus.stablecoh
+    stimulus.pedestals.initThresh.coherence = 0;
+else
+    stimulus.pedestals.initThresh.coherence = .8;
+end
+if stimulus.stablecon
+    stimulus.pedestals.initThresh.contrast = 0;
+else
+    stimulus.pedestals.initThresh.contrast = .3;
+end
+
 
 stimulus.pedestals.catch.coherence = [0 exp(-3:.33:-.3)];
 stimulus.pedestals.catch.contrast = [0 exp(-4:.33:-1.3)];
@@ -416,6 +436,9 @@ end
 if stimulus.stablecon
     conTh = 0;
 end
+if stimulus.stablecoh
+    cohTh = 0;
+end
 % Save info
 task.thistrial.conDelta = conTh;
 task.thistrial.cohDelta = cohTh;
@@ -577,14 +600,14 @@ lConDel = lConDel / stimulus.curMaxContrast;
 % update +contrast
 
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==1),stimulus.dotsR.ydisp(stimulus.dotsR.con==1),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] - adjustConToTable(tCon + rConDel,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(tCon - rConDel,stimulus)/2);
 % update - contrast
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==2),stimulus.dotsR.ydisp(stimulus.dotsR.con==2),...
     stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(tCon + rConDel,stimulus)/2);
 % dotsL
 % update +contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==1),stimulus.dotsL.ydisp(stimulus.dotsL.con==1),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] - adjustConToTable(tCon + lConDel,stimulus)/2);
+    stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(tCon - lConDel,stimulus)/2);
 % update - contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==2),stimulus.dotsL.ydisp(stimulus.dotsL.con==2),...
     stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(tCon + lConDel,stimulus)/2);
