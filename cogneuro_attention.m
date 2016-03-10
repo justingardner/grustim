@@ -79,7 +79,11 @@ stimulus.pedestals.angle = 90;
 
 stimulus.pedestals.initThresh.angle = 10.0;
 
-stimulus.contrast = .0065; % everythingw ill be at 2% contrast
+if stimulus.scan
+    stimulus.contrast = .04;
+else
+    stimulus.contrast = .0065; % everythingw ill be at 2% contrast
+end
 
 %% Setup Screen
 
