@@ -58,7 +58,7 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 
 %% Colors
-stimulus.colors.rmed = 127.75;
+stimulus.colors.rmed = 127.5;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
