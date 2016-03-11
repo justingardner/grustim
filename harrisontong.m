@@ -6,7 +6,7 @@
 %       date: 03/03/2016
 %    purpose: Code for replicating Harrison & Tong, 2009
 %
-function myscreen = harrisontong
+function myscreen = harrisontong(scan)
 
 % check arguments
 if ~any(nargin == [0])
@@ -19,7 +19,12 @@ debugMode = 0;
 
 % stimulus parameters
 global stimulus;
-stimulus.contrast = 0.1;
+stimulus.scan = scan;
+if scan
+    stimulus.contrast = 0.175;
+else
+    stimulus.contrast = 0.1;
+end
 stimulus.innerWidth = 1.5;
 stimulus.outerWidth = 10;
 stimulus.sf = 1;
