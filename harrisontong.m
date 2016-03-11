@@ -14,11 +14,15 @@ if ~any(nargin == [0])
   return
 end
 
-waitForBacktick = 0;
 debugMode = 0;
 
 % stimulus parameters
 global stimulus;
+if stimulus.scan
+    waitForBacktick = 1;
+else
+    waitForBacktick = 0;
+end
 stimulus.scan = scan;
 if scan
     stimulus.contrast = 0.175;
