@@ -230,8 +230,8 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [2.5 .5 .2 1 .2];
-task{1}{1}.segmax = [2.5 .5 .5 1 .4];
+task{1}{1}.segmin = [inf .5 .2 1 .2];
+task{1}{1}.segmax = [inf .5 .5 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
