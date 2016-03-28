@@ -28,7 +28,7 @@
 function [myscreen] = cohcon_coherencetest(varargin)
 
 global stimulus
-clear fixStimulus
+global fixStimulus
 %% Initialize Variables
 
 % add arguments later
@@ -51,7 +51,7 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% CONTROL BASE CONTRAST %%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-base_con = .75;
+base_con = .5;
 
 stimulus.pedestals.contrast = [0.1 0.2 0.4 0.8];
 
@@ -67,12 +67,23 @@ else
     myscreen = initScreen('VPixx');
 end
 
+%% Setup task
+if stimulus.task==2
+    fixStimulus.diskSize = 0;
+	fixStimulus.stimColor = [0 .6 .6]; 
+	fixStimulus.responseColor = [.6 .6 0]; 
+	fixStimulus.interColor = [0 .6 .6]; 
+	fixStimulus.correctColor = [0 0.6 0]; 
+	fixStimulus.incorrectColor = [0.6 0 0]; 
+    [task{2}, myscreen] = fixStairInitTask(myscreen);
+end
+
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon_coherencetest/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/cohcon/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/cohcon_coherencetest/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         if stimFileNum == -1
@@ -83,7 +94,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
         else
             fname = files(stimFileNum).name;
         end
-        s = load(sprintf('~/data/cohcon/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/cohcon_coherencetest/%s/%s',mglGetSID,fname));
         stimulus.staircase = s.stimulus.staircase;
         stimulus.counter = s.stimulus.counter + 1;
 
@@ -113,22 +124,26 @@ stimulus.colors.rmed = 127.5;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; .25 .25 .25]; % fixation cross colors
-stimulus.colors.reservedTop = [.25 0 0; 0 .25 0]; % correct/incorrect colors
-stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
-stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
-stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
-stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
-
-stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
-stimulus.colors.mrmin = stimulus.colors.nReserved;
+% % stimulus.colors.reservedBottom = [0 0 0; .6 .6 .6]; % fixation cross colors
+% % stimulus.colors.reservedTop = [.5 0 0; 0 .5 0]; % correct/incorrect colors
+% % stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
+% % stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
+% % stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
+% % stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
+% % 
+% % stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
+% % stimulus.colors.mrmin = stimulus.colors.nReserved;
+stimulus.colors.black = [0 0 0];
+stimulus.colors.white = [.6 .6 .6];
+stimulus.colors.red = [.5 0 0];
+stimulus.colors.green = [0 .5 0];
 
 %% Everything else
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 3;
-stimulus.dots.density = 3;
-stimulus.dots.speed = 2.5;
+stimulus.dots.density = 5;
+stimulus.dots.speed = 6;
 stimulus.dots.centerOffset = 2;
 
 stimulus.dotsR = stimulus.dots;
@@ -143,14 +158,14 @@ stimulus.dotsL = initDotsRadial(stimulus.dotsL,myscreen);
 %% Gamma Table Initialization
 
 % get gamma table
-if ~isfield(myscreen,'gammaTable')
-  stimulus.linearizedGammaTable = mglGetGammaTable;
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-  disp(sprintf('(cuecon:initGratings) No gamma table found in myscreen. Contrast displays like this'));
-  disp(sprintf('         should be run with a valid calibration made by moncalib for this monitor.'));
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-end
-stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
+% % if ~isfield(myscreen,'gammaTable')
+% %   stimulus.linearizedGammaTable = mglGetGammaTable;
+% %   disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+% %   disp(sprintf('(cuecon:initGratings) No gamma table found in myscreen. Contrast displays like this'));
+% %   disp(sprintf('         should be run with a valid calibration made by moncalib for this monitor.'));
+% %   disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+% % end
+% % stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
 
 %% Setup Task
 
@@ -180,7 +195,7 @@ if stimulus.scan
 end
 task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.cohSide = [1 2];
-task{1}{1}.parameter.dir = [-1];
+task{1}{1}.parameter.dir = [-1 1];
 task{1}{1}.parameter.contrast = stimulus.pedestals.contrast;
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 100;
@@ -213,6 +228,7 @@ for phaseNum = 1:length(task{1})
     else
         [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,[],@startTrialCallback,[],[]);
     end
+    
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -225,7 +241,6 @@ if stimulus.initStair
 else
     disp('(cohCon) Re-using staircase from previous run...');
     % Reset staircase if necessary
-    checkStaircaseStop();
 end
 
 %% EYE CALIB
@@ -239,7 +254,7 @@ end
 %% Get Ready...
 % clear screen    
 mglWaitSecs(2);
-setGammaTable_flowMax(1);
+% setGammaTable_flowMax(1);
 mglClearScreen(0.5);
 if stimulus.scan        
     mglTextDraw('DO NOT MOVE',[0 1.5]);
@@ -253,7 +268,7 @@ mglFlush
 
 stimulus.runs.taskOptsText = {'Motion','Fixation'};
 % let the user know
-disp(sprintf('(cohCon) Starting run number: %i. Current task: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.runs.curTask}));
+disp(sprintf('(cohCon) Starting run number: %i. Current task: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.task}));
 % if stimulus.unattended
 myscreen.flushMode = 1;
 % end
@@ -265,6 +280,8 @@ phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % update the task
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
+    % update fixation
+    [task{2}, myscreen] = updateTask(task{2},myscreen,1);
     % flip screen
     myscreen = tickScreen(myscreen,task);
 end
@@ -289,6 +306,11 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
+
+if stimulus.task==2 && stimulus.curTrial>0
+    stimulus.staircase = doStaircase('update',stimulus.staircase,1);
+end
+
 stimulus.curTrial = stimulus.curTrial + 1;
 
 % Set the missing thistrial vars
@@ -311,13 +333,17 @@ else
     task.thistrial.rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
     task.thistrial.lCoh = task.thistrial.coherence;
 end
+if stimulus.task==2
+    task.thistrial.rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+    task.thistrial.lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
+end
 
 disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
     task.thistrial.lCoh,task.thistrial.rCoh,...
     task.thistrial.lCon,task.thistrial.rCon));
 
 % set the gammaTable for this trial
-setGammaTable_flowMax(task.thistrial.contrast);
+% setGammaTable_flowMax(task.thistrial.contrast);
 
 
 % set directions
@@ -381,7 +407,7 @@ global stimulus
 mglClearScreen(0.5);
 
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
-upFix(task,stimulus);
+if stimulus.task==1, upFix(task,stimulus); end
 
 
 function upFix(task,stimulus)
@@ -393,7 +419,7 @@ function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
 
-tCon = task.thistrial.contrast / stimulus.curMaxContrast;
+tCon = task.thistrial.contrast / 1;
 
 if task.thistrial.thisseg==stimulus.seg.stim
     clc = task.thistrial.lCoh;
@@ -428,7 +454,7 @@ mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==2),stimulus.dotsL.ydisp(stim
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function conValue = adjustConToTable(conValue,stimulus)
-conValue = conValue * stimulus.colors.nUnreserved / 256;
+% conValue = conValue * stimulus.colors.nUnreserved / 256;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -473,7 +499,11 @@ function [cohPed, stimulus] = getDeltaPed(stimulus)
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 %%
-stimulus.staircase = doStaircase('init','fixed','fixedVals',[0.25 0.5 0.75 1]);
+if stimulus.task==1
+    stimulus.staircase = doStaircase('init','fixed','fixedVals',[0 0.25 0.5 0.75 1]);
+else
+    stimulus.staircase = doStaircase('init','fixed','fixedVals',[0.25 0.5 0.75 1]);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for optic flow
