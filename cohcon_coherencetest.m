@@ -38,7 +38,7 @@ stablecon = [];
 task = [];
 constant = [];
 getArgs(varargin,{'stimFileNum=-1','scan=0', ...
-    'stablecon=0','task=1','constant=0'});
+    'stablecon=1','task=2','constant=1'});
 stimulus.scan = scan;
 stimulus.stablecon = stablecon;
 stimulus.task = task; clear task
@@ -53,7 +53,7 @@ stimulus.counter = 1; % This keeps track of what "run" we are on.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 base_con = .5;
 
-stimulus.pedestals.contrast = [0.1 0.2 0.4 0.8];
+stimulus.pedestals.contrast = [0.2 0.4 0.8];
 
 if stimulus.stablecon
     stimulus.pedestals.contrast = base_con;
@@ -177,16 +177,23 @@ stimulus.seg.stim = 1;
 stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
-task{1}{1}.segmin = [2.5 .5 .2 1 .2];
-task{1}{1}.segmax = [2.5 .5 .5 1 .4];
+task{1}{1}.segmin = [2.5 0 .2 1 .2];
+task{1}{1}.segmax = [2.5 0 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
-    task{1}{1}.segmax(stimulus.seg.ITI) = 10;
+    task{1}{1}.segmax(stimulus.seg.ITI) = 11;
     task{1}{1}.segmin(stimulus.seg.ISI) = .2;
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
-    task{1}{1}.segmin(stimulus.seg.mask) = 0;
-    task{1}{1}.segmax(stimulus.seg.mask) = 0;
+end
+
+if stimulus.task==2
+    % remove the response and ISI segments
+    task{1}{1}.segmin(stimulus.seg.ISI) = 0;
+    task{1}{1}.segmax(stimulus.seg.ISI) = 0;
+    task{1}{1}.segmin(stimulus.seg.resp) = 0;
+    task{1}{1}.segmax(stimulus.seg.resp) = 0;
+    % everything is now zero except for the ITI of 2-11
 end
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
@@ -262,7 +269,7 @@ end
 if stimulus.task==1
     mglTextDraw('Motion',[0 0]);
 else
-    mglTextDraw('Fixation',[0 0]);
+    %mglTextDraw('Fixation',[0 0]);
 end
 mglFlush
 
@@ -319,6 +326,13 @@ task.thistrial.trialNum = stimulus.curTrial;
 
 % Get the pedestals
 [cohTh, stimulus] = getDeltaPed(stimulus);
+
+if stimulus.curTrial <= 3
+    cohTh = 0;
+    % make sure the ITI is sufficiently long so we get 30 seconds (ITI =
+    % 7.5 for this)
+    task.thistrial.seglen(end) = 7.5;
+end
 
 % Save info
 task.thistrial.cohDelta = cohTh;
