@@ -37,13 +37,9 @@ disp('** NEPR Into Cog Neuro Attention Task **');
 disp('****************************************');
 % add arguments later
 stimFileNum = [];
-plots = [];
-overrideTask = [];
 scan = [];
 testing = [];
-getArgs(varargin,{'stimFileNum=-1','testing=0' ...
-    'plots=0','overrideTask=1','scan=1'});
-stimulus.plots = plots;
+getArgs(varargin,{'stimFileNum=-1','testing=0','scan=0'});
 stimulus.scan = scan;
 stimulus.testing = testing;
 
@@ -224,11 +220,6 @@ myscreen.flushMode = 1;
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if stimulus.plots
-    disp('(cohCon) Displaying plots');
-    dispStaircase(stimulus);
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -380,57 +371,6 @@ stimulus.staircase = doStaircase('init','upDown',...
         'minThreshold=0.001','maxThreshold=20','stepRule','pest', ...
         'nTrials=50','maxStepsize=5','minStepsize=.001');
 %%
-%%%%%%%%%%%%%%%%%%%%%%%
-%    dispStaircase    %
-%%%%%%%%%%%%%%%%%%%%%%%
-function dispStaircase(stimulus)
-disp('(cogneuro_att) Todo: Implement');
-
-%% checkStaircaseStop
-function checkStaircaseStop()
-global stimulus
-
-stimulus.staircase = resetStair(stimulus.staircase);
-
-
-function s = resetStair(s)
-
-if doStaircase('stop',s)
-    % this is a bit of a pain... you can't pass an initialThreshold
-    % argument do doStaircase('init',s, ...), it ignores everything and
-    % resets using the calculated threshold. Because you can't override it
-    [args, vals, ~] = getArgs(s(1).initArgs);
-    threshPos = -1;
-    stepPos = -1;
-    for i = 1:length(args)
-        switch args{i}
-            case 'initialThreshold'
-                threshPos = i;
-            case 'initialStepsize'
-                stepPos = i;
-        end
-    end
-    out = doStaircase('threshold',s);
-    in = input(sprintf('Resetting Staircase... Estimate is: %1.2f. Reset ([Y]/[C]ustom/[O]riginal): ',out.threshold),'s');
-    switch in
-        case 'Y'
-            vals{threshPos} = out.threshold;
-            vals{stepPos} = out.threshold / 3;
-        case 'C'
-            disp('Original values:');
-            disp(sprintf('%s: %0.2f',args{threshPos},num2str(vals{threshPos})));
-            val = str2double(input('New threshold value: ','s'));
-            vals{threshPos} = val;
-            vals{stepPos} = val / 3;
-        case 'O'
-    end
-    if ~length(args) == 8
-        disp('Args incorrect length...');
-        keyboard
-    end
-    %             stimulus.staircase{task,ped}(end+1) = doStaircase('init',s,'initialThreshold',vals{threshPos},'initialStepsize',vals{stepPos});
-    s(end+1) = doStaircase('init','upDown',args{1},vals{1},args{2},vals{2},args{3},vals{3},args{4},vals{4},args{5},vals{5},args{6},vals{6},args{7},vals{7},args{8},vals{8});
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sets the gamma table so that we can have
