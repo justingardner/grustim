@@ -69,27 +69,28 @@ stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreser
 stimulus.colors.mrmin = stimulus.colors.nReserved;
 
 
-%% Useful stimulus stuff
-
+%% Stimulus (oriented gratings) properties
 stimulus.pedestals.angle = 90;
+stimulus.pedestals.initThresh.angle = 10.0; % angle that the staircase will start at
 
-stimulus.pedestals.initThresh.angle = 10.0;
-
+% set stimulus contrast, scanner absolute luminance is lower so the
+% relative contrast needs to be higher to make up for this
 if stimulus.scan
-    stimulus.contrast = .04;
+    stimulus.contrast = .04; % 4%
 else
-    stimulus.contrast = .0065; % everythingw ill be at 2% contrast
+    stimulus.contrast = .0065;
 end
 
 %% Setup Screen
-
+% Settings for Oban/Psychophysics room launch
 if stimulus.scan
     myscreen = initScreen('fMRIprojFlex');
 else
-    myscreen = initScreen('VPixx');
+    myscreen = initScreen('VPixx'); % this will default out if your computer isn't the psychophysics computer
 end
 
 %% Open Old Stimfile
+% Do not modify this code
 stimulus.initStair = 1;
 
 if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_attention/%s',mglGetSID))
@@ -117,58 +118,61 @@ end
 disp(sprintf('(cogneuro_att) This is run #%i',stimulus.counter));
 
 %% Initialize Stimulus
-
-
+% Setup for MGL
 myscreen = initStimulus('stimulus',myscreen);
-
 stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
 
 %% Setup Task
 
-% This is the contrast change detection task
+% Blocks the task so it doesn't start immediately
 task{1}{1}.waitForBacktick = 1;
 
+% Storing some helper info for callbacks later
 stimulus.seg.cue = 1;
 stimulus.seg.isi = 2;
 stimulus.seg.stim = 3;
 stimulus.seg.resp = 4;
 stimulus.seg.ITI = 5;
 
+% Trial timing (see above for what each column corresponds to)
 task{1}{1}.segmin = [0.5 1 1 2 1];
 task{1}{1}.segmax = [0.5 1 1 2 8];
 
+% When scanning we synchronize the stimulus to the scanner
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(end) = 1;
 end
 
+% Get responses on the resp segment (4)
 task{1}{1}.getResponse = [0 0 0 1 0];
+
+% Parameters that control the direction of each oriented grating
 task{1}{1}.parameter.dir1 = [-1 1];
 task{1}{1}.parameter.dir2 = [-1 1];
+% Parameter to control which side should be attended on this trial
 task{1}{1}.parameter.attend = [1 2];
+% This will randomize trials
 task{1}{1}.random = 1;
+% Outside the scanner fix the trial count
 task{1}{1}.numTrials = 50;
+% Inside the scanner, inf length so that we can stop the stimulus after the
+% scanner stops running.
 if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 
-% stimulus.live.num_attend = 3;
-% stimulus.live.cur_attend = 1;
-% stimulus.live.cur_attend_ = 1;
-
 %% Tracking
-
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
-% task{1}{1}.randVars.calculated.attend = nan;
 task{1}{1}.randVars.calculated.dir = nan;
 task{1}{1}.randVars.calculated.rot = nan;
 
 stimulus.curTrial = 0;
 
 %% Full Setup
-% Initialize task (note phase == 1)
+% Initialize task (note phase == 1) (this is for MGL)
 for phaseNum = 1:length(task{1})
     [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
@@ -176,14 +180,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% We will make the task consistently difficult by using a staircase, we
+% initialize this here.
 if stimulus.initStair
-    % We are starting our staircases from scratch
-    disp(sprintf('(cogneuro_att) Initializing staircases'));
+    disp(sprintf('(cogneuro_att) Initializing staircases from scratch...'));
     stimulus = initStaircase(stimulus);
 else
     disp('(cogneuro_att) Re-using staircase from previous run...');
-    % Reset staircase if necessary
-%     checkStaircaseStop();
 end
 
 %% Get Ready...
@@ -192,16 +195,19 @@ mglTextSet('Helvetica',32,0);
 mglWaitSecs(2);
 setGammaTable_flowMax(stimulus.contrast);
 mglClearScreen(0.5);
-mglTextDraw('DO NOT MOVE',[0 1.5]);
+if stimulus.scan
+    mglTextDraw('DO NOT MOVE',[0 1.5]);
+end
 mglFlush
 
 % let the user know
 disp(sprintf('(cogneuro_att) Starting run number: %i',stimulus.counter));
-
+% block screen refresh
 myscreen.flushMode = 1;
 
 %% Main Task Loop
 
+% Run the task, this is for MGL
 phaseNum = 1;
 % Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -220,7 +226,9 @@ myscreen.flushMode = 1;
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-%%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS AND CALLBACKS FOLLOW %%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
@@ -231,34 +239,32 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
+% Increment the trial number
 stimulus.curTrial = stimulus.curTrial + 1;
 task.thistrial.trialNum = stimulus.curTrial;
 
-% flip = [2 1];
-% if stimulus.live.cur_attend_ > stimulus.live.num_attend
-%     stimulus.live.cur_attend = flip(stimulus.live.cur_attend);
-%     stimulus.live.cur_attend_ =0 ;
-% end
-% stimulus.live.cur_attend_ = stimulus.live.cur_attend_+1;
-% 
-% task.thistrial.attend = stimulus.live.cur_attend;
-
+% Store the "correct" direction to attend (could be useful for analysis)
 if task.thistrial.attend==1
     task.thistrial.dir = task.thistrial.dir1;
 else
     task.thistrial.dir = task.thistrial.dir2;
 end
 
+% Get the amount of rotation for this trial from the staircase
 [rot, stimulus] = getDeltaPed(stimulus);
+% Store this info and tell the operator
 task.thistrial.rot = rot;
 aT = {'left','right'}; aR = {'right','','left'};
 disp(sprintf('(cogneuro_att) Attending: %s, Respond: %s, Rot: %2.2f deg',aT{task.thistrial.attend},aR{task.thistrial.dir+2},rot));
 
-
+% Now make our gratings (we could save these ahead of time and rotate, but
+% they generate in only a few ms so whatever, screw it).
 g = mglMakeGrating(10,10,0.5,stimulus.pedestals.angle + rot*task.thistrial.dir1,0);
 gauss = mglMakeGaussian(10,10,2,2);
+% normalize
 g = (g .* gauss + 1) / 2; % bounded 0-1
 g =  (stimulus.colors.nUnreserved-stimulus.colors.nReserved)* g +stimulus.colors.nReserved + 1;
+% save texture for faster rendering
 stimulus.live.tex1 = mglCreateTexture(g);
 
 g = mglMakeGrating(10,10,0.5,stimulus.pedestals.angle + rot*task.thistrial.dir2,0);
@@ -270,8 +276,11 @@ stimulus.live.tex2 = mglCreateTexture(g);
 %%%%%%%%%%%%%%%%%%%%%%%%
 
 function [rot, stimulus] = getDeltaPed(stimulus)
-
 [rot, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    runs at the start of each segment       %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 %%
@@ -282,6 +291,8 @@ stimulus.live.cue = 0;
 stimulus.live.grate = 0;
 stimulus.live.fixColor = 0;
 
+% All we're going to do is adjust what gets shown based on what segment we
+% are in, the actual updating happens in the next function.
 switch task.thistrial.thisseg
     case stimulus.seg.cue
         stimulus.live.cue = 1;
@@ -299,14 +310,21 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 mglClearScreen(0.5);
+% actuall display the grating
 if stimulus.live.grate, stimulus = upGrate(stimulus); end
+% display the fixation cross (always)
 upFix(stimulus);
+% display the cue (this draws over the cross)
 if stimulus.live.cue, upCue(task); end
 
 function upCue(task)
 %%
+
+% some helper code for training
 %atex = {'Attend Left', 'Attend Right'};
 %mglTextDraw(atex{task.thistrial.attend},[0 1.5]);
+
+% otherwise just draw the line over the fixation cross
 if task.thistrial.attend==1
     % left
     mglLines2(0,0,-.75,0,1.5,1/255);
@@ -320,7 +338,7 @@ mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 
 
 function stimulus = upGrate(stimulus)
-
+% distance is to the center of the grating, in degrees
 mglBltTexture(stimulus.live.tex1,[-7.5 0]);
 mglBltTexture(stimulus.live.tex2,[7.5 0]);
 
@@ -332,21 +350,25 @@ function [task, myscreen] = getResponseCallback(task, myscreen)
 
 global stimulus
 
+% setup
 responseText = {'Incorrect','Correct'};
 responsePos = {'Left','Right'};
 fixColors = {254/255,1};
 
+% check that we got a response and it's a key we want
 if any(task.thistrial.whichButton == stimulus.responseKeys)
+    % check that we haven't already responded
     if task.thistrial.gotResponse < 2
+        % determine which button is correct
         if task.thistrial.dir==-1
             cButt = 2;
         else
             cButt = 1;
         end
+        % check if subject was correct
         corr = task.thistrial.whichButton == cButt;
-
+        % store this info
         task.thistrial.correct = corr;
-        % Store whether this was correct
         stimulus.staircase = doStaircase('update',stimulus.staircase,corr);
         stimulus.live.fixColor = fixColors{corr+1};
         disp(sprintf('(cogneuro_att) Response %s: %s',responseText{corr+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
@@ -372,14 +394,17 @@ stimulus.staircase = doStaircase('init','upDown',...
         'nTrials=50','maxStepsize=5','minStepsize=.001');
 %%
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sets the gamma table so that we can have
 % finest possible control over the stimulus contrast.
 %
-% stimulus.colors.reservedColors should be set to the reserved colors (for cue colors, etc).
-% maxContrast is the maximum contrast you want to be able to display.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% stimulus.colors.reservedColors should be set to the reserved colors 
+% (for cue colors, etc). maxContrast is the maximum contrast you want to 
+% be able to display.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function setGammaTable_flowMax(maxContrast)
+
+% definitely don't mess with this function.
 
 global stimulus;
 
