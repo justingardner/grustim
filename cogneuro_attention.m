@@ -42,7 +42,7 @@ overrideTask = [];
 scan = [];
 testing = [];
 getArgs(varargin,{'stimFileNum=-1','testing=0' ...
-    'plots=1','overrideTask=0','scan=0'});
+    'plots=0','overrideTask=1','scan=1'});
 stimulus.plots = plots;
 stimulus.scan = scan;
 stimulus.testing = testing;
@@ -139,7 +139,7 @@ stimulus.seg.resp = 4;
 stimulus.seg.ITI = 5;
 
 task{1}{1}.segmin = [0.5 1 1 2 1];
-task{1}{1}.segmax = [0.5 1 1 2 1];
+task{1}{1}.segmax = [0.5 1 1 2 8];
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
@@ -149,22 +149,23 @@ end
 task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.dir1 = [-1 1];
 task{1}{1}.parameter.dir2 = [-1 1];
+task{1}{1}.parameter.attend = [1 2];
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 50;
 if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 
-stimulus.live.num_attend = 3;
-stimulus.live.cur_attend = 1;
-stimulus.live.cur_attend_ = 1;
+% stimulus.live.num_attend = 3;
+% stimulus.live.cur_attend = 1;
+% stimulus.live.cur_attend_ = 1;
 
 %% Tracking
 
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
-task{1}{1}.randVars.calculated.attend = nan;
+% task{1}{1}.randVars.calculated.attend = nan;
 task{1}{1}.randVars.calculated.dir = nan;
 task{1}{1}.randVars.calculated.rot = nan;
 
@@ -186,7 +187,7 @@ if stimulus.initStair
 else
     disp('(cogneuro_att) Re-using staircase from previous run...');
     % Reset staircase if necessary
-    checkStaircaseStop();
+%     checkStaircaseStop();
 end
 
 %% Get Ready...
@@ -242,14 +243,14 @@ global stimulus
 stimulus.curTrial = stimulus.curTrial + 1;
 task.thistrial.trialNum = stimulus.curTrial;
 
-flip = [2 1];
-if stimulus.live.cur_attend_ > stimulus.live.num_attend
-    stimulus.live.cur_attend = flip(stimulus.live.cur_attend);
-    stimulus.live.cur_attend_ =0 ;
-end
-stimulus.live.cur_attend_ = stimulus.live.cur_attend_+1;
-
-task.thistrial.attend = stimulus.live.cur_attend;
+% flip = [2 1];
+% if stimulus.live.cur_attend_ > stimulus.live.num_attend
+%     stimulus.live.cur_attend = flip(stimulus.live.cur_attend);
+%     stimulus.live.cur_attend_ =0 ;
+% end
+% stimulus.live.cur_attend_ = stimulus.live.cur_attend_+1;
+% 
+% task.thistrial.attend = stimulus.live.cur_attend;
 
 if task.thistrial.attend==1
     task.thistrial.dir = task.thistrial.dir1;

@@ -9,7 +9,7 @@
 function myscreen = harrisontong(scan)
 
 % check arguments
-if ~any(nargin == [0])
+if ~any(nargin == [1])
   help taskTemplate
   return
 end
@@ -18,12 +18,12 @@ debugMode = 0;
 
 % stimulus parameters
 global stimulus;
+stimulus.scan = scan;
 if stimulus.scan
     waitForBacktick = 1;
 else
     waitForBacktick = 0;
 end
-stimulus.scan = scan;
 if scan
     stimulus.contrast = 0.175;
 else
@@ -40,7 +40,7 @@ stimulus.fixWidth = 1.5;
 % orientations to display
 stimulus.orientations = [25 115];
 stimulus.orientationJitter = 3;
-stimulus.constantVals = [4 8];
+stimulus.constantVals = [3 6];
 
 % delay interval in seconds
 stimulus.delayInterval = 11;
