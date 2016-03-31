@@ -10,10 +10,11 @@
 function myscreen = cogneuro_workingmemory(scan)
 
 % check arguments
-if ~any(nargin == [1])
+if ~any(nargin == [0 1])
   help cogneuro_workingmemory.m
   return
 end
+if nargin < 1, scan = 0; end
 
 % set for debugging - makes the delay period shorter among other things.
 debugMode = 0;
