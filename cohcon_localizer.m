@@ -69,9 +69,9 @@ end
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon_coherencetest/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon_localizer/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/cohcon_coherencetest/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/cohcon_localizer/%s/1*mat',mglGetSID));
     
     if length(files) >= 1
         if stimFileNum == -1
@@ -82,7 +82,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon_coherencetest/%s',mglGetS
         else
             fname = files(stimFileNum).name;
         end
-        s = load(sprintf('~/data/cohcon_coherencetest/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/cohcon_localizer/%s/%s',mglGetSID,fname));
         stimulus.counter = s.stimulus.counter + 1;
         
         % load blocks too
