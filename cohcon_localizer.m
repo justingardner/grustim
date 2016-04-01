@@ -38,26 +38,13 @@ stablecon = [];
 task = [];
 constant = [];
 getArgs(varargin,{'stimFileNum=-1','scan=0', ...
-    'stablecon=1','task=2','constant=1'});
+    'stablecon=0','task=2','constant=1'});
 stimulus.scan = scan;
 stimulus.stablecon = stablecon;
 stimulus.task = task; clear task
 stimulus.constant = constant;
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
-
-%% Useful stimulus stuff
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% CONTROL BASE CONTRAST %%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-base_con = .5;
-
-stimulus.pedestals.contrast = [0.2 0.4 0.8];
-
-if stimulus.stablecon
-    stimulus.pedestals.contrast = base_con;
-end
 
 %% Setup Screen
 
@@ -95,7 +82,6 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon_coherencetest/%s',mglGetS
             fname = files(stimFileNum).name;
         end
         s = load(sprintf('~/data/cohcon_coherencetest/%s/%s',mglGetSID,fname));
-        stimulus.staircase = s.stimulus.staircase;
         stimulus.counter = s.stimulus.counter + 1;
 
         % load blocks too
@@ -203,27 +189,22 @@ end
 task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
-task{1}{1}.parameter.contrast = stimulus.pedestals.contrast;
+task{1}{1}.parameter.contrast = [0.25 0.5 0.75 1]; % contrast starts at 25%
+task{1}{1}.parameter.coherence = [0 0.25 0.5 0.75 1]; % coherence starts at 0%
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 100;
+
+stimulus.baseCoh = 0;
+stimulus.baseCon = 0.25;
 
 if stimulus.scan
     task{1}{1}.numTrials = inf;
 end
 
-%% Run variables
-
-task{1}{1}.randVars.calculated.coherence = nan;
-task{1}{1}.randVars.calculated.conDelta = nan;
 %% Tracking
 
 % these are variables that we want to track for later analysis.
-task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.trialNum = nan;
-task{1}{1}.randVars.calculated.lCoh = nan;
-task{1}{1}.randVars.calculated.rCoh = nan;
-task{1}{1}.randVars.calculated.lCon = nan;
-task{1}{1}.randVars.calculated.rCon = nan;
 
 stimulus.curTrial = 0;
 
@@ -321,7 +302,6 @@ end
 stimulus.curTrial = stimulus.curTrial + 1;
 
 % Set the missing thistrial vars
-task.thistrial.coherence = 0;
 task.thistrial.trialNum = stimulus.curTrial;
 
 % Get the pedestals
