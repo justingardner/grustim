@@ -16,16 +16,16 @@
 %       will do the regular coherence discrimination task from cohcon, if
 %       task is disabled a fixation staircase task will run. Dots are
 %       white/black on a grey background to maintain constant luminance
-%       while contrast is adjustable. 
+%       while contrast is adjustable.
 %
-%      flags: 
-%           
+%      flags:
+%
 %
 %
 %   TR .75 = 560 volumes (7:00 total)
 %   TR 1.4 = 300 volumes (7:00 total)
 
-function [myscreen] = cohcon_coherencetest(varargin)
+function [myscreen] = cohcon_localizer(varargin)
 
 global stimulus
 global fixStimulus
@@ -37,8 +37,9 @@ scan = [];
 stablecon = [];
 task = [];
 constant = [];
-getArgs(varargin,{'stimFileNum=-1','scan=0', ...
-    'stablecon=0','task=2','constant=1'});
+test = 0;
+getArgs(varargin,{'stimFileNum=-1','scan=1', ...
+    'stablecon=0','task=2','constant=1','test=0'});
 stimulus.scan = scan;
 stimulus.stablecon = stablecon;
 stimulus.task = task; clear task
@@ -57,11 +58,11 @@ end
 %% Setup task
 if stimulus.task==2
     fixStimulus.diskSize = 0;
-	fixStimulus.stimColor = [0 .6 .6]; 
-	fixStimulus.responseColor = [.6 .6 0]; 
-	fixStimulus.interColor = [0 .6 .6]; 
-	fixStimulus.correctColor = [0 0.6 0]; 
-	fixStimulus.incorrectColor = [0.6 0 0]; 
+    fixStimulus.stimColor = [0 .6 .6];
+    fixStimulus.responseColor = [.6 .6 0];
+    fixStimulus.interColor = [0 .6 .6];
+    fixStimulus.correctColor = [0 0.6 0];
+    fixStimulus.incorrectColor = [0.6 0 0];
     [task{2}, myscreen] = fixStairInitTask(myscreen);
 end
 
@@ -71,7 +72,7 @@ stimulus.initStair = 1;
 if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon_coherencetest/%s',mglGetSID))
     % Directory exists, check for a stimefile
     files = dir(sprintf('~/data/cohcon_coherencetest/%s/1*mat',mglGetSID));
-
+    
     if length(files) >= 1
         if stimFileNum == -1
             if length(files) > 1
@@ -83,11 +84,11 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon_coherencetest/%s',mglGetS
         end
         s = load(sprintf('~/data/cohcon_coherencetest/%s/%s',mglGetSID,fname));
         stimulus.counter = s.stimulus.counter + 1;
-
+        
         % load blocks too
         stimulus.runs = s.stimulus.runs;
         stimulus.runs.loaded = 1;
-
+        
         clear s;
         stimulus.initStair = 0;
         disp(sprintf('(cohCon) Data file: %s loaded.',fname));
@@ -116,7 +117,7 @@ stimulus.colors.rmed = 127.5;
 % % stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
 % % stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
 % % stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
-% % 
+% %
 % % stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
 % % stimulus.colors.mrmin = stimulus.colors.nReserved;
 stimulus.colors.black = [0 0 0];
@@ -168,7 +169,11 @@ task{1}{1}.segmax = [2.5 0 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
-    task{1}{1}.segmax(stimulus.seg.ITI) = 11;
+    if test
+        task{1}{1}.segmax(stimulus.seg.ITI) = 3;
+    else
+        task{1}{1}.segmax(stimulus.seg.ITI) = 11;
+    end
     task{1}{1}.segmin(stimulus.seg.ISI) = .2;
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
 end
@@ -184,7 +189,11 @@ end
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
-    task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
+    if test
+        task{1}{1}.synchToVol(stimulus.seg.ITI) = 0;
+    else
+        task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
+    end
 end
 task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.cohSide = [1 2];
@@ -199,6 +208,18 @@ stimulus.baseCon = 0.25;
 
 if stimulus.scan
     task{1}{1}.numTrials = inf;
+    task{1}{2} = task{1}{1};
+    task{1}{2}.waitForBacktick = 0;
+    task{1}{1}.parameter.contrast = stimulus.baseCon;
+    task{1}{1}.parameter.coherence = stimulus.baseCoh;
+    task{1}{1}.numTrials = 1;
+    if test
+        task{1}{1}.segmin = [0 0 0 0 3];
+        task{1}{1}.segmax = [0 0 0 0 3];
+    else
+        task{1}{1}.segmin = [0 0 0 0 30];
+        task{1}{1}.segmax = [0 0 0 0 30];
+    end
 end
 
 %% Tracking
@@ -215,20 +236,7 @@ for phaseNum = 1:length(task{1})
         [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
     else
         [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,[],@startTrialCallback,[],[]);
-    end
-    
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% init staircase
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stimulus.initStair
-    % We are starting our staircases from scratch
-    disp(sprintf('(cohCon) Initializing staircases'));
-    stimulus = initStaircase(stimulus);
-else
-    disp('(cohCon) Re-using staircase from previous run...');
-    % Reset staircase if necessary
+    end 
 end
 
 %% EYE CALIB
@@ -240,11 +248,11 @@ if ~stimulus.scan
 end
 
 %% Get Ready...
-% clear screen    
+% clear screen
 mglWaitSecs(2);
 % setGammaTable_flowMax(1);
 mglClearScreen(0.5);
-if stimulus.scan        
+if stimulus.scan
     mglTextDraw('DO NOT MOVE',[0 1.5]);
 end
 if stimulus.task==1
@@ -294,51 +302,11 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-
-if stimulus.task==2 && stimulus.curTrial>0
-    stimulus.staircase = doStaircase('update',stimulus.staircase,1);
-end
-
 stimulus.curTrial = stimulus.curTrial + 1;
-
-% Set the missing thistrial vars
 task.thistrial.trialNum = stimulus.curTrial;
 
-% Get the pedestals
-[cohTh, stimulus] = getDeltaPed(stimulus);
-
-if stimulus.curTrial <= 3
-    cohTh = 0;
-    % make sure the ITI is sufficiently long so we get 30 seconds (ITI =
-    % 7.5 for this)
-    task.thistrial.seglen(end) = 7.5;
-end
-
-% Save info
-task.thistrial.cohDelta = cohTh;
-
-task.thistrial.lCon = task.thistrial.contrast;
-task.thistrial.rCon = task.thistrial.contrast;
-
-if task.thistrial.cohSide==1
-    task.thistrial.lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-    task.thistrial.rCoh = task.thistrial.coherence;
-else
-    task.thistrial.rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-    task.thistrial.lCoh = task.thistrial.coherence;
-end
-if stimulus.task==2
-    task.thistrial.rCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-    task.thistrial.lCoh = task.thistrial.coherence+task.thistrial.cohDelta;
-end
-
-disp(sprintf('(cohCon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
-    task.thistrial.lCoh,task.thistrial.rCoh,...
-    task.thistrial.lCon,task.thistrial.rCon));
-
-% set the gammaTable for this trial
-% setGammaTable_flowMax(task.thistrial.contrast);
-
+disp(sprintf('(cohCon) Trial %i starting. Coherence: %.02f Contrast: %.02f',task.thistrial.trialNum,...
+    task.thistrial.coherence,task.thistrial.contrast));
 
 % set directions
 stimulus.dotsL.dir = task.thistrial.dir;
@@ -388,7 +356,7 @@ end
 if stimulus.constant
     stimulus.live.dots=1;
 end
-  
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -413,42 +381,30 @@ function stimulus = upDots(task,stimulus,myscreen)
 
 % update the dots
 
-tCon = task.thistrial.contrast / 1;
-
 if task.thistrial.thisseg==stimulus.seg.stim
-    clc = task.thistrial.lCoh;
-    crc = task.thistrial.rCoh;
+    coh = task.thistrial.coherence;
+    con = task.thistrial.contrast;
 else
-    clc = 0;
-    crc = 0;
+    coh = stimulus.baseCoh;
+    con = stimulus.baseCon;
 end
 
 %% Old update code start here
-stimulus.dotsL = updateDotsRadial(stimulus.dotsL,clc,myscreen,true);
-stimulus.dotsR = updateDotsRadial(stimulus.dotsR,crc,myscreen,true);
-
-% dotsR
-% update +contrast
+stimulus.dotsL = updateDotsRadial(stimulus.dotsL,coh,myscreen,true);
+stimulus.dotsR = updateDotsRadial(stimulus.dotsR,coh,myscreen,true);
 
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==1),stimulus.dotsR.ydisp(stimulus.dotsR.con==1),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] - adjustConToTable(tCon,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] - con/2);
 % update - contrast
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==2),stimulus.dotsR.ydisp(stimulus.dotsR.con==2),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(tCon,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] + con/2);
 % dotsL
 % update +contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==1),stimulus.dotsL.ydisp(stimulus.dotsL.con==1),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] - adjustConToTable(tCon,stimulus)/2);
+    stimulus.dotsL.dotsize,[.5 .5 .5] - con/2);
 % update - contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==2),stimulus.dotsL.ydisp(stimulus.dotsL.con==2),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(tCon,stimulus)/2);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Adjust contrast to the gamma table %%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function conValue = adjustConToTable(conValue,stimulus)
-% conValue = conValue * stimulus.colors.nUnreserved / 256;
+    stimulus.dotsL.dotsize,[.5 .5 .5] + con/2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -465,7 +421,7 @@ fixColors = {stimulus.colors.red,stimulus.colors.green};
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
         cSide = task.thistrial.cohSide;
-
+        
         task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(cSide);
         % Store whether this was correct
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
@@ -479,25 +435,6 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%%%%%%%%%%%%%%%%%%%%%%%%
-%    getDeltaPed       %
-%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [cohPed, stimulus] = getDeltaPed(stimulus)
-%%
-[cohPed, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
-
-%%%%%%%%%%%%%%%%%%%%%%%%
-%    initStaircase     %
-%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initStaircase(stimulus)
-%%
-if stimulus.task==1
-    stimulus.staircase = doStaircase('init','fixed','fixedVals',[0 0.25 0.5 0.75 1]);
-else
-    stimulus.staircase = doStaircase('init','fixed','fixedVals',[0.25 0.5 0.75 1]);
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for optic flow
@@ -599,60 +536,3 @@ dots.y(offscreen) = dots.y(offscreen) + abs(dots.maxY - dots.minY);
 
 dots.xdisp = dots.mult*dots.x;
 dots.ydisp = dots.y;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% sets the gamma table so that we can have
-% finest possible control over the stimulus contrast.
-%
-% stimulus.colors.reservedColors should be set to the reserved colors (for cue colors, etc).
-% maxContrast is the maximum contrast you want to be able to display.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function setGammaTable_flowMax(maxContrast)
-
-global stimulus;
-
-% set the bottom
-gammaTable(1:size(stimulus.colors.reservedBottom,1),1:size(stimulus.colors.reservedBottom,2)) = stimulus.colors.reservedBottom;
-
-% set the gamma table
-if maxContrast == 1
-    % create the rest of the gamma table
-    cmax = 1;cmin = 0;
-    luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
-
-    % now get the linearized range
-    redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-    greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-    blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
-elseif maxContrast > 0
-    % create the rest of the gamma table
-    cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
-    luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
-
-    % now get the linearized range
-    redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-    greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-    blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
-else
-    % if we are asked for 0 contrast then simply set all the values to gray
-    redLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-    greenLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-    blueLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-end
-
-% add to the table!
-gammaTable((stimulus.colors.mrmin:stimulus.colors.mrmax)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
-
-% set the top
-gammaTable = [gammaTable; stimulus.colors.reservedTop];
-
-if size(gammaTable,1)~=256
-    disp('(setGammaTable) Failure: Incorrect number of colors in gamma table produced');
-    keyboard
-end
-
-% set the gamma table
-mglSetGammaTable(gammaTable);
-
-% remember what the current maximum contrast is that we can display
-stimulus.curMaxContrast = maxContrast;
