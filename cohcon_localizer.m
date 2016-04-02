@@ -129,7 +129,7 @@ stimulus.colors.green = [0 .5 0];
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 3;
-stimulus.dots.density = 5;
+stimulus.dots.density = 21;
 stimulus.dots.speed = 6;
 stimulus.dots.centerOffset = 2;
 
@@ -302,11 +302,17 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
+if task.thistrial.thisphase==2
+    task.thistrial.seglen(end) = 1.05^(rand*30+20);
+end
+
+%%
+
 stimulus.curTrial = stimulus.curTrial + 1;
 task.thistrial.trialNum = stimulus.curTrial;
 
-disp(sprintf('(cohCon) Trial %i starting. Coherence: %.02f Contrast: %.02f',task.thistrial.trialNum,...
-    task.thistrial.coherence,task.thistrial.contrast));
+disp(sprintf('(cohCon) Trial %i starting. Coherence: %.02f Contrast: %.02f. Length 2.5 s ITI %1.1f s',task.thistrial.trialNum,...
+    task.thistrial.coherence,task.thistrial.contrast, task.thistrial.seglen(end)));
 
 % set directions
 stimulus.dotsL.dir = task.thistrial.dir;
@@ -449,8 +455,12 @@ dots.maxY = 7;
 
 dots.dir = 1;
 
+area = (dots.maxX-dots.minX)*(dots.maxY-dots.minY);
+
+dots.n = area * dots.density;
+
 % make a some points
-dots.n = 500*dots.density;
+% dots.n = 500*dots.density;
 % make sure it's an even number
 dots.n = dots.n + mod(dots.n,2);
 
@@ -506,7 +516,7 @@ dots.coherentn = dots.n-dots.incoherentn;
 freq_factor = dots.speed/myscreen.framesPerSecond;
 
 % move coherent dots
-dots.x(dots.coherent) = dots.x(dots.coherent) + dots.dir*(1+randn(1,dots.coherentn)/3)*freq_factor;
+dots.x(dots.coherent) = dots.x(dots.coherent) + dots.dir*freq_factor;
 
 % these are for flipping into the other quadrants
 xmat = repmat([1 1 -1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
