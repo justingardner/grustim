@@ -272,24 +272,23 @@ stimulus.text.cTexK = mglText('C');
 task{1}{1}.waitForBacktick = 1;
 
 stimulus.seg.stim = 1;
-stimulus.seg.ISI = 2;
-stimulus.seg.resp = 3;
-stimulus.seg.ITI = 4;
-task{1}{1}.segmin = [2.5 .5 1 .2];
-task{1}{1}.segmax = [2.5 1 1 .4];
+stimulus.seg.mask = 2;
+stimulus.seg.ISI = 3;
+stimulus.seg.resp = 4;
+stimulus.seg.ITI = 5;
+task{1}{1}.segmin = [2.5 0 .5 1 .2];
+task{1}{1}.segmax = [2.5 0 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
     task{1}{1}.segmax(stimulus.seg.ITI) = 11;
-    task{1}{1}.segmin(stimulus.seg.ISI) = .2;
-    task{1}{1}.segmax(stimulus.seg.ISI) = 1;
 end
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-task{1}{1}.getResponse = [0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
+task{1}{1}.getResponse = [0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
@@ -432,7 +431,8 @@ if task.thistrial.catch > 0
     switchTasks = [2 1];
     task.thistrial.task = switchTasks(stimulus.runs.curTask);
     % edit seglen
-    task.thistrial.seglen(stimulus.seg.ISI) = .5;
+    task.thistrial.seglen(stimulus.seg.mask) = .5;
+    task.thistrial.seglen(stimulus.seg.ISI) = .75;
     task.thistrial.seglen(stimulus.seg.resp) = 3;
     disp('(cohcon) Catch trial.');
 else
@@ -514,6 +514,10 @@ switch task.thistrial.thisseg
         stimulus.live.catchFix = 0;
     case stimulus.seg.stim
         stimulus.live.dots = 1;
+        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.catchFix = 0;
+    case stimulus.seg.mask
+        stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
     case stimulus.seg.ISI
@@ -822,7 +826,7 @@ try
     %    ;
     
     
-    legend([h1,h3,h7,h5,h9,h4],{'Coherence: Nocatch','Coherence: Main','Coherence: Catch','Contrast: Nocatch','Contrast: Main','Contrast: Catch'});
+    legend([h1,h3,h7,h5,h9,h4],{'Coherence: Attended','Coherence: Control','Coherence: Unattended','Contrast: Attended','Contrast: Control','Contrast: Unattended'});
     
     title('Psychometric Functions for Cohcon');
     xlabel('Contrast/Coherence (%)');
