@@ -42,16 +42,14 @@ nocatch = [];
 stablecon = [];
 stablecoh = [];
 constant = [];
-mask = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0',...
-    'plots=1','overrideTask=0','scan=0','mask=0',...
+    'plots=1','overrideTask=0','scan=0',...
     'stablecon=0','stablecoh=0','constant=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.nocatch = nocatch;
 stimulus.stablecon = stablecon;
 stimulus.stablecoh = stablecoh;
-stimulus.usemask = mask;
 stimulus.constant = constant; % new param, keeps stimulus on screen at all times with 0% coherence
 
 if stimulus.scan && ~stimulus.nocatch
@@ -75,59 +73,6 @@ if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignor
 end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
-
-%% Useful stimulus stuff
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% CONTROL BASE CONTRAST %%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% what contrast/coherence should run constantly in the background?
-stimulus.baseCon = 0.25;
-stimulus.baseCoh = 0;
-
-% for initStair to know how many staircases to make
-stimulus.stairInfo.catchP = 1;
-stimulus.stairInfo.mainP = 1;
-stimulus.stairInfo.nocatchP = 4;
-
-% for the real psychophysics experiment test we will run a discrimination
-% task, i.e. "which side goes higher". Contrast will jump to 50% and
-% coherence to 25%, but one side will go up more than the other side.
-stimulus.stairInfo.pedestals.contrast = 0.5;
-stimulus.stairInfo.pedestals.coherence = 0.25;
-% for our fixed value staircases we will use the following increments:
-stimulus.stairInfo.increments.coherence = [0 exp(-3:.33:-.3)];
-stimulus.stairInfo.increments.contrast = [0 exp(-4:.33:-1.3)];
-% initial thresholds to use in staircases
-stimulus.stairInfo.initThresh.contrast = 0.3;
-stimulus.stairInfo.initThresh.coherence = 0.8;
-
-stimulus.stairInfo.pedOpts = {'coherence','contrast'};
-
-if stimulus.scan
-    % we are scanning, add more pedestals so we get the full range
-    stimulus.stairInfo.pedestals.contrast = [0.25 0.4 0.65 0.9];
-    stimulus.stairInfo.pedestals.coherence = [0 0.25 0.5 0.75];
-    % add fixed value increments to the staircase, this will make it
-    % slightly easier to estimate HRF responses since we don't need to deal
-    % with random stimulus values...
-elseif stimulus.nocatch
-    % we aren't scanning, so we can still run staircases, but we are doing
-    % nocatch runs where there will be a LOT of runs. So let's add some
-    % more pedestals in so we get a better estimate of the psychometric
-    % function.
-    stimulus.stairInfo.pedestals.contrast = [0.25 0.4 0.65 0.9];
-    stimulus.stairInfo.pedestals.coherence = [0 0.25 0.5 0.75];
-end
-
-% If the user wants contrast or coherence to be frozen, do that here.
-if stimulus.stablecon
-    stimulus.baseCon = 0.25;
-end
-if stimulus.stablecoh
-    stimulus.baseCoh = 0;
-end
-
 
 %% Setup Screen
 
@@ -176,7 +121,93 @@ myscreen = initStimulus('stimulus',myscreen);
 if stimulus.scan
     stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
 else
-    stimulus.responseKeys = [1 10]; % corresponds to LEFT - RIGHT
+    stimulus.responseKeys = [1 2]; % corresponds to LEFT - RIGHT
+end
+
+%% Block setup
+if isfield(stimulus,'runs') && isfield(stimulus.runs,'loaded')
+    % We already have our blocks
+    stimulus.runs = rmfield(stimulus.runs,'loaded'); % remove the load field, otherwise it gets saved across runs
+    if stimulus.counter > length(stimulus.runs.taskList)
+        % double the length (maintains order)
+        stimulus.runs.taskList  = repmat(stimulus.runs.taskList,1,2);
+    end
+else
+    % This is the first run, build up the blocks.
+    stimulus.runs = struct;
+    stimulus.runs.taskOpts = [1 2];
+    stimulus.runs.taskBuild = {[1 1 -1 -1] [2 2 -2 -2]};
+    stimulus.runs.taskOptsText = {'Motion','Contrast'};
+    stimulus.runs.taskList = [stimulus.runs.taskBuild{stimulus.runs.taskOpts(randperm(2))}];
+end
+
+
+%% Task Override
+if overrideTask > 0
+    stimulus.runs.curTask = overrideTask;
+    stimulus.runs.taskList(stimulus.counter) = overrideTask;
+else
+    cT = stimulus.runs.taskList(stimulus.counter);
+    if cT>0
+        stimulus.nocatch = 1;
+        disp('(cohcon) Auto-run setup is doing a no-catch run...');
+    else
+        disp('(cohcon) Auto-run setup is doing a main+catch run...');
+    end
+    stimulus.runs.curTask = abs(stimulus.runs.taskList(stimulus.counter));
+end
+
+
+%% Useful stimulus stuff
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% CONTROL BASE CONTRAST %%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% what contrast/coherence should run constantly in the background?
+stimulus.baseCon = 0.25;
+stimulus.baseCoh = 0;
+
+% for initStair to know how many staircases to make
+stimulus.stairInfo.catchP = 1;
+stimulus.stairInfo.mainP = 1;
+stimulus.stairInfo.nocatchP = 4;
+
+% for the real psychophysics experiment test we will run a discrimination
+% task, i.e. "which side goes higher". Contrast will jump to 50% and
+% coherence to 25%, but one side will go up more than the other side.
+stimulus.stairInfo.pedestals.contrast = 0.4;
+stimulus.stairInfo.pedestals.coherence = 0.25;
+% for our fixed value staircases we will use the following increments:
+stimulus.stairInfo.increments.coherence = [0 exp(-3:.33:-.3)];
+stimulus.stairInfo.increments.contrast = [0 exp(-4:.33:-1.3)];
+% initial thresholds to use in staircases
+stimulus.stairInfo.initThresh.contrast = 0.3;
+stimulus.stairInfo.initThresh.coherence = 0.8;
+
+stimulus.stairInfo.pedOpts = {'coherence','contrast'};
+
+if stimulus.scan
+    % we are scanning, add more pedestals so we get the full range
+    stimulus.stairInfo.pedestals.contrast = [0.25 0.4 0.65 0.9];
+    stimulus.stairInfo.pedestals.coherence = [0 0.25 0.5 0.75];
+    % add fixed value increments to the staircase, this will make it
+    % slightly easier to estimate HRF responses since we don't need to deal
+    % with random stimulus values...
+elseif stimulus.nocatch
+    % we aren't scanning, so we can still run staircases, but we are doing
+    % nocatch runs where there will be a LOT of runs. So let's add some
+    % more pedestals in so we get a better estimate of the psychometric
+    % function.
+    stimulus.stairInfo.pedestals.contrast = [0.25 0.4 0.65 0.9];
+    stimulus.stairInfo.pedestals.coherence = [0 0.25 0.5 0.75];
+end
+
+% If the user wants contrast or coherence to be frozen, do that here.
+if stimulus.stablecon
+    stimulus.baseCon = 0.25;
+end
+if stimulus.stablecoh
+    stimulus.baseCoh = 0;
 end
 
 %% Colors
@@ -227,14 +258,6 @@ if ~isfield(myscreen,'gammaTable')
 end
 stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
     
-%% Mask
-d = stimulus.dotsL;
-stimulus.mask.x = repmat([d.minX+.125:.25:d.maxX-.125],1,4*(d.maxY-d.minY));
-stimulus.mask.y = [d.minY+.125:.25:d.maxY-.125];
-tmp = repmat(stimulus.mask.y,4*(d.maxX-d.minX),1);
-stimulus.mask.y = transpose(tmp(:));
-clear d tmp
-
 %% Character textures
 mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
 stimulus.text.mTexW = mglText('M');
@@ -249,32 +272,24 @@ stimulus.text.cTexK = mglText('C');
 task{1}{1}.waitForBacktick = 1;
 
 stimulus.seg.stim = 1;
-stimulus.seg.mask = 2;
-stimulus.seg.ISI = 3;
-stimulus.seg.resp = 4;
-stimulus.seg.ITI = 5;
-task{1}{1}.segmin = [2.5 .5 .2 1 .2];
-task{1}{1}.segmax = [2.5 .5 .5 1 .4];
-
-if ~stimulus.usemask
-    task{1}{1}.segmin(stimulus.seg.mask) = 0;
-    task{1}{1}.segmax(stimulus.seg.mask) = 0;
-end
+stimulus.seg.ISI = 2;
+stimulus.seg.resp = 3;
+stimulus.seg.ITI = 4;
+task{1}{1}.segmin = [2.5 .5 1 .2];
+task{1}{1}.segmax = [2.5 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
     task{1}{1}.segmax(stimulus.seg.ITI) = 11;
     task{1}{1}.segmin(stimulus.seg.ISI) = .2;
     task{1}{1}.segmax(stimulus.seg.ISI) = 1;
-    task{1}{1}.segmin(stimulus.seg.mask) = 0;
-    task{1}{1}.segmax(stimulus.seg.mask) = 0;
 end
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-task{1}{1}.getResponse = [0 0 0 1 0];
+task{1}{1}.getResponse = [0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
@@ -282,7 +297,7 @@ task{1}{1}.parameter.conPedestal = 1:length(stimulus.stairInfo.pedestals.contras
 task{1}{1}.parameter.cohPedestal = 1:length(stimulus.stairInfo.pedestals.coherence); % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 100;
+task{1}{1}.numTrials = 50;
 
 if stimulus.nocatch || stimulus.scan
     task{1}{1}.parameter.catch = -1;
@@ -315,34 +330,10 @@ if stimulus.scan
     task{1}{1}.parameter.conPedestal = 1;
     task{1}{1}.parameter.cohPedestal = 1;
     task{1}{1}.numTrials = 1;
-    task{1}{1}.getResponse = [0 0 0 0 0];
+    task{1}{1}.getResponse = [0 0 0 0];
     task{1}{1}.segmin = [0 0 0 0 30];
     task{1}{1}.segmax = [0 0 0 0 30];
 end
-
-%% Block setup
-if isfield(stimulus,'runs') && isfield(stimulus.runs,'loaded')
-    % We already have our blocks
-    stimulus.runs = rmfield(stimulus.runs,'loaded'); % remove the load field, otherwise it gets saved across runs
-    if stimulus.counter > length(stimulus.runs.taskList)
-        stimulus.runs.taskList  = repmat(stimulus.runs.taskList,1,2);
-    end
-else
-    % This is the first run, build up the blocks.
-    stimulus.runs = struct;
-    stimulus.runs.taskOpts = [1 2];
-    stimulus.runs.taskOptsText = {'Motion','Contrast'};
-    stimulus.runs.taskList = stimulus.runs.taskOpts(randperm(2));
-end
-
-%% Task Override
-if overrideTask > 0
-    stimulus.runs.curTask = overrideTask;
-    stimulus.runs.taskList(stimulus.counter) = overrideTask;
-else
-    stimulus.runs.curTask = stimulus.runs.taskList(stimulus.counter);
-end
-
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
@@ -384,8 +375,9 @@ else
 end
 mglFlush
 
+tasktypes = {'Main+Catch','Nocatch'};
 % let the user know
-disp(sprintf('(cohcon) Starting run number: %i. Current task: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.runs.curTask}));
+disp(sprintf('(cohcon) Starting run number: %i. Current task: %s, Type: %s',stimulus.counter,stimulus.runs.taskOptsText{stimulus.runs.curTask},tasktypes{stimulus.nocatch+1}));
 % if stimulus.unattended
 myscreen.flushMode = 1;
 % end
@@ -520,28 +512,18 @@ switch task.thistrial.thisseg
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
-        stimulus.live.mask = 0;
     case stimulus.seg.stim
         stimulus.live.dots = 1;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 0;
-        stimulus.live.mask = 0;
-    case stimulus.seg.mask
-        stimulus.live.dots = 0;
-        stimulus.live.fixColor = stimulus.colors.black;
-        stimulus.live.catchFix = 0;
-        stimulus.live.mask = 1;
-        stimulus.live.maskOn = mglGetSecs;
     case stimulus.seg.ISI
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
         stimulus.live.catchFix = 1;
-        stimulus.live.mask = 0;
     case stimulus.seg.resp
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.white;
         stimulus.live.catchFix = 1;
-        stimulus.live.mask = 0;
 end
 
 if stimulus.constant
@@ -559,22 +541,8 @@ global stimulus
 
 mglClearScreen(0.5);
 
-if stimulus.live.mask==1 && ~stimulus.scan, stimulus = upMask(stimulus); end
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
 upFix(task,stimulus);
-
-
-function stimulus = upMask(stimulus)
-%%
-
-sz = [.25 .25];
-if ((mglGetSecs - stimulus.live.maskOn) > .025) || ~isfield(stimulus.live,'xs')
-    some = randperm(length(stimulus.mask.x));
-    stimulus.live.xs = some(1:round(length(some)/2)); stimulus.live.ys = some(round(length(some)/2)+1:end);
-    stimulus.live.maskOn = mglGetSecs;
-end
-mglFillRect([stimulus.mask.x(stimulus.live.xs) -stimulus.mask.x(stimulus.live.xs)],[stimulus.mask.y(stimulus.live.xs) -stimulus.mask.y(stimulus.live.xs)],sz,[.45 .45 .45]);
-mglFillRect([stimulus.mask.x(stimulus.live.ys) -stimulus.mask.x(stimulus.live.ys)],[stimulus.mask.y(stimulus.live.ys) -stimulus.mask.y(stimulus.live.ys)],sz,[.55 .55 .55]);
 
 function upFix(task,stimulus)
 %%
@@ -615,14 +583,6 @@ end
 stimulus.dotsL = updateDotsRadial(stimulus.dotsL,lcoh,myscreen,true);
 stimulus.dotsR = updateDotsRadial(stimulus.dotsR,rcoh,myscreen,true);
 
-if task.thistrial.conSide==1
-    lConDel = task.thistrial.conDelta;
-    rConDel = 0;
-else
-    lConDel = 0;
-    rConDel = task.thistrial.conDelta;
-end
-
 % Correct values for gamma table adjustments
 lcon = lcon / stimulus.curMaxContrast;
 rcon = rcon / stimulus.curMaxContrast;
@@ -630,18 +590,21 @@ rcon = rcon / stimulus.curMaxContrast;
 % dotsR
 % update +contrast
 
+rcon = adjustConToTable(rcon,stimulus)/2;
+lcon = adjustConToTable(lcon,stimulus)/2;
+
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==1),stimulus.dotsR.ydisp(stimulus.dotsR.con==1),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] - adjustConToTable(rcon,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] - rcon);
 % update - contrast
 mglPoints2(stimulus.dotsR.xdisp(stimulus.dotsR.con==2),stimulus.dotsR.ydisp(stimulus.dotsR.con==2),...
-    stimulus.dotsR.dotsize,[.5 .5 .5] + adjustConToTable(rcon,stimulus)/2);
+    stimulus.dotsR.dotsize,[.5 .5 .5] + rcon);
 % dotsL
 % update +contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==1),stimulus.dotsL.ydisp(stimulus.dotsL.con==1),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] - adjustConToTable(lcon,stimulus)/2);
+    stimulus.dotsL.dotsize,[.5 .5 .5] - lcon);
 % update - contrast
 mglPoints2(stimulus.dotsL.xdisp(stimulus.dotsL.con==2),stimulus.dotsL.ydisp(stimulus.dotsL.con==2),...
-    stimulus.dotsL.dotsize,[.5 .5 .5] + adjustConToTable(lcon,stimulus)/2);
+    stimulus.dotsL.dotsize,[.5 .5 .5] + lcon);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Adjust contrast to the gamma table %%%%%%%%%%%%%%%
@@ -713,12 +676,12 @@ if stimulus.runs.curTask == 1
     if task.thistrial.catch > 0
         [conPed, stimulus.staircases.catch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.catch{2,curPedVal(task,2)});
     else
-        conPed = stimulus.stairInfo.increments.contrast(randi(length(stimulus.stairInfo.initThresh.catch.contrast)));
+        conPed = stimulus.stairInfo.increments.contrast(randi(length(stimulus.stairInfo.increments.contrast)));
     end
 else
     % CONTRAST MAIN TASK
     if ~stimulus.nocatch
-        [conPed, stimulus.staircase{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircase{2,curPedVal(task,2)});
+        [conPed, stimulus.staircases.main{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.main{2,curPedVal(task,2)});
     else
         [conPed, stimulus.staircases.nocatch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.nocatch{2,curPedVal(task,2)});
     end
@@ -726,7 +689,7 @@ else
     if task.thistrial.catch > 0
         [cohPed, stimulus.staircases.catch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircases.catch{1,curPedVal(task,1)});
     else
-        cohPed = stimulus.stairInfo.increments.coherence(randi(length(stimulus.stairInfo.initThresh.catch.coherence)));
+        cohPed = stimulus.stairInfo.increments.coherence(randi(length(stimulus.stairInfo.increments.coherence)));
     end
 end
 
@@ -806,66 +769,66 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispStaircase(stimulus)
 
-warning('fix staircase function...');
-keyboard
 try
-    taskOpts = {'catch - coherence','catch - contrast','coherence','contrast','Nocatch coherence','Nocatch contrast'};
-    drawing = {'or' 'ob' '*r' '*b' '+r' '+b'};
+    %% No-Catch Performance
+    nocatch = zeros(2,4);
     
-    
-    plotting = zeros(2,1);
-    catchPlot = zeros(2,1);
-    ci = zeros(2,1);
-    nocatchplot = zeros(2,1);
-    
-    for task = 1:2
-        for ped = 1:length(stimulus.baseCon)
+    for task = 1:size(nocatch,1)
+        for ped = 1:size(nocatch,2)
             try
-                each = [];
-                for i = 1:length(stimulus.staircases.nocatch{task,ped})
-                    if stimulus.staircases.nocatch{task,ped}(i).trialNum > 0
-                        out = doStaircase('threshold',stimulus.staircases.nocatch{task,ped}(i),'type','weibull'); % noise
-                        each(end+1) = out.threshold;
-                    end
-                end
-                nocatchplot(task,ped) = mean(each);
-            catch
-                nocatchplot(task,ped) = -1;
-            end
-            try
-                each = [];
-                for i = 1:length(stimulus.staircase{task,ped})
-                    if stimulus.staircase{task,ped}(i).trialNum > 0
-                        out = doStaircase('threshold',stimulus.staircase{task,ped}(i),'type','weibull'); % noise
-                        each(end+1) = out.threshold;
-                    end
-                end
-                plotting(task,ped) = mean(each);
-                ci(task,ped) = std(each)/sqrt(length(each))*1.96;
-            catch
-                plotting(task,ped) = -1;
-            end
-            try
-                outC = doStaircase('threshold',stimulus.staircases.catch{task,ped},'type','weibull');
-                catchPlot(task,ped) = outC.threshold;
-            catch
-                catchPlot(task,ped) = -1;
+            out = doStaircase('threshold',stimulus.staircases.nocatch{task,ped},'type','weibull','dispFig=0');
+            nocatch(task,ped) = out.threshold;
+            catch % probably a missing staircase, whatever
             end
         end
     end
-    figure
-    hold on
-    plot(stimulus.pedestals.(taskOpts{3})(1),catchPlot(1,:),drawing{1});
-    plot(stimulus.pedestals.(taskOpts{4})(1),catchPlot(2,:),drawing{2});
-    plot(stimulus.pedestals.(taskOpts{3})(1),plotting(1,:),drawing{3});
-    plot(stimulus.pedestals.(taskOpts{4})(1),plotting(2,:),drawing{4});
-    plot(stimulus.pedestals.(taskOpts{3})(1),nocatchplot(1,:),drawing{5});
-    plot(stimulus.pedestals.(taskOpts{4})(1),nocatchplot(2,:),drawing{6});
-    legend(taskOpts);
-    a = axis;
-    axis([0 .7 a(3) a(4)]);
-    hold off
-
+    %% Main + Catch
+    main = zeros(2,1);
+    catch_ = zeros(2,1);
+    
+    for task = 1:2
+        try
+            out = doStaircase('threshold',stimulus.staircases.main{task},'type','weibull','dispFig=0');
+            main(task) = out.threshold;
+        catch % missing a staircase
+        end
+        try 
+            out = doStaircase('threshold',stimulus.staircases.catch{task},'type','weibull','dispFig=0');
+            catch_(task) = out.threshold;
+        catch
+        end
+    end
+    
+    %% The Plot!
+    map = brewermap(6,'PuOr');
+    figure, hold on
+    h2 = plot([0 0.25 0.5 0.75],nocatch(1,:),'-','Color',map(1,:));
+    h6 = plot([0.25 0.4 0.65 0.9],nocatch(2,:),'-','Color',map(6,:));
+    
+    h1 = plot([0 0.25 0.5 0.75],nocatch(1,:),'o','MarkerSize',15);
+    set(h1(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(1,:),'LineWidth',1.5);
+    
+    h3 = plot(0.25,main(1),'o','MarkerSize',15);
+    set(h3(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(2,:),'LineWidth',1.5);
+    h7 = plot(0.25,catch_(1),'o','MarkerSize',15);
+    set(h7(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(3,:),'LineWidth',1.5);
+    h5 = plot([0.25 0.4 0.65 0.9],nocatch(2,:),'o','MarkerSize',15);
+    set(h5(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(6,:),'LineWidth',1.5);
+    h9 = plot(0.4,main(2),'o','MarkerSize',15);
+    set(h9(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(5,:),'LineWidth',1.5);
+    
+    h4 = plot(0.4,catch_(2),'o','MarkerSize',15);
+    set(h4(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(4,:),'LineWidth',1.5);
+    %    ;
+    
+    
+    legend([h1,h3,h7,h5,h9,h4],{'Coherence: Nocatch','Coherence: Main','Coherence: Catch','Contrast: Nocatch','Contrast: Main','Contrast: Catch'});
+    
+    title('Psychometric Functions for Cohcon');
+    xlabel('Contrast/Coherence (%)');
+    ylabel('Threshold (%)');
+    drawPublishAxis
+%     set(h(1),'MarkerEdgeColor','r','MarkerFaceColor','none')
 catch
     disp('(cohcon) Figures were not generated successfully.');
 end
