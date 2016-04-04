@@ -38,12 +38,15 @@ stablecon = [];
 task = [];
 constant = [];
 test = 0;
+timing = 0;
 getArgs(varargin,{'stimFileNum=-1','scan=1', ...
-    'stablecon=0','task=2','constant=1','test=0'});
+    'stablecon=0','task=2','constant=1','test=0',...
+    'timing=0'});
 stimulus.scan = scan;
 stimulus.stablecon = stablecon;
 stimulus.task = task; clear task
 stimulus.constant = constant;
+stimulus.timing = timing;
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 
@@ -220,6 +223,12 @@ if stimulus.scan
         task{1}{1}.segmin = [0 0 0 0 30];
         task{1}{1}.segmax = [0 0 0 0 30];
     end
+    if stimulus.timing
+        disp('(cohcon_localizer) Freezing contrast, coherence 25/100%, timing .25 .5 1 2 4');
+        task{1}{2}.parameter.timing = [0.250 0.500 1.00 2.00 4.00];
+        task{1}{2}.parameter.contrast = stimulus.baseCon;
+        task{1}{2}.parameter.coherence = [0.25 1];
+    end
 end
 
 %% Tracking
@@ -304,6 +313,10 @@ global stimulus
 
 if task.thistrial.thisphase==2
     task.thistrial.seglen(end) = 1.05^(rand*30+20);
+
+    if stimulus.timing==1
+        task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.timing;
+    end
 end
 
 %%
@@ -311,8 +324,8 @@ end
 stimulus.curTrial = stimulus.curTrial + 1;
 task.thistrial.trialNum = stimulus.curTrial;
 
-disp(sprintf('(cohCon) Trial %i starting. Coherence: %.02f Contrast: %.02f. Length 2.5 s ITI %1.1f s',task.thistrial.trialNum,...
-    task.thistrial.coherence,task.thistrial.contrast, task.thistrial.seglen(end)));
+disp(sprintf('(cohCon) Trial %i starting. Coherence: %.02f Contrast: %.02f. Length %1.1f s ITI %1.1f s',task.thistrial.trialNum,...
+    task.thistrial.coherence,task.thistrial.contrast,task.thistrial.seglen(stimulus.seg.stim), task.thistrial.seglen(end)));
 
 % set directions
 stimulus.dotsL.dir = task.thistrial.dir;
