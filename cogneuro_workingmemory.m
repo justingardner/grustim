@@ -105,6 +105,8 @@ task{1}.randVars.calculated.orientationJitter = [nan nan];
 task{1}.randVars.calculated.orientation = [nan nan];
 % threshold is the threshold orientation shown
 task{1}.randVars.calculated.orientationThreshold = nan;
+% memorized orientation
+task{1}.randVars.calculated.memOrientation = nan;
 % random sets to randomize parameters
 task{1}.random = 1;
 
@@ -165,6 +167,7 @@ if task.thistrial.thisseg == 1
   stimulus.displayOrientation(2) = task.thistrial.orientation(2) + task.thistrial.orientationJitter(2);
   stimulus.matchOrientation = task.thistrial.orientation(task.thistrial.cue)+task.thistrial.orientationJitter(task.thistrial.cue)+task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise;
 
+  task.thistrial.memOrientation = task.thistrial.orientation(task.thistrial.cue);
   % display what we have selected
   disp(sprintf('Trial %i: Orientation 1: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(1),task.thistrial.orientationJitter(1),stimulus.displayOrientation(1)));
   disp(sprintf('Trial %i: Orientation 2: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(2),task.thistrial.orientationJitter(2),stimulus.displayOrientation(2)));
