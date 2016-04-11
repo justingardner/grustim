@@ -35,18 +35,22 @@ global fixStimulus
 stimFileNum = [];
 scan = [];
 stablecon = [];
+stablecoh = [];
 task = [];
 constant = [];
 test = 0;
 timing = 0;
+drop = [];
 getArgs(varargin,{'stimFileNum=-1','scan=1', ...
     'stablecon=0','task=2','constant=1','test=0',...
-    'timing=0'});
+    'timing=0','stablecoh=0','drop=0'});
 stimulus.scan = scan;
 stimulus.stablecon = stablecon;
+stimulus.stablecoh = stablecoh;
 stimulus.task = task; clear task
 stimulus.constant = constant;
 stimulus.timing = timing;
+stimulus.drop = drop;
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 
@@ -66,6 +70,8 @@ if stimulus.task==2
     fixStimulus.interColor = [0 .6 .6];
     fixStimulus.correctColor = [0 0.6 0];
     fixStimulus.incorrectColor = [0.6 0 0];
+    fixStimulus.stairStepSize = 0.02;
+    fixStimulus.stairUseLevitt = 1;
     [task{2}, myscreen] = fixStairInitTask(myscreen);
 end
 
@@ -200,14 +206,23 @@ if stimulus.scan
 end
 task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.parameter.cohSide = [1 2];
-task{1}{1}.parameter.dir = [-1 1];
+if ~stimulus.drop
+    task{1}{1}.parameter.dir = [-1 1];
+end
 task{1}{1}.parameter.contrast = [0.25 0.5 0.75 1]; % contrast starts at 25%
 task{1}{1}.parameter.coherence = [0 0.25 0.5 0.75 1]; % coherence starts at 0%
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 100;
 
-stimulus.baseCoh = 0;
-stimulus.baseCon = 0.25;
+if stimulus.drop
+    stimulus.baseCon = 1;
+    stimulus.baseCoh = 1;
+    stimulus.live.curDir = 1;
+    stimulus.live.lastDir = mglGetSecs;
+else
+    stimulus.baseCoh = 0;
+    stimulus.baseCon = 0.25;
+end
 
 if stimulus.scan
     task{1}{1}.numTrials = inf;
@@ -226,8 +241,23 @@ if stimulus.scan
     if stimulus.timing
         disp('(cohcon_localizer) Freezing contrast, coherence 25/100%, timing .25 .5 1 2 4');
         task{1}{2}.parameter.timing = [0.250 0.500 1.00 2.00 4.00];
-        task{1}{2}.parameter.contrast = stimulus.baseCon;
+        stimulus.stablecon = 1;
         task{1}{2}.parameter.coherence = [0.25 1];
+    end
+end
+
+if stimulus.stablecon
+    if stimulus.scan
+        task{1}{2}.parameter.contrast = stimulus.baseCon;
+    else
+        task{1}{1}.parameter.contrast = stimulus.baseCon;
+    end
+end
+if stimulus.stablecoh
+    if stimulus.scan
+        task{1}{2}.parameter.coherence = stimulus.baseCoh;
+    else
+        task{1}{1}.parameter.coherence = stimulus.baseCoh;
     end
 end
 
@@ -259,7 +289,6 @@ end
 %% Get Ready...
 % clear screen
 mglWaitSecs(2);
-% setGammaTable_flowMax(1);
 mglClearScreen(0.5);
 if stimulus.scan
     mglTextDraw('DO NOT MOVE',[0 1.5]);
@@ -327,9 +356,11 @@ task.thistrial.trialNum = stimulus.curTrial;
 disp(sprintf('(cohCon) Trial %i starting. Coherence: %.02f Contrast: %.02f. Length %1.1f s ITI %1.1f s',task.thistrial.trialNum,...
     task.thistrial.coherence,task.thistrial.contrast,task.thistrial.seglen(stimulus.seg.stim), task.thistrial.seglen(end)));
 
-% set directions
-stimulus.dotsL.dir = task.thistrial.dir;
-stimulus.dotsR.dir = task.thistrial.dir;
+if ~stimulus.drop
+    % set directions
+    stimulus.dotsL.dir = task.thistrial.dir;
+    stimulus.dotsR.dir = task.thistrial.dir;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -384,6 +415,14 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
+if stimulus.drop && mglGetSecs-stimulus.live.lastDir>0.5
+    % flip direction
+    flip = [1 0 -1];
+    stimulus.live.curDir = flip(stimulus.live.curDir+2);
+    stimulus.live.lastDir = mglGetSecs;
+    stimulus.dotsL.dir = stimulus.live.curDir;
+    stimulus.dotsR.dir = stimulus.live.curDir;
+end
 
 mglClearScreen(0.5);
 
