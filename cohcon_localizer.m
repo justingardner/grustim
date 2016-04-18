@@ -51,6 +51,7 @@ stimulus.task = task; clear task
 stimulus.constant = constant;
 stimulus.timing = timing;
 stimulus.drop = drop;
+stimulus.test = test;
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 
@@ -345,6 +346,10 @@ if task.thistrial.thisphase==2
 
     if stimulus.timing==1
         task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.timing;
+    end
+    
+    if stimulus.test==1
+        taskk.thistrial.seglen(end) = 1;
     end
 end
 
