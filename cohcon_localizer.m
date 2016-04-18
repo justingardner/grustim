@@ -349,7 +349,7 @@ if task.thistrial.thisphase==2
     end
     
     if stimulus.test==1
-        taskk.thistrial.seglen(end) = 1;
+        task.thistrial.seglen(end) = 1;
     end
 end
 
@@ -420,7 +420,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-if stimulus.drop && mglGetSecs-stimulus.live.lastDir>0.5
+if stimulus.drop && mglGetSecs-stimulus.live.lastDir>1
     % flip direction
     flip = [1 0 -1];
     stimulus.live.curDir = flip(stimulus.live.curDir+2);
