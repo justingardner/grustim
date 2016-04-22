@@ -43,8 +43,7 @@ stablecon = [];
 stablecoh = [];
 constant = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0',...
-    'plots=1','overrideTask=0','scan=0',...
-    'stablecon=0','stablecoh=0','constant=1'});
+    'plots=1','overrideTask=0','scan=0','constant=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.nocatch = nocatch;
@@ -175,11 +174,16 @@ stimulus.stairInfo.nocatchP = 4;
 % for the real psychophysics experiment test we will run a discrimination
 % task, i.e. "which side goes higher". Contrast will jump to 50% and
 % coherence to 25%, but one side will go up more than the other side.
-stimulus.stairInfo.pedestals.contrast = 0.4;
+stimulus.stairInfo.pedestals.contrast = 0.50;
 stimulus.stairInfo.pedestals.coherence = 0.25;
 % for our fixed value staircases we will use the following increments:
-stimulus.stairInfo.increments.coherence = [0 exp(-3:.33:-.3)];
-stimulus.stairInfo.increments.contrast = [0 exp(-4:.33:-1.3)];
+if stimulus.scan
+    stimulus.stairInfo.increments.coherence = [0.05 0.075 0.1 0.2];
+    stimulus.stairInfo.increments.contrast = [0.025 0.05 0.075 0.15];
+else
+    stimulus.stairInfo.increments.coherence = [0 exp(-3:.33:-.3)];
+    stimulus.stairInfo.increments.contrast = [0 exp(-4:.33:-1.3)];
+end
 % initial thresholds to use in staircases
 stimulus.stairInfo.initThresh.contrast = 0.3;
 stimulus.stairInfo.initThresh.coherence = 0.8;
@@ -188,8 +192,8 @@ stimulus.stairInfo.pedOpts = {'coherence','contrast'};
 
 if stimulus.scan
     % we are scanning, add more pedestals so we get the full range
-    stimulus.stairInfo.pedestals.contrast = [0.25 0.4 0.65 0.9];
-    stimulus.stairInfo.pedestals.coherence = [0 0.25 0.5 0.75];
+    stimulus.stairInfo.pedestals.contrast = [0.25 0.50 0.75];
+    stimulus.stairInfo.pedestals.coherence = [0.2 0.4 0.6];
     % add fixed value increments to the staircase, this will make it
     % slightly easier to estimate HRF responses since we don't need to deal
     % with random stimulus values...
@@ -276,8 +280,8 @@ stimulus.seg.mask = 2;
 stimulus.seg.ISI = 3;
 stimulus.seg.resp = 4;
 stimulus.seg.ITI = 5;
-task{1}{1}.segmin = [2.5 0 .5 1 .2];
-task{1}{1}.segmax = [2.5 0 1 1 .4];
+task{1}{1}.segmin = [0.5 0 .5 1 .2];
+task{1}{1}.segmax = [0.5 0 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
@@ -296,7 +300,7 @@ task{1}{1}.parameter.conPedestal = 1:length(stimulus.stairInfo.pedestals.contras
 task{1}{1}.parameter.cohPedestal = 1:length(stimulus.stairInfo.pedestals.coherence); % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
 task{1}{1}.random = 1;
-task{1}{1}.numTrials = 50;
+task{1}{1}.numTrials = 65;
 
 if stimulus.nocatch || stimulus.scan
     task{1}{1}.parameter.catch = -1;
@@ -753,7 +757,7 @@ end
 
 % motion first then contrast
 for task = 1:2
-    if isempty(stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}))
+    if stimulus.scan
         stimulus.staircases.nocatch{task,1} = doStaircase('init','fixed',...
             'fixedVals',stimulus.stairInfo.increments.(stimulus.stairInfo.pedOpts{task}));
     else
