@@ -39,8 +39,8 @@ plots = [];
 overrideTask = 0;
 scan = [];
 nocatch = [];
-stablecon = [];
-stablecoh = [];
+stablecon = 0;
+stablecoh = 0;
 constant = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0',...
     'plots=1','overrideTask=0','scan=0','constant=1'});
@@ -422,10 +422,9 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-disp('todo: exponential seglen distribution');
-% if task.thistrial.thisphase==2
-%     task.thistrial.seglen(end) = 1.05^(rand*30+20);
-% end
+if task.thistrial.thisphase==2 && stimulus.scan
+    task.thistrial.seglen(end) = 1.05^(rand*30+20);
+end
 
 stimulus.curTrial = stimulus.curTrial + 1;
 
@@ -435,9 +434,9 @@ if task.thistrial.catch > 0
     switchTasks = [2 1];
     task.thistrial.task = switchTasks(stimulus.runs.curTask);
     % edit seglen
-    task.thistrial.seglen(stimulus.seg.mask) = .5;
+    task.thistrial.seglen(stimulus.seg.mask) = .75;
     task.thistrial.seglen(stimulus.seg.ISI) = .75;
-    task.thistrial.seglen(stimulus.seg.resp) = 3;
+    task.thistrial.seglen(stimulus.seg.resp) = 2.5;
     disp('(cohcon) Catch trial.');
 else
     task.thistrial.task = stimulus.runs.curTask;
