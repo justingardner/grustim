@@ -172,9 +172,9 @@ stimulus.stairInfo.mainP = 1;
 stimulus.stairInfo.nocatchP = 4;
 
 % for the real psychophysics experiment test we will run a discrimination
-% task, i.e. "which side goes higher". Contrast will jump to 50% and
+% task, i.e. "which side goes higher". Contrast will jump to 40% and
 % coherence to 25%, but one side will go up more than the other side.
-stimulus.stairInfo.pedestals.contrast = 0.50;
+stimulus.stairInfo.pedestals.contrast = 0.4;
 stimulus.stairInfo.pedestals.coherence = 0.25;
 % for our fixed value staircases we will use the following increments:
 if stimulus.scan
@@ -336,6 +336,16 @@ if stimulus.scan
     task{1}{1}.getResponse = [0 0 0 0];
     task{1}{1}.segmin = [0 0 0 0 30];
     task{1}{1}.segmax = [0 0 0 0 30];
+else
+    % when scanning we add a 
+    task{1}{2} = task{1}{1};
+    task{1}{2}.waitForBacktick = 0;
+    task{1}{1}.parameter.conPedestal = 1;
+    task{1}{1}.parameter.cohPedestal = 1;
+    task{1}{1}.numTrials = 1;
+    task{1}{1}.getResponse = [0 0 0 0];
+    task{1}{1}.segmin = [0 0 0 0 5];
+    task{1}{1}.segmax = [0 0 0 0 5];
 end
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -776,6 +786,26 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispStaircase(stimulus)
 
+trials = 0;
+for t = 1:2
+    cmain = stimulus.staircases.main{t};
+    for i = 1:length(cmain)
+        trials = trials + cmain(i).trialNum;
+    end
+    ccatch = stimulus.staircases.catch{t};
+    for i = 1:length(ccatch)
+        trials = trials + ccatch(i).trialNum;
+    end
+    
+    for n = 1:4
+        cno = stimulus.staircases.nocatch{t,n};
+        for i = 1:length(cno)
+            trials = trials + cno(i).trialNum;
+        end
+    end
+end
+disp(sprintf('(dispInfo) Subject %s has completed %i trials so far.',mglGetSID,trials));
+%%
 try
     %% No-Catch Performance
     nocatch = zeros(2,4);
@@ -829,7 +859,7 @@ try
     %    ;
     
     
-    legend([h1,h3,h7,h5,h9,h4],{'Coherence: Attended','Coherence: Control','Coherence: Unattended','Contrast: Attended','Contrast: Control','Contrast: Unattended'});
+    legend([h1,h3,h7,h5,h9,h4],{'Coherence: Control','Coherence: Attended','Coherence: Unattended','Contrast: Control','Contrast: Attended','Contrast: Unattended'});
     
     title('Psychometric Functions for Cohcon');
     xlabel('Contrast/Coherence (%)');
