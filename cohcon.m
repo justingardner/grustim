@@ -43,7 +43,7 @@ stablecon = 0;
 stablecoh = 0;
 constant = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0',...
-    'plots=1','overrideTask=0','scan=0','constant=1'});
+    'plots=1','overrideTask=0','scan=0','constant=1','stablecon=0','stablecoh=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.nocatch = nocatch;
@@ -144,7 +144,13 @@ end
 %% Task Override
 if overrideTask > 0
     stimulus.runs.curTask = overrideTask;
-    stimulus.runs.taskList(stimulus.counter) = overrideTask;
+    if overrideTask>0
+        stimulus.nocatch = 1;
+    end
+    % insert the override into the taskList
+    pre = stimulus.runs.taskList(1:stimulus.counter-1);
+    post = stimulus.runs.taskList(stimulus.counter:end);
+    stimulus.runs.taskList = [pre overrideTask post];
 else
     cT = stimulus.runs.taskList(stimulus.counter);
     if cT>0
@@ -175,7 +181,7 @@ stimulus.stairInfo.nocatchP = 4;
 % task, i.e. "which side goes higher". Contrast will jump to 40% and
 % coherence to 25%, but one side will go up more than the other side.
 stimulus.stairInfo.pedestals.contrast = 0.4;
-stimulus.stairInfo.pedestals.coherence = 0.25;
+stimulus.stairInfo.pedestals.coherence = 0.3;
 % for our fixed value staircases we will use the following increments:
 if stimulus.scan
     stimulus.stairInfo.increments.coherence = [0.05 0.075 0.1 0.2];
@@ -202,8 +208,8 @@ elseif stimulus.nocatch
     % nocatch runs where there will be a LOT of runs. So let's add some
     % more pedestals in so we get a better estimate of the psychometric
     % function.
-    stimulus.stairInfo.pedestals.contrast = [0.25 0.4 0.65 0.9];
-    stimulus.stairInfo.pedestals.coherence = [0 0.25 0.5 0.75];
+    stimulus.stairInfo.pedestals.contrast = [0.325 0.4 0.55 0.85];
+    stimulus.stairInfo.pedestals.coherence = [0.15 0.3 0.45 0.6];
 end
 
 % If the user wants contrast or coherence to be frozen, do that here.
