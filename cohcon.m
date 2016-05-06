@@ -175,49 +175,34 @@ stimulus.baseCoh = 0;
 % for initStair to know how many staircases to make
 stimulus.stairInfo.catchP = 1;
 stimulus.stairInfo.mainP = 1;
-stimulus.stairInfo.nocatchP = 4;
 
 % for the real psychophysics experiment test we will run a discrimination
 % task, i.e. "which side goes higher". Contrast will jump to 40% and
 % coherence to 25%, but one side will go up more than the other side.
 stimulus.stairInfo.pedestals.contrast = 0.4;
 stimulus.stairInfo.pedestals.coherence = 0.3;
-% for our fixed value staircases we will use the following increments:
-if stimulus.scan
-    stimulus.stairInfo.increments.coherence = [0.05 0.075 0.1 0.2];
-    stimulus.stairInfo.increments.contrast = [0.025 0.05 0.075 0.15];
-else
-    stimulus.stairInfo.increments.coherence = [0 exp(-3:.33:-.3)];
-    stimulus.stairInfo.increments.contrast = [0 exp(-4:.33:-1.3)];
-end
+% for our distractors we will use these random increments:
+stimulus.stairInfo.increments.coherence = [0 exp(-3:.33:-.6)];
+stimulus.stairInfo.increments.contrast = [0 exp(-4:.33:-1.6)];
 % initial thresholds to use in staircases
-stimulus.stairInfo.initThresh.contrast = 0.3;
-stimulus.stairInfo.initThresh.coherence = 0.8;
+stimulus.stairInfo.initThresh.contrast = 0.25;
+stimulus.stairInfo.initThresh.coherence = 0.85;
 
 stimulus.stairInfo.pedOpts = {'coherence','contrast'};
 
 if stimulus.scan
+    stimulus.stairInfo.nocatchP = 2;
     % we are scanning, add more pedestals so we get the full range
-    stimulus.stairInfo.pedestals.contrast = [0.25 0.50 0.75];
-    stimulus.stairInfo.pedestals.coherence = [0.2 0.4 0.6];
-    % add fixed value increments to the staircase, this will make it
-    % slightly easier to estimate HRF responses since we don't need to deal
-    % with random stimulus values...
+    stimulus.stairInfo.pedestals.contrast = [0.325 0.85];
+    stimulus.stairInfo.pedestals.coherence = [0.15 0.6];
 elseif stimulus.nocatch
+    stimulus.stairInfo.nocatchP = 4;
     % we aren't scanning, so we can still run staircases, but we are doing
     % nocatch runs where there will be a LOT of runs. So let's add some
     % more pedestals in so we get a better estimate of the psychometric
     % function.
     stimulus.stairInfo.pedestals.contrast = [0.325 0.4 0.55 0.85];
     stimulus.stairInfo.pedestals.coherence = [0.15 0.3 0.45 0.6];
-end
-
-% If the user wants contrast or coherence to be frozen, do that here.
-if stimulus.stablecon
-    stimulus.baseCon = 0.25;
-end
-if stimulus.stablecoh
-    stimulus.baseCoh = 0;
 end
 
 %% Colors
@@ -772,16 +757,11 @@ end
 
 % motion first then contrast
 for task = 1:2
-    if stimulus.scan
-        stimulus.staircases.nocatch{task,1} = doStaircase('init','fixed',...
-            'fixedVals',stimulus.stairInfo.increments.(stimulus.stairInfo.pedOpts{task}));
-    else
-        stimulus.staircases.nocatch{task,1} = doStaircase('init','upDown',...
+    stimulus.staircases.nocatch{task,1} = doStaircase('init','upDown',...
         'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
         'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
         'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
         'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
-    end
     for p = 2:size(stimulus.staircases.nocatch,2)
         stimulus.staircases.nocatch{task,p} = stimulus.staircases.nocatch{task,1};
     end
@@ -841,21 +821,20 @@ try
         catch
         end
     end
-    
-    %% The Plot!
+        %% The Plot!
     map = brewermap(6,'PuOr');
     figure, hold on
-    h2 = plot([0 0.25 0.5 0.75],nocatch(1,:),'-','Color',map(1,:));
-    h6 = plot([0.25 0.4 0.65 0.9],nocatch(2,:),'-','Color',map(6,:));
+    h2 = plot([0.15 0.3 0.45 0.6],nocatch(1,:),'-','Color',map(1,:));
+    h6 = plot([0.325 0.4 0.55 0.85],nocatch(2,:),'-','Color',map(6,:));
     
-    h1 = plot([0 0.25 0.5 0.75],nocatch(1,:),'o','MarkerSize',15);
+    h1 = plot([0.15 0.3 0.45 0.6],nocatch(1,:),'o','MarkerSize',15);
     set(h1(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(1,:),'LineWidth',1.5);
     
-    h3 = plot(0.25,main(1),'o','MarkerSize',15);
+    h3 = plot(0.3,main(1),'o','MarkerSize',15);
     set(h3(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(2,:),'LineWidth',1.5);
-    h7 = plot(0.25,catch_(1),'o','MarkerSize',15);
+    h7 = plot(0.3,catch_(1),'o','MarkerSize',15);
     set(h7(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(3,:),'LineWidth',1.5);
-    h5 = plot([0.25 0.4 0.65 0.9],nocatch(2,:),'o','MarkerSize',15);
+    h5 = plot([0.325 0.4 0.55 0.85],nocatch(2,:),'o','MarkerSize',15);
     set(h5(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(6,:),'LineWidth',1.5);
     h9 = plot(0.4,main(2),'o','MarkerSize',15);
     set(h9(1),'MarkerEdgeColor',[1 1 1],'MarkerFaceColor',map(5,:),'LineWidth',1.5);
