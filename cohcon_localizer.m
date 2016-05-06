@@ -71,8 +71,8 @@ if stimulus.task==2
     fixStimulus.interColor = [0 .6 .6];
     fixStimulus.correctColor = [0 0.6 0];
     fixStimulus.incorrectColor = [0.6 0 0];
-    fixStimulus.stairStepSize = 0.02;
-    fixStimulus.stairUseLevitt = 1;
+    fixStimulus.stairStepSize = 0.04;
+    fixStimulus.stairUseLevitt = 0;
     [task{2}, myscreen] = fixStairInitTask(myscreen);
 end
 
