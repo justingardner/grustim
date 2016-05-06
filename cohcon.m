@@ -409,7 +409,7 @@ myscreen = endTask(myscreen,task);
 
 if stimulus.plots
     disp('(cohcon) Displaying plots');
-    dispStaircase(stimulus);
+    dispInfo(stimulus);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
@@ -768,9 +768,9 @@ for task = 1:2
 end
 %%
 %%%%%%%%%%%%%%%%%%%%%%%
-%    dispStaircase    %
+%    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
-function dispStaircase(stimulus)
+function dispInfo(stimulus)
 
 trials = 0;
 for t = 1:2
@@ -852,8 +852,17 @@ try
     drawPublishAxis
 %     set(h(1),'MarkerEdgeColor','r','MarkerFaceColor','none')
 catch
-    disp('(cohcon) Figures were not generated successfully.');
+    disp('(cohcon) Staircase figure was not generated successfully.');
 end
+
+%% Right choice Figures
+
+% we want to have one more figures, one subplot for contrast and one for coherence
+% showing the right choice for attented/unattended/control. To compute this
+% we have to collect all trial responses (when #trials > 250 we can drop
+% the first 10% as "training", or you could check performance over time to
+% be principled... whatever. Then we compute binned responses across all
+% trials.
 
 %% checkStaircaseStop
 function checkStaircaseStop()
