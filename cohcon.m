@@ -81,6 +81,8 @@ else
     myscreen = initScreen('VPixx');
 end
 
+myscreen.background = 0.5;
+
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
@@ -135,7 +137,7 @@ else
     % This is the first run, build up the blocks.
     stimulus.runs = struct;
     stimulus.runs.taskOpts = [1 2];
-    stimulus.runs.taskBuild = {[1 1 -1 -1] [2 2 -2 -2]};
+    stimulus.runs.taskBuild = {[1 1 -1 1 -1] [2 2 -2 2 -2]};
     stimulus.runs.taskOptsText = {'Motion','Contrast'};
     stimulus.runs.taskList = [stimulus.runs.taskBuild{stimulus.runs.taskOpts(randperm(2))}];
 end
@@ -146,6 +148,7 @@ if overrideTask > 0
     stimulus.runs.curTask = overrideTask;
     if overrideTask>0
         stimulus.nocatch = 1;
+        disp('(cohcon) Auto-setting nocatch!!');
     end
     % insert the override into the taskList
     pre = stimulus.runs.taskList(1:stimulus.counter-1);
