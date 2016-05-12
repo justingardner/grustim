@@ -131,7 +131,7 @@ if isfield(stimulus,'runs') && isfield(stimulus.runs,'loaded')
     stimulus.runs = rmfield(stimulus.runs,'loaded'); % remove the load field, otherwise it gets saved across runs
     if stimulus.counter > length(stimulus.runs.taskList)
         % double the length (maintains order)
-        stimulus.runs.taskList  = repmat(stimulus.runs.taskList,1,2);
+        stimulus.runs.taskList  = [stimulus.runs.taskList stimulus.runs.taskBuilder]; %repmat(stimulus.runs.taskList,1,2);
     end
 else
     % This is the first run, build up the blocks.
@@ -139,7 +139,8 @@ else
     stimulus.runs.taskOpts = [1 2];
     stimulus.runs.taskBuild = {[1 1 -1 1 -1] [2 2 -2 2 -2]};
     stimulus.runs.taskOptsText = {'Motion','Contrast'};
-    stimulus.runs.taskList = [stimulus.runs.taskBuild{stimulus.runs.taskOpts(randperm(2))}];
+    stimulus.runs.taskBuilder = [stimulus.runs.taskBuild{stimulus.runs.taskOpts(randperm(2))}];
+    stimulus.runs.taskList = [stimulus.runs.taskBuilder];
 end
 
 
@@ -807,6 +808,10 @@ try
             catch % probably a missing staircase, whatever
             end
         end
+    end
+    if any(nocatch(:)>10)
+        warning('removing stairs >10');
+        nocatch(nocatch>10) = 0;
     end
     %% Main + Catch
     main = zeros(2,1);
