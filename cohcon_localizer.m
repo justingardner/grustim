@@ -240,9 +240,9 @@ if stimulus.scan
         task{1}{1}.segmax = [0 0 0 0 30];
     end
     if stimulus.timing
-        disp('(cohcon_localizer) Freezing contrast, coherence 25/100%, timing .25 .5 1 2 4');
+        disp('(cohcon_localizer) Contrast 50/100%, coherence 25/100%, timing .25 .5 1 2 4');
         task{1}{2}.parameter.timing = [0.250 0.500 1.00 2.00 4.00];
-        stimulus.stablecon = 1;
+        task{1}{2}.parameter.contrast = [0.5 1];
         task{1}{2}.parameter.coherence = [0.25 1];
     end
 end
