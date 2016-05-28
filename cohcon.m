@@ -205,6 +205,15 @@ if stimulus.scan
     % we are scanning, add more pedestals so we get the full range
     stimulus.stairInfo.pedestals.contrast = [0.325 0.85];
     stimulus.stairInfo.pedestals.coherence = [0.15 0.6];
+    
+    if ~stimulus.nocatch
+        disp('(cohcon) Auto-setting nocatch for scan run.');
+        stimulus.nocatch = 1;
+    end
+    if stimulus.plots
+        disp('(cohcon) Auto-setting no plots for scan run.');
+        stimulus.plots =0 ;
+    end
 elseif stimulus.nocatch
     stimulus.stairInfo.nocatchP = 4;
     % we aren't scanning, so we can still run staircases, but we are doing
@@ -902,15 +911,6 @@ try
 catch
     disp('(cohcon) Staircase figure was not generated successfully.');
 end
-
-%% Right choice Figures
-
-% we want to have one more figures, one subplot for contrast and one for coherence
-% showing the right choice for attented/unattended/control. To compute this
-% we have to collect all trial responses (when #trials > 250 we can drop
-% the first 10% as "training", or you could check performance over time to
-% be principled... whatever. Then we compute binned responses across all
-% trials.
 
 %% checkStaircaseStop
 function checkStaircaseStop()
