@@ -43,7 +43,7 @@ stablecon = 0;
 stablecoh = 0;
 constant = [];
 getArgs(varargin,{'stimFileNum=-1','nocatch=0',...
-    'plots=1','overrideTask=0','scan=0','constant=1','stablecon=0','stablecoh=0'});
+    'plots=0','overrideTask=0','scan=0','constant=1','stablecon=0','stablecoh=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.nocatch = nocatch;
@@ -114,6 +114,12 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cohcon/%s',mglGetSID))
     end
 end
 disp(sprintf('(cohcon) This is run #%i',stimulus.counter));
+
+if stimulus.plots==2
+    dispInfoNum(stimulus);
+    dispInfo(stimulus);
+    return
+end
 
 %% Initialize Stimulus
 
@@ -340,8 +346,8 @@ else
     task{1}{1}.parameter.cohPedestal = 1;
     task{1}{1}.numTrials = 1;
     task{1}{1}.getResponse = [0 0 0 0];
-    task{1}{1}.segmin = [0 0 0 0 5];
-    task{1}{1}.segmax = [0 0 0 0 5];
+    task{1}{1}.segmin = [0 0 0 0 4];
+    task{1}{1}.segmax = [0 0 0 0 4];
     task{1}{1}.parameter.catch = 0;
 end
 %% Full Setup
@@ -413,6 +419,7 @@ mglWaitSecs(1);
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
+dispInfoNum(stimulus);
 if stimulus.plots
     disp('(cohcon) Displaying plots');
     dispInfo(stimulus);
@@ -776,27 +783,35 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
-function dispInfo(stimulus)
 
+function dispInfoNum(stimulus)
+%%
 trials = 0;
+nmain = 0;
+ncatch = 0;
+ncontrol = 0;
 for t = 1:2
     cmain = stimulus.staircases.main{t};
     for i = 1:length(cmain)
         trials = trials + cmain(i).trialNum;
+        nmain = nmain + cmain(i).trialNum;
     end
     ccatch = stimulus.staircases.catch{t};
     for i = 1:length(ccatch)
         trials = trials + ccatch(i).trialNum;
+        ncatch = ncatch + ccatch(i).trialNum;
     end
     
     for n = 1:4
         cno = stimulus.staircases.nocatch{t,n};
         for i = 1:length(cno)
             trials = trials + cno(i).trialNum;
+            ncontrol = ncontrol + cno(i).trialNum;
         end
     end
 end
-disp(sprintf('(dispInfo) Subject %s has completed %i trials so far.',mglGetSID,trials));
+disp(sprintf('(dispInfo) Subject %s has completed %i trials so far. %i main, %i catch, %i control.',mglGetSID,trials,nmain,ncatch,ncontrol));
+function dispInfo(stimulus)
 %%
 try
     %% No-Catch Performance
@@ -876,6 +891,12 @@ try
     title('Psychometric Functions for Cohcon');
     xlabel('Contrast/Coherence (%)');
     ylabel('Threshold (%)');
+    a = axis();
+    if a(4)>1
+        axis([0 1 0 1]);
+    else
+        axis([0 1 0 a(4)]);
+    end
     drawPublishAxis
 %     set(h(1),'MarkerEdgeColor','r','MarkerFaceColor','none')
 catch
