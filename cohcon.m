@@ -1,4 +1,4 @@
-
+.
 % cohCon
 %
 %      usage: myscreen=cohcon()
@@ -143,7 +143,11 @@ else
     % This is the first run, build up the blocks.
     stimulus.runs = struct;
     stimulus.runs.taskOpts = [1 2];
-    stimulus.runs.taskBuild = {[1 1 -1 1 -1] [2 2 -2 2 -2]};
+    if stimulus.scan
+        stimulus.runs.taskBuild = {[1 1],[2 2]};
+    else
+        stimulus.runs.taskBuild = {[1 1 -1 1 -1] [2 2 -2 2 -2]};
+    end
     stimulus.runs.taskOptsText = {'Motion','Contrast'};
     stimulus.runs.taskBuilder = [stimulus.runs.taskBuild{stimulus.runs.taskOpts(randperm(2))}];
     stimulus.runs.taskList = [stimulus.runs.taskBuilder];
@@ -382,9 +386,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~stimulus.scan
+%if ~stimulus.scan
     myscreen = eyeCalibDisp(myscreen);
-end
+%end
 
 %% Get Ready...
 % clear screen    
@@ -428,10 +432,12 @@ mglWaitSecs(1);
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-dispInfoNum(stimulus);
-if stimulus.plots
-    disp('(cohcon) Displaying plots');
-    dispInfo(stimulus);
+if ~stimulus.scan
+    dispInfoNum(stimulus);
+    if stimulus.plots
+        disp('(cohcon) Displaying plots');
+        dispInfo(stimulus);
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
