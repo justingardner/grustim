@@ -19,7 +19,7 @@ function [ myscreen ] = category_awareness( varargin )
 %   Stimuli are shown around fixation in a 10x10 degree view. The remaining
 %   screen background is phase randomized noise. 
 
-global stimulus
+global stimulus images
 
 %% Initialize Variables
 
@@ -30,7 +30,7 @@ scan = 0;
 plots = 0;
 getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0'});
 stimulus.localizer = localizer;
-stimulus.staircase = staircase;
+stimulus.dostaircase = staircase;
 stimulus.scan = scan;
 stimulus.plots = plots;
 clear localizer staircase scan
@@ -46,10 +46,6 @@ else
 end
 
 myscreen.background = 0.5;
-
-%% Load images
-stimulus.phases = [0.5 0.6 0.7 0.8 0.9 1];
-stimulus = myInitStimulus(stimulus);
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -100,8 +96,8 @@ stimulus.seg.mask = 3;
 stimulus.seg.ISI = 4;
 stimulus.seg.resp = 5;
 stimulus.seg.ITI = 6;
-task{1}{1}.segmin = [0.250 0.050 0.450 0.5 1.25 .75];
-task{1}{1}.segmax = [0.250 0.050 0.450 0.5 2.25 .75];
+task{1}{1}.segmin = [0.15 0.050 0.450 0.3 1 .5];
+task{1}{1}.segmax = [0.15 0.050 0.450 0.3 1 .5];
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
@@ -127,15 +123,51 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stimulus.initStair
-    % We are starting our staircases from scratch
-    disp(sprintf('(cohcon) Initializing staircases'));
-    stimulus = initStaircase(stimulus);
+
+stimulus.nostairperf = [3/6 4/6 5/6]; % these are the performances we want to use when no staircase is running
+if stimulus.dostaircase
+    % use a range of phases
+    images.phases = repmat(0.05:.1:0.75,3,1);
+    if stimulus.initStair
+        % We are starting our staircases from scratch
+        disp(sprintf('(cohcon) Initializing staircases'));
+        stimulus = initStaircase(stimulus);
+    else
+        disp('(cohcon) Re-using staircase from previous run...');
+    end
 else
-    disp('(cohcon) Re-using staircase from previous run...');
-    % Reset staircase if necessary
-    checkStaircaseStop();
+    if stimulus.initStair
+        disp('(cat_awe) No staircases present, please run staircase=1 mode first');
+        return
+    else
+        disp('(cat_awe) Loading staircases and predicting phases from weibull fits.');
+        out(1) = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=1','gamma=1/3');
+        out(2) = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=0','gamma=1/3');
+        out(3) = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=0','gamma=1/3');
+        testPhases = zeros(3,length(stimulus.nostairperf));
+        for cat = 1:3
+            for pi = 1:length(stimulus.nostairperf)
+                x = out(cat).fit.x;
+                y = out(cat).fit.y;
+                pos = find(y>stimulus.nostairperf(pi),1);
+                if ~isempty(pos)
+                    testPhases(cat,pi) = interp1(1:size(stimulus.phases,2),stimulus.phases,x(pos));
+                else
+                    testPhases(cat,pi) = 1;
+                end
+            end
+        end
+        stop = 1;
+        stimulus.phases = testPhases;
+    end
 end
+
+
+
+%% Load images
+images = myInitStimulus(images);
+stimulus.categories = images.categories;
+stimulus.phases = images.phases;
 
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -195,7 +227,7 @@ end
 function [task, myscreen] = startTrialCallback(task,myscreen)
 %%
 
-global stimulus
+global stimulus images
 
 if stimulus.scan
     task.thistrial.seglen(end) = 1.05^(rand*30+15);
@@ -211,7 +243,7 @@ myscreen.flushMode = 0;
 
 stimulus.live.imgNum = randi(50);
 
-disp(sprintf('Trial %i Category: %s Phase %2.2f',stimulus.curTrial,stimulus.categories{task.thistrial.category},stimulus.phases(task.thistrial.phase)));
+disp(sprintf('Trial %i Category: %s Phase %2.2f',stimulus.curTrial,stimulus.categories{task.thistrial.category},images.phases(task.thistrial.phase)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -248,15 +280,15 @@ end
 
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
-global stimulus
+global stimulus images
 
 mglClearScreen(0.5);
 
 upFix(stimulus);
 if stimulus.live.mask
-    mglBltTexture(stimulus.tex{task.thistrial.category}(randi(50),5),[0 0]);
+    mglBltTexture(images.tex{task.thistrial.category}(stimulus.live.imgNum,end),[0 0]);
 elseif stimulus.live.obj
-    mglBltTexture(stimulus.tex{task.thistrial.category}(stimulus.live.imgNum,task.thistrial.phase),[0 0]);
+    mglBltTexture(images.tex{task.thistrial.category}(stimulus.live.imgNum,task.thistrial.phase),[0 0]);
 end
 
 function upFix(stimulus)
@@ -295,12 +327,13 @@ end
 %    initStaircase     %
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
+global images
 %%
 % we're going to be fucking organized this time and put all the staircases
 % in one place.... duh.
 stimulus.staircase = cell(1,3);
 
-stimulus.staircase{1} = doStaircase('init','fixed','fixedVals',1:length(stimulus.phases));
+stimulus.staircase{1} = doStaircase('init','fixed','fixedVals',1:length(images.phases));
 stimulus.staircase{2} = stimulus.staircase{1};
 stimulus.staircase{3} = stimulus.staircase{1};
 
@@ -309,20 +342,15 @@ stimulus.staircase{3} = stimulus.staircase{1};
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
-flip = fliplr(1:length(stimulus.phases));
-stimulus.staircase{1}.testValues = flip(stimulus.staircase{1}.testValues);
 out = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=1','gamma=1/3');
-disp(sprintf('Threshold for category %s = %2.2f%%',stimulus.categories{1},interp1(1:length(stimulus.phases),100*stimulus.phases,out.threshold)));
+disp(sprintf('Threshold for category %s = %2.2f%%',stimulus.categories{1},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
 %%
-
-stimulus.staircase{2}.testValues = flip(stimulus.staircase{2}.testValues);
 out = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=1','gamma=1/3');
-disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{2},interp1(1:length(stimulus.phases),100*stimulus.phases,out.threshold)));
+disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{2},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
 
 %%
-stimulus.staircase{3}.testValues = flip(stimulus.staircase{3}.testValues);
 out = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=1','gamma=1/3');
-disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{3},interp1(1:length(stimulus.phases),100*stimulus.phases,out.threshold)));
+disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{3},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -355,7 +383,7 @@ if ~isfield(stimulus,'imagesLoaded') || (~stimulus.imagesLoaded)
 
       % make sure we opened ok
       if isempty(stimulus.raw{i})
-	disp(sprintf('(objloc) Could not load images; %s',categories{i}));
+	disp(sprintf('(cat_awe) Could not load images; %s',categories{i}));
 	keyboard
       end
       % get average mag
@@ -375,7 +403,7 @@ if ~isfield(stimulus,'imagesLoaded') || (~stimulus.imagesLoaded)
   
   stimulus.imagesLoaded = 1;
 else
-  disp(sprintf('(objloc) Stimulus already initialized'));
+  disp(sprintf('(cat_awe) Stimulus already initialized'));
 end
 
 
@@ -389,7 +417,7 @@ for i = 1:stimulus.nCategories
 end
 %%
 % create textures of all images
-disppercent(-inf,'(objloc) Converting images to textures');
+disppercent(-inf,'(cat_awe) Converting images to textures');
 for iCategory = 1:stimulus.nCategories
     for iImage = 1:stimulus.raw{iCategory}.n
       thisImage = stimulus.raw{iCategory}.halfFourier{iImage};
@@ -400,33 +428,15 @@ for iCategory = 1:stimulus.nCategories
       thisImage.phase = rand(size(thisImage.mag))*2*pi;
       thisImage.originalDims = [stimulus.heightPix stimulus.widthPix];
       scramble = reconstructFromHalfFourier(thisImage);
-      for z = 1:length(stimulus.phases)
-          percScramble = stimulus.phases(z);
-          stimulus.tex{iCategory}(iImage,z) = mglCreateTexture(contrastNormalize(contrastNormalize(original .* (1-percScramble) + scramble .* percScramble)));
+      for z = 1:size(stimulus.phases,2)
+          percSignal = stimulus.phases(iCategory,z);
+          stimulus.tex{iCategory}(iImage,z) = mglCreateTexture(contrastNormalize(contrastNormalize(original .* percSignal + scramble .* (1-percSignal))));
       end
       disppercent(calcPercentDone(iCategory,stimulus.nCategories,iImage,stimulus.raw{iCategory}.n));
     end
 end
 disppercent(inf);
 
-% Generate mask frames (say... 500?)
-for i = 1:100
-end
-
-%%
-% test video
-for i = 1:100
-    thisImage.phase = thisImage.phase + randn(size(thisImage.mag))/5;
-    scramble = reconstructFromHalfFourier(thisImage);
-    curImage = original .* (1-percScramble) + scramble .* percScramble;
-    vid{i} = mglCreateTexture(contrastNormalize(curImage));
-end
-%%
-for i = 1:100
-    mglBltTexture(vid{i},[0 0]);
-    mglFlush
-    pause(0.1);
-end
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    getHalfFourier    %
 %%%%%%%%%%%%%%%%%%%%%%%%
