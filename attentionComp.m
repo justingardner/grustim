@@ -35,8 +35,9 @@ stimulus.cueColor = [1 1 1];
 stimulus.interval = [2 4];
 
 %set parameters of staircase
-stimulus.initialThreshold = 5;
+stimulus.initialThreshold = [4 4]; %for low and high separately
 stimulus.stepsize = .05;
+stimulus.minStepsize = 0.05;
 stimulus.minThreshold = 0;
 stimulus.maxThreshold = 45;
 
@@ -50,8 +51,8 @@ myscreen = initScreen(myscreen);
 
 task{1}.waitForBacktick = 0;
 % task{1}.waitForBacktick = 1;
-task{1}.segmin = [1 3 0.3 0.7 1.5 1.5];
-task{1}.segmax = [1 3 0.3 0.7 1.5 5];
+task{1}.segmin = [1 0.7 0.3 0.7 1.5 1.5];
+task{1}.segmax = [1 0.7 0.3 0.7 1.5 5];
 task{1}.getResponse = [0 0 0 0 1 0];
 % task{1}.synchToVol = [0 0 0 0 0 1];
 task{1}.random = 1;
@@ -263,29 +264,51 @@ for i = 1:length(stimulus.angles)
       %stim centers
       [stimulus.x(i), stimulus.y(i)] = pol2cart(stimulus.angles(i),stimulus.radius);
       
-        % circular reference lines
-    stimulus.refLines.x1{i} = [];
-    stimulus.refLines.y1{i} = [];
-    stimulus.refLines.x2{i} = [];
-    stimulus.refLines.y2{i} = [];
-  d = 0:1:360;
-  for dIndex = 1:length(d)-1
-    stimulus.refLines.x1{i} = [stimulus.refLines.x1{i} stimulus.x(i)+stimulus.width/2*cos(d2r(d(dIndex)))];
-    stimulus.refLines.y1{i} = [stimulus.refLines.y1{i} stimulus.y(i)+stimulus.width/2*sin(d2r(d(dIndex)))];
-    stimulus.refLines.x2{i} = [stimulus.refLines.x2{i} stimulus.x(i)+stimulus.width/2*cos(d2r(d(dIndex+1)))];
-    stimulus.refLines.y2{i} = [stimulus.refLines.y2{i} stimulus.y(i)+stimulus.width/2*sin(d2r(d(dIndex+1)))];
-  end
-      
+%         % circular reference lines
+%     stimulus.refLines.x1{i} = [];
+%     stimulus.refLines.y1{i} = [];
+%     stimulus.refLines.x2{i} = [];
+%     stimulus.refLines.y2{i} = [];
+%   d = 0:1:360;
+%   for dIndex = 1:length(d)-1
+%     stimulus.refLines.x1{i} = [stimulus.refLines.x1{i} stimulus.x(i)+stimulus.width/2*cos(d2r(d(dIndex)))];
+%     stimulus.refLines.y1{i} = [stimulus.refLines.y1{i} stimulus.y(i)+stimulus.width/2*sin(d2r(d(dIndex)))];
+%     stimulus.refLines.x2{i} = [stimulus.refLines.x2{i} stimulus.x(i)+stimulus.width/2*cos(d2r(d(dIndex+1)))];
+%     stimulus.refLines.y2{i} = [stimulus.refLines.y2{i} stimulus.y(i)+stimulus.width/2*sin(d2r(d(dIndex+1)))];
+%   end
+%       
       
 end
+
+% see if there was a previous staircase
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/attentionComp/%s', mglGetSID))
+    files = dir(sprintf('~/data/attentionComp/%s', mglGetSID));
+    if ~isempty(files)
+        s = load(sprintf('~data/attentionComp/%s/%s', mglGetSID,files(end).name));
+    end
+else
+    s = getLastStimfile(myscreen);
+end
+if ~isempty(s)
+    if isfield(s, 'stimulus') && isfield(s.stimulus,'stair')
+        % set starting thershold to staircase value
+        stimulus.initialThreshold(1) = s.stimulus.stair{1}.threshold;
+        stimulus.initialThreshold(2) = s.stimulus.stair{2}.threshold;
+        % display what we are doing
+        disp(sprintf('(attentionComp) Setting starting thershold based on last stimfile to: %f %f',stimulus.initialThreshold(1), stimulus.initialThreshold(2)));       
+    end
+    clear s;
+end
+
 
 % now create staircases for each orientation
 for i = 1:2
   % init a 2 down 1 up staircase
-  stimulus.stair{i} = upDownStaircase(1,2,stimulus.initialThreshold,stimulus.stepsize);
+  stimulus.stair{i} = upDownStaircase(1,2,stimulus.initialThreshold(i),[stimulus.stepsize, stimulus.minStepsize, stimulus.stepsize], 'pest');
   stimulus.stair{i}.minThreshold = stimulus.minThreshold;
   stimulus.stair{i}.maxThreshold = stimulus.maxThreshold;
   
 end
+
 
 
