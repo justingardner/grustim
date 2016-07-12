@@ -6,9 +6,6 @@
 %    purpose: biased competition experiment
 %
 
-% Contrasts
-% Low/High 12.5/50%
-
 % Orientations
 % Vertical/CW to vertical => staircased
 
@@ -16,8 +13,8 @@ function myscreen = attentionComp()
 
 global stimulus
 stimulus.width = 6; % gabor
-stimulus.contrastLow = .125;
-stimulus.contrastHigh = .5;
+stimulus.contrastLow = .2;
+stimulus.contrastHigh = .8;
 stimulus.sf = 1.8;
 stimulus.orientation = 90;
 % angles  (1->4 clockwise from top)
@@ -49,12 +46,13 @@ myscreen = initScreen(myscreen);
 % set up task
 %%%%%%%%%%%%%%%%%%%%%
 
-task{1}.waitForBacktick = 0;
-% task{1}.waitForBacktick = 1;
-task{1}.segmin = [1 0.7 0.3 0.7 1.5 1.5];
-task{1}.segmax = [1 0.7 0.3 0.7 1.5 5];
+% task{1}.waitForBacktick = 0;
+task{1}.waitForBacktick = 1;
+% trial: 4.2s + ITI(1~14s)
+task{1}.segmin = [1 0.7 0.3 0.7 1.5 1];
+task{1}.segmax = [1 0.7 0.3 0.7 1.5 14];
 task{1}.getResponse = [0 0 0 0 1 0];
-% task{1}.synchToVol = [0 0 0 0 0 1];
+task{1}.synchToVol = [0 0 0 0 0 1];
 task{1}.random = 1;
 
 % parameters
@@ -155,6 +153,8 @@ if task.thistrial.thisseg == 1
 
     task.thistrial.attendedPair = attendedPair;
     task.thistrial.unattendedPair = unattendedPair;
+    
+%     disp(sprintf('(attentionComp) Trial %i: ITI %1.2f s', task.trialnum, task.thistrial.seglen(end)));
 
 elseif any(task.thistrial.thisseg == stimulus.interval)
 
@@ -220,14 +220,14 @@ if task.thistrial.whichInterval(task.thistrial.targetLoc) == task.thistrial.whic
     stimulus.cueColor = [0 1 0];
     %update staircase
     stimulus.stair{task.thistrial.targetContrast} = upDownStaircase(stimulus.stair{task.thistrial.targetContrast},1);
-    disp(sprintf('(ExptName) %i: %s contrast %0.4f correct', task.trialnum, task.thistrial.contrast{task.thistrial.targetLoc},stimulus.stair{task.thistrial.targetContrast}.threshold));
+    disp(sprintf('(attentionComp) Trial %i: %s contrast %0.4f correct', task.trialnum, task.thistrial.contrast{task.thistrial.targetLoc},stimulus.stair{task.thistrial.targetContrast}.threshold));
 else
     % incorrect
     task.thistrial.correct = false;
     stimulus.cueColor = [1 0 0];
     %update staircase
     stimulus.stair{task.thistrial.targetContrast} = upDownStaircase(stimulus.stair{task.thistrial.targetContrast},0);
-    disp(sprintf('(ExptName) %i: %s contrast %0.4f incorrect', task.trialnum, task.thistrial.contrast{task.thistrial.targetLoc}, stimulus.stair{task.thistrial.targetContrast}.threshold));
+    disp(sprintf('(attentionComp) Trial %i: %s contrast %0.4f incorrect', task.trialnum, task.thistrial.contrast{task.thistrial.targetLoc}, stimulus.stair{task.thistrial.targetContrast}.threshold));
 end
 end
 
@@ -289,26 +289,23 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/attentionComp/%s', mglGetSID))
 else
     s = getLastStimfile(myscreen);
 end
-if ~isempty(s)
-    if isfield(s, 'stimulus') && isfield(s.stimulus,'stair')
+if exist('s') && isfield(s, 'stimulus') && isfield(s.stimulus,'stair')
         % set starting thershold to staircase value
-        stimulus.initialThreshold(1) = s.stimulus.stair{1}.threshold;
-        stimulus.initialThreshold(2) = s.stimulus.stair{2}.threshold;
+%         stimulus.initialThreshold(1) = s.stimulus.stair{1}.threshold;
+%         stimulus.initialThreshold(2) = s.stimulus.stair{2}.threshold;
+        stimulus.stair{1} = s.stimulus.stair{1};
+        stimulus.stair{2} = s.stimulus.stair{2};
         % display what we are doing
         disp(sprintf('(attentionComp) Setting starting thershold based on last stimfile to: %f %f',stimulus.initialThreshold(1), stimulus.initialThreshold(2)));       
-    end
-    clear s;
-end
-
-
-% now create staircases for each orientation
-for i = 1:2
-  % init a 2 down 1 up staircase
-  stimulus.stair{i} = upDownStaircase(1,2,stimulus.initialThreshold(i),[stimulus.stepsize, stimulus.minStepsize, stimulus.stepsize], 'pest');
-  stimulus.stair{i}.minThreshold = stimulus.minThreshold;
-  stimulus.stair{i}.maxThreshold = stimulus.maxThreshold;
+        
+        clear s;
+else
+        % now create staircases for each orientation
+        for i = 1:2
+     % init a 2 down 1 up staircase
+         stimulus.stair{i} = upDownStaircase(1,2,stimulus.initialThreshold(i),[stimulus.stepsize, stimulus.minStepsize, stimulus.stepsize], 'pest');
+         stimulus.stair{i}.minThreshold = stimulus.minThreshold;
+         stimulus.stair{i}.maxThreshold = stimulus.maxThreshold;
   
+        end
 end
-
-
-
