@@ -205,10 +205,10 @@ stimulus.stairInfo.initThresh.coherence = 0.85;
 stimulus.stairInfo.pedOpts = {'coherence','contrast'};
 
 if stimulus.scan
-    stimulus.stairInfo.nocatchP = 2;
-    % we are scanning, add more pedestals so we get the full range
-    stimulus.stairInfo.pedestals.contrast = [0.325 0.85];
-    stimulus.stairInfo.pedestals.coherence = [0.15 0.6];
+    stimulus.stairInfo.nocatchP = 4;
+    % we are scanning, add more pedestals so we get the full range (these are now the same as for nocatch runs)
+    stimulus.stairInfo.pedestals.contrast = [0.325 0.4 0.55 0.85];
+    stimulus.stairInfo.pedestals.coherence = [0.15 0.3 0.45 0.6];
     
     if ~stimulus.nocatch
         disp('(cohcon) Auto-setting nocatch for scan run.');
