@@ -22,8 +22,8 @@ myscreen.background = myscreen.gray;
 task{1}.waitForBacktick = 0;
 
 % Durations
-task{1}.segmin = [1 0.5 1 0.5 3]; % [1 0.5 3 0.5 3]
-task{1}.segmax = [1 0.5 1 0.5 11]; % [1 0.5 9 0.5 9]
+task{1}.segmin = [1 0.5 10 0.5 3];
+task{1}.segmax = [1 0.5 10 0.5 11];
 task{1}.getResponse = [0 0 0 0 1];
 task{1}.synchToVol = [0 0 0 0 0];
 
