@@ -4,6 +4,7 @@
 % the same location, make a saccade to it; if it appears elsewhere - keep
 % fixating
 
+% Trial number calculation?
 
 function myscreen = suppression2
 
@@ -25,7 +26,7 @@ task{1}.waitForBacktick = 0;
 task{1}.segmin = [1 0.5 10 0.5 3];
 task{1}.segmax = [1 0.5 10 0.5 11];
 task{1}.getResponse = [0 0 0 0 1];
-task{1}.synchToVol = [0 0 0 0 0];
+task{1}.synchToVol = [0 0 0 0 1];
 
 task{1}.random = 1;
 task{1}.seglenPrecompute = 1;
