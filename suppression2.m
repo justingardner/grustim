@@ -4,11 +4,6 @@
 % the same location, make a saccade to it; if it appears elsewhere - keep
 % fixating
 
-% To Justin: add fmri scanner? How?
-% Add eyetracking?
-% Number of trials and total durations?
-% Do I need to press a button for getResponse is on?
-
 
 function myscreen = suppression2
 
@@ -22,17 +17,15 @@ end
 myscreen = initScreen;
 % myscreen = initScreen('fMRIproj32');
 myscreen.background = myscreen.gray;
-% mglClose;
-% return
 
 % MRI
-% task{1}.waitForBacktick = 1;
+task{1}.waitForBacktick = 0;
 
 % Durations
-task{1}.segmin = [1 0.5 10 0.5 3]; % [1 0.5 3 0.5 3]
-task{1}.segmax = [1 0.5 10 0.5 11]; % [1 0.5 9 0.5 9]
+task{1}.segmin = [1 0.5 1 0.5 3]; % [1 0.5 3 0.5 3]
+task{1}.segmax = [1 0.5 1 0.5 11]; % [1 0.5 9 0.5 9]
 task{1}.getResponse = [0 0 0 0 1];
-task{1}.syncToVol = [0 0 1 0 1];
+task{1}.synchToVol = [0 0 0 0 0];
 
 task{1}.random = 1;
 task{1}.seglenPrecompute = 1;
@@ -211,7 +204,7 @@ elseif (task.thistrial.thisseg == 4) % Response targets
         mglFillOval(target2_x, target2_y, stimulus.t2_size,  stimulus.t2_color);
     end
 elseif task.thistrial.thisseg == 5 % Inter-trial interval
-    mglFillOval(fixation_x, fixation_y, stimulus.fixation_size,  stimulus.fixation_isi_color);
+    mglFillOval(fixation_x, fixation_y, stimulus.fixation_size,  stimulus.fixation_color);
     mglFillRect(frames_x, frames_y, stimulus.frames_size,  stimulus.frames_color);
 end
 
@@ -240,7 +233,5 @@ function stimulus = myInitStimulus(stimulus,myscreen)
 
 stimulus.texture = mglCreateTexture(round(rand(500,500)*255));
 
-
-% fix: add stuff to initalize your stimulus
 
 
