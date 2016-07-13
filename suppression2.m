@@ -32,18 +32,18 @@ task{1}.random = 1;
 %task{1}.seglenPrecompute = 1;
 
 % Parameteres
-numrep1 = 6; % How many time to repeat trials per MRI session
-t0=repmat([45,135,225,315],[1,numrep1]);
-t1=randperm(length(t0)); t2=t0(t1);
-task{1}.parameter.memory_cue_location = t2;
+task{1}.parameter.memory_cue_location = [45,135,225,315];
 
 % Random settings
 task{1}.randVars.uniform.t2_location = [-180];  % Relative to memory
 task{1}.randVars.uniform.response_target = [0 1];
-task{1}.randVars.uniform.peripheral_trial = [0 0];
+task{1}.randVars.uniform.peripheral_trial = [0];
+
+% Radius of stim``
+stimulus.target_radius = 10;
 
 % Exp duration
-task{1}.numBlocks=1;
+% task{1}.numBlocks=1;
 % task{1}.numTrials=20;
 
 
@@ -83,7 +83,6 @@ stimulus.frames_size = [1.5 1.5];
 stimulus.frames_color = [0.45, 0.45, 0.45];
 
 % Response targets
-stimulus.target_radius = 8;
 stimulus.t1_size = [1.5, 1.5];
 stimulus.t1_color = [0.2, 0.2, 0.2];
 stimulus.t2_size = [1.5, 1.5];
