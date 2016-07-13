@@ -4,11 +4,7 @@
 % the same location, make a saccade to it; if it appears elsewhere - keep
 % fixating
 
-% To Justin: add fmri scanner? How?
-% Add eyetracking?
-% Number of trials and total durations?
-% Do I need to press a button for getResponse is on?
-
+% Trial number calculation?
 
 function myscreen = suppression2
 
@@ -22,34 +18,32 @@ end
 myscreen = initScreen;
 % myscreen = initScreen('fMRIproj32');
 myscreen.background = myscreen.gray;
-% mglClose;
-% return
 
 % MRI
-% task{1}.waitForBacktick = 1;
+task{1}.waitForBacktick = 1;
 
 % Durations
-task{1}.segmin = [1 0.5 10 0.5 3]; % [1 0.5 3 0.5 3]
-task{1}.segmax = [1 0.5 10 0.5 11]; % [1 0.5 9 0.5 9]
+task{1}.segmin = [1 0.5 10 0.5 3];
+task{1}.segmax = [1 0.5 10 0.5 11];
 task{1}.getResponse = [0 0 0 0 1];
-task{1}.syncToVol = [0 0 1 0 1];
+task{1}.synchToVol = [0 0 0 0 1];
 
 task{1}.random = 1;
-task{1}.seglenPrecompute = 1;
+%task{1}.seglenPrecompute = 1;
 
 % Parameteres
-numrep1 = 6; % How many time to repeat trials per MRI session
-t0=repmat([45,135,225,315],[1,numrep1]);
-t1=randperm(length(t0)); t2=t0(t1);
-task{1}.parameter.memory_cue_location = t2;
+task{1}.parameter.memory_cue_location = [45,135,225,315];
 
 % Random settings
 task{1}.randVars.uniform.t2_location = [-180];  % Relative to memory
 task{1}.randVars.uniform.response_target = [0 1];
-task{1}.randVars.uniform.peripheral_trial = [0 0];
+task{1}.randVars.uniform.peripheral_trial = [0];
+
+% Radius of stim``
+stimulus.target_radius = 10;
 
 % Exp duration
-task{1}.numBlocks=1;
+% task{1}.numBlocks=1;
 % task{1}.numTrials=20;
 
 
@@ -89,7 +83,6 @@ stimulus.frames_size = [1.5 1.5];
 stimulus.frames_color = [0.45, 0.45, 0.45];
 
 % Response targets
-stimulus.target_radius = 8;
 stimulus.t1_size = [1.5, 1.5];
 stimulus.t1_color = [0.2, 0.2, 0.2];
 stimulus.t2_size = [1.5, 1.5];
@@ -101,7 +94,7 @@ stimulus.t2_color = [0.2, 0.2, 0.2];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
+%myscreen = eyeCalibDisp(myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
@@ -211,7 +204,7 @@ elseif (task.thistrial.thisseg == 4) % Response targets
         mglFillOval(target2_x, target2_y, stimulus.t2_size,  stimulus.t2_color);
     end
 elseif task.thistrial.thisseg == 5 % Inter-trial interval
-    mglFillOval(fixation_x, fixation_y, stimulus.fixation_size,  stimulus.fixation_isi_color);
+    mglFillOval(fixation_x, fixation_y, stimulus.fixation_size,  stimulus.fixation_color);
     mglFillRect(frames_x, frames_y, stimulus.frames_size,  stimulus.frames_color);
 end
 
@@ -240,7 +233,5 @@ function stimulus = myInitStimulus(stimulus,myscreen)
 
 stimulus.texture = mglCreateTexture(round(rand(500,500)*255));
 
-
-% fix: add stuff to initalize your stimulus
 
 
