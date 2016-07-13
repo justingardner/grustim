@@ -7,7 +7,7 @@
 %
 
 % Orientations
-% Vertical/CW to vertical => staircased
+% Vertical/CW to vertical
 
 function myscreen = attentionComp()
 
@@ -32,7 +32,7 @@ stimulus.cueColor = [1 1 1];
 stimulus.interval = [2 4];
 
 %set parameters of staircase
-stimulus.initialThreshold = [4 4]; %for low and high separately
+stimulus.initialThreshold = [3 3]; %for low and high separately
 stimulus.stepsize = .05;
 stimulus.minStepsize = 0.05;
 stimulus.minThreshold = 0;
@@ -81,7 +81,7 @@ stimulus = initGabor(stimulus,myscreen);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
+% myscreen = eyeCalibDisp(myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
@@ -282,9 +282,9 @@ end
 
 % see if there was a previous staircase
 if ~isempty(mglGetSID) && isdir(sprintf('~/data/attentionComp/%s', mglGetSID))
-    files = dir(sprintf('~/data/attentionComp/%s', mglGetSID));
+    files = dir(sprintf('~/data/attentionComp/%s/1*', mglGetSID));
     if ~isempty(files)
-        s = load(sprintf('~data/attentionComp/%s/%s', mglGetSID,files(end).name));
+        s = load(sprintf('~/data/attentionComp/%s/%s', mglGetSID,files(end).name));
     end
 else
     s = getLastStimfile(myscreen);
@@ -309,3 +309,5 @@ else
   
         end
 end
+
+
