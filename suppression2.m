@@ -20,7 +20,7 @@ myscreen = initScreen;
 myscreen.background = myscreen.gray;
 
 % MRI
-task{1}.waitForBacktick = 0;
+task{1}.waitForBacktick = 1;
 
 % Durations
 task{1}.segmin = [1 0.5 10 0.5 3];
@@ -29,7 +29,7 @@ task{1}.getResponse = [0 0 0 0 1];
 task{1}.synchToVol = [0 0 0 0 1];
 
 task{1}.random = 1;
-task{1}.seglenPrecompute = 1;
+%task{1}.seglenPrecompute = 1;
 
 % Parameteres
 numrep1 = 6; % How many time to repeat trials per MRI session
@@ -95,7 +95,7 @@ stimulus.t2_color = [0.2, 0.2, 0.2];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
+%myscreen = eyeCalibDisp(myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
