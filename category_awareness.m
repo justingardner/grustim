@@ -74,9 +74,9 @@ disp(sprintf('(cohcon) This is run #%i',stimulus.counter));
 myscreen = initStimulus('stimulus',myscreen);
 
 if stimulus.scan
-    stimulus.responseKeys = [1 2 3]; % corresponds to CAT 1 CAT 2 CAT 3
+    stimulus.responseKeys = [2 1]; % corresponds to NOMATCH, MATCH
 else
-    stimulus.responseKeys = [1 2 3]; % corresponds to CAT 1 CAT 2 CAT 3
+    stimulus.responseKeys = [2 1]; % corresponds to  NOMATCH, MATCH
 end
 
 stimulus.colors.black = [0 0 0];
@@ -96,8 +96,8 @@ stimulus.seg.mask = 3;
 stimulus.seg.ISI = 4;
 stimulus.seg.resp = 5;
 stimulus.seg.ITI = 6;
-task{1}{1}.segmin = [0.15 0.050 0.450 0.3 1 .5];
-task{1}{1}.segmax = [0.15 0.050 0.450 0.3 1 .5];
+task{1}{1}.segmin = [0.15 0.050 0.450 0.4 1.2 .5];
+task{1}{1}.segmax = [0.15 0.050 0.450 0.4 1.2 .5];
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
@@ -105,6 +105,7 @@ if stimulus.scan
 end
 task{1}{1}.getResponse = [0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.parameter.category = [1 2 3]; % which category is shown on this trial
+task{1}{1}.parameter.match = [0 1]; % whether this is a "match" trial or not
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = inf;
 
@@ -127,7 +128,7 @@ end
 stimulus.nostairperf = [3/6 4/6 5/6]; % these are the performances we want to use when no staircase is running
 if stimulus.dostaircase
     % use a range of phases
-    images.phases = repmat(0.05:.1:0.75,3,1);
+    images.phases = repmat(0:.1:.9,3,1);
     if stimulus.initStair
         % We are starting our staircases from scratch
         disp(sprintf('(cohcon) Initializing staircases'));
@@ -141,9 +142,9 @@ else
         return
     else
         disp('(cat_awe) Loading staircases and predicting phases from weibull fits.');
-        out(1) = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=1','gamma=1/3');
-        out(2) = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=0','gamma=1/3');
-        out(3) = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=0','gamma=1/3');
+        out(1) = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=1','gamma=1/2');
+        out(2) = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=0','gamma=1/2');
+        out(3) = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=0','gamma=1/2');
         testPhases = zeros(3,length(stimulus.nostairperf));
         for cat = 1:3
             for pi = 1:length(stimulus.nostairperf)
@@ -161,8 +162,6 @@ else
         stimulus.phases = testPhases;
     end
 end
-
-
 
 %% Load images
 images = myInitStimulus(images);
@@ -245,6 +244,10 @@ stimulus.live.imgNum = randi(50);
 
 disp(sprintf('Trial %i Category: %s Phase %2.2f',stimulus.curTrial,stimulus.categories{task.thistrial.category},images.phases(task.thistrial.phase)));
 
+
+oneof = 1:3;
+oneof = oneof(oneof~=task.thistrial.category);
+stimulus.live.matchCompare = oneof(randi(2));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -256,6 +259,7 @@ global stimulus
 
 stimulus.live.mask=0;
 stimulus.live.obj=0;
+stimulus.live.match=0;
 
 switch task.thistrial.thisseg
     case stimulus.seg.ITI
@@ -271,6 +275,7 @@ switch task.thistrial.thisseg
     case stimulus.seg.ISI
         stimulus.live.fixColor = stimulus.colors.black;
     case stimulus.seg.resp
+        stimulus.live.match = 1;
         stimulus.live.fixColor = stimulus.colors.white;
 end
   
@@ -284,12 +289,26 @@ global stimulus images
 
 mglClearScreen(0.5);
 
-upFix(stimulus);
+if ~stimulus.live.match ||  task.thistrial.gotResponse>0
+    upFix(stimulus);
+else
+    upMatch(task,stimulus);
+end
 if stimulus.live.mask
-    mglBltTexture(images.tex{task.thistrial.category}(stimulus.live.imgNum,end),[0 0]);
+    mglBltTexture(images.tex{task.thistrial.category}(stimulus.live.imgNum,1),[0 0]);
 elseif stimulus.live.obj
     mglBltTexture(images.tex{task.thistrial.category}(stimulus.live.imgNum,task.thistrial.phase),[0 0]);
 end
+
+function upMatch(task,stimulus)
+mglTextSet('Helvetica',32,[1 1 1 1],0,0,0,0,0,0,0);
+if task.thistrial.match
+    mglTextDraw(stimulus.categories{task.thistrial.category},[0 0]);
+else
+    mglTextDraw(stimulus.categories{stimulus.live.matchCompare},[0 0]);
+end
+mglFlush;
+
 
 function upFix(stimulus)
 %%
@@ -308,7 +327,7 @@ fixColors = {stimulus.colors.red,stimulus.colors.green};
 
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
-        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.category);
+        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
         disp(sprintf('Subject pressed %i: %s',task.thistrial.whichButton,responseText{task.thistrial.correct+1}));
         % Store whether this was correct
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
@@ -342,14 +361,14 @@ stimulus.staircase{3} = stimulus.staircase{1};
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
-out = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=1','gamma=1/3');
+out = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=1','gamma=1/2');
 disp(sprintf('Threshold for category %s = %2.2f%%',stimulus.categories{1},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
 %%
-out = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=1','gamma=1/3');
+out = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=1','gamma=1/2');
 disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{2},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
 
 %%
-out = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=1','gamma=1/3');
+out = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=1','gamma=1/2');
 disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{3},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -430,7 +449,7 @@ for iCategory = 1:stimulus.nCategories
       scramble = reconstructFromHalfFourier(thisImage);
       for z = 1:size(stimulus.phases,2)
           percSignal = stimulus.phases(iCategory,z);
-          stimulus.tex{iCategory}(iImage,z) = mglCreateTexture(contrastNormalize(contrastNormalize(original .* percSignal + scramble .* (1-percSignal))));
+          stimulus.tex{iCategory}(iImage,z) = mglCreateTexture(contrastNormalize(original .* percSignal + scramble .* (1-percSignal)));
       end
       disppercent(calcPercentDone(iCategory,stimulus.nCategories,iImage,stimulus.raw{iCategory}.n));
     end

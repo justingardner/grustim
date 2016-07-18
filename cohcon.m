@@ -1,4 +1,3 @@
-.
 % cohCon
 %
 %      usage: myscreen=cohcon()
@@ -289,24 +288,25 @@ stimulus.text.cTexK = mglText('C');
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.stim = 1;
-stimulus.seg.mask = 2;
-stimulus.seg.ISI = 3;
-stimulus.seg.resp = 4;
-stimulus.seg.ITI = 5;
-task{1}{1}.segmin = [0.5 0 .5 1 .2];
-task{1}{1}.segmax = [0.5 0 1 1 .4];
+stimulus.seg.pre = 1;
+stimulus.seg.stim = 2;
+stimulus.seg.mask = 3;
+stimulus.seg.ISI = 4;
+stimulus.seg.resp = 5;
+stimulus.seg.ITI = 6;
+task{1}{1}.segmin = [0.2 0.5 0 .5 1 .2];
+task{1}{1}.segmax = [0.2 0.5 0 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
     task{1}{1}.segmax(stimulus.seg.ITI) = 11;
 end
 
-task{1}{1}.synchToVol = [0 0 0 0 0];
+task{1}{1}.synchToVol = [0 0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-task{1}{1}.getResponse = [0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
+task{1}{1}.getResponse = [0 0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
@@ -540,6 +540,10 @@ global stimulus
 
 stimulus.live.mt = 0;
 switch task.thistrial.thisseg
+    case stimulus.seg.pre
+        stimulus.live.dots = 0;
+        stimulus.live.fixColor = stimulus.colors.white;
+        stimulus.live.catchFix = 0;
     case stimulus.seg.ITI
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
