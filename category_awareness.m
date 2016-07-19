@@ -96,12 +96,14 @@ stimulus.seg.mask = 3;
 stimulus.seg.ISI = 4;
 stimulus.seg.resp = 5;
 stimulus.seg.ITI = 6;
-task{1}{1}.segmin = [0.15 0.050 0.450 0.4 1.2 .5];
-task{1}{1}.segmax = [0.15 0.050 0.450 0.4 1.2 .5];
+task{1}{1}.segmin = [0.15 0.050 0.450 0.4 1.2 1];
+task{1}{1}.segmax = [0.15 0.050 0.450 0.4 1.2 2.5];
 
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
+    task{1}{1}.segmin = [0.15 0.050 0.450 2 2 2];
+    task{1}{1}.segmax = [0.15 0.050 0.450 11 2 11];
 end
 task{1}{1}.getResponse = [0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.parameter.category = [1 2 3]; % which category is shown on this trial
@@ -361,15 +363,22 @@ stimulus.staircase{3} = stimulus.staircase{1};
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
-out = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=1','gamma=1/2');
-disp(sprintf('Threshold for category %s = %2.2f%%',stimulus.categories{1},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
+out{1} = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=0','gamma=1/2');
+out{2} = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=0','gamma=1/2');
+out{3} = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=0','gamma=1/2');
 %%
-out = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=1','gamma=1/2');
-disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{2},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
-
-%%
-out = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=1','gamma=1/2');
-disp(sprintf('Threshold for category %s = %0.2f%%',stimulus.categories{3},interp1(1:size(stimulus.phases,2),100*stimulus.phases,out.threshold)));
+figure, hold on
+cmap = brewermap(3,'Pastel2');
+for i = 1:3
+    plot(out{i}.fit.x,out{i}.fit.y*100,'Color',cmap(i,:));
+    legs{i} = sprintf('%s: %0.2f%%',stimulus.categories{i},interp1(1:size(stimulus.phases,2),100*stimulus.phases(i,:),out{i}.threshold));
+end
+set(gca,'XTick',1:length(stimulus.phases),'XTickLabel',100*stimulus.phases(1,:));
+xlabel('Signal (%)');
+ylabel('Percent Correct (%)');
+legend(legs);
+title('Psychometric Functions and Thresholds by Category');
+drawPublishAxis
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
