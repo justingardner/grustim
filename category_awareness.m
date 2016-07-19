@@ -35,6 +35,7 @@ stimulus.scan = scan;
 stimulus.plots = plots;
 clear localizer staircase scan
 
+
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 %% Setup Screen
@@ -68,6 +69,12 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/category_awareness/%s',mglGetSID
     end
 end
 disp(sprintf('(cohcon) This is run #%i',stimulus.counter));
+
+
+if stimulus.plots==2
+    dispInfo(stimulus);
+    return
+end
 
 %% Initialize Stimulus
 
@@ -130,7 +137,7 @@ end
 stimulus.nostairperf = [3/6 4/6 5/6]; % these are the performances we want to use when no staircase is running
 if stimulus.dostaircase
     % use a range of phases
-    images.phases = repmat(0:.1:.9,3,1);
+    images.phases = repmat(0:.1:.75,3,1);
     if stimulus.initStair
         % We are starting our staircases from scratch
         disp(sprintf('(cohcon) Initializing staircases'));
@@ -291,15 +298,15 @@ global stimulus images
 
 mglClearScreen(0.5);
 
-if ~stimulus.live.match ||  task.thistrial.gotResponse>0
-    upFix(stimulus);
-else
-    upMatch(task,stimulus);
-end
 if stimulus.live.mask
     mglBltTexture(images.tex{task.thistrial.category}(stimulus.live.imgNum,1),[0 0]);
 elseif stimulus.live.obj
     mglBltTexture(images.tex{task.thistrial.category}(stimulus.live.imgNum,task.thistrial.phase),[0 0]);
+end
+if ~stimulus.live.match ||  task.thistrial.gotResponse>0
+    upFix(stimulus);
+else
+    upMatch(task,stimulus);
 end
 
 function upMatch(task,stimulus)
@@ -369,14 +376,17 @@ out{3} = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig
 %%
 figure, hold on
 cmap = brewermap(3,'Pastel2');
+hs = [0 0 0];
 for i = 1:3
+    errbar(out{i}.fit.signal,out{i}.fit.pcorrect*100,out{i}.fit.pcorrectste*100,'Color',cmap(i,:));
     plot(out{i}.fit.x,out{i}.fit.y*100,'Color',cmap(i,:));
+    hs(i) = plot(out{i}.fit.signal,out{i}.fit.pcorrect*100,'o','MarkerFaceColor',cmap(i,:),'MarkerEdgeColor',[1 1 1],'MarkerSize',10);
     legs{i} = sprintf('%s: %0.2f%%',stimulus.categories{i},interp1(1:size(stimulus.phases,2),100*stimulus.phases(i,:),out{i}.threshold));
 end
 set(gca,'XTick',1:length(stimulus.phases),'XTickLabel',100*stimulus.phases(1,:));
 xlabel('Signal (%)');
 ylabel('Percent Correct (%)');
-legend(legs);
+legend(hs,legs);
 title('Psychometric Functions and Thresholds by Category');
 drawPublishAxis
 
