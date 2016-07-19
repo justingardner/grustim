@@ -294,8 +294,8 @@ stimulus.seg.mask = 3;
 stimulus.seg.ISI = 4;
 stimulus.seg.resp = 5;
 stimulus.seg.ITI = 6;
-task{1}{1}.segmin = [0.2 0.5 0 .5 1 .2];
-task{1}{1}.segmax = [0.2 0.5 0 1 1 .4];
+task{1}{1}.segmin = [0 0.5 0 .5 1 .2];
+task{1}{1}.segmax = [0 0.5 0 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
@@ -542,7 +542,11 @@ stimulus.live.mt = 0;
 switch task.thistrial.thisseg
     case stimulus.seg.pre
         stimulus.live.dots = 0;
-        stimulus.live.fixColor = stimulus.colors.white;
+        if stimulus.scan
+            stimulus.live.fixColor = stimulus.colors.white;
+        else
+            stimulus.live.fixColor = stimulus.colors.black;
+        end
         stimulus.live.catchFix = 0;
     case stimulus.seg.ITI
         stimulus.live.dots = 0;

@@ -276,16 +276,16 @@ switch task.thistrial.thisseg
     case stimulus.seg.warn
         stimulus.live.fixColor = stimulus.colors.white;
     case stimulus.seg.stim
-        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.fixColor = stimulus.colors.white;
         stimulus.live.obj = 1;
     case stimulus.seg.mask
-        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.fixColor = stimulus.colors.white;
         stimulus.live.mask = 1;
     case stimulus.seg.ISI
-        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.fixColor = stimulus.colors.white;
     case stimulus.seg.resp
         stimulus.live.match = 1;
-        stimulus.live.fixColor = stimulus.colors.white;
+        stimulus.live.fixColor = stimulus.colors.black;
 end
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
