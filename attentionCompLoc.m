@@ -18,9 +18,11 @@ myscreen = initScreen(myscreen);
 
 % set the first task to be the fixation staircase task
 clear global fixStimulus;
+global fixStimulus;
+fixStimulus.fixWidth = 1.2;
 [task{1} myscreen] = fixStairInitTask(myscreen);
 
-
+% setup task
 TR = .5;
 task{2}{1}.seglen = [6 6 6 6-TR/2];
 task{2}{1}.synchToVol = [0 0 0 1];
@@ -99,7 +101,6 @@ function [task myscreen] = updateScreenCallback(task, myscreen)
 mglClearScreen
 global stimulus
 
-% if (mglGetSecs-task{tnum}.thistrial.segstart)
 if mod(stimulus.flickerIndex, stimulus.flickerNFrame) == 0 
     stimulus.gaborIndex = stimulus.gaborIndex + 1;
     if mod(stimulus.gaborIndex,2)==1

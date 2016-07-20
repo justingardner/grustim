@@ -5,13 +5,13 @@
 %       date: 07/01/2016
 %    purpose: biased competition experiment
 %
-
-% Orientations
-% Vertical/CW to vertical
+%       task: Vertical/CW from vertical
 
 function myscreen = attentionComp()
 
+clear stimulus
 global stimulus
+% Setup parameters for stimulus
 stimulus.width = 6; % gabor
 stimulus.contrastLow = .2;
 stimulus.contrastHigh = .8;
@@ -25,7 +25,8 @@ stimulus.radius = 6;
 stimulus.upperLoc = [1 2];
 stimulus.lowerLoc = [3 4];
 
-stimulus.fixWidth = 1;
+% fixation cross and cue
+stimulus.fixWidth = 1.2;
 stimulus.fixColor = [1 1 1];
 stimulus.cueColor = [1 1 1];
 
@@ -34,7 +35,7 @@ stimulus.interval = [2 4];
 %set parameters of staircase
 stimulus.initialThreshold = [3 3]; %for low and high separately
 stimulus.stepsize = .05;
-stimulus.minStepsize = 0.05;
+stimulus.minStepsize = 0.005;
 stimulus.minThreshold = 0;
 stimulus.maxThreshold = 45;
 
@@ -55,17 +56,18 @@ task{1}.getResponse = [0 0 0 0 1 0];
 task{1}.synchToVol = [0 0 0 0 0 1];
 task{1}.random = 1;
 
-% parameters
-task{1}.parameter.targetContrast = [1 2]; %low/high
+% parameters & randomization
+task{1}.parameter.targetContrast = [1 2]; %1 low /2 high
 task{1}.randVars.uniform.targetLoc = stimulus.locations;
 % task{1}.randVars.uniform.targetContrast = [1 2]; %low/high
 task{1}.randVars.block.unattendedStim = [-1 1 2]; %low alone/ high alone/ both
-task{1}.randVars.block.unattendedStimPos = [1 2];
+task{1}.randVars.block.unattendedStimPos = [1 2]; %1:low-high 2:high-low
 
 task{1}.randVars.calculated.attendContrast = nan;
 task{1}.randVars.calculated.attendAway = nan;
 task{1}.randVars.calculated.attendedPair= {nan};
 task{1}.randVars.calculated.unattendedPair = {nan};
+task{1}.randVars.calculated.correct = nan;
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -104,6 +106,7 @@ myscreen = endTask(myscreen,task);
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 if task.thistrial.thisseg == 1
+    % decide which stim interval will contain tilted garbor at each of 4 locations 
     task.thistrial.whichInterval = round(rand(1,length(stimulus.locations))) + 1;%(round(rand(1,length(stimulus.locations))) + 1)*2;%%
     stimulus.cueColor = [1 1 1];
     
@@ -114,27 +117,28 @@ if task.thistrial.thisseg == 1
         attendedPair = stimulus.lowerLoc;
         unattendedPair = stimulus.upperLoc;
     end
-        
-    if task.thistrial.targetContrast == 1
+    
+    % Attended side    
+    if task.thistrial.targetContrast == 1 % Attend to LOW
         task.thistrial.tex{task.thistrial.targetLoc} = stimulus.tex(1);
         task.thistrial.tex{attendedPair(task.thistrial.targetLoc ~= attendedPair)} = stimulus.tex(2);
         task.thistrial.contrast{task.thistrial.targetLoc} = 'low';
         task.thistrial.contrast{attendedPair(task.thistrial.targetLoc ~= attendedPair)} = 'high';
         task.thistrial.attendContrast = 1;
-    else
+    else   % Attend to HIGH
         task.thistrial.tex{task.thistrial.targetLoc} = stimulus.tex(2);
         task.thistrial.tex{attendedPair(task.thistrial.targetLoc ~= attendedPair)} = stimulus.tex(1);
         task.thistrial.contrast{task.thistrial.targetLoc} = 'high';
         task.thistrial.contrast{attendedPair(task.thistrial.targetLoc ~= attendedPair)} = 'low';
         task.thistrial.attendContrast = 2;
     end
-        
+    
+    % Unattended stimuli configs...
     if task.thistrial.unattendedStimPos == 1
         low = 1; high =2;
     else
         low = 2; high = 1;
     end
-    
      task.thistrial.tex{unattendedPair(low)} = stimulus.tex(1);
      task.thistrial.tex{unattendedPair(high)} = stimulus.tex(2);
      task.thistrial.contrast{unattendedPair(low)} = 'low';
@@ -151,21 +155,23 @@ if task.thistrial.thisseg == 1
         task.thistrial.attendAway = 2;
     end
 
+    % save
     task.thistrial.attendedPair = attendedPair;
     task.thistrial.unattendedPair = unattendedPair;
     
-%     disp(sprintf('(attentionComp) Trial %i: ITI %1.2f s', task.trialnum, task.thistrial.seglen(end)));
+    disp(sprintf('(attentionComp) Trial %i: Location %i ITI %0.2f s', task.trialnum, task.thistrial.targetLoc, task.thistrial.seglen(end)));
 
 elseif any(task.thistrial.thisseg == stimulus.interval)
 
     for loc = 1:length(stimulus.locations)
         if ~isnan(task.thistrial.contrast{loc})
+            % which staircase? (target low or high)
             if strcmp(task.thistrial.contrast(loc), 'low')
                 stairNum = 1;
             else
                 stairNum = 2; 
             end
-            if task.thistrial.thisseg == task.thistrial.whichInterval(loc)*2
+            if task.thistrial.thisseg == task.thistrial.whichInterval(loc)*2 % Segment 2 or 4
                 task.thistrial.thisRotation(loc) = -stimulus.stair{stairNum}.threshold;
             else
                 task.thistrial.thisRotation(loc) = 0;
@@ -175,7 +181,6 @@ elseif any(task.thistrial.thisseg == stimulus.interval)
         end
     end
 end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
@@ -192,8 +197,8 @@ if any(task.thistrial.thisseg == stimulus.interval)
         end
     end
 end
-
-if task.thistrial.thisseg ~= 6 % draw the cue    
+% draw the cue
+if task.thistrial.thisseg ~= 6    
     mglLines2(stimulus.cueLines.x0(task.thistrial.targetLoc), stimulus.cueLines.y0(task.thistrial.targetLoc),...
         stimulus.cueLines.x1(task.thistrial.targetLoc), stimulus.cueLines.y1(task.thistrial.targetLoc), 1.5, stimulus.cueColor);    
 end
@@ -220,6 +225,7 @@ if task.thistrial.whichInterval(task.thistrial.targetLoc) == task.thistrial.whic
     stimulus.cueColor = [0 1 0];
     %update staircase
     stimulus.stair{task.thistrial.targetContrast} = upDownStaircase(stimulus.stair{task.thistrial.targetContrast},1);
+    task.thistrial.correct = 1;
     disp(sprintf('(attentionComp) Trial %i: %s contrast %0.4f correct', task.trialnum, task.thistrial.contrast{task.thistrial.targetLoc},stimulus.stair{task.thistrial.targetContrast}.threshold));
 else
     % incorrect
@@ -227,6 +233,7 @@ else
     stimulus.cueColor = [1 0 0];
     %update staircase
     stimulus.stair{task.thistrial.targetContrast} = upDownStaircase(stimulus.stair{task.thistrial.targetContrast},0);
+    task.thistrial.correct = 0;
     disp(sprintf('(attentionComp) Trial %i: %s contrast %0.4f incorrect', task.trialnum, task.thistrial.contrast{task.thistrial.targetLoc}, stimulus.stair{task.thistrial.targetContrast}.threshold));
 end
 end
@@ -259,7 +266,7 @@ for i = 1:length(stimulus.angles)
       % starting point of lines
       [stimulus.cueLines.x0(i), stimulus.cueLines.y0(i)] = pol2cart(stimulus.angles(i), 0.05);
       % ending point
-      [stimulus.cueLines.x1(i), stimulus.cueLines.y1(i)] = pol2cart(stimulus.angles(i), 0.6);
+      [stimulus.cueLines.x1(i), stimulus.cueLines.y1(i)] = pol2cart(stimulus.angles(i), stimulus.fixWidth*0.6);
       
       %stim centers
       [stimulus.x(i), stimulus.y(i)] = pol2cart(stimulus.angles(i),stimulus.radius);
@@ -276,8 +283,7 @@ for i = 1:length(stimulus.angles)
 %     stimulus.refLines.x2{i} = [stimulus.refLines.x2{i} stimulus.x(i)+stimulus.width/2*cos(d2r(d(dIndex+1)))];
 %     stimulus.refLines.y2{i} = [stimulus.refLines.y2{i} stimulus.y(i)+stimulus.width/2*sin(d2r(d(dIndex+1)))];
 %   end
-%       
-      
+
 end
 
 % see if there was a previous staircase
@@ -289,16 +295,33 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/attentionComp/%s', mglGetSID))
 else
     s = getLastStimfile(myscreen);
 end
+
 if exist('s') && isfield(s, 'stimulus') && isfield(s.stimulus,'stair')
+    if ~strcmp(s.myscreen.computerShortname, myscreen.computerShortname)
+        % set starting thershold to staircase value
+        stimulus.initialThreshold(1) = s.stimulus.stair{1}.threshold;
+        stimulus.initialThreshold(2) = s.stimulus.stair{2}.threshold;
+        
+        % now create staircases for each orientation
+        for i = 1:2
+     % init a 2 down 1 up staircase
+         stimulus.stair{i} = upDownStaircase(1,2,stimulus.initialThreshold(i),[stimulus.stepsize, stimulus.minStepsize, stimulus.stepsize], 'pest');
+         stimulus.stair{i}.minThreshold = stimulus.minThreshold;
+         stimulus.stair{i}.maxThreshold = stimulus.maxThreshold;
+        end
+
+        % display what we are doing
+        disp(sprintf('(attentionComp) Setting starting thershold based on last stimfile to: %f %f',stimulus.initialThreshold(1), stimulus.initialThreshold(2)));
+    else
         % set starting thershold to staircase value
 %         stimulus.initialThreshold(1) = s.stimulus.stair{1}.threshold;
 %         stimulus.initialThreshold(2) = s.stimulus.stair{2}.threshold;
         stimulus.stair{1} = s.stimulus.stair{1};
         stimulus.stair{2} = s.stimulus.stair{2};
         % display what we are doing
-        disp(sprintf('(attentionComp) Setting starting thershold based on last stimfile to: %f %f',stimulus.initialThreshold(1), stimulus.initialThreshold(2)));       
-        
-        clear s;
+        disp(sprintf('(attentionComp) Setting starting thershold based on last stimfile to: %f %f',stimulus.initialThreshold(1), stimulus.initialThreshold(2)));
+
+    end
 else
         % now create staircases for each orientation
         for i = 1:2
@@ -306,8 +329,6 @@ else
          stimulus.stair{i} = upDownStaircase(1,2,stimulus.initialThreshold(i),[stimulus.stepsize, stimulus.minStepsize, stimulus.stepsize], 'pest');
          stimulus.stair{i}.minThreshold = stimulus.minThreshold;
          stimulus.stair{i}.maxThreshold = stimulus.maxThreshold;
-  
         end
 end
-
-
+clear s;
