@@ -543,7 +543,7 @@ switch task.thistrial.thisseg
     case stimulus.seg.pre
         stimulus.live.dots = 0;
         if stimulus.scan
-            stimulus.live.fixColor = stimulus.colors.white;
+            stimulus.live.fixColor = stimulus.colors.black;
         else
             stimulus.live.fixColor = stimulus.colors.black;
         end
@@ -1145,7 +1145,12 @@ if size(gammaTable,1)~=256
 end
 
 % set the gamma table
-mglSetGammaTable(gammaTable);
+succ = mglSetGammaTable(gammaTable);
+
+if ~succ
+    warning('Gamma table set failure');
+    keyboard
+end
 
 % remember what the current maximum contrast is that we can display
 stimulus.curMaxContrast = maxContrast;
