@@ -272,9 +272,40 @@ if ~isfield(myscreen,'gammaTable')
   disp(sprintf('(cuecon:initGratings) No gamma table found in myscreen. Contrast displays like this'));
   disp(sprintf('         should be run with a valid calibration made by moncalib for this monitor.'));
   disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+else
+  % check to make sure this matches the calibration file
+  
+  % get each channel table that should have been set by mglGetGammaTable
+  redTable = myscreen.initScreenGammaTable.redTable(:);
+  greenTable = myscreen.initScreenGammaTable.greenTable(:);
+  blueTable = myscreen.initScreenGammaTable.blueTable(:);
+  % get what the calibration structure says it should have been set to
+  gammaTable = myscreen.gammaTable(:);
+  % table values are only good to 10 bits
+  redTable = round(redTable*1024)/1024;
+  greenTable = round(greenTable*1024)/1024;
+  blueTable = round(blueTable*1024)/1024;
+  gammaTable = round(gammaTable*1024)/1024;
+  % compare, ignoring nans
+  if ~isequaln(mglGetGammaTable,myscreen.initScreenGammaTable) || ~isequaln(redTable,gammaTable) || ~isequaln(greenTable,gammaTable) || ~isequaln(blueTable,gammaTable)
+    disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+    disp(sprintf('(curecon:initGrating) Gamma table does not match calibration'));
+    disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+    keyboard
+  end
 end
 stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
-    
+
+% Put up text that should be invisible if everything
+% with the gamma table is working.
+setGammaTable_flowMax(0);
+mglWaitSecs(1);
+mglClearScreen(0.5);
+mglTextSet([],32,0.9);
+mglTextDraw('If you can see this STOP THE EXPERIMENT',[0 0]);
+mglFlush;
+mglWaitSecs(1);
+
 %% Character textures
 mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
 stimulus.text.mTexW = mglText('M');
@@ -288,25 +319,24 @@ stimulus.text.cTexK = mglText('C');
 % This is the contrast change detection task
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.seg.pre = 1;
-stimulus.seg.stim = 2;
-stimulus.seg.mask = 3;
-stimulus.seg.ISI = 4;
-stimulus.seg.resp = 5;
-stimulus.seg.ITI = 6;
-task{1}{1}.segmin = [0 0.5 0 .5 1 .2];
-task{1}{1}.segmax = [0 0.5 0 1 1 .4];
+stimulus.seg.stim = 1;
+stimulus.seg.mask = 2;
+stimulus.seg.ISI = 3;
+stimulus.seg.resp = 4;
+stimulus.seg.ITI = 5;
+task{1}{1}.segmin = [0.5 0 .5 1 .2];
+task{1}{1}.segmax = [0.5 0 1 1 .4];
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
     task{1}{1}.segmax(stimulus.seg.ITI) = 11;
 end
 
-task{1}{1}.synchToVol = [0 0 0 0 0 0];
+task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-task{1}{1}.getResponse = [0 0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
+task{1}{1}.getResponse = [0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.parameter.conSide = [1 2]; % 1 = left, 2 = right, the side will be the one with con/flow + delta (From staircase)
 task{1}{1}.parameter.cohSide = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
@@ -347,7 +377,7 @@ if stimulus.scan
     task{1}{1}.parameter.conPedestal = 1;
     task{1}{1}.parameter.cohPedestal = 1;
     task{1}{1}.numTrials = 1;
-    task{1}{1}.getResponse = [0 0 0 0];
+    task{1}{1}.getResponse = [0 0 0 0 0];
     task{1}{1}.segmin = [0 0 0 0 30];
     task{1}{1}.segmax = [0 0 0 0 30];
     task{1}{1}.parameter.catch = 0;
@@ -358,7 +388,7 @@ else
     task{1}{1}.parameter.conPedestal = 1;
     task{1}{1}.parameter.cohPedestal = 1;
     task{1}{1}.numTrials = 1;
-    task{1}{1}.getResponse = [0 0 0 0];
+    task{1}{1}.getResponse = [0 0 0 0 0];
     task{1}{1}.segmin = [0 0 0 0 4];
     task{1}{1}.segmax = [0 0 0 0 4];
     task{1}{1}.parameter.catch = 0;
@@ -387,14 +417,15 @@ end
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %if ~stimulus.scan
-    myscreen = eyeCalibDisp(myscreen);
+%     myscreen = eyeCalibDisp(myscreen);
 %end
 
 %% Get Ready...
 % clear screen    
 setGammaTable_flowMax(1);
-mglWaitSecs(1);
 mglClearScreen(0.5);
+mglFlush
+mglWaitSecs(1);
 if stimulus.scan        
     mglTextDraw('DO NOT MOVE',[0 1.5]);
     mglTextDraw(stimulus.runs.taskOptsText{stimulus.runs.curTask},[0 0]);
@@ -540,14 +571,6 @@ global stimulus
 
 stimulus.live.mt = 0;
 switch task.thistrial.thisseg
-    case stimulus.seg.pre
-        stimulus.live.dots = 0;
-        if stimulus.scan
-            stimulus.live.fixColor = stimulus.colors.black;
-        else
-            stimulus.live.fixColor = stimulus.colors.black;
-        end
-        stimulus.live.catchFix = 0;
     case stimulus.seg.ITI
         stimulus.live.dots = 0;
         stimulus.live.fixColor = stimulus.colors.black;
@@ -1128,9 +1151,9 @@ elseif maxContrast > 0
     blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
 else
     % if we are asked for 0 contrast then simply set all the values to gray
-    redLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-    greenLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
-    blueLinearized = repmat(.5,1,stimulus.colors.nUnreserved);
+    redLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,.5,'linear'),1,stimulus.colors.nUnreserved);
+    greenLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,.5,'linear'),1,stimulus.colors.nUnreserved);
+    blueLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,.5,'linear'),1,stimulus.colors.nUnreserved);
 end
 
 % add to the table!
