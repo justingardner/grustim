@@ -91,6 +91,10 @@ else
 end
 task{1}{1}.randVars.block.unattendedStim = [-1 1 2]; %low alone/ high alone/ both
 task{1}{1}.randVars.block.unattendedStimPos = [1 2]; %1:low-high 2:high-low
+
+task{1}{1}.randVars.block.orientation1 = [1 2];
+task{1}{1}.randVars.block.orientation2 = [1 2];
+
 % calculated
 if ~stimulus.sensory
 task{1}{1}.randVars.calculated.attendContrast = nan;
@@ -149,6 +153,22 @@ if task.thistrial.thisseg == 1
     % decide which stim interval will contain tilted garbor at each of 4 locations 
     task.thistrial.whichInterval = round(rand(1,length(stimulus.locations))) + 1;%(round(rand(1,length(stimulus.locations))) + 1)*2;%%
     stimulus.cueColor = [1 1 1];
+    
+    % orientation (vertical/horizontal) for loc 1-4
+    if task.thistrial.orientation1 == 1 % vertical in loc 1 & horizontal in loc 2
+        task.thistrial.orient(1) = 0;
+        task.thistrial.orient(2) = -90;
+    else % hor in loc 1 & ver in loc 2
+        task.thistrial.orient(1) = -90;
+        task.thistrial.orient(2) = 0;
+    end
+    if task.thistrial.orientation2 == 1
+        task.thistrial.orient(3) = 0;
+        task.thistrial.orient(4) = -90;
+    else
+        task.thistrial.orient(3) = -90;
+        task.thistrial.orient(4) = 0;
+    end
     
     % Unattended stimuli configs...
     if task.thistrial.unattendedStimPos == 1
@@ -260,15 +280,15 @@ elseif any(task.thistrial.thisseg == stimulus.interval)
                 stairNum = 2; 
             end
             if task.thistrial.thisseg == task.thistrial.whichInterval(loc)*2 % Segment 2 or 4
-                task.thistrial.thisRotation(loc) = -stimulus.stair{stairNum}.threshold;
+                task.thistrial.thisRotation(loc) = task.thistrial.orient(loc)-stimulus.stair{stairNum}.threshold;
             else
-                task.thistrial.thisRotation(loc) = 0;
+                task.thistrial.thisRotation(loc) = task.thistrial.orient(loc);
             end
             else
                 if task.thistrial.thisseg == task.thistrial.whichInterval(loc)*2
-                    task.thistrial.thisRotation(loc) = -.5;
+                    task.thistrial.thisRotation(loc) = task.thistrial.orient(loc)-.5;
                 else
-                    task.thistrial.thisRotation(loc) = 0;
+                    task.thistrial.thisRotation(loc) = task.thistrial.orient(loc);
                 end
             end
         else
