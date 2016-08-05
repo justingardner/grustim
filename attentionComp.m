@@ -12,11 +12,10 @@ function myscreen = attentionComp(varargin)
 clear global stimulus
 global stimulus
 
-sensory = [];
+sensory = 0;
 debug = 0;
 % evaluate the arguments
 getArgs(varargin);
-% if ~ieNotDefined('sensory'); end
 stimulus.sensory = sensory;
 
 % Setup parameters for stimulus
