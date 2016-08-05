@@ -13,7 +13,7 @@ clear global stimulus
 global stimulus
 
 sensory = [];
-debug = 1;
+debug = 0;
 % evaluate the arguments
 getArgs(varargin);
 % if ~ieNotDefined('sensory'); end
