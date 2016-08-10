@@ -7,10 +7,17 @@
 %
 %       task: Vertical/CW from vertical
 
-function myscreen = attentionComp()
+function myscreen = attentionComp(varargin)
 
-clear stimulus
+clear global stimulus
 global stimulus
+
+sensory = 0;
+debug = 0;
+% evaluate the arguments
+getArgs(varargin);
+stimulus.sensory = sensory;
+
 % Setup parameters for stimulus
 stimulus.width = 6; % gabor
 stimulus.contrastLow = .2;
@@ -21,7 +28,7 @@ stimulus.orientation = 90;
 % loc1: 60  loc2: 30  loc3: 240 loc4: 210
 stimulus.angles = [65 25 245 205] * pi /180;
 stimulus.locations = 1:length(stimulus.angles);
-stimulus.radius = 6;
+stimulus.radius = 6; % eccentricity
 stimulus.upperLoc = [1 2];
 stimulus.lowerLoc = [3 4];
 
@@ -43,35 +50,69 @@ stimulus.maxThreshold = 45;
 myscreen.background = 0.5;
 myscreen = initScreen(myscreen);
 
+% if this is sensory expt, initiate the fixation task
+if stimulus.sensory
+global fixStimulus
+fixStimulus.fixWidth = stimulus.fixWidth;
+% setting the fixation task to task 2
+[task{2} myscreen] = fixStairInitTask(myscreen);
+end
+
 %%%%%%%%%%%%%%%%%%%%%
 % set up task
 %%%%%%%%%%%%%%%%%%%%%
 
 % task{1}.waitForBacktick = 0;
-task{1}.waitForBacktick = 1;
+task{1}{1}.waitForBacktick = 1;
 % trial: 4.2s + ITI(1~14s)
-task{1}.segmin = [1 0.7 0.3 0.7 1.5 1];
-task{1}.segmax = [1 0.7 0.3 0.7 1.5 14];
-task{1}.getResponse = [0 0 0 0 1 0];
-task{1}.synchToVol = [0 0 0 0 0 1];
-task{1}.random = 1;
+task{1}{1}.segmin = [1 0.7 0.3 0.7 1.5 1];
+task{1}{1}.segmax = [1 0.7 0.3 0.7 1.5 14];
+if ~stimulus.sensory
+    task{1}{1}.getResponse = [0 0 0 0 1 0];
+else
+    task{1}{1}.getResponse = [0 0 0 0 0 0];
+end
+task{1}{1}.synchToVol = [0 0 0 0 0 1];
+task{1}{1}.random = 1;
+if debug
+    task{1}{1}.waitForBacktick = 0;
+    task{1}{1}.synchToVol(end) = 0;
+    task{1}{1}.segmax(end) = 1;
+end
 
 % parameters & randomization
-task{1}.parameter.targetContrast = [1 2]; %1 low /2 high
-task{1}.randVars.uniform.targetLoc = stimulus.locations;
+if ~stimulus.sensory
+task{1}{1}.parameter.targetContrast = [1 2]; %1 low /2 high
+task{1}{1}.randVars.uniform.targetLoc = stimulus.locations;
 % task{1}.randVars.uniform.targetContrast = [1 2]; %low/high
-task{1}.randVars.block.unattendedStim = [-1 1 2]; %low alone/ high alone/ both
-task{1}.randVars.block.unattendedStimPos = [1 2]; %1:low-high 2:high-low
+else
+    task{1}{1}.randVars.block.unattendedStim2 = [-1 1 2];
+    task{1}{1}.randVars.block.unattendedStimPos2 = [1 2];    
+end
+task{1}{1}.randVars.block.unattendedStim = [-1 1 2]; %low alone/ high alone/ both
+task{1}{1}.randVars.block.unattendedStimPos = [1 2]; %1:low-high 2:high-low
 
-task{1}.randVars.calculated.attendContrast = nan;
-task{1}.randVars.calculated.attendAway = nan;
-task{1}.randVars.calculated.attendedPair= {nan};
-task{1}.randVars.calculated.unattendedPair = {nan};
-task{1}.randVars.calculated.correct = nan;
+task{1}{1}.randVars.block.orientation1 = [1 2];
+task{1}{1}.randVars.block.orientation2 = [1 2];
+
+% calculated
+if ~stimulus.sensory
+task{1}{1}.randVars.calculated.attendContrast = nan;
+task{1}{1}.randVars.calculated.attendAway = nan;
+task{1}{1}.randVars.calculated.attendedPair= {nan};
+task{1}{1}.randVars.calculated.unattendedPair = {nan};
+task{1}{1}.randVars.calculated.correct = nan;
+task{1}{1}.randVars.calculated.unattendedQuad = nan;
+task{1}{1}.randVars.calculated.attendedQuad = nan;
+end
 
 % initialize the task
-for phaseNum = 1:length(task)
-  [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
+for phaseNum = 1:length(task{1})
+    if ~stimulus.sensory
+  [task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
+    else
+        [task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback);
+    end
 end
 
 % init the stimulus
@@ -89,16 +130,19 @@ stimulus = initGabor(stimulus,myscreen);
 % Main display loop
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 phaseNum = 1;
-while (phaseNum <= length(task)) && ~myscreen.userHitEsc
+while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
   % update the task
-  [task myscreen phaseNum] = updateTask(task,myscreen,phaseNum);
+  [task{1} myscreen phaseNum] = updateTask(task{1},myscreen,phaseNum);
+  if stimulus.sensory
+    % update the fixation task
+    [task{2} myscreen] = updateTask(task{2},myscreen,1);
+  end
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
@@ -110,14 +154,42 @@ if task.thistrial.thisseg == 1
     task.thistrial.whichInterval = round(rand(1,length(stimulus.locations))) + 1;%(round(rand(1,length(stimulus.locations))) + 1)*2;%%
     stimulus.cueColor = [1 1 1];
     
+    % orientation (vertical/horizontal) for loc 1-4
+    if task.thistrial.orientation1 == 1 % vertical in loc 1 & horizontal in loc 2
+        task.thistrial.orient(1) = 0;
+        task.thistrial.orient(2) = -90;
+    else % hor in loc 1 & ver in loc 2
+        task.thistrial.orient(1) = -90;
+        task.thistrial.orient(2) = 0;
+    end
+    if task.thistrial.orientation2 == 1
+        task.thistrial.orient(3) = 0;
+        task.thistrial.orient(4) = -90;
+    else
+        task.thistrial.orient(3) = -90;
+        task.thistrial.orient(4) = 0;
+    end
+    
+    % Unattended stimuli configs...
+    if task.thistrial.unattendedStimPos == 1
+        low(1) = 1; high(1) =2;
+    else
+        low(1) = 2; high(1) = 1;
+    end
+    
+    if ~stimulus.sensory   
     if any(task.thistrial.targetLoc == stimulus.upperLoc)
         attendedPair = stimulus.upperLoc;
         unattendedPair = stimulus.lowerLoc;
+        task.thistrial.attendedQuad = 1;
+        task.thistrial.unattendedQuad = 2;
     else
         attendedPair = stimulus.lowerLoc;
         unattendedPair = stimulus.upperLoc;
+        task.thistrial.attendedQuad = 2;
+        task.thistrial.unattendedQuad = 1;
     end
-    
+        
     % Attended side    
     if task.thistrial.targetContrast == 1 % Attend to LOW
         task.thistrial.tex{task.thistrial.targetLoc} = stimulus.tex(1);
@@ -134,11 +206,6 @@ if task.thistrial.thisseg == 1
     end
     
     % Unattended stimuli configs...
-    if task.thistrial.unattendedStimPos == 1
-        low = 1; high =2;
-    else
-        low = 2; high = 1;
-    end
      task.thistrial.tex{unattendedPair(low)} = stimulus.tex(1);
      task.thistrial.tex{unattendedPair(high)} = stimulus.tex(2);
      task.thistrial.contrast{unattendedPair(low)} = 'low';
@@ -160,11 +227,52 @@ if task.thistrial.thisseg == 1
     task.thistrial.unattendedPair = unattendedPair;
     
     disp(sprintf('(attentionComp) Trial %i: Location %i ITI %0.2f s', task.trialnum, task.thistrial.targetLoc, task.thistrial.seglen(end)));
+    
+    
+    elseif stimulus.sensory
+        if task.thistrial.unattendedStimPos2 == 1
+            low(2) = 1; high(2) = 2;
+        else
+            low(2) = 2; high(2) = 1;
+        end
+        Quad = [1 2; 3 4];
+        for q = 1:2
+            task.thistrial.tex{Quad(q,low(q))} = stimulus.tex(1);
+            task.thistrial.tex{Quad(q,high(q))} = stimulus.tex(2);
+            
+            task.thistrial.contrast{Quad(q,low(q))} = 'low';
+            task.thistrial.contrast{Quad(q,high(q))} = 'high';
+            if q == 1
+                if task.thistrial.unattendedStim == -1
+                    task.thistrial.tex{Quad(q,high(q))} = nan;
+                    task.thistrial.contrast{Quad(q,high(q))} = nan;
+                elseif task.thistrial.unattendedStim == 1
+                    task.thistrial.tex{Quad(q,low(q))} = nan;
+                    task.thistrial.contrast{Quad(q,low(q))} = nan;
+                end
+            else
+                if task.thistrial.unattendedStim2 == -1
+                    task.thistrial.tex{Quad(q,high(q))} = nan;
+                    task.thistrial.contrast{Quad(q,high(q))} = nan;
+                elseif task.thistrial.unattendedStim2 == 1
+                    task.thistrial.tex{Quad(q,low(q))} = nan;
+                    task.thistrial.contrast{Quad(q,low(q))} = nan;
+                end
+            end
+                    
+                    
+        end
+
+        disp(sprintf('(attentionComp:Sensory) Trial %i: %s %s %s %s, ITI %0.2f s', task.trialnum, task.thistrial.contrast{1}, ...
+            task.thistrial.contrast{2}, task.thistrial.contrast{3}, task.thistrial.contrast{4}, task.thistrial.seglen(end)));
+        
+    end
 
 elseif any(task.thistrial.thisseg == stimulus.interval)
 
     for loc = 1:length(stimulus.locations)
         if ~isnan(task.thistrial.contrast{loc})
+            if ~stimulus.sensory
             % which staircase? (target low or high)
             if strcmp(task.thistrial.contrast(loc), 'low')
                 stairNum = 1;
@@ -172,14 +280,22 @@ elseif any(task.thistrial.thisseg == stimulus.interval)
                 stairNum = 2; 
             end
             if task.thistrial.thisseg == task.thistrial.whichInterval(loc)*2 % Segment 2 or 4
-                task.thistrial.thisRotation(loc) = -stimulus.stair{stairNum}.threshold;
+                task.thistrial.thisRotation(loc) = task.thistrial.orient(loc)-stimulus.stair{stairNum}.threshold;
             else
-                task.thistrial.thisRotation(loc) = 0;
+                task.thistrial.thisRotation(loc) = task.thistrial.orient(loc);
+            end
+            else
+                if task.thistrial.thisseg == task.thistrial.whichInterval(loc)*2
+                    task.thistrial.thisRotation(loc) = task.thistrial.orient(loc)-.5;
+                else
+                    task.thistrial.thisRotation(loc) = task.thistrial.orient(loc);
+                end
             end
         else
             task.thistrial.thisRotation(loc) = nan;
         end
     end
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -197,6 +313,8 @@ if any(task.thistrial.thisseg == stimulus.interval)
         end
     end
 end
+
+if ~stimulus.sensory
 % draw the cue
 if task.thistrial.thisseg ~= 6    
     mglLines2(stimulus.cueLines.x0(task.thistrial.targetLoc), stimulus.cueLines.y0(task.thistrial.targetLoc),...
@@ -205,6 +323,7 @@ end
 
 %draw fixation cross
 mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
+end
 
 % for i = 1:length(stimulus.locations)
 %      mglLines2(stimulus.refLines.x1{i},stimulus.refLines.y1{i},stimulus.refLines.x2{i},stimulus.refLines.y2{i},1,[1 1 1]);
@@ -261,6 +380,13 @@ gaborHigh(:,:,4) =255*(stimulus.contrastHigh*gaussian);
 stimulus.tex(1) = mglCreateTexture(gaborLow);
 stimulus.tex(2) = mglCreateTexture(gaborHigh);
 
+if stimulus.sensory
+    for i = 1:length(stimulus.angles)
+        %stim centers
+      [stimulus.x(i), stimulus.y(i)] = pol2cart(stimulus.angles(i),stimulus.radius);
+    end
+        
+else
 %cue lines / stimulus centers
 for i = 1:length(stimulus.angles)
       % starting point of lines
@@ -332,3 +458,4 @@ else
         end
 end
 clear s;
+end
