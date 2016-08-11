@@ -15,7 +15,7 @@ function [ myscreen ] = berlin_experiment( varargin )
 %   is invisible.
 %
 %   localizer=1 runs a localizer mode. Uses either a mask contrast of 0%,
-%   equal to dots (1/255), or invisible (31/255). The subject performs a
+%   equal to dots (1/255), or invisible (15/255). The subject performs a
 %   horizontal vs. vertical task and both motion go in the same direction.
 
 global stimulus
@@ -101,7 +101,7 @@ stimulus.ring.outer = 8; %
 stimulus.area = 3.14159265358979*(stimulus.ring.outer^2-stimulus.ring.inner^2);
 
 stimulus.lowCon = 1/255; % minimum possible contrast
-stimulus.contrastOverride = -1;
+stimulus.contrastOverride = 0;
 
 %% Generate stencils
 mglStencilCreateBegin(99);
@@ -126,10 +126,13 @@ stimulus.seg.ITI = 7;
 task{1}{1}.segmin = [0.100 0.100 0.100 0.100 0.100 2 1];
 task{1}{1}.segmax = [0.100 0.100 0.100 0.100 0.100 2 3];
 if stimulus.localizer
-    stimulus.seg.delay = 5;
-    stimulus.seg.resp = stimulus.seg.resp+1; stimulus.seg.ITI = stimulus.seg.ITI+1;
-    task{1}{1}.segmin = [0.100 0.100 0.100 0.100 0.100 1 2 1];
-    task{1}{1}.segmax = [0.100 0.100 0.100 0.100 0.100 1 2 1];
+%     stimulus.seg.delay = 5;
+%     stimulus.seg.resp = stimulus.seg.resp+1; stimulus.seg.ITI = stimulus.seg.ITI+1;
+    stimulus.seg.mask3 = -1;
+    stimulus.seg.delay = 4; 
+    stimulus.seg.stim2 = 5;
+    task{1}{1}.segmin = [0.100 0.100 0.100 3 0.200 2 1];
+    task{1}{1}.segmax = [0.100 0.100 0.100 3 0.200 2 1];
 end
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
@@ -138,12 +141,13 @@ if stimulus.scan
 end
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
 
-task{1}{1}.numTrials = inf;
+task{1}{1}.numTrials = 60;
 
 if stimulus.localizer
     task{1}{1}.parameter.horiz = [0 1];
-    task{1}{1}.parameter.contrast = 1-[0 1/255 31/255];
+    task{1}{1}.parameter.contrast = 1-[0 1/255 15/255];
     task{1}{1}.random = 1;
+    task{1}{1}.numTrials = Inf;
 end
 
 %% Tracking
@@ -178,23 +182,22 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stimulus.staircasing
-    if stimulus.initStair
-        % We are starting our staircases from scratch
-        disp(sprintf('(berlin) Initializing staircase'));
-        stimulus = initStaircase(stimulus);
-    else
-        disp('(berlin) Re-using staircase from previous run...');
-    end
+if stimulus.initStair
+    % We are starting our staircases from scratch
+    disp(sprintf('(berlin) Initializing staircase'));
+    stimulus = initStaircase(stimulus);
+else
+    disp('(berlin) Checking staircase resets from previous run...');
+    stimulus = resetStair(stimulus);
 end
 
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% if ~stimulus.scan
-%     myscreen = eyeCalibDisp(myscreen);
-% end
+if ~stimulus.scan
+    myscreen = eyeCalibDisp(myscreen);
+end
 
 %% Get Ready...
 % clear screen    
@@ -263,10 +266,10 @@ if stimulus.localizer
     % pass
 elseif stimulus.staircasing
     [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+    task.thistrial.contrast = 1-task.thistrial.contrast; % flip the coherence to be mask, instead of visibility
 else
     [task.thistrial.contrast, stimulus.istaircase] = doStaircase('testValue',stimulus.istaircase);
 end
-task.thistrial.contrast = 1-task.thistrial.contrast; % flip the coherence to be mask, instead of visibility
 
 % for testing
 if stimulus.contrastOverride>=0
@@ -347,7 +350,6 @@ elseif stimulus.seg.stim2==task.thistrial.thisseg
     stimulus.live.coherence = 1;
 elseif stimulus.seg.resp==task.thistrial.thisseg
     stimulus.live.resp = 1;
-    stimulus.live.fixColor = stimulus.colors.white*2;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -369,7 +371,7 @@ end
 mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
 upFix(stimulus);
 mglStencilSelect(0);
-if stimulus.live.resp
+if stimulus.live.resp && stimulus.localizer
     mglTextSet([],32,stimulus.live.fixColor);
     mglTextDraw('Horizontal',[stimulus.live.respPos(1) 0]);
     mglTextDraw('Vertical',[stimulus.live.respPos(2) 0]);
@@ -414,6 +416,7 @@ else
         if task.thistrial.gotResponse == 0
             task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
             disp(sprintf('Subject pressed %i: %s',task.thistrial.whichButton,responseText{task.thistrial.correct+1}));
+            stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
             % Store whether this was correct
 
             if stimulus.staircasing
@@ -442,34 +445,40 @@ stimulus.staircase = doStaircase('init','upDown',...
         'initialStepsize',0.33,...
         'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
         'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
-stimulus.istaircase = doStaircase('init','fixed','fixedVals',31/255);
+stimulus.istaircase = doStaircase('init','fixed','fixedVals',15/255,'nTrials=50');
 
+function stimulus = resetStair(stimulus)
+
+if doStaircase('stop',stimulus.staircase)
+    disp('(berlin) Resetting staircase');
+    out = doStaircase('threshold',stimulus.staircase);
+    stimulus.staircase(end+1) = doStaircase('init','upDown',...
+        'initialThreshold',out.threshold,...
+        'initialStepsize',out.threshold/3,...
+        'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
+        'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
+end
+if doStaircase('stop',stimulus.istaircase)
+    disp('(berlin) Resetting invisible staircase');
+    stimulus.istaircase(end+1) = doStaircase('init','fixed','fixedVals',15/255,'nTrials=50');
+end
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
-% out{1} = doStaircase('threshold',stimulus.staircase{1},'type','weibull','dispFig=0','gamma=1/2');
-% out{2} = doStaircase('threshold',stimulus.staircase{2},'type','weibull','dispFig=0','gamma=1/2');
-% out{3} = doStaircase('threshold',stimulus.staircase{3},'type','weibull','dispFig=0','gamma=1/2');
-% %%
-% figure, hold on
-% cmap = brewermap(3,'Pastel2');
-% hs = [0 0 0];
-% for i = 1:3
-%     errbar(out{i}.fit.signal,out{i}.fit.pcorrect*100,out{i}.fit.pcorrectste*100,'Color',cmap(i,:));
-%     plot(out{i}.fit.x,out{i}.fit.y*100,'Color',cmap(i,:));
-%     hs(i) = plot(out{i}.fit.signal,out{i}.fit.pcorrect*100,'o','MarkerFaceColor',cmap(i,:),'MarkerEdgeColor',[1 1 1],'MarkerSize',10);
-%     legs{i} = sprintf('%s: %0.2f%%',stimulus.categories{i},interp1(1:size(stimulus.phases,2),100*stimulus.phases(i,:),out{i}.threshold));
-% end
-% set(gca,'XTick',1:length(stimulus.phases),'XTickLabel',100*stimulus.phases(1,:));
-% xlabel('Signal (%)');
-% ylabel('Percent Correct (%)');
-% legend(hs,legs);
-% title('Psychometric Functions and Thresholds by Category');
-% drawPublishAxis
-
-
+if stimulus.staircasing
+elseif stimulus.localizer
+else
+%     perf = zeros(size(stimulus.istaircase));
+%     for i = 1:length(stimulus.istaircase)
+%         perf(i) = mean(stimulus.istaircase(i).response);
+%     end
+%     figure
+%     plot(1:length(perf),perf,'o','MarkerFaceColor',[0 0 0],'MarkerEdgeColor',[1 1 1]);
+%     set(gca,'XAxisTick',1:length(perf));
+%     drawPublishAxis
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for optic flow
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
