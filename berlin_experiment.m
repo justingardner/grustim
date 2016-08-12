@@ -6,7 +6,12 @@ function [ myscreen ] = berlin_experiment( varargin )
 %
 %   OPTIONS
 %
-%   default (localizer=0, staircasing=) runs a match to sample 
+%   default (localizer=0, staircasing=0) runs a match to sample using
+%   masked stimuli.
+%
+%   staircasing=1 runs a set of staircases (one per run) to determine
+%   thresholds across a range of mask strengths, stimulus strengths, and
+%   stimulus lengths.
 
 
 global stimulus
@@ -18,12 +23,13 @@ localizer = 0;
 staircase = 0;
 scan = 0;
 plots = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0'});
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0'});
 stimulus.localizer = localizer;
 stimulus.scan = scan;
 stimulus.staircasing = staircase;
 stimulus.plots = plots;
-clear localizer invisible scan
+stimulus.category = category; % use match to category rules instead of match to sample rules
+clear localizer invisible scan category
 
 if stimulus.staircasing && stimulus.localizer
     disp('(berlin) Cannot run invisible and localizer simultaneously');
@@ -91,7 +97,11 @@ stimulus.ring.inner = 4;
 stimulus.ring.outer = 12; %
 stimulus.area = 3.14159265358979*(stimulus.ring.outer^2-stimulus.ring.inner^2);
 
-stimulus.lowCon = 1/255; % minimum possible contrast
+if stimulus.staircasing
+    stimulus.lowCon = stimulus.run.stimCon(stimulus.run.counter)/255;
+else
+    stimulus.lowCon = 1/255; % minimum possible contrast
+end
 stimulus.contrastOverride = -1;
 
 %% Generate stencils
@@ -108,37 +118,28 @@ stimulus.curTrial = 0;
 % calculate timing
 stimulus.seg.mask1 = 1;
 stimulus.seg.mask2 = 3;
-stimulus.seg.mask3 = 5;
 stimulus.seg.stim1 = 2;
-stimulus.seg.stim2 = 4;
-stimulus.seg.delay = -1; % not using yet (delay before resp)
-stimulus.seg.resp = 6;
-stimulus.seg.ITI = 7;
-task{1}{1}.segmin = [0.100 0.100 0.100 0.100 0.100 2 1];
-task{1}{1}.segmax = [0.100 0.100 0.100 0.100 0.100 2 3];
-if stimulus.localizer
-%     stimulus.seg.delay = 5;
-%     stimulus.seg.resp = stimulus.seg.resp+1; stimulus.seg.ITI = stimulus.seg.ITI+1;
-    stimulus.seg.mask3 = -1;
-    stimulus.seg.delay = 4; 
-    stimulus.seg.stim2 = 5;
-    task{1}{1}.segmin = [0.100 0.100 0.100 3 0.200 2 1];
-    task{1}{1}.segmax = [0.100 0.100 0.100 3 0.200 2 1];
-end
+stimulus.seg.delay = 4;
+stimulus.seg.resp = 5;
+stimulus.seg.ITI = 6;
 
+task{1}{1}.segmin = [0.100 0.200 0.100 1 2 1];
+task{1}{1}.segmax = [0.100 0.200 0.100 1 2 1];
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
-if stimulus.scan
-    task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
-end
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
-
 task{1}{1}.numTrials = 60;
 
 if stimulus.localizer
-    task{1}{1}.parameter.horiz = [0 1];
-    task{1}{1}.parameter.contrast = 1-[0 1/255 15/255];
-    task{1}{1}.random = 1;
+    % longer delay, necessary for scanning
+    task{1}{1}.segmin = [0.100 0.200 0.100 4 2 1];
+    task{1}{1}.segmax = [0.100 0.200 0.100 4 2 1];
+    task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
     task{1}{1}.numTrials = Inf;
+    task{1}{1}.parameter.contrast = [0 1 3 15]/255;
+end
+if stimulus.staircasing
+    task{1}{1}.segmin(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.run.counter)/1000;
+    task{1}{1}.segmax(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.run.counter)/1000;
 end
 
 %% Tracking
@@ -147,9 +148,10 @@ end
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.dir1 = nan; % will be 0->2*pi
 task{1}{1}.randVars.calculated.dir2 = nan; % will be 0->2*pi
+task{1}{1}.randVars.calculated.match = nan;
+
 if ~stimulus.localizer
     task{1}{1}.randVars.calculated.contrast = nan; % will be 0->100%
-    task{1}{1}.randVars.calculated.match = nan;
 end
 
 %% Dots
@@ -177,6 +179,8 @@ if stimulus.initStair
     % We are starting our staircases from scratch
     disp(sprintf('(berlin) Initializing staircase'));
     stimulus = initStaircase(stimulus);
+    
+    stimulus = initRuns(stimulus);
 else
     disp('(berlin) Checking staircase resets from previous run...');
     stimulus = resetStair(stimulus);
@@ -201,6 +205,9 @@ mglFlush
 
 % let the user know
 disp(sprintf('(berlin) Starting run number: %i.',stimulus.counter));
+if stimulus.staircasing
+    disp(sprintf('(berlin) Staircasing with stimulus contrast: %i/255 and timing: %3.0f',stimulus.lowCon*255,stimulus.run.stimLengths(stimulus.run.counter)));
+end
 % if stimulus.unattended
 myscreen.flushMode = 1;
 % end
@@ -254,9 +261,9 @@ myscreen.flushMode = 0;
 task.thistrial.dir1 = rand*2*pi;
 task.thistrial.dir2 = task.thistrial.dir1;
 if stimulus.localizer
-    % pass
+    % pass, should be already set
 elseif stimulus.staircasing
-    [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+    [task.thistrial.contrast, stimulus.staircase{end}] = doStaircase('testValue',stimulus.staircase{end});
     task.thistrial.contrast = 1-task.thistrial.contrast; % flip the coherence to be mask, instead of visibility
 else
     [task.thistrial.contrast, stimulus.istaircase] = doStaircase('testValue',stimulus.istaircase);
@@ -270,49 +277,20 @@ end
 % setup mask for this trial
 stimulus.live.masktex = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
 
-if ~stimulus.localizer
-    task.thistrial.match = randi(2)-1;
-    if ~task.thistrial.match
-        if randi(2)==1
-            task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
-        else
-            task.thistrial.dir2 = task.thistrial.dir1 - pi/2;
-        end
-    end
-    matches = {'No','Match'};
-    disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast %3.0f/255 Match %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,matches{task.thistrial.match+1}));
-elseif task.thistrial.horiz==1
-    % horizontal
+task.thistrial.match = randi(2)-1;
+if ~task.thistrial.match
     if randi(2)==1
-        task.thistrial.dir1 = 0; task.thistrial.dir2 = task.thistrial.dir1;
+        task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
     else
-        task.thistrial.dir1 = pi; task.thistrial.dir2 = task.thistrial.dir1;
+        task.thistrial.dir2 = task.thistrial.dir1 - pi/2;
     end
-    horizs = {'No','Yes'};
-    disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast %3.0f/255 Horizontal %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,horizs{task.thistrial.horiz+1}));
-else
-    % vertical
-    if randi(2)==1
-        task.thistrial.dir1 = pi/2; task.thistrial.dir2 = task.thistrial.dir1;
-    else
-        task.thistrial.dir1 = pi*1.5; task.thistrial.dir2 = task.thistrial.dir1;
-    end
-    horizs = {'No','Yes'};
-    disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast %3.0f/255 Horizontal %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,horizs{task.thistrial.horiz+1}));
 end
+matches = {'No','Match'};
+disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast: %3.0f/255 Matching: %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,matches{task.thistrial.match+1}));
 
-if stimulus.localizer
-    if randi(2)==1
-        stimulus.live.respPos = [-5 5];
-        stimulus.responseKeys = [2 1];
-    else
-        stimulus.live.respPos = [5 -5];
-        stimulus.responseKeys = [1 2];
-    end
-end
-    
 stimulus.dots{1}.dir = task.thistrial.dir1;
 stimulus.dots{2}.dir = task.thistrial.dir2;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -329,18 +307,16 @@ stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.dotColor = stimulus.lowCon;
 stimulus.live.coherence = 0;
 
-if any([stimulus.seg.mask1 stimulus.seg.mask2 stimulus.seg.mask3]==task.thistrial.thisseg)
+if any([stimulus.seg.mask1 stimulus.seg.mask2]==task.thistrial.thisseg)
     stimulus.live.mask = 1;
 elseif stimulus.seg.stim1==task.thistrial.thisseg
     stimulus.live.dots = 1;
     stimulus.dot = 1;
     stimulus.live.coherence = 1;
-elseif stimulus.seg.stim2==task.thistrial.thisseg
+elseif stimulus.seg.resp==task.thistrial.thisseg
     stimulus.live.dots = 1;
     stimulus.dot = 2;
     stimulus.live.coherence = 1;
-elseif stimulus.seg.resp==task.thistrial.thisseg
-    stimulus.live.resp = 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -362,11 +338,6 @@ end
 mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
 upFix(stimulus);
 mglStencilSelect(0);
-if stimulus.live.resp && stimulus.localizer
-    mglTextSet([],32,stimulus.live.fixColor);
-    mglTextDraw('Horizontal',[stimulus.live.respPos(1) 0]);
-    mglTextDraw('Vertical',[stimulus.live.respPos(2) 0]);
-end
 
 function upFix(stimulus)
 %%
@@ -393,7 +364,7 @@ if stimulus.localizer
     
     if any(task.thistrial.whichButton == stimulus.responseKeys)
         if task.thistrial.gotResponse == 0
-            task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.horiz+1);
+            task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
             disp(sprintf('Subject pressed %i: %s',task.thistrial.whichButton,responseText{task.thistrial.correct+1}));
             stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
         else
@@ -412,7 +383,7 @@ else
             stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
 
             if stimulus.staircasing
-                stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
+                stimulus.staircase{end} = doStaircase('update',stimulus.staircase{end},task.thistrial.correct);
             else
                 stimulus.istaircase = doStaircase('update',stimulus.istaircase,task.thistrial.correct);
             end
@@ -431,8 +402,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 %%
-
-stimulus.staircase = doStaircase('init','upDown',...
+stimulus.staircase = {};
+stimulus.staircase{1} = doStaircase('init','upDown',...
         'initialThreshold',1,...
         'initialStepsize',0.33,...
         'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
@@ -441,12 +412,11 @@ stimulus.istaircase = doStaircase('init','fixed','fixedVals',15/255,'nTrials=50'
 
 function stimulus = resetStair(stimulus)
 
-if doStaircase('stop',stimulus.staircase)
+if stimulus.staircasing
     disp('(berlin) Resetting staircase');
-    out = doStaircase('threshold',stimulus.staircase);
-    stimulus.staircase(end+1) = doStaircase('init','upDown',...
-        'initialThreshold',out.threshold,...
-        'initialStepsize',out.threshold/3,...
+    stimulus.staircase{end+1} = doStaircase('init','upDown',...
+        'initialThreshold',0.50,...
+        'initialStepsize',0.25,...
         'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
         'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
 end
@@ -454,6 +424,28 @@ if doStaircase('stop',stimulus.istaircase)
     disp('(berlin) Resetting invisible staircase');
     stimulus.istaircase(end+1) = doStaircase('init','fixed','fixedVals',15/255,'nTrials=50');
 end
+
+function stimulus = initRuns(stimulus)
+% initialize the run info for the staircasing mode
+stimLengths = [50 100 200 400];
+stimCon = [1 2 4 8 16];
+
+sl = []; sc = [];
+
+for i = 1:length(stimLengths)
+    for j = 1:length(stimCon)
+            sl(end+1) = stimLengths(i);
+            sc(end+1) = stimCon(j);
+    end
+end
+
+idxs = randperm(length(sl));
+sl = sl(idxs); sc = sc(idxs);
+
+stimulus.run.counter = 1;
+stimulus.run.stimLengths = sl;
+stimulus.run.stimCon = sc;
+
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
