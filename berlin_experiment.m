@@ -6,17 +6,8 @@ function [ myscreen ] = berlin_experiment( varargin )
 %
 %   OPTIONS
 %
-%   default (localizer=0, invisible=0) runs in staircase mode. The stimulus
-%   is shown at 50% coherence and 5% contrast. The staircase alters the
-%   contrast of the mask (0% coherence).
-%
-%   invisible=1 using staircases estimated by the default mode this
-%   interpolates a mask contrast value to guarantee that the motion percept
-%   is invisible.
-%
-%   localizer=1 runs a localizer mode. Uses either a mask contrast of 0%,
-%   equal to dots (1/255), or invisible (15/255). The subject performs a
-%   horizontal vs. vertical task and both motion go in the same direction.
+%   default (localizer=0, staircasing=) runs a match to sample 
+
 
 global stimulus
 
@@ -97,11 +88,11 @@ stimulus.colors.green = [0 0.25 0];
 stimulus.colors.red = [0.25 0 0];
 
 stimulus.ring.inner = 4;
-stimulus.ring.outer = 8; %
+stimulus.ring.outer = 12; %
 stimulus.area = 3.14159265358979*(stimulus.ring.outer^2-stimulus.ring.inner^2);
 
 stimulus.lowCon = 1/255; % minimum possible contrast
-stimulus.contrastOverride = 0;
+stimulus.contrastOverride = -1;
 
 %% Generate stencils
 mglStencilCreateBegin(99);
@@ -418,6 +409,7 @@ else
             disp(sprintf('Subject pressed %i: %s',task.thistrial.whichButton,responseText{task.thistrial.correct+1}));
             stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
             % Store whether this was correct
+            stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
 
             if stimulus.staircasing
                 stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
