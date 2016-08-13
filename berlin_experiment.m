@@ -23,13 +23,15 @@ localizer = 0;
 staircase = 0;
 scan = 0;
 plots = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0'});
+noeye = 0;
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=0'});
 stimulus.localizer = localizer;
 stimulus.scan = scan;
 stimulus.staircasing = staircase;
 stimulus.plots = plots;
 stimulus.category = category; % use match to category rules instead of match to sample rules
-clear localizer invisible scan category
+stimulus.noeye = noeye;
+clear localizer invisible scan category noeye
 
 if stimulus.staircasing && stimulus.localizer
     disp('(berlin) Cannot run invisible and localizer simultaneously');
@@ -78,6 +80,21 @@ if stimulus.plots==2
     return
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% init staircase
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if stimulus.initStair
+    % We are starting our staircases from scratch
+    disp(sprintf('(berlin) Initializing staircase'));
+    stimulus = initStaircase(stimulus);
+    
+    stimulus = initRuns(stimulus);
+else
+    disp('(berlin) Checking staircase resets from previous run...');
+    stimulus = resetStair(stimulus);
+end
+
 %% Initialize Stimulus
 
 myscreen = initStimulus('stimulus',myscreen);
@@ -93,11 +110,16 @@ stimulus.colors.white = [0.25 0.25 0.25];
 stimulus.colors.green = [0 0.25 0];
 stimulus.colors.red = [0.25 0 0];
 
-stimulus.ring.inner = 4;
-stimulus.ring.outer = 12; %
+stimulus.ring.inner = 3.5;
+stimulus.ring.outer = 11; %
 stimulus.area = 3.14159265358979*(stimulus.ring.outer^2-stimulus.ring.inner^2);
 
 if stimulus.staircasing
+    stimulus.run.counter = stimulus.run.counter+1;
+    if stimulus.run.counter>length(stimulus.run.stimCon)
+        stimulus.run.stimCon = repmat(stimulus.run.stimCon,1,2);
+        stimulus.run.stimLengths = repmat(stimulus.run.stimLengths,1,2);
+    end
     stimulus.lowCon = stimulus.run.stimCon(stimulus.run.counter)/255;
 else
     stimulus.lowCon = 1/255; % minimum possible contrast
@@ -123,19 +145,19 @@ stimulus.seg.delay = 4;
 stimulus.seg.resp = 5;
 stimulus.seg.ITI = 6;
 
-task{1}{1}.segmin = [0.100 0.200 0.100 1 2 1];
-task{1}{1}.segmax = [0.100 0.200 0.100 1 2 1];
+task{1}{1}.segmin = [0.100 0.100 0.100 1 2 1];
+task{1}{1}.segmax = [0.100 0.100 0.100 1 2 1];
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.numTrials = 60;
 
 if stimulus.localizer
     % longer delay, necessary for scanning
-    task{1}{1}.segmin = [0.100 0.200 0.100 4 2 1];
-    task{1}{1}.segmax = [0.100 0.200 0.100 4 2 1];
+    task{1}{1}.segmin = [0.100 0.100 0.100 8 2 1];
+    task{1}{1}.segmax = [0.100 0.100 0.100 8 2 1];
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
     task{1}{1}.numTrials = Inf;
-    task{1}{1}.parameter.contrast = [0 1 3 15]/255;
+    task{1}{1}.parameter.contrast = [0 1 4 16 32]/255;
 end
 if stimulus.staircasing
     task{1}{1}.segmin(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.run.counter)/1000;
@@ -171,21 +193,6 @@ stimulus.dot = 1;
 for phaseNum = 1:length(task{1})
     [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% init staircase
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stimulus.initStair
-    % We are starting our staircases from scratch
-    disp(sprintf('(berlin) Initializing staircase'));
-    stimulus = initStaircase(stimulus);
-    
-    stimulus = initRuns(stimulus);
-else
-    disp('(berlin) Checking staircase resets from previous run...');
-    stimulus = resetStair(stimulus);
-end
-
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -198,6 +205,7 @@ end
 % clear screen    
 mglWaitSecs(1);
 mglClearScreen(0);
+mglFixationCross(1.5,1.5,stimulus.colors.white);
 if stimulus.scan        
     mglTextDraw('DO NOT MOVE',[0 1.5]);
 end
@@ -225,6 +233,7 @@ end
 
 % task ended
 mglClearScreen(0);
+            mglTextSet([],32,stimulus.colors.white);
 mglTextDraw('Run complete...',[0 0]);
 mglFlush
 myscreen.flushMode = 1;
@@ -288,8 +297,8 @@ end
 matches = {'No','Match'};
 disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast: %3.0f/255 Matching: %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,matches{task.thistrial.match+1}));
 
-stimulus.dots{1}.dir = task.thistrial.dir1;
-stimulus.dots{2}.dir = task.thistrial.dir2;
+stimulus.live.eyeCount = 0;
+stimulus.dead = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -311,11 +320,13 @@ if any([stimulus.seg.mask1 stimulus.seg.mask2]==task.thistrial.thisseg)
     stimulus.live.mask = 1;
 elseif stimulus.seg.stim1==task.thistrial.thisseg
     stimulus.live.dots = 1;
-    stimulus.dot = 1;
+    stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
+    stimulus.dots{stimulus.dot}.dir = task.thistrial.dir1;
     stimulus.live.coherence = 1;
 elseif stimulus.seg.resp==task.thistrial.thisseg
     stimulus.live.dots = 1;
-    stimulus.dot = 2;
+    stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
+    stimulus.dots{stimulus.dot}.dir = task.thistrial.dir2;
     stimulus.live.coherence = 1;
 end
 
@@ -328,6 +339,25 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
 mglClearScreen(0);
+% check eye pos
+if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.localizer
+    [pos,time] = mglEyelinkGetCurrentEyePos;
+    if ~any(isnan(pos))
+        dist = hypot(pos(1),pos(2));
+        if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
+            mglTextSet([],32,[1 0 0]);
+            disp('Eye movement detected!!!!');
+            mglTextDraw('Eye Movement Detected',[0 0]);
+            mglFlush
+            myscreen.flushMode = 1;
+            stimulus.dead = 1;
+            return
+        elseif dist > stimulus.ring.inner
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
+    end
+end
+% stimulus
 mglStencilSelect(99);
 if stimulus.live.dots
     stimulus = upDots(stimulus,myscreen);
@@ -356,7 +386,9 @@ mglPoints2(stimulus.dots{stimulus.dot}.xdisp,stimulus.dots{stimulus.dot}.ydisp,.
 %%
 function [task, myscreen] = getResponseCallback(task, myscreen)
 
+
 global stimulus
+if stimulus.dead, return; end
 responseText = {'Incorrect','Correct'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
 
@@ -371,6 +403,7 @@ if stimulus.localizer
             disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
         end
         stimulus.live.resp = 0;
+        stimulus.live.dots = 0;
     end
 else
 
@@ -390,6 +423,7 @@ else
         else
             disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
         end
+        stimulus.live.dots = 0;
     end
 end
 
@@ -408,41 +442,41 @@ stimulus.staircase{1} = doStaircase('init','upDown',...
         'initialStepsize',0.33,...
         'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
         'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
-stimulus.istaircase = doStaircase('init','fixed','fixedVals',15/255,'nTrials=50');
+stimulus.istaircase = doStaircase('init','fixed','fixedVals',32/255,'nTrials=50');
 
 function stimulus = resetStair(stimulus)
 
 if stimulus.staircasing
-    disp('(berlin) Resetting staircase');
+    disp('(berlin) Initializing new staircase');
     stimulus.staircase{end+1} = doStaircase('init','upDown',...
-        'initialThreshold',0.50,...
-        'initialStepsize',0.25,...
+        'initialThreshold',1,...
+        'initialStepsize',0.33,...
         'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
         'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
 end
 if doStaircase('stop',stimulus.istaircase)
     disp('(berlin) Resetting invisible staircase');
-    stimulus.istaircase(end+1) = doStaircase('init','fixed','fixedVals',15/255,'nTrials=50');
+    stimulus.istaircase(end+1) = doStaircase('init','fixed','fixedVals',32/255,'nTrials=50');
 end
 
 function stimulus = initRuns(stimulus)
 % initialize the run info for the staircasing mode
-stimLengths = [50 100 200 400];
-stimCon = [1 2 4 8 16];
+stimLengths = [50 75 100];
+stimCon = [1 2 3 4];
 
 sl = []; sc = [];
 
 for i = 1:length(stimLengths)
     for j = 1:length(stimCon)
-            sl(end+1) = stimLengths(i);
-            sc(end+1) = stimCon(j);
+        sl(end+1) = stimLengths(i);
+        sc(end+1) = stimCon(j);
     end
 end
 
 idxs = randperm(length(sl));
 sl = sl(idxs); sc = sc(idxs);
 
-stimulus.run.counter = 1;
+stimulus.run.counter = 0;
 stimulus.run.stimLengths = sl;
 stimulus.run.stimCon = sc;
 
@@ -451,7 +485,49 @@ stimulus.run.stimCon = sc;
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
+
+% load the luminance table
+% % % load(myscreen.calibFullFilename)
+% % % luminance = interp1(calib.tableCorrected.outputValues,calib.tableCorrected.luminance,0:1/255:255);
 if stimulus.staircasing
+    %%
+    thresholds = zeros(size(stimulus.run.stimLengths));
+    for i = 1:length(stimulus.staircase)
+        out = doStaircase('threshold',stimulus.staircase{i});
+        thresholds(i) = out.threshold;
+    end
+    % reorganize into matrix
+    stimCons = unique(stimulus.run.stimCon);
+    stimCons = sort(stimCons);
+    stimLengths = unique(stimulus.run.stimLengths);
+    stimLengths = sort(stimLengths);
+    datamat = nan(length(stimCons),length(stimLengths),5);
+    for ci = 1:length(stimCons)
+        for li = 1:length(stimLengths)
+            idxs = logical((stimulus.run.stimLengths==stimLengths(li)) .* (stimulus.run.stimCon==stimCons(ci)));
+            datamat(ci,li,1:sum(idxs)) = thresholds(idxs);
+        end
+    end
+    %%
+    datamu = nanmean(datamat,3);
+    datamu(datamu==0) = NaN;
+    datamu = round((1-datamu)*255);
+    datasd = nanstd(datamat,[],3);
+    datasd(datasd==0) = NaN;
+    %% plot
+    cmap = brewermap(length(stimCons)+1,'Purples');
+    cmap = cmap(2:end,:);
+    figure, hold on
+    legs = {};
+    for i = 1:length(stimCons)
+        plot(stimLengths,datamu(i,:),'o','MarkerFaceColor',cmap(i,:),'MarkerEdgeColor',[1 1 1],'MarkerSize',10);
+        errbar(stimLengths,datamu(i,:),datasd(i,:),'-','Color',cmap(i,:));
+        legs{end+1} = sprintf('Stimulus luminance: %i/255',stimCons(i));
+    end
+    legend(legs)
+    xlabel('Stimulus length (ms)');
+    ylabel('Mask contrast at just noticeable difference (% luminance)');
+    drawPublishAxis
 elseif stimulus.localizer
 else
 %     perf = zeros(size(stimulus.istaircase));
