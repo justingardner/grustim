@@ -153,8 +153,8 @@ task{1}{1}.numTrials = 60;
 
 if stimulus.localizer
     % longer delay, necessary for scanning
-    task{1}{1}.segmin = [0.100 0.100 0.100 8 2 1];
-    task{1}{1}.segmax = [0.100 0.100 0.100 8 2 1];
+    task{1}{1}.segmin = [0.100 0.100 0.100 8 2 4];
+    task{1}{1}.segmax = [0.100 0.100 0.100 8 2 10];
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
     task{1}{1}.numTrials = Inf;
     task{1}{1}.parameter.contrast = [0 1 4 16 32]/255;
@@ -257,10 +257,6 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 %%
 
 global stimulus
-
-if stimulus.scan
-    task.thistrial.seglen(end) = 1.05^(rand*30+15);
-end
 
 stimulus.curTrial = stimulus.curTrial + 1;
 
@@ -508,6 +504,10 @@ if stimulus.staircasing
             datamat(ci,li,1:sum(idxs)) = thresholds(idxs);
         end
     end
+    if any(thresholds<0) || any(thresholds>1)
+        % remove errant thresholds
+        warning('should remove some thresholds...');
+    end
     %%
     datamu = nanmean(datamat,3);
     datamu(datamu==0) = NaN;
@@ -524,6 +524,7 @@ if stimulus.staircasing
         errbar(stimLengths,datamu(i,:),datasd(i,:),'-','Color',cmap(i,:));
         legs{end+1} = sprintf('Stimulus luminance: %i/255',stimCons(i));
     end
+    axis([50 100 0 20]);
     legend(legs)
     xlabel('Stimulus length (ms)');
     ylabel('Mask contrast at just noticeable difference (% luminance)');
