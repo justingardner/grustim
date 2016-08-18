@@ -115,12 +115,12 @@ stimulus.ring.outer = 11; %
 stimulus.area = 3.14159265358979*(stimulus.ring.outer^2-stimulus.ring.inner^2);
 
 if stimulus.staircasing
-    stimulus.run.counter = stimulus.run.counter+1;
-    if stimulus.run.counter>length(stimulus.run.stimCon)
+    stimulus.counter = stimulus.counter+1;
+    if stimulus.counter>length(stimulus.run.stimCon)
         stimulus.run.stimCon = repmat(stimulus.run.stimCon,1,2);
         stimulus.run.stimLengths = repmat(stimulus.run.stimLengths,1,2);
     end
-    stimulus.lowCon = stimulus.run.stimCon(stimulus.run.counter)/255;
+    stimulus.lowCon = stimulus.run.stimCon(stimulus.counter)/255;
 else
     stimulus.lowCon = 1/255; % minimum possible contrast
 end
@@ -160,8 +160,8 @@ if stimulus.localizer
     task{1}{1}.parameter.contrast = [0 1 4 16 32]/255;
 end
 if stimulus.staircasing
-    task{1}{1}.segmin(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.run.counter)/1000;
-    task{1}{1}.segmax(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.run.counter)/1000;
+    task{1}{1}.segmin(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.counter)/1000;
+    task{1}{1}.segmax(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.counter)/1000;
 end
 
 %% Tracking
@@ -214,7 +214,7 @@ mglFlush
 % let the user know
 disp(sprintf('(berlin) Starting run number: %i.',stimulus.counter));
 if stimulus.staircasing
-    disp(sprintf('(berlin) Staircasing with stimulus contrast: %i/255 and timing: %3.0f',stimulus.lowCon*255,stimulus.run.stimLengths(stimulus.run.counter)));
+    disp(sprintf('(berlin) Staircasing with stimulus contrast: %i/255 and timing: %3.0f',stimulus.lowCon*255,stimulus.run.stimLengths(stimulus.counter)));
 end
 % if stimulus.unattended
 myscreen.flushMode = 1;
@@ -348,7 +348,7 @@ if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.loca
             myscreen.flushMode = 1;
             stimulus.dead = 1;
             return
-        elseif dist > stimulus.ring.inner
+        elseif dist > stimulus.ring.inner-1
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
         end
     end
@@ -472,7 +472,7 @@ end
 idxs = randperm(length(sl));
 sl = sl(idxs); sc = sc(idxs);
 
-stimulus.run.counter = 0;
+stimulus.counter = 0;
 stimulus.run.stimLengths = sl;
 stimulus.run.stimCon = sc;
 
@@ -487,9 +487,10 @@ function dispInfo(stimulus)
 % % % luminance = interp1(calib.tableCorrected.outputValues,calib.tableCorrected.luminance,0:1/255:255);
 if stimulus.staircasing
     %%
+    notstaircase = stimulus.staircase;
     thresholds = zeros(size(stimulus.run.stimLengths));
     for i = 1:length(stimulus.staircase)
-        out = doStaircase('threshold',stimulus.staircase{i});
+        out = doStaircase('threshold',notstaircase{i});
         thresholds(i) = out.threshold;
     end
     % reorganize into matrix
@@ -508,6 +509,8 @@ if stimulus.staircasing
         % remove errant thresholds
         warning('should remove some thresholds...');
     end
+    datamat(datamat>1) = NaN;
+    datamat(datamat<=0) = NaN;
     %%
     datamu = nanmean(datamat,3);
     datamu(datamu==0) = NaN;
@@ -524,7 +527,8 @@ if stimulus.staircasing
         errbar(stimLengths,datamu(i,:),datasd(i,:),'-','Color',cmap(i,:));
         legs{end+1} = sprintf('Stimulus luminance: %i/255',stimCons(i));
     end
-    axis([50 100 0 20]);
+    a = axis;
+    axis([50 100 0 a(4)]);
     legend(legs)
     xlabel('Stimulus length (ms)');
     ylabel('Mask contrast at just noticeable difference (% luminance)');
