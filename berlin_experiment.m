@@ -18,8 +18,8 @@ global stimulus
 
 %% OVERRIDES (for testing)
 
-stimulus.contrastOverride = 0;
-stimulus.lowOverride = 50;
+stimulus.contrastOverride = -1;
+stimulus.lowOverride = -1;
 
 %% Initialize Variables
 
@@ -255,7 +255,7 @@ end
 mglClearScreen(0);
 mglTextSet([],32,stimulus.colors.white);
 mglTextDraw('Run complete...',[0 0]);
-if ~stimulus.localizer && ~stimulus.staircase
+if ~stimulus.localizer && ~stimulus.staircasing
     mglTextDraw(sprintf('$%2.2f earned this run',stimulus.run.points/100),[0 2]);
 end
 mglFlush
@@ -527,7 +527,9 @@ stimulus.run.stimCon = sc;
 function dispInfo(stimulus)
 %%
 
-disp(sprintf('Participant %s has earned $%2.2f',mglGetSID,stimulus.run.points/100));
+if ~stimulus.localizer && ~stimulus.staircasing
+    disp(sprintf('Participant %s has earned $%2.2f',mglGetSID,stimulus.run.points/100));
+end
 % load the luminance table
 % % % load(myscreen.calibFullFilename)
 % % % luminance = interp1(calib.tableCorrected.outputValues,calib.tableCorrected.luminance,0:1/255:255);
