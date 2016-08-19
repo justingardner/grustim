@@ -33,7 +33,7 @@ staircase = 0;
 scan = 0;
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=0'});
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1'});
 stimulus.localizer = localizer;
 stimulus.scan = scan;
 stimulus.staircasing = staircase;
@@ -76,6 +76,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/berlin_experiment/%s',mglGetSID)
         % copy staircases and run numbers
         stimulus.staircase = s.stimulus.staircase;
         stimulus.istaircase = s.stimulus.istaircase;
+        stimulus.run = s.stimulus.run;
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.run = s.stimulus.run;
 
@@ -556,7 +557,7 @@ if stimulus.staircasing
     notstaircase = stimulus.staircase;
     thresholds = zeros(size(stimulus.run.stimLengths));
     for i = 1:length(stimulus.staircase)
-        out = doStaircase('threshold',notstaircase{i});
+        out = doStaircase('threshold',notstaircase{i},'type','weibull','dispFig=0');
         thresholds(i) = out.threshold;
     end
     % reorganize into matrix
