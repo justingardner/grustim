@@ -39,6 +39,7 @@ if stimulus.staircasing && stimulus.localizer
 end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
+stimulus.run.points = 0; % reset points for this run
 
 %% Setup Screen
 
@@ -155,6 +156,8 @@ if stimulus.localizer
     % longer delay, necessary for scanning
     task{1}{1}.segmin = [0.100 0.100 0.100 8 2 4];
     task{1}{1}.segmax = [0.100 0.100 0.100 8 2 10];
+    task{1}{1}.segmin = [0.100 0.100 0.100 8 2 8];
+    task{1}{1}.segmax = [0.100 0.100 0.100 8 2 8];
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
     task{1}{1}.numTrials = Inf;
     task{1}{1}.parameter.contrast = [0 1 4 16 32]/255;
@@ -235,9 +238,10 @@ end
 mglClearScreen(0);
             mglTextSet([],32,stimulus.colors.white);
 mglTextDraw('Run complete...',[0 0]);
+mglTextDraw(sprintf('$%2.2f earned this run',stimulus.run.points/100),[0 2]);
 mglFlush
 myscreen.flushMode = 1;
-mglWaitSecs(1);
+mglWaitSecs(3);
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
@@ -367,7 +371,12 @@ mglStencilSelect(0);
 
 function upFix(stimulus)
 %%
-mglFixationCross(1.5,1.5,stimulus.live.fixColor);
+if ~stimulus.localizer && ~stimulus.staircasing && all(stimulus.live.fixColor==stimulus.colors.green)
+    mglTextSet([],32,stimulus.live.fixColor);
+    mglTextDraw('+5',[0 0]);
+else
+    mglFixationCross(1.5,1.5,stimulus.live.fixColor);
+end
 
 function stimulus = upDots(stimulus,myscreen)
 
@@ -409,12 +418,14 @@ else
             disp(sprintf('Subject pressed %i: %s',task.thistrial.whichButton,responseText{task.thistrial.correct+1}));
             stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
             % Store whether this was correct
-            stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
 
             if stimulus.staircasing
                 stimulus.staircase{end} = doStaircase('update',stimulus.staircase{end},task.thistrial.correct);
             else
                 stimulus.istaircase = doStaircase('update',stimulus.istaircase,task.thistrial.correct);
+                if task.thistrial.correct
+                    stimulus.run.points = stimulus.run.points + 5;
+                end
             end
         else
             disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
@@ -482,6 +493,7 @@ stimulus.run.stimCon = sc;
 function dispInfo(stimulus)
 %%
 
+disp(sprintf('Participant %s has earned $%2.2f',mglGetSID,stimulus.run.points/100));
 % load the luminance table
 % % % load(myscreen.calibFullFilename)
 % % % luminance = interp1(calib.tableCorrected.outputValues,calib.tableCorrected.luminance,0:1/255:255);
