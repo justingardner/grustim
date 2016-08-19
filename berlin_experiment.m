@@ -177,6 +177,17 @@ if ~stimulus.localizer
     task{1}{1}.randVars.calculated.contrast = nan; % will be 0->100%
 end
 
+%% Add dead phase
+
+if stimulus.localizer
+    task{1}{2} = task{1}{1};
+    task{1}{1}.waitForBacktick = 0;
+    task{1}{1}.numTrials = 1;
+    task{1}{1}.segmin = [0 0 0 0 0 9.9];
+    task{1}{1}.segmax = [0 0 0 0 0 9.9];
+    task{1}{1}.parameter.contrast = 0;
+end
+
 %% Dots
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
