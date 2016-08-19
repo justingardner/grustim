@@ -16,6 +16,11 @@ function [ myscreen ] = berlin_experiment( varargin )
 
 global stimulus
 
+%% OVERRIDES (for testing)
+
+stimulus.contrastOverride = 0;
+stimulus.lowOverride = 50;
+
 %% Initialize Variables
 
 % add arguments later
@@ -39,7 +44,6 @@ if stimulus.staircasing && stimulus.localizer
 end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
-stimulus.run.points = 0; % reset points for this run
 
 %% Setup Screen
 
@@ -66,6 +70,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/berlin_experiment/%s',mglGetSID)
         stimulus.staircase = s.stimulus.staircase;
         stimulus.istaircase = s.stimulus.istaircase;
         stimulus.counter = s.stimulus.counter + 1;
+        stimulus.run = s.stimulus.run;
 
         clear s;
         stimulus.initStair = 0;
@@ -81,6 +86,7 @@ if stimulus.plots==2
     return
 end
 
+stimulus.run.points = 0; % reset points for this run
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% init staircase
@@ -125,7 +131,9 @@ if stimulus.staircasing
 else
     stimulus.lowCon = 1/255; % minimum possible contrast
 end
-stimulus.contrastOverride = -1;
+if stimulus.lowOverride>=0
+    stimulus.lowCon = stimulus.lowOverride;
+end
 
 %% Generate stencils
 mglStencilCreateBegin(99);
@@ -181,7 +189,7 @@ end
 
 if stimulus.localizer
     task{1}{2} = task{1}{1};
-    task{1}{1}.waitForBacktick = 0;
+    task{1}{2}.waitForBacktick = 0;
     task{1}{1}.numTrials = 1;
     task{1}{1}.segmin = [0 0 0 0 0 9.9];
     task{1}{1}.segmax = [0 0 0 0 0 9.9];
@@ -277,9 +285,6 @@ stimulus.curTrial = stimulus.curTrial + 1;
 
 myscreen.flushMode = 0;
 
-% set the current image
-task.thistrial.dir1 = rand*2*pi;
-task.thistrial.dir2 = task.thistrial.dir1;
 if stimulus.localizer
     % pass, should be already set
 elseif stimulus.staircasing
@@ -297,12 +302,27 @@ end
 % setup mask for this trial
 stimulus.live.masktex = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
 
+% set the current image
 task.thistrial.match = randi(2)-1;
-if ~task.thistrial.match
-    if randi(2)==1
-        task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
+if stimulus.localizer
+    opts = [0 pi/2];
+    choice = randi(2);
+    task.thistrial.dir1 = opts(choice);
+    if task.thistrial.match
+        task.thistrial.dir2 = task.thistrial.dir1;
     else
-        task.thistrial.dir2 = task.thistrial.dir1 - pi/2;
+        opts = opts([2 1]);
+        task.thistrial.dir2 = opts(choice);
+    end
+else
+    task.thistrial.dir1 = rand*2*pi;
+    task.thistrial.dir2 = task.thistrial.dir1;
+    if ~task.thistrial.match
+        if randi(2)==1
+            task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
+        else
+            task.thistrial.dir2 = task.thistrial.dir1 - pi/2;
+        end
     end
 end
 matches = {'No','Match'};
@@ -349,6 +369,9 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
+if task.thistrial.thisphase==1
+    return;
+end
 mglClearScreen(0);
 % check eye pos
 if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.localizer
