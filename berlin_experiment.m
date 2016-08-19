@@ -154,8 +154,6 @@ task{1}{1}.numTrials = 60;
 
 if stimulus.localizer
     % longer delay, necessary for scanning
-    task{1}{1}.segmin = [0.100 0.100 0.100 8 2 4];
-    task{1}{1}.segmax = [0.100 0.100 0.100 8 2 10];
     task{1}{1}.segmin = [0.100 0.100 0.100 8 2 8];
     task{1}{1}.segmax = [0.100 0.100 0.100 8 2 8];
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -236,9 +234,11 @@ end
 
 % task ended
 mglClearScreen(0);
-            mglTextSet([],32,stimulus.colors.white);
+mglTextSet([],32,stimulus.colors.white);
 mglTextDraw('Run complete...',[0 0]);
-mglTextDraw(sprintf('$%2.2f earned this run',stimulus.run.points/100),[0 2]);
+if ~stimulus.localizer && ~stimulus.staircase
+    mglTextDraw(sprintf('$%2.2f earned this run',stimulus.run.points/100),[0 2]);
+end
 mglFlush
 myscreen.flushMode = 1;
 mglWaitSecs(3);
