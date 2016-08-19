@@ -18,8 +18,12 @@ global stimulus
 
 %% OVERRIDES (for testing)
 
-stimulus.contrastOverride = 0;
-stimulus.lowOverride = 50;
+% run: `
+
+% set all to -1 when scanning:
+stimulus.contrastOverride = 5/255;
+stimulus.lowOverride = 4/255;
+stimulus.timingOverride = 1;
 
 %% Initialize Variables
 
@@ -54,6 +58,9 @@ else
 end
 
 myscreen.background = 0;
+
+setGT();
+mglWaitSecs(1);
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -112,10 +119,14 @@ else
     stimulus.responseKeys = [2 1]; % corresponds to  NOMATCH, MATCH
 end
 
-stimulus.colors.black = [0 0 0];
-stimulus.colors.white = [0.25 0.25 0.25];
-stimulus.colors.green = [0 0.25 0];
-stimulus.colors.red = [0.25 0 0];
+% stimulus.colors.black = [0 0 0];
+% stimulus.colors.white = [0.25 0.25 0.25];
+% stimulus.colors.green = [0 0.25 0];
+% stimulus.colors.red = [0.25 0 0];
+stimulus.colors.black = 0;
+stimulus.colors.white = 1/255;
+stimulus.colors.red = 2/255;
+stimulus.colors.green = 3/255;
 
 stimulus.ring.inner = 3.5;
 stimulus.ring.outer = 11; %
@@ -159,14 +170,21 @@ task{1}{1}.segmax = [0.100 0.100 0.100 1 2 1];
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.numTrials = 60;
+task{1}{1}.random = 1;
+
 
 if stimulus.localizer
     % longer delay, necessary for scanning
-    task{1}{1}.segmin = [0.100 0.100 0.100 8 2 8];
-    task{1}{1}.segmax = [0.100 0.100 0.100 8 2 8];
+    if stimulus.timingOverride>= 0
+        task{1}{1}.segmin = [0.100 0.100 0.100 1 2 1];
+        task{1}{1}.segmax = [0.100 0.100 0.100 1 2 1];
+    else
+        task{1}{1}.segmin = [0.100 0.100 0.100 8 2 8];
+        task{1}{1}.segmax = [0.100 0.100 0.100 8 2 8];
+    end 
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
     task{1}{1}.numTrials = Inf;
-    task{1}{1}.parameter.contrast = [0 1 4 16 32]/255;
+    task{1}{1}.parameter.contrast = [0 32 64 255]/255;
 end
 if stimulus.staircasing
     task{1}{1}.segmin(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.counter)/1000;
@@ -217,7 +235,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~stimulus.scan
+if ~stimulus.localizer
     myscreen = eyeCalibDisp(myscreen);
 end
 
@@ -255,7 +273,7 @@ end
 mglClearScreen(0);
 mglTextSet([],32,stimulus.colors.white);
 mglTextDraw('Run complete...',[0 0]);
-if ~stimulus.localizer && ~stimulus.staircase
+if ~stimulus.localizer && ~stimulus.staircasing
     mglTextDraw(sprintf('$%2.2f earned this run',stimulus.run.points/100),[0 2]);
 end
 mglFlush
@@ -696,3 +714,34 @@ dots.y(offscreen) = dots.y(offscreen) + abs(dots.maxY - dots.minY);
 
 dots.xdisp = dots.x;
 dots.ydisp = dots.y;
+
+
+function setGT()
+
+
+% set the bottom
+
+low = 1/255/6;
+high = 1/255/6*32;
+gammaTable = [0 0 0;0.1 0.1 0.1;0.1 0 0;0 0.1 0;low low low;high high high];
+gammaTable(7:256,:) = repmat([0 0 0],250,1);
+
+if size(gammaTable,1)~=256
+    disp('(setGammaTable) Failure: Incorrect number of colors in gamma table produced');
+    keyboard
+end
+
+% set the gamma table
+succ = mglSetGammaTable(gammaTable);
+
+if ~succ
+    warning('Gamma table set failure');
+    keyboard
+end
+
+% % a = mglGetGammaTable;
+% % if ~all(a.redTable==gammaTable(:,1)')
+% %     warning('Gamma table set failure');
+% %     keyboard
+% % end
+    
