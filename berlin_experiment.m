@@ -1,17 +1,40 @@
 function [ myscreen ] = berlin_experiment( varargin )
 %CAT_AWE Testing category discrimination at low visibility conditions
-%   This is dan's experiment for Berlin (fall 2016). Version 2! Now this is
-%   a motion experiment. On each trial (15 s) a mask/stimulus pair occilate
-%   on off every 250 ms for 6 s. The last 9 s are a response and ITI time.
+%   This is dan's experiment for Berlin (fall 2016). Version 3! Now this is
+%   a motion experiment. On each trial (0.3 s stim + 8 s ISI + 2s response
+%   + 8 s ITI) there is a brief blast of motion/shape/category which is
+%   then followed by a constant motion stimulus during the response period.
+%   The task is *always* match/non-match, but can be varied to be either
+%   match-to-sample (direction/shape) or match-to-category (up-left vs.
+%   down-right). The underlying patch is moving dots. Shapes are defined by
+%   luminance. Categories are defined by an arbitrary SW->NE dividing line.
+%   There are six directions used at equal pi/3 spacing. By default the
+%   task is MS on motion, obviously the category information is technically
+%   present. You have to enable the shape stimulus directly.
+%
+%   The default task is invisible.
+%   Staircasing mode runs a staircase over mask strengths to d'=1
+%   performance.
+%   Localizer mode runs the task with scanner timing (8s delays) vs.
+%   psychophysics timing (0.5-1s delays).
 %
 %   OPTIONS
 %
-%   default (localizer=0, staircasing=0) runs a match to sample using
-%   masked stimuli.
+%   shape=1 enable shape stimulus (luminance defined)
+%   task=1,2,3 (default=1) DMS direction, DMS shape, DMC category
+%   staircase=1 runs in staircase mode (variable mask strength)
+%   localizer=1 runs with scanner timing and fixed mask strengths
 %
-%   staircasing=1 runs a set of staircases (one per run) to determine
-%   thresholds across a range of mask strengths, stimulus strengths, and
-%   stimulus lengths.
+%   noeye=0 (default=1) skips the eye movement detection script
+%   plots=0,1,2 show plots, or show plots and then return
+%
+%   NOTES
+%
+%   The code has independent staircases for each mode. In invisible mode it
+%   runs fixed value staircases for the different tasks, depending on
+%   whether shapes are present. No staircases in localizer mode. In
+%   staircase mode it runs a staircase specifically to determine necessary
+%   mask luminance to block vision.
 
 
 global stimulus
@@ -20,10 +43,13 @@ global stimulus
 
 % run: `
 
-% set all to -1 when scanning:
-stimulus.contrastOverride = -1;
-stimulus.lowOverride = -1;
+% set all to -1 when running:
+stimulus.contrastOverride = 1;
+stimulus.lowOverride = 25/255;
 stimulus.timingOverride = -1;
+
+% actual mask contrasts for scanning
+stimulus.maskContrasts = [0 255];
 
 %% Initialize Variables
 
@@ -33,13 +59,14 @@ staircase = 0;
 scan = 0;
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1'});
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=0'});
 stimulus.localizer = localizer;
 stimulus.scan = scan;
 stimulus.staircasing = staircase;
 stimulus.plots = plots;
 stimulus.category = category; % use match to category rules instead of match to sample rules
 stimulus.noeye = noeye;
+stimulus.constant = constant;
 clear localizer invisible scan category noeye
 
 if stimulus.staircasing && stimulus.localizer
@@ -59,8 +86,8 @@ end
 
 myscreen.background = 0;
 
-setGT();
-mglWaitSecs(1);
+% setGT();
+% mglWaitSecs(1);
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -120,14 +147,14 @@ else
     stimulus.responseKeys = [2 1]; % corresponds to  NOMATCH, MATCH
 end
 
-% stimulus.colors.black = [0 0 0];
-% stimulus.colors.white = [0.25 0.25 0.25];
-% stimulus.colors.green = [0 0.25 0];
-% stimulus.colors.red = [0.25 0 0];
-stimulus.colors.black = 0;
-stimulus.colors.white = 1/255;
-stimulus.colors.red = 2/255;
-stimulus.colors.green = 3/255;
+stimulus.colors.black = [0 0 0];
+stimulus.colors.white = [0.25 0.25 0.25];
+stimulus.colors.green = [0 0.25 0];
+stimulus.colors.red = [0.25 0 0];
+% stimulus.colors.black = 0;
+% stimulus.colors.white = 1/255;
+% stimulus.colors.red = 2/255;
+% stimulus.colors.green = 3/255;
 
 stimulus.ring.inner = 3.5;
 stimulus.ring.outer = 11; %
@@ -159,33 +186,39 @@ task{1}{1}.waitForBacktick = 1;
 stimulus.curTrial = 0;
 
 % calculate timing
-stimulus.seg.mask1 = 1;
-stimulus.seg.mask2 = 3;
-stimulus.seg.stim1 = 2;
-stimulus.seg.delay = 4;
-stimulus.seg.resp = 5;
-stimulus.seg.ITI = 6;
+stimulus.seg.mask1 = [];
+stimulus.seg.mask2 = [];
+stimulus.seg.stim1 = [];
+task{1}{1}.seglen = [];
 
-task{1}{1}.segmin = [0.100 0.100 0.100 1 2 1];
-task{1}{1}.segmax = [0.100 0.100 0.100 1 2 1];
-task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
-task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
+stimulus.stimRepeats = 7;
+for i = 1:stimulus.stimRepeats
+    stimulus.seg.mask1(end+1) = (i-1)*3+1;
+    stimulus.seg.mask2(end+1) = (i-1)*3+3;
+    stimulus.seg.stim1(end+1) = (i-1)*3+2;
+    task{1}{1}.seglen(end+1:end+3) = [0.1 0.1 0.1];
+end
+
+stimulus.seg.delay = (i-1)*3+4;
+stimulus.seg.resp = (i-1)*3+5;
+stimulus.seg.ITI = (i-1)*3+6;
+task{1}{1}.seglen(end+1:end+3) = [1 2 1];
+
+task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
+task{1}{1}.getResponse = zeros(size(task{1}{1}.seglen)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
 
 
 if stimulus.localizer
     % longer delay, necessary for scanning
-    if stimulus.timingOverride>= 0
-        task{1}{1}.segmin = [0.100 0.100 0.100 1 2 1];
-        task{1}{1}.segmax = [0.100 0.100 0.100 1 2 1];
-    else
-        task{1}{1}.segmin = [0.100 0.100 0.100 8 2 8];
-        task{1}{1}.segmax = [0.100 0.100 0.100 8 2 8];
+    if stimulus.timingOverride<0
+        task{1}{1}.seglen(stimulus.seg.delay) = 8;
+        task{1}{1}.seglen(stimulus.seg.ITI) = 8;
     end 
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
     task{1}{1}.numTrials = Inf;
-    task{1}{1}.parameter.contrast = [0 32 64 255]/255;
+    task{1}{1}.parameter.contrast = stimulus.maskContrasts/255;
 end
 if stimulus.staircasing
     task{1}{1}.segmin(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.counter)/1000;
@@ -360,6 +393,10 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 stimulus.live.dots = 0;
+if stimulus.constant
+    stimulus.live.dots=1;
+    stimulus.live.coherence = 0;
+end
 stimulus.live.resp = 0;
 stimulus.live.mask = 0;
 stimulus.live.fixColor = stimulus.colors.white;
@@ -368,7 +405,7 @@ stimulus.live.coherence = 0;
 
 if any([stimulus.seg.mask1 stimulus.seg.mask2]==task.thistrial.thisseg)
     stimulus.live.mask = 1;
-elseif stimulus.seg.stim1==task.thistrial.thisseg
+elseif any(stimulus.seg.stim1==task.thistrial.thisseg)
     stimulus.live.dots = 1;
     stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
     stimulus.dots{stimulus.dot}.dir = task.thistrial.dir1;
@@ -388,7 +425,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-if task.thistrial.thisphase==1
+if stimulus.localizer && task.thistrial.thisphase==1
     return;
 end
 mglClearScreen(0);
