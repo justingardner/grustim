@@ -21,9 +21,11 @@ global stimulus
 % run: `
 
 % set all to -1 when scanning:
-stimulus.contrastOverride = -1;
-stimulus.lowOverride = -1;
+stimulus.contrastOverride = 0/255;
+stimulus.lowOverride = 1/255;
 stimulus.timingOverride = -1;
+
+% minimum luminance value
 
 %% Initialize Variables
 
@@ -59,7 +61,8 @@ end
 
 myscreen.background = 0;
 
-setGT();
+stimulus.linearizedGammaTable = mglGetGammaTable;
+setGT(myscreen,stimulus);
 mglWaitSecs(1);
 
 %% Open Old Stimfile
@@ -120,14 +123,10 @@ else
     stimulus.responseKeys = [2 1]; % corresponds to  NOMATCH, MATCH
 end
 
-% stimulus.colors.black = [0 0 0];
-% stimulus.colors.white = [0.25 0.25 0.25];
-% stimulus.colors.green = [0 0.25 0];
-% stimulus.colors.red = [0.25 0 0];
-stimulus.colors.black = 0;
-stimulus.colors.white = 1/255;
-stimulus.colors.red = 2/255;
-stimulus.colors.green = 3/255;
+stimulus.colors.black = [0 0 0];
+stimulus.colors.white = [0.25 0.25 0.25];
+stimulus.colors.green = [0 0.25 0];
+stimulus.colors.red = [0.25 0 0];
 
 stimulus.ring.inner = 3.5;
 stimulus.ring.outer = 11; %
@@ -388,7 +387,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-if task.thistrial.thisphase==1
+if stimulus.localizer && task.thistrial.thisphase==1
     return;
 end
 mglClearScreen(0);
@@ -398,7 +397,7 @@ if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.loca
     if ~any(isnan(pos))
         dist = hypot(pos(1),pos(2));
         if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
-            mglTextSet([],32,[1 0 0]);
+            mglTextSet([],32,stimulus.colors.red);
             disp('Eye movement detected!!!!');
             mglTextDraw('Eye Movement Detected',[0 0]);
             mglFlush
@@ -425,7 +424,7 @@ mglStencilSelect(0);
 function upFix(stimulus)
 %%
 if ~stimulus.localizer && ~stimulus.staircasing && all(stimulus.live.fixColor==stimulus.colors.green)
-    mglTextSet([],32,stimulus.live.fixColor);
+    mglTextSet([],32,stimulus.colors.white);
     mglTextDraw('+5',[0 0]);
 else
     mglFixationCross(1.5,1.5,stimulus.live.fixColor);
@@ -719,32 +718,28 @@ dots.xdisp = dots.x;
 dots.ydisp = dots.y;
 
 
-function setGT()
+function setGT(myscreen,stimulus)
 
+% multipliers relative
+max = 95;
+% load the calibration
+load(myscreen.calibFullFilename);
 
-% set the bottom
+% get the max value from the calibration file
+localMax = calib.tableCorrected.luminance(end);
 
-low = 1/255/6;
-high = 1/255/6*32;
-gammaTable = [0 0 0;0.1 0.1 0.1;0.1 0 0;0 0.1 0;low low low;high high high];
-gammaTable(7:256,:) = repmat([0 0 0],250,1);
+% get an approximate factor
+factor = round(localMax/max);
 
-if size(gammaTable,1)~=256
-    disp('(setGammaTable) Failure: Incorrect number of colors in gamma table produced');
-    keyboard
+disp(sprintf('Setting gamma table to use %02.2f%% of available space.',1/factor*100));
+% if not 1, set the gammaTable accordingly
+
+if factor > 1
+    newTable = interp1(linspace(0,1,256),stimulus.linearizedGammaTable.redTable,linspace(0,1/factor,256));
+    succ = mglSetGammaTable(repmat(newTable',1,3));
+
+    if ~succ
+        warning('Gamma table set failure');
+        keyboard
+    end
 end
-
-% set the gamma table
-succ = mglSetGammaTable(gammaTable);
-
-if ~succ
-    warning('Gamma table set failure');
-    keyboard
-end
-
-% % a = mglGetGammaTable;
-% % if ~all(a.redTable==gammaTable(:,1)')
-% %     warning('Gamma table set failure');
-% %     keyboard
-% % end
-    
