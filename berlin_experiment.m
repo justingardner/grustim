@@ -44,8 +44,8 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = 1;
-stimulus.lowOverride = 25/255;
+stimulus.contrastOverride = 32/255;
+stimulus.lowOverride = 1/255;
 stimulus.timingOverride = -1;
 
 % actual mask contrasts for scanning
@@ -158,7 +158,7 @@ stimulus.colors.red = [0.25 0 0];
 % stimulus.colors.green = 3/255;
 
 stimulus.ring.inner = 3.5;
-stimulus.ring.outer = 11; %
+stimulus.ring.outer = 9; %
 stimulus.area = 3.14159265358979*(stimulus.ring.outer^2-stimulus.ring.inner^2);
 
 if stimulus.staircasing
@@ -192,7 +192,7 @@ stimulus.seg.mask2 = [];
 stimulus.seg.stim1 = [];
 task{1}{1}.seglen = [];
 
-stimulus.stimRepeats = 7;
+stimulus.stimRepeats = 8;
 for i = 1:stimulus.stimRepeats
     stimulus.seg.mask1(end+1) = (i-1)*3+1;
     stimulus.seg.mask2(end+1) = (i-1)*3+3;
@@ -353,7 +353,11 @@ if stimulus.contrastOverride>=0
 end
 
 % setup mask for this trial
-stimulus.live.masktex = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
+stimulus.live.masktex = {};
+for i = 1:20
+    stimulus.live.masktex{i} = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
+end
+stimulus.live.masktexn = randi(20);
 
 % set the current image
 task.thistrial.match = randi(2)-1;
@@ -383,6 +387,11 @@ disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast: %3.0f/255 Matching: %s',stimu
 
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
+newn = randi(20);
+while newn == stimulus.live.masktexn
+    newn = randi(20);
+end
+stimulus.live.masktexn = newn;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -454,7 +463,7 @@ if stimulus.live.dots
     stimulus = upDots(stimulus,myscreen);
 end
 if stimulus.live.mask
-    mglBltTexture(stimulus.live.masktex,[0 0]);
+    mglBltTexture(stimulus.live.masktex{stimulus.live.masktexn},[0 0]);
 end
 mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
 upFix(stimulus);
