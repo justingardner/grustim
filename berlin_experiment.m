@@ -20,7 +20,8 @@ function [ myscreen ] = berlin_experiment( varargin )
 %
 %   OPTIONS
 %
-%   shape=1 enable shape stimulus (luminance defined)
+%   shape=1 enable shape stimulus (changes the frame from circular to
+%   either circular or cross)
 %   task=1,2,3 (default=1) DMS direction, DMS shape, DMC category
 %   staircase=1 runs in staircase mode (variable mask strength)
 %   localizer=1 runs with scanner timing and fixed mask strengths
@@ -44,8 +45,8 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = 32/255;
-stimulus.lowOverride = 1/255;
+stimulus.contrastOverride = 100/255;
+stimulus.lowOverride = 50/255;
 stimulus.timingOverride = -1;
 
 % actual mask contrasts for scanning
@@ -58,8 +59,9 @@ localizer = 0;
 staircase = 0;
 scan = 0;
 plots = 0;
-noeye = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=0'});
+noeye = 0; shape = 0;
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=1'});
+stimulus.shape = shape;
 stimulus.localizer = localizer;
 stimulus.scan = scan;
 stimulus.staircasing = staircase;
@@ -158,8 +160,8 @@ stimulus.colors.red = [0.25 0 0];
 % stimulus.colors.green = 3/255;
 
 stimulus.ring.inner = 3.5;
-stimulus.ring.outer = 9; %
-stimulus.area = 3.14159265358979*(stimulus.ring.outer^2-stimulus.ring.inner^2);
+stimulus.ring.outer = 7; %
+stimulus.area = 3.14159265358979*((stimulus.ring.outer/2)^2-(stimulus.ring.inner/2)^2);
 
 if stimulus.staircasing
     stimulus.counter = stimulus.counter+1;
@@ -176,9 +178,26 @@ if stimulus.lowOverride>=0
 end
 
 %% Generate stencils
+
+% make the outer stencil (big, circular)
+mglStencilCreateBegin(999);
+mglFillOval(0,0,repmat(stimulus.ring.outer+3,1,2),1);
+mglStencilCreateEnd;
+mglClearScreen(0);
+% make the circular stencil
 mglStencilCreateBegin(99);
 mglFillOval(0,0,repmat(stimulus.ring.outer,1,2),1);
 mglStencilCreateEnd;
+mglClearScreen(0);
+% make the cross stencil, we try to approximate the area to be ~216 degrees
+% squared, so it has the same total size as the circle. This means each of
+% the five "parts" needs to be 6.6 degrees wide and high
+mult = sqrt((stimulus.area+pi*(stimulus.ring.inner/2)^2)/5);
+mglStencilCreateBegin(100);
+mglFillRect([0 0 0 -mult mult],[0 -mult mult 0 0],[mult mult],[1 1 1]);
+mglStencilCreateEnd;
+mglClearScreen(0);
+
 
 %% Setup Task
 
@@ -195,8 +214,8 @@ task{1}{1}.seglen = [];
 stimulus.stimRepeats = 8;
 for i = 1:stimulus.stimRepeats
     stimulus.seg.mask1(end+1) = (i-1)*3+1;
-    stimulus.seg.mask2(end+1) = (i-1)*3+3;
     stimulus.seg.stim1(end+1) = (i-1)*3+2;
+    stimulus.seg.mask2(end+1) = (i-1)*3+3;
     task{1}{1}.seglen(end+1:end+3) = [0.1 0.1 0.1];
 end
 
@@ -209,7 +228,11 @@ task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.seglen)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
-
+if stimulus.shape
+    task{1}{1}.parameter.shape = [1 2];
+else
+    task{1}{1}.parameter.shape = 1;
+end
 
 if stimulus.localizer
     % longer delay, necessary for scanning
@@ -240,21 +263,25 @@ end
 
 %% Add dead phase
 
+task{1}{2} = task{1}{1};
+task{1}{2}.waitForBacktick = 0;
+task{1}{1}.numTrials = 1;
+task{1}{1}.parameter.contrast = 0;
 if stimulus.localizer
-    task{1}{2} = task{1}{1};
-    task{1}{2}.waitForBacktick = 0;
-    task{1}{1}.numTrials = 1;
     task{1}{1}.segmin = [0 0 0 0 0 9.9];
     task{1}{1}.segmax = [0 0 0 0 0 9.9];
-    task{1}{1}.parameter.contrast = 0;
+else
+    task{1}{1}.segmin = [0 0 0 0 0 4.9];
+    task{1}{1}.segmax = [0 0 0 0 0 4.9];
 end
 
 %% Dots
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
-stimulus.dots.dotsize = 2;
-stimulus.dots.density = 15;
+stimulus.dots.dotsize = 1;
+stimulus.dots.density = 25;
 stimulus.dots.speed = 3;
+stimulus.idots = initDotsRadial(stimulus.dots);
 dots = {};
 for i = 1:3
     dots{i} = initDotsRadial(stimulus.dots);
@@ -353,11 +380,7 @@ if stimulus.contrastOverride>=0
 end
 
 % setup mask for this trial
-stimulus.live.masktex = {};
-for i = 1:20
-    stimulus.live.masktex{i} = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
-end
-stimulus.live.masktexn = randi(20);
+stimulus.live.masktex = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
 
 % set the current image
 task.thistrial.match = randi(2)-1;
@@ -387,11 +410,6 @@ disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast: %3.0f/255 Matching: %s',stimu
 
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
-newn = randi(20);
-while newn == stimulus.live.masktexn
-    newn = randi(20);
-end
-stimulus.live.masktexn = newn;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -403,15 +421,15 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 stimulus.live.dots = 0;
-if stimulus.constant
-    stimulus.live.dots=1;
-    stimulus.live.coherence = 0;
-end
 stimulus.live.resp = 0;
 stimulus.live.mask = 0;
 stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.dotColor = stimulus.lowCon;
 stimulus.live.coherence = 0;
+
+if task.thistrial.thisphase==1
+    return
+end
 
 if any([stimulus.seg.mask1 stimulus.seg.mask2]==task.thistrial.thisseg)
     stimulus.live.mask = 1;
@@ -435,9 +453,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-if stimulus.localizer && task.thistrial.thisphase==1
-    return;
-end
 mglClearScreen(0);
 % check eye pos
 if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.localizer
@@ -458,16 +473,31 @@ if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.loca
     end
 end
 % stimulus
-mglStencilSelect(99);
+% first draw the outer (always incoherent) dots
+if stimulus.constant
+	mglStencilSelect(999);
+    stimulus = upDotsInc(stimulus,myscreen);
+    mglStencilSelect(0);
+end
+% block the inside for the sometimes not incoherent dots
+% now draw everything else
 if stimulus.live.dots
+    if task.thistrial.shape==2 % cross
+        mglStencilSelect(100);
+    else % circle
+        mglStencilSelect(99);
+    end
+    mglFillOval(0,0,repmat(stimulus.ring.outer,1,2),0);
     stimulus = upDots(stimulus,myscreen);
+    mglStencilSelect(0);
 end
 if stimulus.live.mask
-    mglBltTexture(stimulus.live.masktex{stimulus.live.masktexn},[0 0]);
+    mglStencilSelect(999);
+    mglBltTexture(stimulus.live.masktex,[0 0]);
+    mglStencilSelect(0);
 end
 mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
 upFix(stimulus);
-mglStencilSelect(0);
 
 function upFix(stimulus)
 %%
@@ -484,6 +514,11 @@ stimulus.dots{stimulus.dot} = updateDotsRadial(stimulus.dots{stimulus.dot},stimu
 
 mglPoints2(stimulus.dots{stimulus.dot}.xdisp,stimulus.dots{stimulus.dot}.ydisp,...
     stimulus.dots{stimulus.dot}.dotsize,stimulus.live.dotColor);
+
+function stimulus = upDotsInc(stimulus,myscreen)
+stimulus.idots = updateDotsRadial(stimulus.idots,0,myscreen,true);
+mglPoints2(stimulus.idots.xdisp,stimulus.idots.ydisp,...
+    stimulus.idots.dotsize,stimulus.live.dotColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -508,7 +543,7 @@ if stimulus.localizer
             disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
         end
         stimulus.live.resp = 0;
-        stimulus.live.dots = 0;
+        stimulus.live.coherence = 0;
     end
 else
 
@@ -530,7 +565,7 @@ else
         else
             disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
         end
-        stimulus.live.dots = 0;
+        stimulus.live.coherence = 0;
     end
 end
 
@@ -664,10 +699,10 @@ end
 function dots = initDotsRadial(dots,~)
 
 % maximum depth of points
-dots.minX = -10;
-dots.maxX = 10;
-dots.minY = -10;
-dots.maxY = 10;
+dots.minX = -14;
+dots.maxX = 14;
+dots.minY = -14;
+dots.maxY = 14;
 
 dots.dir = 0;
 
