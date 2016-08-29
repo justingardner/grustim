@@ -45,8 +45,8 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = 100/255;
-stimulus.lowOverride = 50/255;
+stimulus.contrastOverride = -1/255;
+stimulus.lowOverride = -1/255;
 stimulus.timingOverride = -1;
 
 % actual mask contrasts for scanning
@@ -58,10 +58,11 @@ stimulus.maskContrasts = [0 255];
 localizer = 0;
 staircase = 0;
 scan = 0;
-plots = 0;
+plots = 0; task = 0;
 noeye = 0; shape = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=1'});
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=1','task=1'});
 stimulus.shape = shape;
+stimulus.task = task;
 stimulus.localizer = localizer;
 stimulus.scan = scan;
 stimulus.staircasing = staircase;
@@ -151,9 +152,9 @@ else
 end
 
 stimulus.colors.black = [0 0 0];
-stimulus.colors.white = [0.25 0.25 0.25];
-stimulus.colors.green = [0 0.25 0];
-stimulus.colors.red = [0.25 0 0];
+stimulus.colors.white = [0.2 0.2 0.2];
+stimulus.colors.green = [0 0.2 0];
+stimulus.colors.red = [0.2 0 0];
 % stimulus.colors.black = 0;
 % stimulus.colors.white = 1/255;
 % stimulus.colors.red = 2/255;
@@ -208,13 +209,13 @@ stimulus.curTrial = 0;
 % calculate timing
 stimulus.seg.mask1 = [];
 stimulus.seg.mask2 = [];
-stimulus.seg.stim1 = [];
+stimulus.seg.stim = [];
 task{1}{1}.seglen = [];
 
 stimulus.stimRepeats = 8;
 for i = 1:stimulus.stimRepeats
     stimulus.seg.mask1(end+1) = (i-1)*3+1;
-    stimulus.seg.stim1(end+1) = (i-1)*3+2;
+    stimulus.seg.stim(end+1) = (i-1)*3+2;
     stimulus.seg.mask2(end+1) = (i-1)*3+3;
     task{1}{1}.seglen(end+1:end+3) = [0.1 0.1 0.1];
 end
@@ -222,11 +223,11 @@ end
 stimulus.seg.delay = (i-1)*3+4;
 stimulus.seg.resp = (i-1)*3+5;
 stimulus.seg.ITI = (i-1)*3+6;
-task{1}{1}.seglen(end+1:end+3) = [1 2 1];
+task{1}{1}.seglen(end+1:end+3) = [0.75 1.25 1];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.seglen)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
-task{1}{1}.numTrials = 60;
+task{1}{1}.numTrials = 55;
 task{1}{1}.random = 1;
 if stimulus.shape
     task{1}{1}.parameter.shape = [1 2];
@@ -245,8 +246,7 @@ if stimulus.localizer
     task{1}{1}.parameter.contrast = stimulus.maskContrasts/255;
 end
 if stimulus.staircasing
-    task{1}{1}.segmin(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.counter)/1000;
-    task{1}{1}.segmax(stimulus.seg.stim1) = stimulus.run.stimLengths(stimulus.counter)/1000;
+    task{1}{1}.seglen(stimulus.seg.stim) = stimulus.run.stimLengths(stimulus.counter)/1000;
 end
 
 %% Tracking
@@ -268,18 +268,16 @@ task{1}{2}.waitForBacktick = 0;
 task{1}{1}.numTrials = 1;
 task{1}{1}.parameter.contrast = 0;
 if stimulus.localizer
-    task{1}{1}.segmin = [0 0 0 0 0 9.9];
-    task{1}{1}.segmax = [0 0 0 0 0 9.9];
+    task{1}{1}.seglen = [0 0 0 0 0 9.9];
 else
-    task{1}{1}.segmin = [0 0 0 0 0 4.9];
-    task{1}{1}.segmax = [0 0 0 0 0 4.9];
+    task{1}{1}.seglen = [0 0 0 0 0 4.9];
 end
 
 %% Dots
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 1;
-stimulus.dots.density = 25;
+stimulus.dots.density = 20;
 stimulus.dots.speed = 3;
 stimulus.idots = initDotsRadial(stimulus.dots);
 dots = {};
@@ -433,7 +431,7 @@ end
 
 if any([stimulus.seg.mask1 stimulus.seg.mask2]==task.thistrial.thisseg)
     stimulus.live.mask = 1;
-elseif any(stimulus.seg.stim1==task.thistrial.thisseg)
+elseif any(stimulus.seg.stim==task.thistrial.thisseg)
     stimulus.live.dots = 1;
     stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
     stimulus.dots{stimulus.dot}.dir = task.thistrial.dir1;
@@ -452,7 +450,6 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
-
 mglClearScreen(0);
 % check eye pos
 if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.localizer
@@ -474,7 +471,7 @@ if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.loca
 end
 % stimulus
 % first draw the outer (always incoherent) dots
-if stimulus.constant
+if stimulus.constant && ~stimulus.live.mask
 	mglStencilSelect(999);
     stimulus = upDotsInc(stimulus,myscreen);
     mglStencilSelect(0);
@@ -487,7 +484,7 @@ if stimulus.live.dots
     else % circle
         mglStencilSelect(99);
     end
-    mglFillOval(0,0,repmat(stimulus.ring.outer,1,2),0);
+    mglFillOval(0,0,repmat(stimulus.ring.outer+3,1,2),0);
     stimulus = upDots(stimulus,myscreen);
     mglStencilSelect(0);
 end
@@ -495,15 +492,16 @@ if stimulus.live.mask
     mglStencilSelect(999);
     mglBltTexture(stimulus.live.masktex,[0 0]);
     mglStencilSelect(0);
+else
+    mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
 end
-mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
 upFix(stimulus);
 
 function upFix(stimulus)
 %%
 if ~stimulus.localizer && ~stimulus.staircasing && all(stimulus.live.fixColor==stimulus.colors.green)
-    mglTextSet([],32,stimulus.colors.white);
-    mglTextDraw('+5',[0 0]);
+    mglTextSet([],32,stimulus.live.fixColor);
+    mglTextDraw('+7',[0 0]);
 else
     mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 end
@@ -512,12 +510,12 @@ function stimulus = upDots(stimulus,myscreen)
 
 stimulus.dots{stimulus.dot} = updateDotsRadial(stimulus.dots{stimulus.dot},stimulus.live.coherence,myscreen,true);
 
-mglPoints2(stimulus.dots{stimulus.dot}.xdisp,stimulus.dots{stimulus.dot}.ydisp,...
+mglPoints2(stimulus.dots{stimulus.dot}.x,stimulus.dots{stimulus.dot}.y,...
     stimulus.dots{stimulus.dot}.dotsize,stimulus.live.dotColor);
 
 function stimulus = upDotsInc(stimulus,myscreen)
 stimulus.idots = updateDotsRadial(stimulus.idots,0,myscreen,true);
-mglPoints2(stimulus.idots.xdisp,stimulus.idots.ydisp,...
+mglPoints2(stimulus.idots.x,stimulus.idots.y,...
     stimulus.idots.dotsize,stimulus.live.dotColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -543,7 +541,7 @@ if stimulus.localizer
             disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
         end
         stimulus.live.resp = 0;
-        stimulus.live.coherence = 0;
+        stimulus.live.dots = 0;
     end
 else
 
@@ -559,13 +557,13 @@ else
             else
                 stimulus.istaircase = doStaircase('update',stimulus.istaircase,task.thistrial.correct);
                 if task.thistrial.correct
-                    stimulus.run.points = stimulus.run.points + 5;
+                    stimulus.run.points = stimulus.run.points + 7;
                 end
             end
         else
             disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
         end
-        stimulus.live.coherence = 0;
+        stimulus.live.dots = 0;
     end
 end
 
@@ -581,7 +579,7 @@ function stimulus = initStaircase(stimulus)
 stimulus.staircase = {};
 stimulus.staircase{1} = doStaircase('init','upDown',...
         'initialThreshold',1,...
-        'initialStepsize',0.33,...
+        'initialStepsize',0.1,...
         'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
         'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
 stimulus.istaircase = doStaircase('init','fixed','fixedVals',32/255,'nTrials=50');
@@ -603,8 +601,8 @@ end
 
 function stimulus = initRuns(stimulus)
 % initialize the run info for the staircasing mode
-stimLengths = [50 75 100];
-stimCon = [1 2 3 4];
+stimLengths = [100];
+stimCon = [2];
 
 sl = []; sc = [];
 
@@ -699,10 +697,10 @@ end
 function dots = initDotsRadial(dots,~)
 
 % maximum depth of points
-dots.minX = -14;
-dots.maxX = 14;
-dots.minY = -14;
-dots.maxY = 14;
+dots.minX = -10;
+dots.maxX = 10;
+dots.minY = -10;
+dots.maxY = 10;
 
 dots.dir = 0;
 
@@ -713,8 +711,8 @@ dots.n = area * dots.density;
 dots.x = rand(1,dots.n)*(dots.maxX-dots.minX)+dots.minX;
 dots.y = rand(1,dots.n)*abs(dots.maxY-dots.minY)+dots.minY;
 
-dots.xdisp = dots.x;
-dots.ydisp = dots.y;
+dots.x = dots.x;
+dots.y = dots.y;
 
 % set incoherent dots to 0
 dots.coherency = 1;
@@ -726,10 +724,6 @@ dots.coherent = ~dots.incoherent;
 % step dots for Radial
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dots = updateDotsRadial(dots,coherence,myscreen,repick)
-
-% stuff to compute median speed
-dots.oldx = dots.x;
-dots.oldy = dots.y;
 
 % get the coherent and incoherent dots
 if coherence==1
@@ -771,20 +765,9 @@ end
 
 if dots.incoherentn>0
     % these are for flipping into the other quadrants
-    xmat = repmat([1 1 -1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
-    ymat = repmat([1 -1 1 -1],1,dots.incoherentn+4-mod(dots.incoherentn,4));
-    perms = randperm(dots.incoherentn);
-
-    % move incoherent dots
-    % get random vectors
-    dots.rX = rand(1,dots.incoherentn);
-    dots.rY = sqrt(1-(dots.rX.^2));
-    dots.rX = (dots.rX .* xmat(perms)) .* (freq_factor*(1+randn(1,dots.incoherentn)/3)); % rescale to match the velocity
-    dots.rY = (dots.rY .* ymat(perms)) .* (freq_factor*(1+randn(1,dots.incoherentn)/3));
-    % dots.rX = (dots.rX .* xmat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2); % rescale to match the velocity
-    % dots.rY = (dots.rY .* ymat) * freq_factor .* ((1.75*rand(1,dots.incoherentn)).^2);
-    dots.x(dots.incoherent) = dots.x(dots.incoherent) + dots.rX;
-    dots.y(dots.incoherent) = dots.y(dots.incoherent) + dots.rY;
+    rdir = rand(1,dots.incoherentn)*pi*2;
+    dots.y(dots.incoherent) = dots.y(dots.incoherent) + (freq_factor * sin(rdir));
+    dots.x(dots.incoherent) = dots.x(dots.incoherent) + (freq_factor * cos(rdir));
 end
 
 offscreen = dots.x > dots.maxX;
@@ -796,9 +779,6 @@ offscreen = dots.y > dots.maxY;
 dots.y(offscreen) = dots.y(offscreen) - abs(dots.maxY - dots.minY);
 offscreen = dots.y < dots.minY;
 dots.y(offscreen) = dots.y(offscreen) + abs(dots.maxY - dots.minY);
-
-dots.xdisp = dots.x;
-dots.ydisp = dots.y;
 
 
 function setGT(myscreen,stimulus)
