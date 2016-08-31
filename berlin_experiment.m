@@ -45,8 +45,8 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = -1/255;
-stimulus.lowOverride = -1/255;
+stimulus.contrastOverride = 0/255;
+stimulus.lowOverride = 5/255;
 stimulus.timingOverride = -1;
 
 % actual mask contrasts for scanning
@@ -72,12 +72,17 @@ stimulus.noeye = noeye;
 stimulus.constant = constant;
 clear localizer invisible scan category noeye task
 
+if stimulus.task==2 && stimulus.shape==0
+    disp('(berlin) Auto-setting shape for shape task run');
+    stimulus.shape = 1;
+end
 if stimulus.category==1
     disp('(berlin) Not setup for categories yet');
     return
 end
 if stimulus.localizer==1 && stimulus.shape==0
     disp('(berlin) Auto-setting shape for localizer task');
+    stimulus.shape = 1;
 end
 if stimulus.staircasing && stimulus.localizer
     disp('(berlin) Cannot run invisible and localizer simultaneously');
@@ -479,11 +484,13 @@ elseif any(stimulus.seg.stim==task.thistrial.thisseg)
     stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
     stimulus.dots{stimulus.dot}.dir = task.thistrial.dir1;
     stimulus.live.coherence = 1;
+    stimulus.live.shape = task.thistrial.shape1;
 elseif stimulus.seg.resp==task.thistrial.thisseg
     stimulus.live.dots = 1;
     stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
     stimulus.dots{stimulus.dot}.dir = task.thistrial.dir2;
     stimulus.live.coherence = 1;
+    stimulus.live.shape = task.thistrial.shape2;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -522,7 +529,7 @@ end
 % block the inside for the sometimes not incoherent dots
 % now draw everything else
 if stimulus.live.dots
-    if task.thistrial.shape==2 % cross
+    if stimulus.live.shape==2 % cross
         mglStencilSelect(100);
     else % circle
         mglStencilSelect(99);
