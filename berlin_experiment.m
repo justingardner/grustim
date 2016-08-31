@@ -50,7 +50,7 @@ stimulus.lowOverride = -1/255;
 stimulus.timingOverride = -1;
 
 % actual mask contrasts for scanning
-stimulus.maskContrasts = [0 255];
+stimulus.maskContrasts = [0 32];
 
 %% Initialize Variables
 
@@ -60,7 +60,7 @@ staircase = 0;
 scan = 0;
 plots = 0; task = 0;
 noeye = 0; shape = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=1','task=1'});
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=0','task=1'});
 stimulus.shape = shape;
 stimulus.task = task;
 stimulus.localizer = localizer;
@@ -70,8 +70,15 @@ stimulus.plots = plots;
 stimulus.category = category; % use match to category rules instead of match to sample rules
 stimulus.noeye = noeye;
 stimulus.constant = constant;
-clear localizer invisible scan category noeye
+clear localizer invisible scan category noeye task
 
+if stimulus.category==1
+    disp('(berlin) Not setup for categories yet');
+    return
+end
+if stimulus.localizer==1 && stimulus.shape==0
+    disp('(berlin) Auto-setting shape for localizer task');
+end
 if stimulus.staircasing && stimulus.localizer
     disp('(berlin) Cannot run invisible and localizer simultaneously');
     return
@@ -201,7 +208,7 @@ mglClearScreen(0);
 
 
 %% Setup Task
-
+task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 stimulus.curTrial = 0;
@@ -217,23 +224,21 @@ for i = 1:stimulus.stimRepeats
     stimulus.seg.mask1(end+1) = (i-1)*3+1;
     stimulus.seg.stim(end+1) = (i-1)*3+2;
     stimulus.seg.mask2(end+1) = (i-1)*3+3;
-    task{1}{1}.seglen(end+1:end+3) = [0.1 0.1 0.1];
+    task{1}{1}.seglen(end+1:end+3) = [0.05 0.1 0.05];
 end
+task{1}{1}.seglen(1) = 0.1;
+task{1}{1}.seglen(end) = 0.1;
 
 stimulus.seg.delay = (i-1)*3+4;
 stimulus.seg.resp = (i-1)*3+5;
 stimulus.seg.ITI = (i-1)*3+6;
-task{1}{1}.seglen(end+1:end+3) = [0.75 1.25 1];
+task{1}{1}.seglen(end+1:end+3) = [0.5 2 1];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.seglen)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.numTrials = 55;
 task{1}{1}.random = 1;
-if stimulus.shape
-    task{1}{1}.parameter.shape = [1 2];
-else
-    task{1}{1}.parameter.shape = 1;
-end
+task{1}{1}.parameter.task = stimulus.task;
 
 if stimulus.localizer
     % longer delay, necessary for scanning
@@ -255,6 +260,8 @@ end
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.dir1 = nan; % will be 0->2*pi
 task{1}{1}.randVars.calculated.dir2 = nan; % will be 0->2*pi
+task{1}{1}.randVars.calculated.shape1 = nan;
+task{1}{1}.randVars.calculated.shape2 = nan;
 task{1}{1}.randVars.calculated.match = nan;
 
 if ~stimulus.localizer
@@ -380,22 +387,57 @@ end
 % setup mask for this trial
 stimulus.live.masktex = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
 
-% set the current image
+% set whether this trial matches or not
 task.thistrial.match = randi(2)-1;
-if stimulus.localizer
-    opts = [0 pi/2];
-    choice = randi(2);
-    task.thistrial.dir1 = opts(choice);
-    if task.thistrial.match
-        task.thistrial.dir2 = task.thistrial.dir1;
+
+% okay if we are running task==1 we are doing direction judgments, but we
+% can also have changing shapes
+% if we are running task==2 we are doing shape judgments, but we can also
+% have changing directions
+if task.thistrial.task==1
+    % DIRECTIONS task
+    if stimulus.localizer
+        opts = [0 pi/2];
+        choice = randi(2);
+        task.thistrial.dir1 = opts(choice);
+        if task.thistrial.match
+            task.thistrial.dir2 = task.thistrial.dir1;
+        else
+            opts = opts([2 1]);
+            task.thistrial.dir2 = opts(choice);
+        end
     else
-        opts = opts([2 1]);
-        task.thistrial.dir2 = opts(choice);
+        task.thistrial.dir1 = rand*2*pi;
+        task.thistrial.dir2 = task.thistrial.dir1;
+        if ~task.thistrial.match
+            if randi(2)==1
+                task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
+            else
+                task.thistrial.dir2 = task.thistrial.dir1 - pi/2;
+            end
+        end
+    end
+    if stimulus.shape==1
+        % randomize shapes
+        task.thistrial.shape1 = randi(2); task.thistrial.shape2 = randi(2);
+    else
+        % same shapes (circles)
+        task.thistrial.shape1 = 1; task.thistrial.shape2 = 1;
     end
 else
-    task.thistrial.dir1 = rand*2*pi;
-    task.thistrial.dir2 = task.thistrial.dir1;
+    % SHAPE task
+    opts = [1 2]; flip = [2 1]; choice = randi(2);
     if ~task.thistrial.match
+        task.thistrial.shape1 = opts(choice);
+        task.thistrial.shape2 = flip(choice);
+    else
+        task.thistrial.shape1 = opts(choice);
+        task.thistrial.shape2 = opts(choice);
+    end
+    task.thistrial.dir1 = rand*2*pi;
+    if randi(2)==1
+        task.thistrial.dir2 = task.thistrial.dir1;
+    else
         if randi(2)==1
             task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
         else
@@ -403,8 +445,9 @@ else
         end
     end
 end
+    
 matches = {'No','Match'};
-disp(sprintf('Trial %i Dir1: %i Dir2: %i Contrast: %3.0f/255 Matching: %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,matches{task.thistrial.match+1}));
+disp(sprintf('Trial %i Dir1: %i Dir2: %i Mask: %3.0f/255 Matching: %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,matches{task.thistrial.match+1}));
 
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
