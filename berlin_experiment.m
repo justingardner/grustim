@@ -59,9 +59,10 @@ localizer = 0;
 staircase = 0;
 scan = 0;
 plots = 0; task = 0;
-noeye = 0; shape = 0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=0','task=1'});
+noeye = 0; shape = 0; framegrab=0;
+getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=1','task=1','framegrab=0'});
 stimulus.shape = shape;
+stimulus.framegrab = framegrab;
 stimulus.task = task;
 stimulus.localizer = localizer;
 stimulus.scan = scan;
@@ -104,6 +105,14 @@ myscreen.background = 0;
 % stimulus.linearizedGammaTable = mglGetGammaTable;
 % setGT(myscreen,stimulus);
 % mglWaitSecs(1);
+
+if stimulus.framegrab
+    deg2pix = myscreen.screenWidth/myscreen.imageWidth;
+    total = round(20*deg2pix); if mod(total,2)==1, total=total+1; end
+    stimulus.frame.size = total;
+    stimulus.frame.frames = zeros(total,total,500);
+    stimulus.frame.count = 1;
+end
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -546,6 +555,13 @@ else
     mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
 end
 upFix(stimulus);
+
+if stimulus.framegrab==1
+    if stimulus.frame.count < size(stimulus.frame.frames,3)
+        stimulus.frame.frames(:,:,stimulus.frame.count) = mglFrameGrab(-stimulus.frame.size/2, -stimulus.frame.size/2, stimulus.frame.size, stimulus.frame.size);
+        stimulus.frame.count = stimulus.frame.count+1;
+    end
+end
 
 function upFix(stimulus)
 %%
