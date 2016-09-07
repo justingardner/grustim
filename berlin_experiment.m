@@ -46,7 +46,7 @@ global stimulus
 
 % set all to -1 when running:
 stimulus.contrastOverride = 0/255;
-stimulus.lowOverride = 5/255;
+stimulus.lowOverride = 40/255;
 stimulus.timingOverride = -1;
 
 % actual mask contrasts for scanning
@@ -110,8 +110,11 @@ if stimulus.framegrab
     deg2pix = myscreen.screenWidth/myscreen.imageWidth;
     total = round(20*deg2pix); if mod(total,2)==1, total=total+1; end
     stimulus.frame.size = total;
-    stimulus.frame.frames = zeros(total,total,500);
+    stimulus.frame.frames = zeros(total,total,1000);
     stimulus.frame.count = 1;
+    x = myscreen.screenWidth/2;
+    y = myscreen.screenHeight/2;
+    stimulus.frame.coords = [x-total/2 y-total/2 total total];
 end
 
 %% Open Old Stimfile
@@ -558,7 +561,7 @@ upFix(stimulus);
 
 if stimulus.framegrab==1
     if stimulus.frame.count < size(stimulus.frame.frames,3)
-        stimulus.frame.frames(:,:,stimulus.frame.count) = mglFrameGrab(-stimulus.frame.size/2, -stimulus.frame.size/2, stimulus.frame.size, stimulus.frame.size);
+        stimulus.frame.frames(:,:,stimulus.frame.count) = mean(mglFrameGrab(stimulus.frame.coords),3);
         stimulus.frame.count = stimulus.frame.count+1;
     end
 end
