@@ -8,16 +8,17 @@
 function myscreen = spatialLoc()
 
 clear global stimulus
+mglEatKeys('12`');
 global stimulus
 
-stimulus.sdLow = 1.2;
+stimulus.sdLow = 2;
 stimulus.sdHigh = .4;
-stimulus.width = 6;
-stimulus.contrast = 1;
-stimulus.eccentricity = 6;
-stimulus.meanXpos = [-6 6];
+stimulus.width = 8;
+stimulus.contrast = .5;
+stimulus.eccentricity = 8;
+% stimulus.meanXpos = [-stimulus.eccentricity stimulus.eccentricity];
 
-stimulus.stimDur = .015; % 15ms ---> refresh rate???
+stimulus.stimDur = .020; % 15ms
 stimulus.ISI = .1; % 100ms
 
 stimulus.interval = [2 4];
@@ -30,7 +31,7 @@ stimulus.fixColor = [1 1 1];
 % get screen size in visual angle
 
 % initalize the screen
-myscreen.background = 0;%0.5;
+myscreen.background = 0;
 myscreen = initScreen(myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -44,10 +45,12 @@ task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 
+task{1}{1}.numBlocks = 10;
+
 % parameters & randomization
 task{1}{1}.parameter.reliability = [1 2]; % Low High
-task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right (-ecc +ecc)
-task{1}{1}.parameter.posDiff = [-1.5 -.75:.25:.75 1.5];
+% task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right
+task{1}{1}.parameter.posDiff = [-6:1.5:-1.5 -.75:.25:.75 1.5:1.5:6];
 task{1}{1}.random = 1;
 
 task{1}{1}.randVars.calculated.resp = nan;
@@ -55,7 +58,8 @@ task{1}{1}.randVars.calculated.correct = nan;
 
 task{1}{1}.randVars.calculated.rel = nan;
 task{1}{1}.randVars.calculated.diff = nan;
-task{1}{1}.randVars.calculated.hemi = nan;
+% task{1}{1}.randVars.calculated.hemi = nan;
+task{1}{1}.randVars.calculated.rt = nan;
 
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -92,27 +96,34 @@ global stimulus
 if task.thistrial.thisseg == 1
     stimulus.fixColor = [1 1 1];
     task.thistrial.xpos = [0 0];
-    
     if task.thistrial.posDiff ~= 0 % <0: 1st left, 2nd right  // >0: 1st right, 2nd left
-        task.thistrial.xpos = [stimulus.meanXpos(task.thistrial.whichHemifield) + task.thistrial.posDiff/2, ...
-            stimulus.meanXpos(task.thistrial.whichHemifield) - task.thistrial.posDiff/2];
+        task.thistrial.xpos = [stimulus.eccentricity + task.thistrial.posDiff/2, ...
+            stimulus.eccentricity - task.thistrial.posDiff/2];
+%         task.thistrial.xpos = [stimulus.meanXpos(task.thistrial.whichHemifield) + task.thistrial.posDiff/2, ...
+%             stimulus.meanXpos(task.thistrial.whichHemifield) - task.thistrial.posDiff/2];
     else % diff = 0
-        task.thistrial.xpos = [stimulus.meanXpos(task.thistrial.whichHemifield), ...
-            stimulus.meanXpos(task.thistrial.whichHemifield)];
+        task.thistrial.xpos = [stimulus.eccentricity, ...
+            stimulus.eccentricity];
     end
     
     task.thistrial.tex = stimulus.tex(task.thistrial.reliability);
     
     task.thistrial.rel = task.thistrial.reliability;
     task.thistrial.diff = task.thistrial.posDiff;
-    task.thistrial.hemi = task.thistrial.whichHemifield;
+%     task.thistrial.hemi = task.thistrial.whichHemifield;
 end
+if task.thistrial.thisseg == 6
+    if exist('task.thistrial.reactionTime', 'var')
+        task.thistrial.rt = task.thistrial.reactionTime;
+    end
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
-mglClearScreen;
+mglClearScreen(0);
 
 if task.thistrial.thisseg == stimulus.interval(1)
     mglBltTexture(task.thistrial.tex, [task.thistrial.xpos(1), 0]);
@@ -132,6 +143,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = responseCallback(task,myscreen)
 global stimulus
+% here, we just check whether this is the first time we got a response
 if ~task.thistrial.gotResponse
     % posDiff<0: 1st left, 2nd right  // >0: 1st right, 2nd left
     if (task.thistrial.posDiff < 0 && task.thistrial.whichButton == 2) || (task.thistrial.posDiff > 0 && task.thistrial.whichButton == 1) 
@@ -149,9 +161,6 @@ if ~task.thistrial.gotResponse
             task.trialnum, stimulus.string{task.thistrial.reliability}, task.thistrial.posDiff, task.thistrial.whichButton))
     end
     task.thistrial.resp = task.thistrial.whichButton;
-else
-    disp(sprintf('(spatialdiscr) Trial %i: %s Reliability %0.4f no resp', ...
-            task.trialnum, stimulus.string{task.thistrial.reliability}, task.thistrial.posDiff))
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -160,7 +169,6 @@ end
 function stimulus = initGaussian(stimulus,myscreen)
 
 % compute the guassian
-
 gaussLow = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.sdLow, stimulus.sdLow);
 gaussHigh = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.sdHigh, stimulus.sdHigh);
 
@@ -177,40 +185,42 @@ stimulus.tex(2) = mglCreateTexture(gaussianHigh);
 % display psychometric functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dispPsychometric(task)
-posDiff = [-1.5 -.75:.25:.75 1.5];
+posDiff = task.parameter.posDiff;
+% posDiff = [-6 -4.5 -3 -1.5 -.75:.25:.75 1.5 3 4.5 6];
 %percent Interval 1
 %high rel
-highRel = zeros(1,length(posDiff));
+n.high = zeros(1,length(posDiff)); k.high = zeros(1,length(posDiff));
 for i = 1:length(posDiff)
-    eval(sprintf('hResp.d%i = task.randVars.resp(task.randVars.rel == 2 & task.randVars.diff == posDiff(i));',i));
-    eval(sprintf('highRel(i) = sum(hResp.d%i == 1) / sum(hResp.d%i == 1 | hResp.d%i == 2)*100;', i,i,i));
-    eval(sprintf('highN(i) = sum(hResp.d%i == 1 | hResp.d%i == 2);', i,i));
+    resp.h{i} = task.randVars.resp(task.randVars.rel == 2 & task.randVars.diff == posDiff(i));
+    n.high(i) = sum(resp.h{i} == 1  | resp.h{i} == 2);
+    k.high(i) = sum(resp.h{i} == 1);
 end
 
 %low rel
-lowRel = zeros(1,length(posDiff));
+n.low = zeros(1,length(posDiff)); k.low = zeros(1,length(posDiff));
 for i = 1:length(posDiff)
-    eval(sprintf('lResp.d%i = task.randVars.resp(task.randVars.rel == 1 & task.randVars.diff == posDiff(i));',i));
-    eval(sprintf('lowRel(i) = sum(lResp.d%i == 1) / sum(lResp.d%i == 1 | lResp.d%i == 2)*100;', i,i,i));
-    eval(sprintf('lowN(i) = sum(lResp.d%i == 1 | lResp.d%i == 2);', i,i));
+    resp.l{i} = task.randVars.resp(task.randVars.rel == 1 & task.randVars.diff == posDiff(i));
+    n.low(i) = sum(resp.l{i} == 1  | resp.l{i} == 2);
+    k.low(i) = sum(resp.l{i} == 1);
 end
+
+highRel = k.high./n.high;
+lowRel = k.low./n.low;
 
 figure;
 subplot(1,2,1)
-h1 = plot(posDiff, highRel, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 8);
-title(sprintf('High reliabilty spatial psychometric function (N=%i)', sum(highN)));
+h1 = plot(posDiff, highRel*100, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 7);
+title(sprintf('High reliabilty spatial psychometric function (N=%i)', sum(n.high)));
 ylabel('Percent choices Interval 1 (%)');
 xlabel('Postition difference of targets between interval 1 and 2 (deg)');
-axis([-2 2 0 100]); box off;
+axis([-7 7 0 100]); box off;
 xlabh = get(gca,'xLabel');
-set(xlabh,'Position', get(xlabh, 'Position') + [2,0,0]);
+set(xlabh,'Position', get(xlabh, 'Position') + [3,0,0]);
 
 subplot(1,2,2)
-h2 = plot(posDiff, lowRel, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 8);
-title(sprintf('Low reliabilty spatial psychometric function (N=%i)', sum(lowN)));
+h2 = plot(posDiff, lowRel*100, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 7);
+title(sprintf('Low reliabilty spatial psychometric function (N=%i)', sum(n.low)));
 % ylabel('Percent choices Interval 1 (%)');
 % xlabel('Postition difference of targets between interval 1 and 2 (deg)');
-axis([-2 2 0 100]); box off;
-
-
+axis([-7 7 0 100]); box off;
 
