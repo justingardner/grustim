@@ -13,13 +13,13 @@ global stimulus
 
 stimulus.sdLow = 2;
 stimulus.sdHigh = .4;
-stimulus.width = 8;
-stimulus.contrast = .5;
-stimulus.eccentricity = 8;
+stimulus.width = 10;
+stimulus.contrast = .10;
+stimulus.eccentricity = 10;
 % stimulus.meanXpos = [-stimulus.eccentricity stimulus.eccentricity];
 
-stimulus.stimDur = .020; % 15ms
-stimulus.ISI = .1; % 100ms
+stimulus.stimDur = .015; % 15ms
+stimulus.ISI = .5; % 100ms
 
 stimulus.interval = [2 4];
 stimulus.string = {'Low','High'};
@@ -38,19 +38,19 @@ myscreen = initScreen(myscreen);
 % set up task
 %%%%%%%%%%%%%%%%%%%%%
 
-task{1}{1}.waitForBacktick = 0;
-% task{1}{1}.waitForBacktick = 1;
+% task{1}{1}.waitForBacktick = 0;
+task{1}{1}.waitForBacktick = 1;
 % trial: Fixation + Stim1 (.015s) + ISI (.1s) + Stim2 (.015s) + Resp + ITI
 task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 
-task{1}{1}.numBlocks = 10;
+task{1}{1}.numBlocks = 8;
 
 % parameters & randomization
 task{1}{1}.parameter.reliability = [1 2]; % Low High
 % task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right
-task{1}{1}.parameter.posDiff = [-6:1.5:-1.5 -.75:.25:.75 1.5:1.5:6];
+task{1}{1}.parameter.posDiff = [-4.5:1.5:-1.5 -.75:.25:-.25 -.125 0 .125 .25:.25:.75 1.5:1.5:4.5];
 task{1}{1}.random = 1;
 
 task{1}{1}.randVars.calculated.resp = nan;
@@ -213,14 +213,14 @@ h1 = plot(posDiff, highRel*100, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 
 title(sprintf('High reliabilty spatial psychometric function (N=%i)', sum(n.high)));
 ylabel('Percent choices Interval 1 (%)');
 xlabel('Postition difference of targets between interval 1 and 2 (deg)');
-axis([-7 7 0 100]); box off;
-xlabh = get(gca,'xLabel');
-set(xlabh,'Position', get(xlabh, 'Position') + [3,0,0]);
+axis([-6 6 0 100]); box off;
+% xlabh = get(gca,'xLabel');
+% set(xlabh,'Position', get(xlabh, 'Position') + [3,0,0]);
 
 subplot(1,2,2)
 h2 = plot(posDiff, lowRel*100, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 7);
 title(sprintf('Low reliabilty spatial psychometric function (N=%i)', sum(n.low)));
 % ylabel('Percent choices Interval 1 (%)');
 % xlabel('Postition difference of targets between interval 1 and 2 (deg)');
-axis([-7 7 0 100]); box off;
+axis([-6 6 0 100]); box off;
 
