@@ -11,15 +11,15 @@ clear global stimulus
 mglEatKeys('12`');
 global stimulus
 
-stimulus.sdLow = 2;
+stimulus.sdLow = .4;
 stimulus.sdHigh = .4;
 stimulus.width = 10;
-stimulus.contrast = .10;
+stimulus.contrastLow = .15;
+stimulus.contrastHigh= .45;
 stimulus.eccentricity = 10;
-% stimulus.meanXpos = [-stimulus.eccentricity stimulus.eccentricity];
 
 stimulus.stimDur = .015; % 15ms
-stimulus.ISI = .5; % 100ms
+stimulus.ISI = .1; % 100ms
 
 stimulus.interval = [2 4];
 stimulus.string = {'Low','High'};
@@ -31,7 +31,7 @@ stimulus.fixColor = [1 1 1];
 % get screen size in visual angle
 
 % initalize the screen
-myscreen.background = 0;
+myscreen.background = 0.5;
 myscreen = initScreen(myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -50,7 +50,7 @@ task{1}{1}.numBlocks = 8;
 % parameters & randomization
 task{1}{1}.parameter.reliability = [1 2]; % Low High
 % task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right
-task{1}{1}.parameter.posDiff = [-4.5:1.5:-1.5 -.75:.25:-.25 -.125 0 .125 .25:.25:.75 1.5:1.5:4.5];
+task{1}{1}.parameter.posDiff = [-4.5:1.5:-1.5 -.75:.25:-.25 0 .25:.25:.75 1.5:1.5:4.5];
 task{1}{1}.random = 1;
 
 task{1}{1}.randVars.calculated.resp = nan;
@@ -97,13 +97,13 @@ if task.thistrial.thisseg == 1
     stimulus.fixColor = [1 1 1];
     task.thistrial.xpos = [0 0];
     if task.thistrial.posDiff ~= 0 % <0: 1st left, 2nd right  // >0: 1st right, 2nd left
-        task.thistrial.xpos = [stimulus.eccentricity + task.thistrial.posDiff/2, ...
-            stimulus.eccentricity - task.thistrial.posDiff/2];
+        task.thistrial.xpos = [stimulus.x + task.thistrial.posDiff/2, ...
+            stimulus.x - task.thistrial.posDiff/2];
 %         task.thistrial.xpos = [stimulus.meanXpos(task.thistrial.whichHemifield) + task.thistrial.posDiff/2, ...
 %             stimulus.meanXpos(task.thistrial.whichHemifield) - task.thistrial.posDiff/2];
     else % diff = 0
-        task.thistrial.xpos = [stimulus.eccentricity, ...
-            stimulus.eccentricity];
+        task.thistrial.xpos = [stimulus.x, ...
+            stimulus.x];
     end
     
     task.thistrial.tex = stimulus.tex(task.thistrial.reliability);
@@ -123,17 +123,17 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
-mglClearScreen(0);
+mglClearScreen(0.5);
 
 if task.thistrial.thisseg == stimulus.interval(1)
-    mglBltTexture(task.thistrial.tex, [task.thistrial.xpos(1), 0]);
+    mglBltTexture(task.thistrial.tex, [task.thistrial.xpos(1), stimulus.y]);
 elseif task.thistrial.thisseg == stimulus.interval(2)
-    mglBltTexture(task.thistrial.tex, [task.thistrial.xpos(2), 0]);
+    mglBltTexture(task.thistrial.tex, [task.thistrial.xpos(2), stimulus.y]);
 end
 
 %draw fixation cross
 if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
-    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor*.5);
+    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor*.75);
 else
     mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 end
@@ -172,21 +172,27 @@ function stimulus = initGaussian(stimulus,myscreen)
 gaussLow = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.sdLow, stimulus.sdLow);
 gaussHigh = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.sdHigh, stimulus.sdHigh);
 
-for i = 1:4
-    gaussianLow(:,:,i) = 255*gaussLow*stimulus.contrast;
-    gaussianHigh(:,:,i) = 255*gaussHigh*stimulus.contrast;
+for i = 1:3
+    gaussianLow(:,:,i) = 255*ones(size(gaussLow,1), size(gaussLow,2));
+    gaussianHigh(:,:,i) = 255*ones(size(gaussHigh,1), size(gaussHigh,2));
 end
-
+    gaussianLow(:,:,4) = 255*gaussLow*stimulus.contrastLow;
+    gaussianHigh(:,:,4) = 255*gaussHigh*stimulus.contrastHigh;
+    
 %create texture
 stimulus.tex(1) = mglCreateTexture(gaussianLow);
 stimulus.tex(2) = mglCreateTexture(gaussianHigh);
+
+ %stim centers
+[stimulus.x, stimulus.y] = pol2cart(0*pi/180,stimulus.eccentricity);
+% [stimulus.x, stimulus.y] = pol2cart(30*pi/180,stimulus.eccentricity);
+% [stimulus.x, stimulus.y] = pol2cart(330*pi/180,stimulus.eccentricity);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dispPsychometric(task)
 posDiff = task.parameter.posDiff;
-% posDiff = [-6 -4.5 -3 -1.5 -.75:.25:.75 1.5 3 4.5 6];
 %percent Interval 1
 %high rel
 n.high = zeros(1,length(posDiff)); k.high = zeros(1,length(posDiff));
