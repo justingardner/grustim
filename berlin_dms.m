@@ -1,42 +1,10 @@
-function [ myscreen ] = berlin_experiment( varargin )
-%CAT_AWE Testing category discrimination at low visibility conditions
-%   This is dan's experiment for Berlin (fall 2016). Version 3! Now this is
-%   a motion experiment. On each trial (0.3 s stim + 8 s ISI + 2s response
-%   + 8 s ITI) there is a brief blast of motion/shape/category which is
-%   then followed by a constant motion stimulus during the response period.
-%   The task is *always* match/non-match, but can be varied to be either
-%   match-to-sample (direction/shape) or match-to-category (up-left vs.
-%   down-right). The underlying patch is moving dots. Shapes are defined by
-%   luminance. Categories are defined by an arbitrary SW->NE dividing line.
-%   There are six directions used at equal pi/3 spacing. By default the
-%   task is MS on motion, obviously the category information is technically
-%   present. You have to enable the shape stimulus directly.
+function [ myscreen ] = berlin_dms( varargin )
+%CAT_AWE Testing match-to-sample for motion
+%   This is dan's experiment for Berlin (fall 2016). Version 4!
 %
-%   The default task is invisible.
-%   Staircasing mode runs a staircase over mask strengths to d'=1
-%   performance.
-%   Localizer mode runs the task with scanner timing (8s delays) vs.
-%   psychophysics timing (0.5-1s delays).
+%   Delayed match-to-sample w/ motion stimulus or gratings
 %
-%   OPTIONS
-%
-%   shape=1 enable shape stimulus (changes the frame from circular to
-%   either circular or cross)
-%   task=1,2,3 (default=1) DMS direction, DMS shape, DMC category
-%   staircase=1 runs in staircase mode (variable mask strength)
-%   localizer=1 runs with scanner timing and fixed mask strengths
-%
-%   noeye=0 (default=1) skips the eye movement detection script
-%   plots=0,1,2 show plots, or show plots and then return
-%
-%   NOTES
-%
-%   The code has independent staircases for each mode. In invisible mode it
-%   runs fixed value staircases for the different tasks, depending on
-%   whether shapes are present. No staircases in localizer mode. In
-%   staircase mode it runs a staircase specifically to determine necessary
-%   mask luminance to block vision.
-
+%   No constant background (but optional for motion, e.g. for scanning)
 
 global stimulus
 
@@ -45,66 +13,42 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = 0/255;
-stimulus.lowOverride = 128/255;
-stimulus.timingOverride = -1;
-
-% actual mask contrasts for scanning
-stimulus.maskContrasts = [0 32];
+stimulus.contrastOverride = 255/255;
+% stimulus.timingOverride = 1;
 
 %% Initialize Variables
 
 % add arguments later
-localizer = 0;
-staircase = 0;
 scan = 0;
-plots = 0; task = 0;
-noeye = 0; shape = 0; framegrab=0;
-getArgs(varargin,{'localizer=0','staircase=0','scan=0','plots=0','category=0','noeye=1','constant=1','shape=0','task=1','framegrab=0'});
-stimulus.shape = shape;
+plots = 0; windowed=0;
+noeye = 0; framegrab=0;
+feature = 0; fixate = 0; trigger=0;
+getArgs(varargin,{'scan=0','plots=0','noeye=1','fixate=0','constant=0','framegrab=0','complex=0','feature=1','trigger=0','windowed=0'});
 stimulus.framegrab = framegrab;
-stimulus.task = task;
-stimulus.localizer = localizer;
+stimulus.fixate = fixate;
 stimulus.scan = scan;
-stimulus.staircasing = staircase;
 stimulus.plots = plots;
-stimulus.category = category; % use match to category rules instead of match to sample rules
 stimulus.noeye = noeye;
 stimulus.constant = constant;
+stimulus.trigger = trigger;
+stimulus.feature = feature; % 1 = motion, 2 = gratings
 clear localizer invisible scan category noeye task
-
-if stimulus.task==2 && stimulus.shape==0
-    disp('(berlin) Auto-setting shape for shape task run');
-    stimulus.shape = 1;
-end
-if stimulus.category==1
-    disp('(berlin) Not setup for categories yet');
-    return
-end
-if stimulus.localizer==1 && stimulus.shape==0
-    disp('(berlin) Auto-setting shape for localizer task');
-    stimulus.shape = 1;
-end
-if stimulus.staircasing && stimulus.localizer
-    disp('(berlin) Cannot run invisible and localizer simultaneously');
-    return
-end
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 
 %% Setup Screen
 
-if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
+if windowed
+    myscreen = initScreen('windowed');
 else
-    myscreen = initScreen('VPixx');
+    if stimulus.scan
+        myscreen = initScreen('fMRIprojFlex');
+    else
+        myscreen = initScreen('Rolfs_VPixx');
+    end
 end
 
 myscreen.background = 0;
-
-% stimulus.linearizedGammaTable = mglGetGammaTable;
-% setGT(myscreen,stimulus);
-% mglWaitSecs(1);
 
 if stimulus.framegrab
     deg2pix = myscreen.screenWidth/myscreen.imageWidth;
@@ -117,23 +61,24 @@ if stimulus.framegrab
     stimulus.frame.coords = [x-total/2 y-total/2 total total];
 end
 
+%% Eye calib
+% myscreen = eyeCalibDisp(myscreen);
+
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/berlin_experiment/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/berlin_dms/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/berlin_experiment/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/berlin_dms/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         fname = files(end).name;
         
-        s = load(sprintf('~/data/berlin_experiment/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/berlin_dms/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.staircase = s.stimulus.staircase;
-        stimulus.istaircase = s.stimulus.istaircase;
         stimulus.run = s.stimulus.run;
         stimulus.counter = s.stimulus.counter + 1;
-        stimulus.run = s.stimulus.run;
 
         clear s;
         stimulus.initStair = 0;
@@ -149,8 +94,6 @@ if stimulus.plots==2
     return
 end
 
-stimulus.run.points = 0; % reset points for this run
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -158,8 +101,6 @@ if stimulus.initStair
     % We are starting our staircases from scratch
     disp(sprintf('(berlin) Initializing staircase'));
     stimulus = initStaircase(stimulus);
-    
-    stimulus = initRuns(stimulus);
 else
     disp('(berlin) Checking staircase resets from previous run...');
     stimulus = resetStair(stimulus);
@@ -179,97 +120,104 @@ stimulus.colors.black = [0 0 0];
 stimulus.colors.white = [0.2 0.2 0.2];
 stimulus.colors.green = [0 0.2 0];
 stimulus.colors.red = [0.2 0 0];
+if stimulus.contrastOverride>0
+
+    stimulus.colors.white = [1 1 1];
+    stimulus.colors.green = [0 1 0];
+    stimulus.colors.red = [1 0 0];
+end
 % stimulus.colors.black = 0;
 % stimulus.colors.white = 1/255;
 % stimulus.colors.red = 2/255;
 % stimulus.colors.green = 3/255;
 
 stimulus.ring.inner = 3.5;
-stimulus.ring.outer = 7; %
-stimulus.area = 3.14159265358979*((stimulus.ring.outer/2)^2-(stimulus.ring.inner/2)^2);
+stimulus.ring.outer = 5; %21
+% stimulus.area = 3.14159265358979*((stimulus.ring.outer/2)^2-(stimulus.ring.inner/2)^2);
 
-if stimulus.staircasing
-    stimulus.counter = stimulus.counter+1;
-    if stimulus.counter>length(stimulus.run.stimCon)
-        stimulus.run.stimCon = repmat(stimulus.run.stimCon,1,2);
-        stimulus.run.stimLengths = repmat(stimulus.run.stimLengths,1,2);
-    end
-    stimulus.lowCon = stimulus.run.stimCon(stimulus.counter)/255;
-else
-    stimulus.lowCon = 1/255; % minimum possible contrast
-end
-if stimulus.lowOverride>=0
-    stimulus.lowCon = stimulus.lowOverride;
-end
+%% Jitter (to avoid making shit too easy)
+stimulus.jitter = 0.3;
+
+%% Motion Parameters
+stimulus.orientations = [0 135];
+
+%% Contrast
+stimulus.contrast = stimulus.contrastOverride;
+
+%% Grating parameters
+
+stimulus.grating.radius = 5;
+stimulus.grating.targetLoc = [1 4];
+stimulus.grating.sf = 2;
+stimulus.grating.tf = 0.5;
+stimulus.grating.width = 11;
+stimulus.grating.height = 11;
+% stimulus.grating.phases = [0 pi];
+stimulus.grating.phases = [0:2*pi/30:2*pi 2*pi:-2*pi/30:0]; % note this makes the actual tf = tf*2
+stimulus.grating.phase = 0;
+stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
+stimulus.grating.sdx = stimulus.grating.width/7;
+stimulus.grating.sdy = stimulus.grating.width/7;
+stimulus.x = 0;
+
+stimulus.y = 1.5;
+stimulus.grating.width = 8.5;
+stimulus.grating.height = 8.5;
+stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
+stimulus.grating.sdx = stimulus.grating.width/2;
+stimulus.grating.sdy = stimulus.grating.height/2;
+
+stimulus = initGratings(stimulus,myscreen);
 
 %% Generate stencils
 
-% make the outer stencil (big, circular)
-mglStencilCreateBegin(999);
-mglFillOval(0,0,repmat(stimulus.ring.outer+3,1,2),1);
-mglStencilCreateEnd;
-mglClearScreen(0);
-% make the circular stencil
-mglStencilCreateBegin(99);
-mglFillOval(0,0,repmat(stimulus.ring.outer,1,2),1);
-mglStencilCreateEnd;
-mglClearScreen(0);
-% make the cross stencil, we try to approximate the area to be ~216 degrees
-% squared, so it has the same total size as the circle. This means each of
-% the five "parts" needs to be 6.6 degrees wide and high
-mult = sqrt((stimulus.area+pi*(stimulus.ring.inner/2)^2)/5);
-mglStencilCreateBegin(100);
-mglFillRect([0 0 0 -mult mult],[0 -mult mult 0 0],[mult mult],[1 1 1]);
-mglStencilCreateEnd;
-mglClearScreen(0);
+% stimulus.posAngles = [0 45 135 180]*pi/180;
+stimulus.posAngles = [0 180]*pi/180;
+stimulus.posDist = 5;
+stimulus.posopts = stimulus.posDist * [cos(stimulus.posAngles)' sin(stimulus.posAngles)'];
 
-
+for i = 1:length(stimulus.posAngles)
+    mglStencilCreateBegin(i);
+    mglFillOval(stimulus.posopts(i,1),stimulus.posopts(i,2),repmat(stimulus.ring.outer+1,1,2),1);
+    mglStencilCreateEnd;
+end
 %% Setup Task
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 stimulus.curTrial = 0;
 
-% calculate timing
-stimulus.seg.mask1 = [];
-stimulus.seg.mask2 = [];
-stimulus.seg.stim = [];
-task{1}{1}.seglen = [];
-
-stimulus.stimRepeats = 8;
-for i = 1:stimulus.stimRepeats
-    stimulus.seg.mask1(end+1) = (i-1)*3+1;
-    stimulus.seg.stim(end+1) = (i-1)*3+2;
-    stimulus.seg.mask2(end+1) = (i-1)*3+3;
-    task{1}{1}.seglen(end+1:end+3) = [0.05 0.1 0.05];
+task{1}{1}.segmin = [3 2 3 2 2];
+task{1}{1}.segmax = [3 2 3 2 4];
+if stimulus.trigger
+    % set the delay intervals to infinite, eye position will be used to
+    % trigger
+    task{1}{1}.segmin = [3 inf 3 inf];
+    task{1}{1}.segmax = [3 inf 3 inf];
 end
-task{1}{1}.seglen(1) = 0.1;
-task{1}{1}.seglen(end) = 0.1;
 
-stimulus.seg.delay = (i-1)*3+4;
-stimulus.seg.resp = (i-1)*3+5;
-stimulus.seg.ITI = (i-1)*3+6;
-task{1}{1}.seglen(end+1:end+3) = [0.5 2 1];
+stimulus.seg.stim1 = 1;
+stimulus.seg.delay = 2;
+% stimulus.seg.stim2 = 3;
+stimulus.seg.resp = 3;
+stimulus.seg.ITI = 4;
 
-task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
-task{1}{1}.getResponse = zeros(size(task{1}{1}.seglen)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
-task{1}{1}.numTrials = 55;
+task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
+task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
+task{1}{1}.numTrials = Inf;
 task{1}{1}.random = 1;
-task{1}{1}.parameter.task = stimulus.task;
+task{1}{1}.parameter.orientation = 1:length(stimulus.orientations); % which orientation to use (0 deg or 135 deg)
+task{1}{1}.parameter.rotation = [-1 1];
+task{1}{1}.parameter.contrast = stimulus.contrast;
 
-if stimulus.localizer
-    % longer delay, necessary for scanning
-    if stimulus.timingOverride<0
-        task{1}{1}.seglen(stimulus.seg.delay) = 8;
-        task{1}{1}.seglen(stimulus.seg.ITI) = 8;
-    end 
+if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
-    task{1}{1}.numTrials = Inf;
-    task{1}{1}.parameter.contrast = stimulus.maskContrasts/255;
 end
-if stimulus.staircasing
-    task{1}{1}.seglen(stimulus.seg.stim) = stimulus.run.stimLengths(stimulus.counter)/1000;
-end
+
+% if stimulus.timingOverride
+%     task{1}{1}.seglen(stimulus.seg.delay) = stimulus.timingOverride;
+%     task{1}{1}.seglen(stimulus.seg.ITI) = stimulus.timingOverride;
+% end 
 
 %% Tracking
 
@@ -277,25 +225,22 @@ end
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.dir1 = nan; % will be 0->2*pi
 task{1}{1}.randVars.calculated.dir2 = nan; % will be 0->2*pi
-task{1}{1}.randVars.calculated.shape1 = nan;
-task{1}{1}.randVars.calculated.shape2 = nan;
-task{1}{1}.randVars.calculated.match = nan;
+% task{1}{1}.randVars.calculated.match = nan;
+task{1}{1}.randVars.calculated.posopt = nan;
+task{1}{1}.randVars.calculated.x = nan;
+task{1}{1}.randVars.calculated.y = nan;
 
-if ~stimulus.localizer
-    task{1}{1}.randVars.calculated.contrast = nan; % will be 0->100%
-end
+%% Add dead phase (not necessary without adaptation period)
 
-%% Add dead phase
-
-task{1}{2} = task{1}{1};
-task{1}{2}.waitForBacktick = 0;
-task{1}{1}.numTrials = 1;
-task{1}{1}.parameter.contrast = 0;
-if stimulus.localizer
-    task{1}{1}.seglen = [0 0 0 0 0 9.9];
-else
-    task{1}{1}.seglen = [0 0 0 0 0 4.9];
-end
+% task{1}{2} = task{1}{1};
+% task{1}{2}.waitForBacktick = 0;
+% task{1}{1}.numTrials = 1;
+% task{1}{1}.parameter.contrast = 0;
+% if stimulus.scan
+%     task{1}{1}.seglen = [0 0 0 0 0 9.9];
+% else
+%     task{1}{1}.seglen = [0 0 0 0 0 4.9];
+% end
 
 %% Dots
 stimulus.dots.xcenter = 0;
@@ -303,6 +248,12 @@ stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 1;
 stimulus.dots.density = 20;
 stimulus.dots.speed = 3;
+
+stimulus.dots.minX = -10;
+stimulus.dots.maxX = 10;
+stimulus.dots.minY = -10;
+stimulus.dots.maxY = 10;
+
 stimulus.idots = initDotsRadial(stimulus.dots);
 dots = {};
 for i = 1:3
@@ -319,7 +270,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~stimulus.localizer
+if ~stimulus.noeye
     myscreen = eyeCalibDisp(myscreen);
 end
 
@@ -327,7 +278,7 @@ end
 % clear screen    
 mglWaitSecs(1);
 mglClearScreen(0);
-mglFixationCross(1.5,1.5,stimulus.colors.white);
+mglGluAnnulus(0,0,1.5,1.55,stimulus.colors.white,64);
 if stimulus.scan        
     mglTextDraw('DO NOT MOVE',[0 1.5]);
 end
@@ -335,9 +286,6 @@ mglFlush
 
 % let the user know
 disp(sprintf('(berlin) Starting run number: %i.',stimulus.counter));
-if stimulus.staircasing
-    disp(sprintf('(berlin) Staircasing with stimulus contrast: %i/255 and timing: %3.0f',stimulus.lowCon*255,stimulus.run.stimLengths(stimulus.counter)));
-end
 % if stimulus.unattended
 myscreen.flushMode = 1;
 % end
@@ -357,9 +305,6 @@ end
 mglClearScreen(0);
 mglTextSet([],32,stimulus.colors.white);
 mglTextDraw('Run complete...',[0 0]);
-if ~stimulus.localizer && ~stimulus.staircasing
-    mglTextDraw(sprintf('$%2.2f earned this run',stimulus.run.points/100),[0 2]);
-end
 mglFlush
 myscreen.flushMode = 1;
 mglWaitSecs(3);
@@ -383,88 +328,32 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
+stimulus.live.triggerWaiting = 0;
+if stimulus.trigger
+    stimulus.live.triggerWaiting = 1;
+    stimulus.live.centered = 0;
+    stimulus.live.triggerTime = 0;
+    stimulus.live.lastTrigger = -1;
+end
+
 stimulus.curTrial = stimulus.curTrial + 1;
 
 myscreen.flushMode = 0;
 
-if stimulus.localizer
-    % pass, should be already set
-elseif stimulus.staircasing
-    [task.thistrial.contrast, stimulus.staircase{end}] = doStaircase('testValue',stimulus.staircase{end});
-    task.thistrial.contrast = 1-task.thistrial.contrast; % flip the coherence to be mask, instead of visibility
-else
-    [task.thistrial.contrast, stimulus.istaircase] = doStaircase('testValue',stimulus.istaircase);
-end
+[rotation, stimulus.staircase{stimulus.feature}] = doStaircase('testValue',stimulus.staircase{stimulus.feature});
 
-% for testing
-if stimulus.contrastOverride>=0
-    task.thistrial.contrast = stimulus.contrastOverride;
-end
-
-% setup mask for this trial
-stimulus.live.masktex = mglCreateTexture(task.thistrial.contrast*255*(rand(500,500)>0.5));
-
+stimulus.live.dotColor = task.thistrial.contrast;
 % set whether this trial matches or not
-task.thistrial.match = randi(2)-1;
+task.thistrial.dir1 = stimulus.orientations(task.thistrial.orientation)*pi/180 + randn*stimulus.jitter;
+task.thistrial.dir2 = task.thistrial.dir1 + rotation*task.thistrial.rotation;
 
-% okay if we are running task==1 we are doing direction judgments, but we
-% can also have changing shapes
-% if we are running task==2 we are doing shape judgments, but we can also
-% have changing directions
-if task.thistrial.task==1
-    % DIRECTIONS task
-    if stimulus.localizer
-        opts = [0 pi/2];
-        choice = randi(2);
-        task.thistrial.dir1 = opts(choice);
-        if task.thistrial.match
-            task.thistrial.dir2 = task.thistrial.dir1;
-        else
-            opts = opts([2 1]);
-            task.thistrial.dir2 = opts(choice);
-        end
-    else
-        task.thistrial.dir1 = rand*2*pi;
-        task.thistrial.dir2 = task.thistrial.dir1;
-        if ~task.thistrial.match
-            if randi(2)==1
-                task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
-            else
-                task.thistrial.dir2 = task.thistrial.dir1 - pi/2;
-            end
-        end
-    end
-    if stimulus.shape==1
-        % randomize shapes
-        task.thistrial.shape1 = randi(2); task.thistrial.shape2 = randi(2);
-    else
-        % same shapes (circles)
-        task.thistrial.shape1 = 1; task.thistrial.shape2 = 1;
-    end
-else
-    % SHAPE task
-    opts = [1 2]; flip = [2 1]; choice = randi(2);
-    if ~task.thistrial.match
-        task.thistrial.shape1 = opts(choice);
-        task.thistrial.shape2 = flip(choice);
-    else
-        task.thistrial.shape1 = opts(choice);
-        task.thistrial.shape2 = opts(choice);
-    end
-    task.thistrial.dir1 = rand*2*pi;
-    if randi(2)==1
-        task.thistrial.dir2 = task.thistrial.dir1;
-    else
-        if randi(2)==1
-            task.thistrial.dir2 = task.thistrial.dir1 + pi/2;
-        else
-            task.thistrial.dir2 = task.thistrial.dir1 - pi/2;
-        end
-    end
-end
-    
-matches = {'No','Match'};
-disp(sprintf('Trial %i Dir1: %i Dir2: %i Mask: %3.0f/255 Matching: %s',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2),task.thistrial.contrast*255,matches{task.thistrial.match+1}));
+% set the x/y coordinates of the gratings
+pick = randi(size(stimulus.posopts,1));
+task.thistrial.x = stimulus.posopts(pick,1);
+task.thistrial.y = stimulus.posopts(pick,2);
+task.thistrial.posopt = pick;
+
+disp(sprintf('Trial %i Dir1: %i Dir2: %i',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2)));
 
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
@@ -478,31 +367,33 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
-stimulus.live.dots = 0;
+stimulus.live.dots = stimulus.constant;
 stimulus.live.resp = 0;
-stimulus.live.mask = 0;
 stimulus.live.fixColor = stimulus.colors.white;
-stimulus.live.dotColor = stimulus.lowCon;
-stimulus.live.coherence = 0;
+stimulus.live.coherence = 1;
+stimulus.live.x = task.thistrial.x;
+stimulus.live.y = task.thistrial.y;
+stimulus.live.fix = 1;
 
-if task.thistrial.thisphase==1
-    return
-end
+% use only for constant mode
+% if task.thistrial.thisphase==1
+%     return
+% end
 
-if any([stimulus.seg.mask1 stimulus.seg.mask2]==task.thistrial.thisseg)
-    stimulus.live.mask = 1;
-elseif any(stimulus.seg.stim==task.thistrial.thisseg)
+if task.thistrial.thisseg==stimulus.seg.stim1
     stimulus.live.dots = 1;
     stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
     stimulus.dots{stimulus.dot}.dir = task.thistrial.dir1;
-    stimulus.live.coherence = 1;
-    stimulus.live.shape = task.thistrial.shape1;
-elseif stimulus.seg.resp==task.thistrial.thisseg
+    stimulus.live.dir = task.thistrial.dir1; % for gratings
+    stimulus.live.fix = 0;
+elseif task.thistrial.thisseg==stimulus.seg.resp
     stimulus.live.dots = 1;
     stimulus.dot = stimulus.dot+1; if stimulus.dot>3, stimulus.dot=1; end
     stimulus.dots{stimulus.dot}.dir = task.thistrial.dir2;
-    stimulus.live.coherence = 1;
-    stimulus.live.shape = task.thistrial.shape2;
+    stimulus.live.dir = task.thistrial.dir2; % for gratings
+    stimulus.live.fix = 0;
+% elseif task.thistrial.thisseg==stimulus.seg.resp
+%     stimulus.live.fix = 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -514,7 +405,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0);
 % check eye pos
-if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.localizer
+if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.scan
     [pos,time] = mglEyelinkGetCurrentEyePos;
     if ~any(isnan(pos))
         dist = hypot(pos(1),pos(2));
@@ -533,31 +424,27 @@ if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.loca
 end
 % stimulus
 % first draw the outer (always incoherent) dots
-if stimulus.constant && ~stimulus.live.mask
-	mglStencilSelect(999);
-    stimulus = upDotsInc(stimulus,myscreen);
-    mglStencilSelect(0);
-end
+% if stimulus.constant
+% 	mglStencilSelect(999);
+%     stimulus = upDotsInc(stimulus,myscreen);
+%     mglStencilSelect(0);
+% end
 % block the inside for the sometimes not incoherent dots
 % now draw everything else
 if stimulus.live.dots
-    if stimulus.live.shape==2 % cross
-        mglStencilSelect(100);
-    else % circle
-        mglStencilSelect(99);
+    mglStencilSelect(task.thistrial.posopt);
+%     mglFillOval(0,0,repmat(stimulus.ring.outer+3,1,2),0);
+    if stimulus.feature==1
+        stimulus = upDots(stimulus,myscreen);
+    else
+        upGrating(stimulus,task);
     end
-    mglFillOval(0,0,repmat(stimulus.ring.outer+3,1,2),0);
-    stimulus = upDots(stimulus,myscreen);
     mglStencilSelect(0);
 end
-if stimulus.live.mask
-    mglStencilSelect(999);
-    mglBltTexture(stimulus.live.masktex,[0 0]);
-    mglStencilSelect(0);
-else
+if stimulus.fixate || stimulus.live.fix || stimulus.live.resp==1
     mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
+    upFix(stimulus);
 end
-upFix(stimulus);
 
 if stimulus.framegrab==1
     if stimulus.frame.count < size(stimulus.frame.frames,3)
@@ -566,26 +453,48 @@ if stimulus.framegrab==1
     end
 end
 
+if stimulus.live.triggerWaiting
+    now = mglGetSecs;
+    % check eye position, if 
+        [pos,time] = mglEyelinkGetCurrentEyePos;
+    if ~any(isnan(pos))
+        dist = hypot(pos(1),pos(2));
+        wasCentered = stimulus.live.centered;
+        stimulus.live.centered = dist<2;
+        if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+            stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
+        end
+        stimulus.live.lastTrigger = now;
+    end
+    if stimulus.live.triggerTime > 300
+        jumpSegment(task);
+    end
+end
+
+function upGrating(stimulus,task)
+
+phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
+mglBltTexture(stimulus.tex(phaseNum),[stimulus.live.x stimulus.live.y 10],0,0,stimulus.live.dir*180/pi+90); % we add 90 so that it's aligned with the motion
+
 function upFix(stimulus)
 %%
-if ~stimulus.localizer && ~stimulus.staircasing && all(stimulus.live.fixColor==stimulus.colors.green)
-    mglTextSet([],32,stimulus.live.fixColor);
-    mglTextDraw('+7',[0 0]);
-else
-    mglFixationCross(1.5,1.5,stimulus.live.fixColor);
-end
+% for this experiment use a circle to indicate where participants can
+% fixate inside of (rather than a cross which might arbitrarily enforce
+% poisitioning
+mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
+% mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 
 function stimulus = upDots(stimulus,myscreen)
 
 stimulus.dots{stimulus.dot} = updateDotsRadial(stimulus.dots{stimulus.dot},stimulus.live.coherence,myscreen,true);
 
-mglPoints2(stimulus.dots{stimulus.dot}.x,stimulus.dots{stimulus.dot}.y,...
+mglPoints2(stimulus.dots{stimulus.dot}.x+stimulus.live.x,stimulus.dots{stimulus.dot}.y+stimulus.live.y,...
     stimulus.dots{stimulus.dot}.dotsize,stimulus.live.dotColor);
 
-function stimulus = upDotsInc(stimulus,myscreen)
-stimulus.idots = updateDotsRadial(stimulus.idots,0,myscreen,true);
-mglPoints2(stimulus.idots.x,stimulus.idots.y,...
-    stimulus.idots.dotsize,stimulus.live.dotColor);
+% function stimulus = upDotsInc(stimulus,myscreen)
+% stimulus.idots = updateDotsRadial(stimulus.idots,0,myscreen,true);
+% mglPoints2(stimulus.idots.x,stimulus.idots.y,...
+%     stimulus.idots.dotsize,stimulus.live.dotColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -593,46 +502,25 @@ mglPoints2(stimulus.idots.x,stimulus.idots.y,...
 %%
 function [task, myscreen] = getResponseCallback(task, myscreen)
 
-
 global stimulus
+
 if stimulus.dead, return; end
 responseText = {'Incorrect','Correct'};
+sideText = {'Left','Right'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
-
-if stimulus.localizer
     
-    if any(task.thistrial.whichButton == stimulus.responseKeys)
-        if task.thistrial.gotResponse == 0
-            task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
-            disp(sprintf('Subject pressed %i: %s',task.thistrial.whichButton,responseText{task.thistrial.correct+1}));
-            stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-        else
-            disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
-        end
-        stimulus.live.resp = 0;
+responses = [1 0 2];
+if any(task.thistrial.whichButton == stimulus.responseKeys)
+    if task.thistrial.gotResponse == 0
+        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(responses(task.thistrial.rotation+2));
+        disp(sprintf('Subject pressed %i: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},responseText{task.thistrial.correct+1}));
+        stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
+        stimulus.staircase{stimulus.feature} = doStaircase('update',stimulus.staircase{stimulus.feature},task.thistrial.correct);
+        stimulus.live.resp = 1;
         stimulus.live.dots = 0;
-    end
-else
-
-    if any(task.thistrial.whichButton == stimulus.responseKeys)
-        if task.thistrial.gotResponse == 0
-            task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
-            disp(sprintf('Subject pressed %i: %s',task.thistrial.whichButton,responseText{task.thistrial.correct+1}));
-            stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-            % Store whether this was correct
-
-            if stimulus.staircasing
-                stimulus.staircase{end} = doStaircase('update',stimulus.staircase{end},task.thistrial.correct);
-            else
-                stimulus.istaircase = doStaircase('update',stimulus.istaircase,task.thistrial.correct);
-                if task.thistrial.correct
-                    stimulus.run.points = stimulus.run.points + 7;
-                end
-            end
-        else
-            disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
-        end
-        stimulus.live.dots = 0;
+        stimulus.live.fix=1;
+    else
+        disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
     end
 end
 
@@ -647,47 +535,20 @@ function stimulus = initStaircase(stimulus)
 %%
 stimulus.staircase = {};
 stimulus.staircase{1} = doStaircase('init','upDown',...
-        'initialThreshold',1,...
+        'initialThreshold',0.3,... % radians of rotation (
         'initialStepsize',0.1,...
         'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
-        'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
-stimulus.istaircase = doStaircase('init','fixed','fixedVals',32/255,'nTrials=50');
+        'nTrials=65','maxStepsize=0.1','minStepsize=0.001');
+stimulus.staircase{2} = stimulus.staircase{1};
 
 function stimulus = resetStair(stimulus)
 
-if stimulus.staircasing
-    disp('(berlin) Initializing new staircase');
-    stimulus.staircase{end+1} = doStaircase('init','upDown',...
-        'initialThreshold',1,...
-        'initialStepsize',0.33,...
-        'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
-        'nTrials=50','maxStepsize=0.33','minStepsize=0.001');
-end
-if doStaircase('stop',stimulus.istaircase)
-    disp('(berlin) Resetting invisible staircase');
-    stimulus.istaircase(end+1) = doStaircase('init','fixed','fixedVals',32/255,'nTrials=50');
-end
-
-function stimulus = initRuns(stimulus)
-% initialize the run info for the staircasing mode
-stimLengths = [100];
-stimCon = [2];
-
-sl = []; sc = [];
-
-for i = 1:length(stimLengths)
-    for j = 1:length(stimCon)
-        sl(end+1) = stimLengths(i);
-        sc(end+1) = stimCon(j);
+for i = 1:2
+    if doStaircase('stop',stimulus.staircase{i})
+        disp('(berlin) Initializing new staircase...');
+        stimulus.staircase{i}(end+1) = doStaircase('init',stimulus.staircase{i}(end));
     end
 end
-
-idxs = randperm(length(sl));
-sl = sl(idxs); sc = sc(idxs);
-
-stimulus.counter = 0;
-stimulus.run.stimLengths = sl;
-stimulus.run.stimCon = sc;
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
@@ -766,11 +627,6 @@ end
 function dots = initDotsRadial(dots,~)
 
 % maximum depth of points
-dots.minX = -10;
-dots.maxX = 10;
-dots.minY = -10;
-dots.maxY = 10;
-
 dots.dir = 0;
 
 area = (dots.maxX-dots.minX)*(dots.maxY-dots.minY);
@@ -875,3 +731,61 @@ if factor > 1
         keyboard
     end
 end
+
+function stimulus = initGratings(stimulus,myscreen)
+
+stimulus.maxIndex = 255;
+disppercent(-inf,'Creating grating textures');
+
+nContrasts = length(stimulus.contrast);
+nPhases = length(stimulus.grating.phases);
+
+gaussianWin = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sdx,stimulus.grating.sdy);
+if strcmp(stimulus.grating.windowType,'gabor')
+  % a gaussian window
+  win = stimulus.maxIndex-stimulus.maxIndex*gaussianWin;
+else
+  % a simple window
+  win = stimulus.maxIndex-stimulus.maxIndex*(gaussianWin>exp(-1/2));
+end
+mask = ones(size(win,1),size(win,2),4)*myscreen.grayIndex;
+mask(:,:,4) = round(win);
+stimulus.mask = mglCreateTexture(mask);
+
+% make each one of he called for gratings
+for iPhase = 1:nPhases
+  for iContrast = 1:nContrasts
+    disppercent(calcPercentDone(iPhase,nPhases,iContrast,nContrasts));
+    % get the phase and contast
+    thisPhase = (stimulus.grating.phase+stimulus.grating.phases(iPhase))*180/pi;
+    thisContrast = stimulus.contrast;
+    % make the grating
+    thisGrating = round(stimulus.maxIndex*((thisContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,thisPhase))+1)/2);
+    % create the texture
+    stimulus.tex(iContrast,iPhase) = mglCreateTexture(thisGrating);
+  end
+end
+disppercent(inf);
+stimulus.randMaskSize = [size(mask,1) size(mask,2)];
+stimulus.randMask = mglCreateTexture(floor(stimulus.maxIndex*rand(stimulus.randMaskSize)));
+
+
+for iAngle = 1:length(stimulus.orientations)
+  % get center of patch
+  thisAngle = stimulus.orientations(iAngle);
+  centerX = stimulus.x + stimulus.grating.radius*cos(pi*thisAngle/180);
+  centerY = stimulus.y + stimulus.grating.radius*sin(pi*thisAngle/180);
+  % now get top and bottom point of grating
+  thisOrientation = thisAngle+90;
+  radius = sqrt((stimulus.grating.width/2).^2 +(stimulus.grating.height/2).^2)-0.5;
+  topX = centerX + radius*cos(pi*thisOrientation/180);
+  topY = centerY + radius*sin(pi*thisOrientation/180);
+  thisOrientation = thisOrientation+180;
+  bottomX = centerX + radius*cos(pi*thisOrientation/180);
+  bottomY = centerY + radius*sin(pi*thisOrientation/180);
+  % place points
+  stimulus.grating.refPoints.x{iAngle} = [topX bottomX];
+  stimulus.grating.refPoints.y{iAngle} = [topY bottomY];
+end
+
+stimulus.waitForBacktickText = mglText('Hit backtick (`) key to start');
