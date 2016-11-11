@@ -13,7 +13,7 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = 255/255;
+stimulus.contrastOverride = 128/255;
 % stimulus.timingOverride = 1;
 
 %% Initialize Variables
@@ -62,7 +62,7 @@ if stimulus.framegrab
 end
 
 %% Eye calib
-% myscreen = eyeCalibDisp(myscreen);
+myscreen = eyeCalibDisp(myscreen);
 
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -77,7 +77,6 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/berlin_dms/%s',mglGetSID))
         s = load(sprintf('~/data/berlin_dms/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.staircase = s.stimulus.staircase;
-        stimulus.run = s.stimulus.run;
         stimulus.counter = s.stimulus.counter + 1;
 
         clear s;
@@ -172,8 +171,10 @@ stimulus = initGratings(stimulus,myscreen);
 %% Generate stencils
 
 % stimulus.posAngles = [0 45 135 180]*pi/180;
-stimulus.posAngles = [0 180]*pi/180;
-stimulus.posDist = 5;
+stimulus.posAngles = 0;
+stimulus.posDist = 0;
+% stimulus.posAngles = [0 180]*pi/180;
+% stimulus.posDist = 5;
 stimulus.posopts = stimulus.posDist * [cos(stimulus.posAngles)' sin(stimulus.posAngles)'];
 
 for i = 1:length(stimulus.posAngles)
@@ -278,7 +279,7 @@ end
 % clear screen    
 mglWaitSecs(1);
 mglClearScreen(0);
-mglGluAnnulus(0,0,1.5,1.55,stimulus.colors.white,64);
+mglFixationCross(1.5,1.5,stimulus.colors.white);
 if stimulus.scan        
     mglTextDraw('DO NOT MOVE',[0 1.5]);
 end
@@ -328,13 +329,7 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-stimulus.live.triggerWaiting = 0;
-if stimulus.trigger
-    stimulus.live.triggerWaiting = 1;
-    stimulus.live.centered = 0;
-    stimulus.live.triggerTime = 0;
-    stimulus.live.lastTrigger = -1;
-end
+stimulus.live.phaseNum = randi(62);
 
 stimulus.curTrial = stimulus.curTrial + 1;
 
@@ -348,10 +343,10 @@ task.thistrial.dir1 = stimulus.orientations(task.thistrial.orientation)*pi/180 +
 task.thistrial.dir2 = task.thistrial.dir1 + rotation*task.thistrial.rotation;
 
 % set the x/y coordinates of the gratings
-pick = randi(size(stimulus.posopts,1));
-task.thistrial.x = stimulus.posopts(pick,1);
-task.thistrial.y = stimulus.posopts(pick,2);
-task.thistrial.posopt = pick;
+% % % % % % pick = randi(size(stimulus.posopts,1));
+% % % % % % task.thistrial.x = stimulus.posopts(pick,1);
+% % % % % % task.thistrial.y = stimulus.posopts(pick,2);
+% % % % % % task.thistrial.posopt = pick;
 
 disp(sprintf('Trial %i Dir1: %i Dir2: %i',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2)));
 
@@ -367,12 +362,22 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
+stimulus.live.triggerWaiting = 0;
+if stimulus.trigger && any(task.thistrial.thisseg==[stimulus.seg.delay stimulus.seg.ITI])
+    stimulus.live.triggerWaiting = 1;
+    stimulus.live.centered = 0;
+    stimulus.live.triggerTime = 0;
+    stimulus.live.lastTrigger = -1;
+end
+
 stimulus.live.dots = stimulus.constant;
 stimulus.live.resp = 0;
 stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.coherence = 1;
-stimulus.live.x = task.thistrial.x;
-stimulus.live.y = task.thistrial.y;
+stimulus.live.x = 0;
+stimulus.live.y = 0;
+% stimulus.live.x = task.thistrial.x;
+% stimulus.live.y = task.thistrial.y;
 stimulus.live.fix = 1;
 
 % use only for constant mode
@@ -432,7 +437,8 @@ end
 % block the inside for the sometimes not incoherent dots
 % now draw everything else
 if stimulus.live.dots
-    mglStencilSelect(task.thistrial.posopt);
+%     mglStencilSelect(task.thistrial.posopt);
+    mglStencilSelect(1);
 %     mglFillOval(0,0,repmat(stimulus.ring.outer+3,1,2),0);
     if stimulus.feature==1
         stimulus = upDots(stimulus,myscreen);
@@ -442,7 +448,7 @@ if stimulus.live.dots
     mglStencilSelect(0);
 end
 if stimulus.fixate || stimulus.live.fix || stimulus.live.resp==1
-    mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
+%     mglFillOval(0,0,repmat(stimulus.ring.inner,1,2),0);
     upFix(stimulus);
 end
 
@@ -456,33 +462,35 @@ end
 if stimulus.live.triggerWaiting
     now = mglGetSecs;
     % check eye position, if 
-        [pos,time] = mglEyelinkGetCurrentEyePos;
+    [pos,time] = mglEyelinkGetCurrentEyePos;
     if ~any(isnan(pos))
         dist = hypot(pos(1),pos(2));
         wasCentered = stimulus.live.centered;
         stimulus.live.centered = dist<2;
+        mglBltTexture(mglText(stimulus.live.centered),[5 5]);
         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
         end
         stimulus.live.lastTrigger = now;
     end
-    if stimulus.live.triggerTime > 300
-        jumpSegment(task);
+    if stimulus.live.triggerTime > 1.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+        disp('Eye position centered');
+        task = jumpSegment(task);
     end
 end
 
 function upGrating(stimulus,task)
 
-phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
-mglBltTexture(stimulus.tex(phaseNum),[stimulus.live.x stimulus.live.y 10],0,0,stimulus.live.dir*180/pi+90); % we add 90 so that it's aligned with the motion
+% phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
+mglBltTexture(stimulus.tex(stimulus.live.phaseNum),[stimulus.live.x stimulus.live.y 10],0,0,stimulus.live.dir*180/pi+90); % we add 90 so that it's aligned with the motion
 
 function upFix(stimulus)
 %%
 % for this experiment use a circle to indicate where participants can
 % fixate inside of (rather than a cross which might arbitrarily enforce
 % poisitioning
-mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
-% mglFixationCross(1.5,1.5,stimulus.live.fixColor);
+% mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
+mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 
 function stimulus = upDots(stimulus,myscreen)
 
