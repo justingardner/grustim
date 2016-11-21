@@ -477,7 +477,7 @@ end
 function upGrating(stimulus,task)
 
 % phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
-mglBltTexture(stimulus.tex(stimulus.live.phaseNum),[stimulus.live.x stimulus.live.y 66],0,0,stimulus.live.dir*180/pi+90); % we add 90 so that it's aligned with the motion
+mglBltTexture(stimulus.tex(stimulus.live.phaseNum),[stimulus.live.x stimulus.live.y 6],0,0,stimulus.live.dir*180/pi+90); % we add 90 so that it's aligned with the motion
 mglBltTexture(stimulus.mask,[stimulus.live.x stimulus.live.y 6 6],0,0,stimulus.live.dir*180/pi+90);
 
 function upFix(stimulus)
@@ -486,7 +486,7 @@ function upFix(stimulus)
 % fixate inside of (rather than a cross which might arbitrarily enforce
 % poisitioning
 % mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
-mglFixationCross(1.5,1.5,stimulus.live.fixColor);
+mglFixationCross(1,1,stimulus.live.fixColor);
 
 function stimulus = upDots(stimulus,myscreen)
 
@@ -494,6 +494,8 @@ stimulus.dots{stimulus.dot} = updateDotsRadial(stimulus.dots{stimulus.dot},stimu
 
 mglPoints2(stimulus.dots{stimulus.dot}.x+stimulus.live.x,stimulus.dots{stimulus.dot}.y+stimulus.live.y,...
     stimulus.dots{stimulus.dot}.dotsize,stimulus.live.dotColor);
+
+mglBltTexture(stimulus.mask,[stimulus.live.x stimulus.live.y 6 6],0,0,stimulus.live.dir*180/pi+90);
 
 % function stimulus = upDotsInc(stimulus,myscreen)
 % stimulus.idots = updateDotsRadial(stimulus.idots,0,myscreen,true);
