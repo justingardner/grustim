@@ -61,9 +61,6 @@ if stimulus.framegrab
     stimulus.frame.coords = [x-total/2 y-total/2 total total];
 end
 
-%% Eye calib
-myscreen = eyeCalibDisp(myscreen);
-
 %% Open Old Stimfile
 stimulus.initStair = 1;
 
@@ -188,8 +185,8 @@ task{1}{1}.waitForBacktick = 1;
 
 stimulus.curTrial = 0;
 
-task{1}{1}.segmin = [3 2 3 2 2];
-task{1}{1}.segmax = [3 2 3 2 4];
+task{1}{1}.segmin = [3 2 3 2 1];
+task{1}{1}.segmax = [3 2 3 2 3];
 if stimulus.trigger
     % set the delay intervals to infinite, eye position will be used to
     % trigger
@@ -272,9 +269,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~stimulus.noeye
-    myscreen = eyeCalibDisp(myscreen);
-end
+myscreen = eyeCalibDisp(myscreen);
 
 %% Get Ready...
 % clear screen    
