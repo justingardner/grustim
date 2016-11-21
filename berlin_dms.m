@@ -244,6 +244,7 @@ task{1}{1}.randVars.calculated.y = nan;
 % end
 
 %% Dots
+stimulus.dots = struct;
 stimulus.dots.xcenter = 0;
 stimulus.dots.ycenter = 0;
 stimulus.dots.dotsize = 1;
