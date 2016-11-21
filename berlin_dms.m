@@ -157,11 +157,10 @@ stimulus.grating.sdy = stimulus.grating.width/7;
 stimulus.x = 0;
 
 stimulus.y = 1.5;
-stimulus.grating.width = 8.5;
-stimulus.grating.height = 8.5;
-stimulus.grating.windowType = 'thresh'; % should be gabor or thresh
-stimulus.grating.sdx = stimulus.grating.width/2;
-stimulus.grating.sdy = stimulus.grating.height/2;
+% stimulus.grating.width = 8.5;
+% stimulus.grating.height = 8.5;
+% stimulus.grating.sdx = stimulus.grating.width/2;
+% stimulus.grating.sdy = stimulus.grating.height/2;
 
 stimulus = initGratings(stimulus,myscreen);
 
@@ -478,7 +477,8 @@ end
 function upGrating(stimulus,task)
 
 % phaseNum = floor(length(stimulus.grating.phases)*rem(mglGetSecs(task.thistrial.trialstart)*stimulus.grating.tf,1)+1);
-mglBltTexture(stimulus.tex(stimulus.live.phaseNum),[stimulus.live.x stimulus.live.y 10],0,0,stimulus.live.dir*180/pi+90); % we add 90 so that it's aligned with the motion
+mglBltTexture(stimulus.tex(stimulus.live.phaseNum),[stimulus.live.x stimulus.live.y 66],0,0,stimulus.live.dir*180/pi+90); % we add 90 so that it's aligned with the motion
+mglBltTexture(stimulus.mask,[stimulus.live.x stimulus.live.y 6 6],0,0,stimulus.live.dir*180/pi+90);
 
 function upFix(stimulus)
 %%
@@ -752,7 +752,8 @@ else
   % a simple window
   win = stimulus.maxIndex-stimulus.maxIndex*(gaussianWin>exp(-1/2));
 end
-mask = ones(size(win,1),size(win,2),4)*myscreen.grayIndex;
+mask = ones(size(win,1),size(win,2),4)*1;%myscreen.grayIndex;
+win = win / max(win(:)) * 255;
 mask(:,:,4) = round(win);
 stimulus.mask = mglCreateTexture(mask);
 
@@ -766,12 +767,14 @@ for iPhase = 1:nPhases
     % make the grating
     thisGrating = round(stimulus.maxIndex*((thisContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,thisPhase))+1)/2);
     % create the texture
+%     thisGrating = repmat(thisGrating,453,1);
+    
     stimulus.tex(iContrast,iPhase) = mglCreateTexture(thisGrating);
   end
 end
 disppercent(inf);
-stimulus.randMaskSize = [size(mask,1) size(mask,2)];
-stimulus.randMask = mglCreateTexture(floor(stimulus.maxIndex*rand(stimulus.randMaskSize)));
+% stimulus.randMaskSize = [size(mask,1) size(mask,2)];
+% stimulus.randMask = mglCreateTexture(floor(stimulus.maxIndex*rand(stimulus.randMaskSize)));
 
 
 for iAngle = 1:length(stimulus.orientations)
