@@ -1,5 +1,7 @@
+%% Paperwork, payment form, and dominant eye
+
 %% Set Subject Info
-sid = 300;
+sid = xxx;
 
 %% Initialize Commands
 cd ~/proj/gru
