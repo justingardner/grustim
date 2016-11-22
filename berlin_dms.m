@@ -13,7 +13,7 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = 128/255;
+stimulus.contrastOverride = 255/255;
 % stimulus.timingOverride = 1;
 
 %% Initialize Variables
@@ -184,20 +184,20 @@ task{1}{1}.waitForBacktick = 1;
 
 stimulus.curTrial = 0;
 
-task{1}{1}.segmin = [3 2 3 2 1];
-task{1}{1}.segmax = [3 2 3 2 3];
+task{1}{1}.segmin = [1 2 1 2 0.5];
+task{1}{1}.segmax = [1 2 1 2 1];
 if stimulus.trigger
     % set the delay intervals to infinite, eye position will be used to
     % trigger
-    task{1}{1}.segmin = [3 inf 3 inf];
-    task{1}{1}.segmax = [3 inf 3 inf];
+    task{1}{1}.segmin = [inf 3 inf 3 inf];
+    task{1}{1}.segmax = [inf 3 inf 3 inf];
 end
 
-stimulus.seg.stim1 = 1;
-stimulus.seg.delay = 2;
-% stimulus.seg.stim2 = 3;
-stimulus.seg.resp = 3;
-stimulus.seg.ITI = 4;
+stimulus.seg.ITI1 = 1;
+stimulus.seg.stim1 = 2;
+stimulus.seg.delay = 3;
+stimulus.seg.resp = 4;
+stimulus.seg.ITI2 = 5;
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
@@ -275,9 +275,9 @@ myscreen = eyeCalibDisp(myscreen);
 mglWaitSecs(1);
 mglClearScreen(0);
 mglFixationCross(1.5,1.5,stimulus.colors.white);
-if stimulus.scan        
-    mglTextDraw('DO NOT MOVE',[0 1.5]);
-end
+% if stimulus.scan        
+%     mglTextDraw('DO NOT MOVE',[0 1.5]);
+% end
 mglFlush
 
 % let the user know
@@ -358,7 +358,7 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 stimulus.live.triggerWaiting = 0;
-if stimulus.trigger && any(task.thistrial.thisseg==[stimulus.seg.delay stimulus.seg.ITI])
+if stimulus.trigger && any(task.thistrial.thisseg==[stimulus.seg.delay stimulus.seg.ITI1 stimulus.seg.ITI2])
     stimulus.live.triggerWaiting = 1;
     stimulus.live.centered = 0;
     stimulus.live.triggerTime = 0;
@@ -405,23 +405,24 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0);
 % check eye pos
-if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.scan
-    [pos,time] = mglEyelinkGetCurrentEyePos;
-    if ~any(isnan(pos))
-        dist = hypot(pos(1),pos(2));
-        if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
-            mglTextSet([],32,stimulus.colors.red);
-            disp('Eye movement detected!!!!');
-            mglTextDraw('Eye Movement Detected',[0 0]);
-            mglFlush
-            myscreen.flushMode = 1;
-            stimulus.dead = 1;
-            return
-        elseif dist > stimulus.ring.inner-1
-            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-        end
-    end
-end
+% % % if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.scan
+% % %     [pos,time] = mglEyelinkGetCurrentEyePos;
+% % %     if ~any(isnan(pos))
+% % %         dist = hypot(pos(1),pos(2));
+% % %         if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
+% % %             mglTextSet([],32,stimulus.colors.red);
+% % %             disp('Eye movement detected!!!!');
+% % %             mglTextDraw('Eye Movement Detected',[0 0]);
+% % %             mglFlush
+% % %             myscreen.flushMode = 1;
+% % %             stimulus.dead = 1;
+% % %             return
+% % %         elseif dist > stimulus.ring.inner-1
+% % %             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+% % %         end
+% % %     end
+% % % end
+
 % stimulus
 % first draw the outer (always incoherent) dots
 % if stimulus.constant
@@ -462,13 +463,12 @@ if stimulus.live.triggerWaiting
         dist = hypot(pos(1),pos(2));
         wasCentered = stimulus.live.centered;
         stimulus.live.centered = dist<2;
-        mglBltTexture(mglText(stimulus.live.centered),[5 5]);
         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
         end
         stimulus.live.lastTrigger = now;
     end
-    if stimulus.live.triggerTime > 1.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+    if stimulus.live.triggerTime > 0.75 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
         disp('Eye position centered');
         task = jumpSegment(task);
     end
