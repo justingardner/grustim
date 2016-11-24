@@ -13,7 +13,7 @@ global stimulus
 % run: `
 
 % set all to -1 when running:
-stimulus.contrastOverride = 255/255;
+stimulus.contrastOverride = 128/255;
 % stimulus.timingOverride = 1;
 
 %% Initialize Variables
@@ -189,8 +189,8 @@ task{1}{1}.segmax = [1 2 1 2 1];
 if stimulus.trigger
     % set the delay intervals to infinite, eye position will be used to
     % trigger
-    task{1}{1}.segmin = [inf 3 inf 3 inf];
-    task{1}{1}.segmax = [inf 3 inf 3 inf];
+    task{1}{1}.segmin = [inf 2 inf 2 0.5];
+    task{1}{1}.segmax = [inf 2 inf 2 1];
 end
 
 stimulus.seg.ITI1 = 1;
@@ -201,11 +201,11 @@ stimulus.seg.ITI2 = 5;
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
-task{1}{1}.numTrials = Inf;
+task{1}{1}.numTrials = 27;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.orientation = 1:length(stimulus.orientations); % which orientation to use (0 deg or 135 deg)
 task{1}{1}.parameter.rotation = [-1 1];
-task{1}{1}.parameter.contrast = stimulus.contrast;
+task{1}{1}.parameter.contrast = 1;
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -358,7 +358,7 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 stimulus.live.triggerWaiting = 0;
-if stimulus.trigger && any(task.thistrial.thisseg==[stimulus.seg.delay stimulus.seg.ITI1 stimulus.seg.ITI2])
+if stimulus.trigger && any(task.thistrial.thisseg==[stimulus.seg.delay stimulus.seg.ITI1])
     stimulus.live.triggerWaiting = 1;
     stimulus.live.centered = 0;
     stimulus.live.triggerTime = 0;
@@ -541,10 +541,10 @@ function stimulus = initStaircase(stimulus)
 %%
 stimulus.staircase = {};
 stimulus.staircase{1} = doStaircase('init','upDown',...
-        'initialThreshold',0.3,... % radians of rotation (
-        'initialStepsize',0.1,...
-        'minThreshold=0.001','maxThreshold=1','stepRule','pest',...
-        'nTrials=65','maxStepsize=0.1','minStepsize=0.001');
+        'initialThreshold',0.25,... % radians of rotation (
+        'initialStepsize',0.05,...
+        'minThreshold=0.001','maxThreshold=0.35','stepRule','pest',...
+        'nTrials=50','maxStepsize=0.1','minStepsize=0.001');
 stimulus.staircase{2} = stimulus.staircase{1};
 
 function stimulus = resetStair(stimulus)
@@ -765,7 +765,7 @@ for iPhase = 1:nPhases
     disppercent(calcPercentDone(iPhase,nPhases,iContrast,nContrasts));
     % get the phase and contast
     thisPhase = (stimulus.grating.phase+stimulus.grating.phases(iPhase))*180/pi;
-    thisContrast = stimulus.contrast;
+    thisContrast = stimulus.contrastOverride;
     % make the grating
     thisGrating = round(stimulus.maxIndex*((thisContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,thisPhase))+1)/2);
     % create the texture
