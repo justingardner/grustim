@@ -462,7 +462,7 @@ if stimulus.live.triggerWaiting
     if ~any(isnan(pos))
         dist = hypot(pos(1),pos(2));
         wasCentered = stimulus.live.centered;
-        stimulus.live.centered = dist<2;
+        stimulus.live.centered = dist<1;
         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
         end
