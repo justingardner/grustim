@@ -247,10 +247,10 @@ stimulus.dots.dotsize = 1;
 stimulus.dots.density = 20;
 stimulus.dots.speed = 3;
 
-stimulus.dots.minX = -10;
-stimulus.dots.maxX = 10;
-stimulus.dots.minY = -10;
-stimulus.dots.maxY = 10;
+stimulus.dots.minX = -6;
+stimulus.dots.maxX = 6;
+stimulus.dots.minY = -6;
+stimulus.dots.maxY = 6;
 
 stimulus.idots = initDotsRadial(stimulus.dots);
 dots = {};
