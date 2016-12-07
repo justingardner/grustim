@@ -1,3 +1,10 @@
+% testLoc.m
+%
+%      usage: myscreen=testLoc()
+%         by: minyoung lee
+%       date: 11/02/16
+%    purpose: generates stimuli for sensory uncertainty (location/contrast) experiment
+
 function myscreen = testLoc(varargin)
 
 clear global stimulus
@@ -5,8 +12,9 @@ global stimulus
 
 scan = 0;
 getArgs(varargin,{'scan=0'});
-
 stimulus.scan = scan;
+
+% stimulus parameters
 stimulus.width = 12;
 stimulus.sf = 1.8;
 
@@ -16,6 +24,11 @@ myscreen = initScreen(myscreen);
 
 % set the first task to be the fixation staircase task
 [task{1} myscreen] = fixStairInitTask(myscreen);
+
+%set params for flicker
+stimulus.flickerRate = 2; % 2 Hz
+stimulus.flickerDur = 1/stimulus.flickerRate;
+stimulus.flickerNFrame = round(myscreen.framesPerSecond/stimulus.flickerRate);
 
 %%%%%%%%%%%%%%%%%%%%%
 % set up task
@@ -29,9 +42,9 @@ if stimulus.scan
 end
 
 % parameters & randomization
-task{2}{1}.parameter.contrast = [.2 .8];
-task{2}{1}.parameter.location = [-10 -8 8 10];
-task{2}{1}.randVars.block.orientation = [0 45 90 135];
+task{2}{1}.parameter.contrast = [.25 .5 1];
+task{2}{1}.parameter.location = [-14 -8 8 14];
+task{2}{1}.randVars.block.orientation = 0:45:135;
 task{2}{1}.random = 1;
 
 % initialize the task
@@ -62,29 +75,28 @@ end
 myscreen = endTask(myscreen,task);
 clear global stimulus;
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
-
 global stimulus;
-
+if task.thistrial.thisseg == 1
     stimulus.contrast = task.thistrial.contrast;
     stimulus.location = task.thistrial.location;
     stimulus.orientation = task.thistrial.orientation;
+    stimulus.flickerIndex = 0;
+    stimulus.gaborIndex = 0;
+    stimulus.gaborNum = 1;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = updateScreenCallback(task, myscreen)
-
 global stimulus
 mglClearScreen;
 if task.thistrial.thisseg == 2
-stimulus = updateGabor(stimulus,myscreen);
-
-% mglBltTexture(stimulus.tex, [stimulus.location, 0], 0,0, stimulus.orientation);
+    stimulus = updateGabor(stimulus,myscreen);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -92,16 +104,29 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%`%%%%%%%%%%%%
 function stimulus = initGabor(stimulus,myscreen)
 % compute the grating
-stimulus.grating = mglMakeGrating(stimulus.width,stimulus.width,stimulus.sf, 0,0);
-stimulus.gaussian = mglMakeGaussian(stimulus.width,stimulus.width,stimulus.width/10, stimulus.width/10);
+stimulus.grating1 = mglMakeGrating(stimulus.width,stimulus.width,stimulus.sf, 0,0);
+stimulus.grating2 = mglMakeGrating(stimulus.width,stimulus.width,stimulus.sf, 0,180);
+stimulus.gaussian = mglMakeGaussian(stimulus.width,stimulus.width,stimulus.width/8, stimulus.width/8);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function to update the stimulus and dra`w it to screen
+% function to update the stimulus and draw it to screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = updateGabor(stimulus,myscreen)
-% create texture
-stimulus.gabor = (255*(stimulus.contrast*stimulus.grating.*stimulus.gaussian+1)/2);
-stimulus.tex = mglCreateTexture(stimulus.gabor);
-% 
-mglBltTexture(stimulus.tex, [stimulus.location, 0], 0,0, stimulus.orientation);
+% set contrast & create texture
+stimulus.gabor1 = (255*(stimulus.contrast*stimulus.grating1.*stimulus.gaussian+1)/2);
+stimulus.gabor2 = (255*(stimulus.contrast*stimulus.grating2.*stimulus.gaussian+1)/2);
+stimulus.tex(1) = mglCreateTexture(stimulus.gabor1);
+stimulus.tex(2) = mglCreateTexture(stimulus.gabor2);
 
+% show a flickering gabor patch
+if mod(stimulus.flickerIndex, stimulus.flickerNFrame) == 0 
+    stimulus.gaborIndex = stimulus.gaborIndex + 1;
+    if mod(stimulus.gaborIndex,2)==1
+        stimulus.gaborNum = 1;
+    else
+        stimulus.gaborNum = 2;
+    end
+end
+stimulus.flickerIndex = stimulus.flickerIndex+1;
+    
+mglBltTexture(stimulus.tex(stimulus.gaborNum), [stimulus.location, 0], 0,0, stimulus.orientation);
