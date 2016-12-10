@@ -34,11 +34,11 @@ stimulus.flickerNFrame = round(myscreen.framesPerSecond/stimulus.flickerRate);
 % set up task
 %%%%%%%%%%%%%%%%%%%%%
 task{2}{1}.waitForBacktick = 1;
-task{2}{1}.segmin = [1 2 1];
-task{2}{1}.segmax = [1 2 3];
+task{2}{1}.segmin = [2 1];
+task{2}{1}.segmax = [2 5];
 
 if stimulus.scan
-    task{2}{1}.synchToVol = [0 0 1];
+    task{2}{1}.synchToVol = [0 1];
 end
 
 % parameters & randomization
