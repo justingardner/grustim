@@ -23,7 +23,7 @@ scan = 0;
 plots = 0; windowed=0;
 noeye = 0; framegrab=0;
 feature = 0; fixate = 0; trigger=0;
-getArgs(varargin,{'scan=0','plots=0','noeye=1','fixate=0','constant=0','framegrab=0','complex=0','feature=1','trigger=0','windowed=0'});
+getArgs(varargin,{'scan=0','plots=0','noeye=1','fixate=1','constant=0','framegrab=0','complex=0','feature=1','trigger=0','windowed=0'});
 stimulus.framegrab = framegrab;
 stimulus.fixate = fixate;
 stimulus.scan = scan;
@@ -462,7 +462,7 @@ if stimulus.live.triggerWaiting
     if ~any(isnan(pos))
         dist = hypot(pos(1),pos(2));
         wasCentered = stimulus.live.centered;
-        stimulus.live.centered = dist<1;
+        stimulus.live.centered = dist<2;
         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
         end
