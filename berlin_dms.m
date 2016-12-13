@@ -118,9 +118,9 @@ stimulus.colors.green = [0 0.2 0];
 stimulus.colors.red = [0.2 0 0];
 if stimulus.contrastOverride>0
 
-    stimulus.colors.white = [1 1 1];
-    stimulus.colors.green = [0 1 0];
-    stimulus.colors.red = [1 0 0];
+    stimulus.colors.white = [0.5 0.5 0.5];
+    stimulus.colors.green = [0 0.5 0];
+    stimulus.colors.red = [0.5 0 0];
 end
 % stimulus.colors.black = 0;
 % stimulus.colors.white = 1/255;
@@ -135,7 +135,7 @@ stimulus.ring.outer = 5; %21
 stimulus.jitter = 0.3;
 
 %% Motion Parameters
-stimulus.orientations = [0 135];
+stimulus.orientations = [0 90];
 
 %% Contrast
 stimulus.contrast = stimulus.contrastOverride;
