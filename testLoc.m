@@ -35,17 +35,19 @@ stimulus.flickerNFrame = round(myscreen.framesPerSecond/stimulus.flickerRate);
 %%%%%%%%%%%%%%%%%%%%%
 task{2}{1}.waitForBacktick = 1;
 task{2}{1}.segmin = [2 1];
-task{2}{1}.segmax = [2 5];
+task{2}{1}.segmax = [2 12];
 
 if stimulus.scan
     task{2}{1}.synchToVol = [0 1];
 end
 
 % parameters & randomization
-task{2}{1}.parameter.contrast = [.25 .5 1];
+task{2}{1}.parameter.contrast = [.25 1];
 task{2}{1}.parameter.location = [-14 -8 8 14];
 task{2}{1}.randVars.block.orientation = 0:45:135;
 task{2}{1}.random = 1;
+
+task{2}{1}.randVars.calculated.loccon = nan;
 
 % initialize the task
 for phaseNum = 1:length(task{2})
@@ -89,6 +91,11 @@ if task.thistrial.thisseg == 1
     stimulus.gaborNum = 1;
     
     stimulus = updateGabor(stimulus,myscreen);
+    
+    task.thistrial.loccon = 2*(find(stimulus.location == task.parameter.location)-1)+find(stimulus.contrast == task.parameter.contrast);
+    
+    disp(sprintf('(testLoc) Trial %i:[%i] Location %i Contrast %0.2f ITI %0.2fs', ...
+        task.trialnum, task.thistrial.loccon, task.thistrial.location, task.thistrial.contrast, task.thistrial.seglen(end)));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -97,8 +104,7 @@ end
 function [task myscreen] = updateScreenCallback(task, myscreen)
 global stimulus
 mglClearScreen;
-if task.thistrial.thisseg == 2
-    
+if task.thistrial.thisseg == 1
     
 % show a flickering gabor patch
 if mod(stimulus.flickerIndex, stimulus.flickerNFrame) == 0 
