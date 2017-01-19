@@ -59,7 +59,6 @@ stimulus.cur{end}.num = 360/stimulus.cur{end}.angle;
 stimulus.cur{end}.buffer = 5; % buffer is used to stencil over the wedges
 stimulus.cur{end}.isize = 1;
 stimulus.cur{end}.osize = 10;
-disp(sprintf('(unlearn) Subject %s is learning %i',mglGetSID,stimulus.learn));
 
 stimulus.cur_ = stimulus.cur{end};
 
@@ -67,6 +66,7 @@ if ~isfield(stimulus,'learn')
     stimulus.learn = randi(stimulus.cur_.num);
     disp('(unlearn) Re-setting learn position');
 end
+disp(sprintf('(unlearn) Subject %s is learning %i',mglGetSID,stimulus.learn));
 
 %% Initialize Variables
 
