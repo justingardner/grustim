@@ -52,8 +52,8 @@ disp(sprintf('(unlearn) This is run #%i',stimulus.counter));
 if ~isfield(stimulus,'cur'), stimulus.cur = {}; end
 
 stimulus.cur{end+1} = struct;
-stimulus.cur{end}.N = 4;
-stimulus.cur{end}.K = 2;
+stimulus.cur{end}.N = 5;
+stimulus.cur{end}.K = 3;
 stimulus.cur{end}.angle = 30;
 stimulus.cur{end}.num = 360/stimulus.cur{end}.angle;
 stimulus.cur{end}.buffer = 10; % buffer is used to stencil over the wedges
@@ -64,9 +64,9 @@ stimulus.cur_ = stimulus.cur{end};
 
 if ~isfield(stimulus,'learn')
     stimulus.learn = randi(stimulus.cur_.num);
-    disp('(unlearn) Re-setting learn position');
+    disp('(unlearn) WARNING: New wedge chosen for learning');
 end
-disp(sprintf('(unlearn) Subject %s is learning %i',mglGetSID,stimulus.learn));
+disp(sprintf('(unlearn) Subject %s is learning wedge at %i degs',mglGetSID,stimulus.learn*stimulus.cur_.angle));
 
 %% Initialize Variables
 
@@ -160,14 +160,20 @@ task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(
 task{1}{1}.numTrials = 50;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
-task{1}{1}.parameter.count = [0 0 0 0 1 2];
+task{1}{1}.parameter.count = [0 0 0 1 2];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
 
 stimulus.patterns = unique(perms([ones(1,stimulus.cur_.K) zeros(1,stimulus.cur_.N-stimulus.cur_.K)]),'rows');
-stimulus.npatterns = size(stimulus.patterns,1);
+% select 5 patterns for permanent use
+if ~isfield(stimulus,'patternopts')
+    stimulus.patternopts = randperm(size(stimulus.patterns,1),5);
+    stimulus.generalopts = setdiff(1:size(stimulus.patterns,1),stimulus.patternopts);
+    disp('(unlearn) WARNING: New pattern options detected');
+end
+stimulus.npatterns = length(stimulus.patternopts);
 task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to use for the first stim
 
 %% Tracking
@@ -272,7 +278,7 @@ stimulus.live.rings1 = zeros(stimulus.cur_.N,stimulus.cur_.num);
 stimulus.live.rings2 = stimulus.live.rings1; % copy
 for i = 1:stimulus.cur_.num
     if stimulus.learn==i
-        stimulus.live.rings1(:,i) = stimulus.patterns(task.thistrial.pattern1,:)';
+        stimulus.live.rings1(:,i) = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern1),:)';
         if task.thistrial.match==1
             % if match, set equal to current pattern
             stimulus.live.rings2(:,i) = stimulus.live.rings1(:,i);
@@ -281,23 +287,23 @@ for i = 1:stimulus.cur_.num
             notpatterns = 1:stimulus.npatterns;
             notpatterns = notpatterns(notpatterns~=task.thistrial.pattern1);
             task.thistrial.pattern2 = notpatterns(randi(length(notpatterns)));
-            stimulus.live.rings2(:,i) = stimulus.patterns(task.thistrial.pattern2,:)';
+            stimulus.live.rings2(:,i) = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern2),:)';
         end
     else
         fpattern = randi(stimulus.npatterns);
-        stimulus.live.rings1(:,i) = stimulus.patterns(fpattern,:)';
+        stimulus.live.rings1(:,i) = stimulus.patterns(stimulus.patternopts(fpattern),:)';
         if randi(2)==1
             stimulus.live.rings2(:,i) = stimulus.live.rings1(:,i);
         else
             notpatterns = 1:stimulus.npatterns;
             notpatterns = notpatterns(notpatterns~=fpattern);
-            stimulus.live.rings2(:,i) = stimulus.patterns(notpatterns(randi(length(notpatterns))),:)';
+            stimulus.live.rings2(:,i) = stimulus.patterns(stimulus.patternopts(notpatterns(randi(length(notpatterns)))),:)';
         end
     end
 end
 
 if task.thistrial.count==1
-    stimulus.live.rings1(randi(size(stimulus.live.rings1,1)),randi(size(stimulus.live.rings1`21212,2))) = 2;
+    stimulus.live.rings1(randi(size(stimulus.live.rings1,1)),randi(size(stimulus.live.rings1,2))) = 2;
 elseif task.thistrial.count==2
     stimulus.live.rings2(randi(size(stimulus.live.rings2,1)),randi(size(stimulus.live.rings2,2))) = 2;
 end
@@ -347,23 +353,23 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0.5);
 % check eye pos
-% % % if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.scan
-% % %     [pos,time] = mglEyelinkGetCurrentEyePos;
-% % %     if ~any(isnan(pos))
-% % %         dist = hypot(pos(1),pos(2));
-% % %         if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
-% % %             mglTextSet([],32,stimulus.colors.red);
-% % %             disp('Eye movement detected!!!!');
-% % %             mglTextDraw('Eye Movement Detected',[0 0]);
-% % %             mglFlush
-% % %             myscreen.flushMode = 1;
-% % %             stimulus.dead = 1;
-% % %             return
-% % %         elseif dist > stimulus.ring.inner-1
-% % %             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-% % %         end
-% % %     end
-% % % end
+if ~stimulus.noeye && ~stimulus.scan
+    [pos,~] = mglEyelinkGetCurrentEyePos;
+    if ~any(isnan(pos))
+        dist = hypot(pos(1),pos(2));
+        if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
+            mglTextSet([],32,stimulus.colors.red);
+            disp('Eye movement detected!!!!');
+            mglTextDraw('Eye Movement Detected',[0 0]);
+            mglFlush
+            myscreen.flushMode = 1;
+            stimulus.dead = 1;
+            return
+        elseif dist > stimulus.ring.inner-1
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
+    end
+end
 
 partSize = (stimulus.cur_.osize-stimulus.cur_.isize) / stimulus.cur_.N;
 
@@ -400,24 +406,24 @@ if stimulus.live.fix
     end
 end
 
-% if stimulus.live.triggerWaiting
-%     now = mglGetSecs;
-%     % check eye position, if 
-%     [pos,time] = mglEyelinkGetCurrentEyePos;
-%     if ~any(isnan(pos))
-%         dist = hypot(pos(1),pos(2));
-%         wasCentered = stimulus.live.centered;
-%         stimulus.live.centered = dist<2;
-%         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
-%             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
-%         end
-%         stimulus.live.lastTrigger = now;
-%     end
-%     if stimulus.live.triggerTime > 0.75 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-%         disp('Eye position centered');
-%         task = jumpSegment(task);
-%     end
-% end
+if stimulus.live.triggerWaiting
+    now = mglGetSecs;
+    % check eye position, if 
+    [pos,~] = mglEyelinkGetCurrentEyePos;
+    if ~any(isnan(pos))
+        dist = hypot(pos(1),pos(2));
+        wasCentered = stimulus.live.centered;
+        stimulus.live.centered = dist<2;
+        if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+            stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
+        end
+        stimulus.live.lastTrigger = now;
+    end
+    if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+        disp('Eye position centered');
+        task = jumpSegment(task);
+    end
+end
 
 function upFix(stimulus)
 %%
