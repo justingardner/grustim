@@ -128,7 +128,7 @@ stimulus.colors.red = [1 0 0];
 mglStencilCreateBegin(1);
 % Draw an annulus at every buffer location
 for i = 0:(stimulus.cur_.num-1)
-    mglGluPartialDisk(0,0,stimulus.cur_.isize,stimulus.cur_.osize,i*stimulus.cur_.angle+stimulus.cur_.buffer/2,stimulus.cur_.angle-stimulus.cur_.buffer/2,[1 1 1],60,2);
+    mglGluPartialDisk(0,0,stimulus.cur_.isize,stimulus.cur_.osize,i*stimulus.cur_.angle+stimulus.cur_.buffer/2,stimulus.cur_.angle-stimulus.cur_.buffer,[1 1 1],60,2);
 end
 mglStencilCreateEnd;
 mglClearScreen(0.5);
@@ -160,7 +160,7 @@ task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(
 task{1}{1}.numTrials = 50;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
-task{1}{1}.parameter.count = [0 0 0 1 2];
+task{1}{1}.parameter.count = [0 1 2];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -302,15 +302,9 @@ for i = 1:stimulus.cur_.num
     end
 end
 
-if task.thistrial.count==1
-    stimulus.live.rings1(randi(size(stimulus.live.rings1,1)),randi(size(stimulus.live.rings1,2))) = 2;
-elseif task.thistrial.count==2
-    stimulus.live.rings2(randi(size(stimulus.live.rings2,1)),randi(size(stimulus.live.rings2,2))) = 2;
-end
-
 opts = {'Non-match','Match'};
 disp(sprintf('(unlearn) %s trial. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},task.thistrial.pattern1,task.thistrial.pattern2));
-
+    
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
 
@@ -338,6 +332,8 @@ stimulus.live.stim = 0;
 
 if any(task.thistrial.thisseg==[stimulus.seg.stim1 stimulus.seg.stim2])
     stimulus.live.stim = 1;
+    stimulus.live.countang = randi(stimulus.cur_.num);
+    stimulus.live.countio = randi(2);
 elseif task.thistrial.thisseg==stimulus.seg.resp
     stimulus.live.fix = 0;
 elseif task.thistrial.thisseg==stimulus.seg.ITI2
@@ -353,23 +349,23 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0.5);
 % check eye pos
-if ~stimulus.noeye && ~stimulus.scan
-    [pos,~] = mglEyelinkGetCurrentEyePos;
-    if ~any(isnan(pos))
-        dist = hypot(pos(1),pos(2));
-        if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
-            mglTextSet([],32,stimulus.colors.red);
-            disp('Eye movement detected!!!!');
-            mglTextDraw('Eye Movement Detected',[0 0]);
-            mglFlush
-            myscreen.flushMode = 1;
-            stimulus.dead = 1;
-            return
-        elseif dist > stimulus.ring.inner-1
-            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-        end
-    end
-end
+% if ~stimulus.noeye && ~stimulus.scan
+%     [pos,~] = mglEyelinkGetCurrentEyePos;
+%     if ~any(isnan(pos))
+%         dist = hypot(pos(1),pos(2));
+%         if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
+%             mglTextSet([],32,stimulus.colors.red);
+%             disp('Eye movement detected!!!!');
+%             mglTextDraw('Eye Movement Detected',[0 0]);
+%             mglFlush
+%             myscreen.flushMode = 1;
+%             stimulus.dead = 1;
+%             return
+%         elseif dist > stimulus.ring.inner-1
+%             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+%         end
+%     end
+% end
 
 partSize = (stimulus.cur_.osize-stimulus.cur_.isize) / stimulus.cur_.N;
 
@@ -383,16 +379,33 @@ if stimulus.live.stim
     % draw rings
     for rn = 1:stimulus.cur_.N
         for si = 1:stimulus.cur_.num
-            if rings(rn,si)==2
-                col = [1 165/255 0];
-            else
-                col = rings(rn,si)*[1 1 1];
-            end
+            col = rings(rn,si)*[1 1 1];
             mglGluPartialDisk(0,0,(rn-1)*partSize+stimulus.cur_.isize,rn*partSize+stimulus.cur_.isize,si*stimulus.cur_.angle,stimulus.cur_.angle,col);
         end
     end
     % revert stencil
     mglStencilSelect(0);
+    
+    % draw the orange stim
+    
+    % OTHER OPTS
+    % 151 135 105
+    % 163 138 93
+    % 174 141 81
+    % blend between: 255,165,0 and 128,128,128
+    
+    col = [140/255 131/255 116/255];
+    if stimulus.live.countio==1
+        in = stimulus.cur_.isize;
+        out = (stimulus.cur_.osize-stimulus.cur_.isize)/2+stimulus.cur_.isize;
+    else
+        in = (stimulus.cur_.osize-stimulus.cur_.isize)/2+stimulus.cur_.isize;
+        out = stimulus.cur_.osize;
+    end
+    
+    if (task.thistrial.count==1 && task.thistrial.thisseg==stimulus.seg.stim1) || (task.thistrial.count==2 && task.thistrial.thisseg==stimulus.seg.stim2)
+        mglGluPartialDisk(0,0,in,out,stimulus.live.countang*stimulus.cur_.angle-stimulus.cur_.buffer/2,stimulus.cur_.buffer,col);
+    end
 end
 
 if stimulus.live.fix
@@ -406,24 +419,24 @@ if stimulus.live.fix
     end
 end
 
-if stimulus.live.triggerWaiting
-    now = mglGetSecs;
-    % check eye position, if 
-    [pos,~] = mglEyelinkGetCurrentEyePos;
-    if ~any(isnan(pos))
-        dist = hypot(pos(1),pos(2));
-        wasCentered = stimulus.live.centered;
-        stimulus.live.centered = dist<2;
-        if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
-            stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
-        end
-        stimulus.live.lastTrigger = now;
-    end
-    if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-        disp('Eye position centered');
-        task = jumpSegment(task);
-    end
-end
+% if stimulus.live.triggerWaiting
+%     now = mglGetSecs;
+%     % check eye position, if 
+%     [pos,~] = mglEyelinkGetCurrentEyePos;
+%     if ~any(isnan(pos))
+%         dist = hypot(pos(1),pos(2));
+%         wasCentered = stimulus.live.centered;
+%         stimulus.live.centered = dist<2;
+%         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+%             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
+%         end
+%         stimulus.live.lastTrigger = now;
+%     end
+%     if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+%         disp('Eye position centered');
+%         task = jumpSegment(task);
+%     end
+% end
 
 function upFix(stimulus)
 %%
