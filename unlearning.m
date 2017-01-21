@@ -367,7 +367,6 @@ mglClearScreen(0.5);
 %     end
 % end
 
-partSize = (stimulus.cur_.osize-stimulus.cur_.isize) / stimulus.cur_.N;
 
 if stimulus.live.stim
     if task.thistrial.thisseg==stimulus.seg.stim1
@@ -377,12 +376,7 @@ if stimulus.live.stim
     end
     mglStencilSelect(1);
     % draw rings
-    for rn = 1:stimulus.cur_.N
-        for si = 1:stimulus.cur_.num
-            col = rings(rn,si)*[1 1 1];
-            mglGluPartialDisk(0,0,(rn-1)*partSize+stimulus.cur_.isize,rn*partSize+stimulus.cur_.isize,si*stimulus.cur_.angle,stimulus.cur_.angle,col);
-        end
-    end
+    upRing(rings,stimulus);
     % revert stencil
     mglStencilSelect(0);
     
@@ -437,6 +431,16 @@ end
 %         task = jumpSegment(task);
 %     end
 % end
+
+function upRing(ring,stimulus)
+
+partSize = (stimulus.cur_.osize-stimulus.cur_.isize) / stimulus.cur_.N;
+for rn = 1:stimulus.cur_.N
+    for si = 1:stimulus.cur_.num
+        col = ring(rn,si)*[1 1 1];
+        mglGluPartialDisk(0,0,(rn-1)*partSize+stimulus.cur_.isize,rn*partSize+stimulus.cur_.isize,si*stimulus.cur_.angle,stimulus.cur_.angle,col);
+    end
+end
 
 function upFix(stimulus)
 %%
