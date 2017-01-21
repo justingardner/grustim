@@ -56,7 +56,7 @@ stimulus.cur{end}.N = 5;
 stimulus.cur{end}.K = 3;
 stimulus.cur{end}.angle = 30;
 stimulus.cur{end}.num = 360/stimulus.cur{end}.angle;
-stimulus.cur{end}.buffer = 10; % buffer is used to stencil over the wedges
+stimulus.cur{end}.buffer = 8; % buffer is used to stencil over the wedges
 stimulus.cur{end}.isize = 1;
 stimulus.cur{end}.osize = 10;
 
