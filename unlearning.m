@@ -2,29 +2,12 @@ function [ myscreen ] = unlearning( varargin )
 %UNLEARNING 
 %
 % Unconscious learning of spatial patterns. This experiment runs two
-% simultaneous tasks. One task asks subjects to notice and press a key
-% (spacebar) when any location on the polar grid turns orange. This task is
-% not staircased, but is sufficiently hard that it requires attending to
-% all of the grid locations.
-%
-% The second task is the real unconscious learning task. The goal is to
-% learn delayed match-to-sample between two patterns along a particular
-% polar angle. Each pattern is an nCk generated bitwise pattern, randomly
-% chosen to match or non-match. The patterns are drawn with dividers
-% between them so that they can be (theoretically) isolated with receptive
-% field mapping to unique sets of responsive voxels.
-%
-% Failing to identify a spacebar press causes a 10-s timeout and a loud
-% beep noise to strongly encourage participants to attend to this task and
-% not the other task.
-%
-% Participants are given no instructions about the pattern matching task.
-%
-% Neither task is difficulty staircase.
+% simultaneous tasks. 
 %
 
 global stimulus
 
+stimulus = struct;
 %% Open Old Stimfile
 stimulus.initStair = 1;
 stimulus.counter = 1;
@@ -52,14 +35,13 @@ disp(sprintf('(unlearn) This is run #%i',stimulus.counter));
 if ~isfield(stimulus,'cur'), stimulus.cur = {}; end
 
 stimulus.cur{end+1} = struct;
-stimulus.cur{end}.N = 5;
-stimulus.cur{end}.K = 3;
-stimulus.cur{end}.angle = 30;
+stimulus.cur{end}.N = 3;
+stimulus.cur{end}.K = 2;
+stimulus.cur{end}.angle = 60;
 stimulus.cur{end}.num = 360/stimulus.cur{end}.angle;
-stimulus.cur{end}.buffer = 8; % buffer is used to stencil over the wedges
+% stimulus.cur{end}.buffer = 8; % buffer is used to stencil over the wedges
 stimulus.cur{end}.isize = 1.5;
-stimulus.cur{end}.osize = 11;
-stimulus.cur{end}.rotNum = 2; % number of wedges to rotate (2*30 = 60)
+stimulus.cur{end}.osize = 10;
 
 stimulus.cur_ = stimulus.cur{end};
 
@@ -180,7 +162,7 @@ end
 stimulus.patterns = unique(perms([ones(1,stimulus.cur_.K) zeros(1,stimulus.cur_.N-stimulus.cur_.K)]),'rows');
 % select 5 patterns for permanent use
 if ~isfield(stimulus,'patternopts')
-    stimulus.patternopts = randperm(size(stimulus.patterns,1),5);
+    stimulus.patternopts = randperm(size(stimulus.patterns,1),3);
     stimulus.generalopts = setdiff(1:size(stimulus.patterns,1),stimulus.patternopts);
     disp('(unlearn) WARNING: New pattern options detected');
 end
@@ -192,7 +174,6 @@ task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to us
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.pattern2 = nan;
-task{1}{1}.randVars.calculated.correlation = nan;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -267,7 +248,8 @@ task = buildRings(task);
 opts = {'Non-match','Match'};
 % if  
 dopts = {'Right','Left'};
-disp(sprintf('(unlearn) %s:%s trial. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},dopts{task.thistrial.match+1},task.thistrial.pattern1,task.thistrial.pattern2));
+vopts = {'Valid','Impossible'};
+disp(sprintf('(unlearn) %s:%s trial, %s. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},dopts{task.thistrial.match+1},vopts{task.thistrial.impossible+1},task.thistrial.pattern1,task.thistrial.pattern2));
     
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
@@ -305,8 +287,8 @@ for j = 1:stimulus.cur_.N
 end
 
 sum1 = 0; sum5 =0; sum0 = 0;
-while any([sum1 sum5 sum0]<=7)
-
+while any([sum1 sum5 sum0]<=5)
+    stimulus.live.rings2 = zeros(stimulus.cur_.N,stimulus.cur_.num);
     % fill in rings2
     for i = 1:stimulus.cur_.num
         stimulus.live.rings2(:,i) = (randi(3,stimulus.cur_.N,1)-1)/2;
@@ -544,76 +526,16 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
-function dispInfo(stimulus)
+function dispInfo(task,myscreen,stimulus)
 %%
 
-% if ~stimulus.localizer && ~stimulus.staircasing
-%     disp(sprintf('Participant %s has earned $%2.2f',mglGetSID,stimulus.run.points/100));
-% end
-% % load the luminance table
-% % % % load(myscreen.calibFullFilename)
-% % % % luminance = interp1(calib.tableCorrected.outputValues,calib.tableCorrected.luminance,0:1/255:255);
-% if stimulus.staircasing
-%     %%
-%     notstaircase = stimulus.staircase;
-%     thresholds = zeros(size(stimulus.run.stimLengths));
-%     for i = 1:length(stimulus.staircase)
-%         out = doStaircase('threshold',notstaircase{i},'type','weibull','dispFig=0');
-%         thresholds(i) = out.threshold;
-%     end
-%     % reorganize into matrix
-%     stimCons = unique(stimulus.run.stimCon);
-%     stimCons = sort(stimCons);
-%     stimLengths = unique(stimulus.run.stimLengths);
-%     stimLengths = sort(stimLengths);
-%     datamat = nan(length(stimCons),length(stimLengths),5);
-%     for ci = 1:length(stimCons)
-%         for li = 1:length(stimLengths)
-%             idxs = logical((stimulus.run.stimLengths==stimLengths(li)) .* (stimulus.run.stimCon==stimCons(ci)));
-%             datamat(ci,li,1:sum(idxs)) = thresholds(idxs);
-%         end
-%     end
-%     if any(thresholds<0) || any(thresholds>1)
-%         % remove errant thresholds
-%         warning('should remove some thresholds...');
-%     end
-%     datamat(datamat>1) = NaN;
-%     datamat(datamat<=0) = NaN;
-%     %%
-%     datamu = nanmean(datamat,3);
-%     datamu(datamu==0) = NaN;
-%     datamu = round((1-datamu)*255);
-%     datasd = nanstd(datamat,[],3);
-%     datasd(datasd==0) = NaN;
-%     %% plot
-%     cmap = brewermap(length(stimCons)+1,'Purples');
-%     cmap = cmap(2:end,:);
-%     figure, hold on
-%     legs = {};
-%     for i = 1:length(stimCons)
-%         plot(stimLengths,datamu(i,:),'o','MarkerFaceColor',cmap(i,:),'MarkerEdgeColor',[1 1 1],'MarkerSize',10);
-%         errbar(stimLengths,datamu(i,:),datasd(i,:),'-','Color',cmap(i,:));
-%         legs{end+1} = sprintf('Stimulus luminance: %i/255',stimCons(i));
-%     end
-%     a = axis;
-%     axis([50 100 0 a(4)]);
-%     legend(legs)
-%     xlabel('Stimulus length (ms)');
-%     ylabel('Mask contrast at just noticeable difference (% luminance)');
-%     drawPublishAxis
-% elseif stimulus.localizer
-% else
-% %     perf = zeros(size(stimulus.istaircase));
-% %     for i = 1:length(stimulus.istaircase)
-% %         perf(i) = mean(stimulus.istaircase(i).response);
-% %     end
-% %     figure
-% %     plot(1:length(perf),perf,'o','MarkerFaceColor',[0 0 0],'MarkerEdgeColor',[1 1 1]);
-% %     set(gca,'XAxisTick',1:length(perf));
-% %     drawPublishAxis
-% end
+% compute % correct for valid and invalid trials, display learning over
+% time (including history from other runs)
+% exp = getTaskParameters(task,myscreen);
+disp('(unlearn) Display info not implemented yet');
 
 function partialDiskFuckOGL(x,y,isize,osize,sangle,dist,col,slices,loops)
+% fucking opengl! wtf!
 mglGluPartialDisk(x,y,isize,osize,fuckopengl(sangle),-dist,col,slices,loops);
 
 function deg = fuckopengl(deg)
@@ -638,10 +560,10 @@ for gi = 1:stimulus.cur_.N
     crad = stimulus.live.pos(gi);
     % get total degrees around circle
     degs = 2*pi*crad;
-    sz = degs/stimulus.cur_.num;
+    sz = degs/stimulus.cur_.num*0.6;
     % use total degs / num to compute size
     grating = 255/2*mglMakeGrating(sz,sz,5/sqrt(crad),0) + 255/2;
-    lgrating = (255*0.25)/2*mglMakeGrating(sz,sz,5/sqrt(crad),0) + 255/2;
+    lgrating = (255*0.15)/2*mglMakeGrating(sz,sz,5/sqrt(crad),0) + 255/2;
 %     gratings{gi} = mglCreateTexture(grating);
     gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 %     alphamask = zeros(size(gauss,1),size(gauss,2),4);
