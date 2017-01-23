@@ -57,8 +57,9 @@ stimulus.cur{end}.K = 3;
 stimulus.cur{end}.angle = 30;
 stimulus.cur{end}.num = 360/stimulus.cur{end}.angle;
 stimulus.cur{end}.buffer = 8; % buffer is used to stencil over the wedges
-stimulus.cur{end}.isize = 1;
-stimulus.cur{end}.osize = 10;
+stimulus.cur{end}.isize = 1.5;
+stimulus.cur{end}.osize = 11;
+stimulus.cur{end}.rotNum = 2; % number of wedges to rotate (2*30 = 60)
 
 stimulus.cur_ = stimulus.cur{end};
 
@@ -66,7 +67,7 @@ if ~isfield(stimulus,'learn')
     stimulus.learn = randi(stimulus.cur_.num);
     disp('(unlearn) WARNING: New wedge chosen for learning');
 end
-disp(sprintf('(unlearn) Subject %s is learning wedge at %i degs',mglGetSID,stimulus.learn*stimulus.cur_.angle));
+disp(sprintf('(unlearn) Subject %s is learning wedge #%i',mglGetSID,stimulus.learn));
 
 %% Initialize Variables
 
@@ -74,10 +75,12 @@ disp(sprintf('(unlearn) Subject %s is learning wedge at %i degs',mglGetSID,stimu
 scan = 0;
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=1'});
+debug = 0;
+getArgs(varargin,{'scan=0','plots=0','noeye=1','debug=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.debug = debug;
 clear localizer invisible scan category noeye task
 
 if stimulus.scan
@@ -110,7 +113,9 @@ end
 
 %% Initialize Stimulus
 
-myscreen = initStimulus('stimulus',myscreen);
+myscreen.stimulusNames{1} = 'stimulus';
+
+localInitStimulus();
     
 if stimulus.scan
     stimulus.responseKeys = [2 1]; % corresponds to NOMATCH, MATCH
@@ -123,15 +128,16 @@ stimulus.colors.white = [1 1 1];
 stimulus.colors.green = [0 1 0];
 stimulus.colors.red = [1 0 0];
 
-%% Generate stencils
-% The stencil is a series of arcs 
-mglStencilCreateBegin(1);
-% Draw an annulus at every buffer location
-for i = 0:(stimulus.cur_.num-1)
-    mglGluPartialDisk(0,0,stimulus.cur_.isize,stimulus.cur_.osize,i*stimulus.cur_.angle+stimulus.cur_.buffer/2,stimulus.cur_.angle-stimulus.cur_.buffer,[1 1 1],60,2);
-end
-mglStencilCreateEnd;
-mglClearScreen(0.5);
+% % %% Generate stencils
+% % % The stencil is a series of arcs 
+% % mglStencilCreateBegin(1);
+% % % Draw an annulus at every buffer location
+% % for i = 0:(stimulus.cur_.num-1)
+% %     partialDiskFuckOGL(0,0,stimulus.cur_.isize,stimulus.cur_.osize,i*stimulus.cur_.angle+stimulus.cur_.buffer/2,stimulus.cur_.angle-stimulus.cur_.buffer,[1 1 1],60,2);
+% % end
+% % mglStencilCreateEnd;
+% % mglClearScreen(0.5);
+% % myscreen.flushMode = 1;
 
 %% Setup Task
 task{1}{1} = struct;
@@ -140,7 +146,12 @@ task{1}{1}.waitForBacktick = 1;
 stimulus.curTrial = 0;
 
 task{1}{1}.segmin = [inf .650 1.000 .650 0.500 1.500 0.500];
-task{1}{1}.segmax = [inf .650 1.000 .650 0.500 1.500 6.000];
+task{1}{1}.segmax = [inf .650 1.000 .650 0.500 1.500 1.500];
+
+if stimulus.debug
+    task{1}{1}.segmin = [inf 1.5 1.000 1.5 0.500 1.500 0.500];
+    task{1}{1}.segmax = [inf 1.5 1.000 1.5 0.500 1.500 1.500];
+end
 
 if stimulus.noeye==1
     task{1}{1}.segmin(1) = 0.5;
@@ -160,7 +171,7 @@ task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(
 task{1}{1}.numTrials = 50;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
-task{1}{1}.parameter.count = [0 1 2];
+task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -180,8 +191,8 @@ task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to us
 
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
-task{1}{1}.randVars.calculated.cumcount = nan;
 task{1}{1}.randVars.calculated.pattern2 = nan;
+task{1}{1}.randVars.calculated.correlation = nan;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -206,9 +217,6 @@ myscreen = eyeCalibDisp(myscreen);
 
 % let the user know
 disp(sprintf('(unlearn) Starting run number: %i.',stimulus.counter));
-% if stimulus.unattended
-% % myscreen.flushMode = 0;
-% end
 
 %% Main Task Loop
 
@@ -225,32 +233,14 @@ end
 mglClearScreen(0.5);
 mglTextSet([],32,stimulus.colors.white);
 % get count
-count = 0; got=false;
-while true
-    mglClearScreen(0.5);
-    mglTextDraw(sprintf('Report your count: %i',count),[0 0]);
-    mglFlush
-    keys = mglGetKeys;
-    if keys(19) && ~got
-        got = true;
-        count = count+1;
-    elseif ~keys(19)
-        got = false;
-    end
-    if keys(20)
-        break;
-    end
-end
-mglTextDraw(sprintf('True count: %i',task{1}{1}.thistrial.cumcount),[0 2]);
+mglTextDraw('Please wait',[0 0]);
+mglFlush
 myscreen.flushMode = 1;
-
-stimulus.count = count;
-stimulus.truecount = task{1}{1}.thistrial.cumcount;
-stimulus.off = abs(stimulus.count-stimulus.truecount);
-disp(sprintf('(unlearn) Subject was off by: %i. True: %i Report: %i',stimulus.off,stimulus.truecount,stimulus.count));
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+
+mglClearScreen(0.5);
 
 if stimulus.plots
     disp('(unlearn) Displaying plots');
@@ -272,41 +262,116 @@ stimulus.curTrial = stimulus.curTrial + 1;
 
 myscreen.flushMode = 0;
 
-% Setup the displays
-% .rings holds N rings consisting of num segments
-stimulus.live.rings1 = zeros(stimulus.cur_.N,stimulus.cur_.num);
-stimulus.live.rings2 = stimulus.live.rings1; % copy
-for i = 1:stimulus.cur_.num
-    if stimulus.learn==i
-        stimulus.live.rings1(:,i) = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern1),:)';
-        if task.thistrial.match==1
-            % if match, set equal to current pattern
-            stimulus.live.rings2(:,i) = stimulus.live.rings1(:,i);
-            task.thistrial.pattern2 = task.thistrial.pattern1;
-        else
-            notpatterns = 1:stimulus.npatterns;
-            notpatterns = notpatterns(notpatterns~=task.thistrial.pattern1);
-            task.thistrial.pattern2 = notpatterns(randi(length(notpatterns)));
-            stimulus.live.rings2(:,i) = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern2),:)';
-        end
-    else
-        fpattern = randi(stimulus.npatterns);
-        stimulus.live.rings1(:,i) = stimulus.patterns(stimulus.patternopts(fpattern),:)';
-        if randi(2)==1
-            stimulus.live.rings2(:,i) = stimulus.live.rings1(:,i);
-        else
-            notpatterns = 1:stimulus.npatterns;
-            notpatterns = notpatterns(notpatterns~=fpattern);
-            stimulus.live.rings2(:,i) = stimulus.patterns(stimulus.patternopts(notpatterns(randi(length(notpatterns)))),:)';
-        end
-    end
-end
+task = buildRings(task);
 
 opts = {'Non-match','Match'};
-disp(sprintf('(unlearn) %s trial. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},task.thistrial.pattern1,task.thistrial.pattern2));
+% if  
+dopts = {'Right','Left'};
+disp(sprintf('(unlearn) %s:%s trial. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},dopts{task.thistrial.match+1},task.thistrial.pattern1,task.thistrial.pattern2));
     
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
+
+function task = buildRings(task)
+
+global stimulus
+% Setup the displays
+% .rings holds N rings consisting of num segments
+
+stimulus.live.rings2 = zeros(stimulus.cur_.N,stimulus.cur_.num);
+sz = size(stimulus.live.rings2);
+
+patA = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern1),:)';
+
+if task.thistrial.match==1
+    % track pattern
+    patB = patA;
+    task.thistrial.pattern2 = task.thistrial.pattern1;
+else
+    notpatterns = 1:length(stimulus.patternopts);
+    notpatterns = notpatterns(notpatterns~=task.thistrial.pattern1);
+    task.thistrial.pattern2 = notpatterns(randi(length(notpatterns)));
+    patB = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern2),:)';
+end
+
+% randomize pattern A 1/0.5
+for j = 1:stimulus.cur_.N
+    if patA(j)==1 && round(rand)
+        patA(j) = 0.5;
+    end
+    if patB(j)==1 && round(rand)
+        patB(j) = 0.5;
+    end
+end
+
+sum1 = 0; sum5 =0; sum0 = 0;
+while any([sum1 sum5 sum0]<=7)
+
+    % fill in rings2
+    for i = 1:stimulus.cur_.num
+        stimulus.live.rings2(:,i) = (randi(3,stimulus.cur_.N,1)-1)/2;
+    end
+
+    stimulus.live.rings2 = stimulus.live.rings2(:);
+    pos1 = stimulus.live.rings2==1;
+    pos5 = stimulus.live.rings2==0.5;
+    pos0 = stimulus.live.rings2==0;
+    
+    sum1 = sum(pos1); sum5 = sum(pos5); sum0 = sum(pos0);
+end
+
+stimulus.live.rings1 = stimulus.live.rings2; % copy
+% at this point there are at minimum 7 positions with 1, 0.5 and 0 each
+% we can safely increase decrease appropriately
+
+pos1 = find(pos1); pos5 = find(pos5); pos0 = find(pos0);
+rand1 = randperm(length(pos1)); rand5 = randperm(length(pos5)); rand0 = randperm(length(pos0));
+
+% 
+if task.thistrial.impossible
+    % maintain overall contrast
+    % drop 1->0.5: 3
+    stimulus.live.rings1(rand1(1:3)) = 0.5;
+    % drop 0.5->0: 3
+    stimulus.live.rings1(rand5(1:3)) = 0;
+    % inc 0.5->1: 3
+    stimulus.live.rings1(rand5(4:6)) = 1;
+    % inc 0->0.5: 3
+    stimulus.live.rings1(rand0(1:3)) = 0.5;
+elseif task.thistrial.match==1
+    % increase overall contrast from 1->2, so decrease here
+    % drop 1->0.5: 4
+    stimulus.live.rings1(rand1(1:4)) = 0.5;
+    % drop 0.5->0: 4
+    stimulus.live.rings1(rand5(1:4)) = 0;
+    % inc 0.5->1: 2
+    stimulus.live.rings1(rand5(5:6)) = 1;
+    % inc 0->0.5: 2
+    stimulus.live.rings1(rand0(1:2)) = 0.5;
+else
+    % decrease overall contrast from 1->2, so increase here
+    % drop 1->0.5: 2
+    stimulus.live.rings1(rand1(1:2)) = 0.5;
+    % drop 0.5->0: 2
+    stimulus.live.rings1(rand5(1:2)) = 0;
+    % inc 0.5->1: 4
+    stimulus.live.rings1(rand5(3:6)) = 1;
+    % inc 0->0.5: 4
+    stimulus.live.rings1(rand0(1:2)) = 0.5;
+end
+
+% randomize orientation, cause why not?
+for i = 1:length(stimulus.live.rings1)
+    if rand>=0.5
+        stimulus.live.rings1(i) = stimulus.live.rings1(i)*-1;
+        stimulus.live.rings2(i) = stimulus.live.rings2(i)*-1;
+    end
+end
+
+stimulus.live.rings1 = reshape(stimulus.live.rings1,sz);
+stimulus.live.rings1(:,stimulus.learn) = patA;
+stimulus.live.rings2 = reshape(stimulus.live.rings2,sz);
+stimulus.live.rings2(:,stimulus.learn) = patB;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -332,8 +397,6 @@ stimulus.live.stim = 0;
 
 if any(task.thistrial.thisseg==[stimulus.seg.stim1 stimulus.seg.stim2])
     stimulus.live.stim = 1;
-    stimulus.live.countang = randi(stimulus.cur_.num);
-    stimulus.live.countio = randi(2);
 elseif task.thistrial.thisseg==stimulus.seg.resp
     stimulus.live.fix = 0;
 elseif task.thistrial.thisseg==stimulus.seg.ITI2
@@ -374,32 +437,22 @@ if stimulus.live.stim
     else
         rings = stimulus.live.rings2;
     end
-    mglStencilSelect(1);
+    
+    % draw background on debug
+    if stimulus.debug
+        partialDiskFuckOGL(0,0,stimulus.cur_.isize-0.5,stimulus.cur_.osize+3,(stimulus.learn-1)*stimulus.cur_.angle,stimulus.cur_.angle,[163 93 93]/255,6,2);
+    end
+    
     % draw rings
     upRing(rings,stimulus);
     % revert stencil
-    mglStencilSelect(0);
     
-    % draw the orange stim
-    
-    % OTHER OPTS
-    % 151 135 105
-    % 163 138 93
-    % 174 141 81
-    % blend between: 255,165,0 and 128,128,128
-    
-    col = [140/255 131/255 116/255];
-    if stimulus.live.countio==1
-        in = stimulus.cur_.isize;
-        out = (stimulus.cur_.osize-stimulus.cur_.isize)/2+stimulus.cur_.isize;
-    else
-        in = (stimulus.cur_.osize-stimulus.cur_.isize)/2+stimulus.cur_.isize;
-        out = stimulus.cur_.osize;
-    end
-    
-    if (task.thistrial.count==1 && task.thistrial.thisseg==stimulus.seg.stim1) || (task.thistrial.count==2 && task.thistrial.thisseg==stimulus.seg.stim2)
-        mglGluPartialDisk(0,0,in,out,stimulus.live.countang*stimulus.cur_.angle-stimulus.cur_.buffer/2,stimulus.cur_.buffer,col);
-    end
+%     if stimulus.debug
+%         mglTextSet([],32,stimulus.colors.white);
+%         for si = 0:(stimulus.cur_.num-1)
+%             mglTextDraw(num2str(si+1),[(stimulus.cur_.osize+1)*cos(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2)) (stimulus.cur_.osize+1)*sin(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2))]);
+%         end
+%     end
 end
 
 if stimulus.live.fix
@@ -434,11 +487,17 @@ end
 
 function upRing(ring,stimulus)
 
-partSize = (stimulus.cur_.osize-stimulus.cur_.isize) / stimulus.cur_.N;
 for rn = 1:stimulus.cur_.N
-    for si = 1:stimulus.cur_.num
-        col = ring(rn,si)*[1 1 1];
-        mglGluPartialDisk(0,0,(rn-1)*partSize+stimulus.cur_.isize,rn*partSize+stimulus.cur_.isize,si*stimulus.cur_.angle,stimulus.cur_.angle,col);
+    for si = 0:(stimulus.cur_.num-1)
+        thetad = si*stimulus.cur_.angle+stimulus.cur_.angle/2;
+        theta = deg2rad(thetad);
+        xy = [stimulus.live.pos(rn)*cos(theta) stimulus.live.pos(rn)*sin(theta)];
+        thetad = thetad + 90 * (ring(rn,si+1)<0);
+        if ring(rn,si+1)==0.5 || ring(rn,si+1)==-0.5
+            mglBltTexture(stimulus.live.gratings{rn,1},xy,0,0,thetad);
+        elseif ring(rn,si+1)==1 || ring(rn,si+1)==-1
+            mglBltTexture(stimulus.live.gratings{rn,2},xy,0,0,thetad);
+        end
     end
 end
 
@@ -462,12 +521,13 @@ if stimulus.dead, return; end
 responseText = {'Incorrect','Correct'};
 respText = {'-1','+5'};
 sideText = {'Left','Right'};
+matchText = {'Non-match','Match'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
     
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
         task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
-        disp(sprintf('Subject pressed %i: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},responseText{task.thistrial.correct+1}));
+        disp(sprintf('Subject pressed %i/%s: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},matchText{stimulus.responseKeys(task.thistrial.whichButton)},responseText{task.thistrial.correct+1}));
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
         stimulus.live.resp = 1;
         stimulus.live.fix = 1;
@@ -552,3 +612,48 @@ function dispInfo(stimulus)
 % %     set(gca,'XAxisTick',1:length(perf));
 % %     drawPublishAxis
 % end
+
+function partialDiskFuckOGL(x,y,isize,osize,sangle,dist,col,slices,loops)
+mglGluPartialDisk(x,y,isize,osize,fuckopengl(sangle),-dist,col,slices,loops);
+
+function deg = fuckopengl(deg)
+% BECAUSE FUCK YOU OPENGL
+deg = -deg+90;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% function to init the stimulus
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function localInitStimulus()
+
+global stimulus
+
+gratings = cell(1,stimulus.cur_.N);
+stimulus.live.pos = logspace(log10(stimulus.cur_.isize),log10(stimulus.cur_.osize),stimulus.cur_.N);
+
+% mglClearScreen(0.5)
+for gi = 1:stimulus.cur_.N
+    % for each grating distance
+    % calculate the center position to estimate the radius
+    crad = stimulus.live.pos(gi);
+    % get total degrees around circle
+    degs = 2*pi*crad;
+    sz = degs/stimulus.cur_.num;
+    % use total degs / num to compute size
+    grating = 255/2*mglMakeGrating(sz,sz,5/sqrt(crad),0) + 255/2;
+    lgrating = (255*0.25)/2*mglMakeGrating(sz,sz,5/sqrt(crad),0) + 255/2;
+%     gratings{gi} = mglCreateTexture(grating);
+    gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
+%     alphamask = zeros(size(gauss,1),size(gauss,2),4);
+    alphamask = repmat(grating,1,1,4);
+    alphamaskl = repmat(lgrating,1,1,4);
+    alphamask(:,:,4) = gauss*255;
+    alphamaskl(:,:,4) = gauss*255;
+    gratings{gi,1} = mglCreateTexture(alphamaskl);
+    gratings{gi,2} = mglCreateTexture(alphamask); % high contrast
+%     mglBltTexture(gratings{gi,1},[crad 0],0,0,round(rand)*90);
+end
+
+stimulus.live.gratings = gratings;
+
+% mglFlush
