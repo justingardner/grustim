@@ -274,7 +274,7 @@ data2 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls the contras
 data1 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls the contrast 1 levels
 orient2 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls orientation 2
 orient1 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls orientation 1
-
+sz = size(data1);
 
 for group = 1:8
     % set contrast information
@@ -301,11 +301,16 @@ for group = 1:8
         data2(gypos(group,:),gxpos(group,:)) = reshape(patB,4,2);
         data1(gypos(group,:),gxpos(group,:)) = reshape(patA,4,2);
     else
+        % pick how many will be 0/1/2
+        lgroup = randi(3,1,8)-1; count = 1;
+        perm1 = lgroup(randperm(length(lgroup)));
+        perm2 = lgroup(randperm(length(lgroup)));
         for x = gxpos(group,:);
             for y = gypos(group,:);
                 % add random stuff
-                data2(y,x) = randi(3)-1;
-                data1(y,x) = randi(3)-1;
+                data2(y,x) = perm2(count);
+                data1(y,x) = perm1(count);
+                count = count+1;
             end
         end
     end
@@ -313,34 +318,31 @@ end
 
 % set orientation information
 mask1 = data1>0;
+mask2 = data2>0;
 
-sum0=0; sum1=0;
-while sum0<8 || sum1<8
-    orient1 = round(rand(size(data1))).*mask1; % compute initial orientations
-    sz = size(orient1); orient1 = orient1(:);
-
-    pos0 = find(orient1==0);
-    pos1 = find(orient1==1);
-    sum0 = sum(pos0);
-    sum1 = sum(pos1);
+s = 0;t = sum(mask1(:));
+while (s<0.4) || (s>0.6)
+    orient1 = round(rand(size(data1))).*mask1;
+    s = sum(orient1(:)==1)/t;
 end
 
-rand0 = randperm(length(pos0));
-rand1 = randperm(length(pos1));
+num1 = sum(orient1(:)==1);
 
 if task.thistrial.impossible
     % change a bunch randomly
-    orient2(pos0(rand0(1:4))) = 1;
-    orient2(pos1(rand1(1:4))) = 0;
+    num2 = num1;
 elseif task.thistrial.match==1
     % increase verticals (ones)
-    orient2(pos0(rand0(1:6))) = 1;
-    orient2(pos1(rand1(1:2))) = 0;
+    num2 = num1+4;
 else
     % increase horizontals (zeros) 
-    orient2(pos0(rand0(1:2))) = 1;
-    orient2(pos1(rand1(1:6))) = 0;
+    num2 = num1-4;
 end
+
+pos = find(mask2(:));
+pos = pos(randperm(length(pos)));
+orient2 = zeros(size(orient1));
+orient2(pos(1:num2)) = 1;
 
 orient1 = reshape(orient1,sz);
 orient2 = reshape(orient2,sz);
