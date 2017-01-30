@@ -34,22 +34,29 @@ disp(sprintf('(unlearn) This is run #%i',stimulus.counter));
 %% EXPERIMENT PARAMETERS
 if ~isfield(stimulus,'cur'), stimulus.cur = {}; end
 
+% spc = 1.1;
+% xs = 9;
+% xpos = linspace(-floor(xs/2)*spc,floor(xs/2)*spc,xs);
+% ys = 7;
+% ypos = linspace(-floor(ys/2)*spc,floor(ys/2)*spc,ys);
+% data = zeros(5,7);
+
 stimulus.cur{end+1} = struct;
-stimulus.cur{end}.N = 3;
-stimulus.cur{end}.K = 2;
-stimulus.cur{end}.angle = 60;
-stimulus.cur{end}.num = 360/stimulus.cur{end}.angle;
-% stimulus.cur{end}.buffer = 8; % buffer is used to stencil over the wedges
-stimulus.cur{end}.isize = 1.5;
-stimulus.cur{end}.osize = 10;
+stimulus.cur{end}.spc = 1.1;
+% rows/cols are per quadrant
+stimulus.cur{end}.rows = 4;
+stimulus.cur{end}.cols = 4;
+stimulus.cur{end}.pos = linspace(-4*stimulus.cur{end}.spc,4*stimulus.cur{end}.spc,9);
+stimulus.cur{end}.N = 8;
+stimulus.cur{end}.K = 5;
 
 stimulus.cur_ = stimulus.cur{end};
 
 if ~isfield(stimulus,'learn')
-    stimulus.learn = randi(stimulus.cur_.num);
-    disp('(unlearn) WARNING: New wedge chosen for learning');
+    stimulus.learn = randi(8);
+    disp('(unlearn) WARNING: New quadrant part chosen for learning');
 end
-disp(sprintf('(unlearn) Subject %s is learning wedge #%i',mglGetSID,stimulus.learn));
+disp(sprintf('(unlearn) Subject %s is learning quadrant part #%i',mglGetSID,stimulus.learn));
 
 %% Initialize Variables
 
@@ -58,7 +65,7 @@ scan = 0;
 plots = 0;
 noeye = 0;
 debug = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=1','debug=1'});
+getArgs(varargin,{'scan=0','plots=0','noeye=1','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -162,7 +169,7 @@ end
 stimulus.patterns = unique(perms([ones(1,stimulus.cur_.K) zeros(1,stimulus.cur_.N-stimulus.cur_.K)]),'rows');
 % select 5 patterns for permanent use
 if ~isfield(stimulus,'patternopts')
-    stimulus.patternopts = randperm(size(stimulus.patterns,1),3);
+    stimulus.patternopts = randperm(size(stimulus.patterns,1),5);
     stimulus.generalopts = setdiff(1:size(stimulus.patterns,1),stimulus.patternopts);
     disp('(unlearn) WARNING: New pattern options detected');
 end
@@ -243,7 +250,7 @@ stimulus.curTrial = stimulus.curTrial + 1;
 
 myscreen.flushMode = 0;
 
-task = buildRings(task);
+task = buildData(task);
 
 opts = {'Non-match','Match'};
 % if  
@@ -254,106 +261,94 @@ disp(sprintf('(unlearn) %s:%s trial, %s. Pattern A: %i, pattern B: %i',opts{task
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
 
-function task = buildRings(task)
+function task = buildData(task)
 
 global stimulus
 % Setup the displays
 % .rings holds N rings consisting of num segments
 
-stimulus.live.rings2 = zeros(stimulus.cur_.N,stimulus.cur_.num);
-sz = size(stimulus.live.rings2);
+gxpos = [1:2;3:4;5:6;7:8;7:8;5:6;3:4;1:2];
+gypos = [1:4;1:4;1:4;1:4;5:8;5:8;5:8;5:8];
 
-patA = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern1),:)';
+data2 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls the contrast 2 levels
+data1 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls the contrast 1 levels
+orient2 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls orientation 2
+orient1 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls orientation 1
 
-if task.thistrial.match==1
-    % track pattern
-    patB = patA;
-    task.thistrial.pattern2 = task.thistrial.pattern1;
-else
-    notpatterns = 1:length(stimulus.patternopts);
-    notpatterns = notpatterns(notpatterns~=task.thistrial.pattern1);
-    task.thistrial.pattern2 = notpatterns(randi(length(notpatterns)));
-    patB = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern2),:)';
+
+for group = 1:8
+    % set contrast information
+    if group==stimulus.learn
+        % set same different pattern
+        patB = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern1),:);
+        if task.thistrial.match==1
+            patA = patB;
+            task.thistrial.pattern2 = task.thistrial.pattern1;
+        else
+            notpatterns = 1:length(stimulus.patternopts);
+            notpatterns = notpatterns(notpatterns~=task.thistrial.pattern1);
+            task.thistrial.pattern2 = notpatterns(randi(length(notpatterns)));
+            patA = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern2),:);
+        end
+        for j = 1:stimulus.cur_.N
+            if patA(j)==1 && round(rand)
+                patA(j) = 2;
+            end
+            if patB(j)==1 && round(rand)
+                patB(j) = 2;
+            end
+        end
+        data2(gypos(group,:),gxpos(group,:)) = reshape(patB,4,2);
+        data1(gypos(group,:),gxpos(group,:)) = reshape(patA,4,2);
+    else
+        for x = gxpos(group,:);
+            for y = gypos(group,:);
+                % add random stuff
+                data2(y,x) = randi(3)-1;
+                data1(y,x) = randi(3)-1;
+            end
+        end
+    end
 end
 
-% randomize pattern A 1/0.5
-for j = 1:stimulus.cur_.N
-    if patA(j)==1 && round(rand)
-        patA(j) = 0.5;
-    end
-    if patB(j)==1 && round(rand)
-        patB(j) = 0.5;
-    end
+% set orientation information
+mask1 = data1>0;
+
+sum0=0; sum1=0;
+while sum0<8 || sum1<8
+    orient1 = round(rand(size(data1))).*mask1; % compute initial orientations
+    sz = size(orient1); orient1 = orient1(:);
+
+    pos0 = find(orient1==0);
+    pos1 = find(orient1==1);
+    sum0 = sum(pos0);
+    sum1 = sum(pos1);
 end
 
-sum1 = 0; sum5 =0; sum0 = 0;
-while any([sum1 sum5 sum0]<=5)
-    stimulus.live.rings2 = zeros(stimulus.cur_.N,stimulus.cur_.num);
-    % fill in rings2
-    for i = 1:stimulus.cur_.num
-        stimulus.live.rings2(:,i) = (randi(3,stimulus.cur_.N,1)-1)/2;
-    end
+rand0 = randperm(length(pos0));
+rand1 = randperm(length(pos1));
 
-    stimulus.live.rings2 = stimulus.live.rings2(:);
-    pos1 = stimulus.live.rings2==1;
-    pos5 = stimulus.live.rings2==0.5;
-    pos0 = stimulus.live.rings2==0;
-    
-    sum1 = sum(pos1); sum5 = sum(pos5); sum0 = sum(pos0);
-end
-
-stimulus.live.rings1 = stimulus.live.rings2; % copy
-% at this point there are at minimum 7 positions with 1, 0.5 and 0 each
-% we can safely increase decrease appropriately
-
-pos1 = find(pos1); pos5 = find(pos5); pos0 = find(pos0);
-rand1 = randperm(length(pos1)); rand5 = randperm(length(pos5)); rand0 = randperm(length(pos0));
-
-% 
 if task.thistrial.impossible
-    % maintain overall contrast
-    % drop 1->0.5: 3
-    stimulus.live.rings1(rand1(1:3)) = 0.5;
-    % drop 0.5->0: 3
-    stimulus.live.rings1(rand5(1:3)) = 0;
-    % inc 0.5->1: 3
-    stimulus.live.rings1(rand5(4:6)) = 1;
-    % inc 0->0.5: 3
-    stimulus.live.rings1(rand0(1:3)) = 0.5;
+    % change a bunch randomly
+    orient2(pos0(rand0(1:4))) = 1;
+    orient2(pos1(rand1(1:4))) = 0;
 elseif task.thistrial.match==1
-    % increase overall contrast from 1->2, so decrease here
-    % drop 1->0.5: 4
-    stimulus.live.rings1(rand1(1:4)) = 0.5;
-    % drop 0.5->0: 4
-    stimulus.live.rings1(rand5(1:4)) = 0;
-    % inc 0.5->1: 2
-    stimulus.live.rings1(rand5(5:6)) = 1;
-    % inc 0->0.5: 2
-    stimulus.live.rings1(rand0(1:2)) = 0.5;
+    % increase verticals (ones)
+    orient2(pos0(rand0(1:6))) = 1;
+    orient2(pos1(rand1(1:2))) = 0;
 else
-    % decrease overall contrast from 1->2, so increase here
-    % drop 1->0.5: 2
-    stimulus.live.rings1(rand1(1:2)) = 0.5;
-    % drop 0.5->0: 2
-    stimulus.live.rings1(rand5(1:2)) = 0;
-    % inc 0.5->1: 4
-    stimulus.live.rings1(rand5(3:6)) = 1;
-    % inc 0->0.5: 4
-    stimulus.live.rings1(rand0(1:2)) = 0.5;
+    % increase horizontals (zeros) 
+    orient2(pos0(rand0(1:2))) = 1;
+    orient2(pos1(rand1(1:6))) = 0;
 end
 
-% randomize orientation, cause why not?
-for i = 1:length(stimulus.live.rings1)
-    if rand>=0.5
-        stimulus.live.rings1(i) = stimulus.live.rings1(i)*-1;
-        stimulus.live.rings2(i) = stimulus.live.rings2(i)*-1;
-    end
-end
-
-stimulus.live.rings1 = reshape(stimulus.live.rings1,sz);
-stimulus.live.rings1(:,stimulus.learn) = patA;
-stimulus.live.rings2 = reshape(stimulus.live.rings2,sz);
-stimulus.live.rings2(:,stimulus.learn) = patB;
+orient1 = reshape(orient1,sz);
+orient2 = reshape(orient2,sz);
+    
+stimulus.live.data1 = data1;
+stimulus.live.data2 = data2;
+stimulus.live.orient1 = orient1;
+stimulus.live.orient2 = orient2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -415,9 +410,11 @@ mglClearScreen(0.5);
 
 if stimulus.live.stim
     if task.thistrial.thisseg==stimulus.seg.stim1
-        rings = stimulus.live.rings1;
+        data = stimulus.live.data1;
+        orient = stimulus.live.orient1;
     else
-        rings = stimulus.live.rings2;
+        data = stimulus.live.data2;
+        orient = stimulus.live.orient2;
     end
     
     % draw background on debug
@@ -426,7 +423,7 @@ if stimulus.live.stim
     end
     
     % draw rings
-    upRing(rings,stimulus);
+    upData(data,orient,stimulus);
     % revert stencil
     
 %     if stimulus.debug
@@ -467,18 +464,15 @@ end
 %     end
 % end
 
-function upRing(ring,stimulus)
+function upData(data,orient,stimulus)
 
-for rn = 1:stimulus.cur_.N
-    for si = 0:(stimulus.cur_.num-1)
-        thetad = si*stimulus.cur_.angle+stimulus.cur_.angle/2;
-        theta = deg2rad(thetad);
-        xy = [stimulus.live.pos(rn)*cos(theta) stimulus.live.pos(rn)*sin(theta)];
-        thetad = thetad + 90 * (ring(rn,si+1)<0);
-        if ring(rn,si+1)==0.5 || ring(rn,si+1)==-0.5
-            mglBltTexture(stimulus.live.gratings{rn,1},xy,0,0,thetad);
-        elseif ring(rn,si+1)==1 || ring(rn,si+1)==-1
-            mglBltTexture(stimulus.live.gratings{rn,2},xy,0,0,thetad);
+xp = stimulus.cur_.pos([1:4 6:9]);
+yp = fliplr(xp);
+
+for x = 1:8
+    for y = 1:8
+        if data(x,y)>0
+            mglBltTexture(stimulus.live.gratings{data(x,y)},[xp(y) yp(x)],0,0,orient(x,y)*90);
         end
     end
 end
@@ -551,19 +545,21 @@ function localInitStimulus()
 global stimulus
 
 gratings = cell(1,stimulus.cur_.N);
-stimulus.live.pos = logspace(log10(stimulus.cur_.isize),log10(stimulus.cur_.osize),stimulus.cur_.N);
+% stimulus.live.pos = 
+% stimulus.live.pos = logspace(log10(stimulus.cur_.isize),log10(stimulus.cur_.osize),stimulus.cur_.N);
 
 % mglClearScreen(0.5)
-for gi = 1:stimulus.cur_.N
+% for gi = 1:stimulus.cur_.N
     % for each grating distance
     % calculate the center position to estimate the radius
-    crad = stimulus.live.pos(gi);
+%     crad = stimulus.live.pos(gi);
     % get total degrees around circle
-    degs = 2*pi*crad;
-    sz = degs/stimulus.cur_.num*0.6;
+%     degs = 2*pi*crad;
+%     sz = degs/stimulus.cur_.num*0.6;
+    sz = 1;
     % use total degs / num to compute size
-    grating = 255/2*mglMakeGrating(sz,sz,5/sqrt(crad),0) + 255/2;
-    lgrating = (255*0.15)/2*mglMakeGrating(sz,sz,5/sqrt(crad),0) + 255/2;
+    grating = 255/2*mglMakeGrating(sz,sz,6,0) + 255/2;
+    lgrating = (255*0.25)/2*mglMakeGrating(sz,sz,6,0) + 255/2;
 %     gratings{gi} = mglCreateTexture(grating);
     gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 %     alphamask = zeros(size(gauss,1),size(gauss,2),4);
@@ -571,11 +567,52 @@ for gi = 1:stimulus.cur_.N
     alphamaskl = repmat(lgrating,1,1,4);
     alphamask(:,:,4) = gauss*255;
     alphamaskl(:,:,4) = gauss*255;
-    gratings{gi,1} = mglCreateTexture(alphamaskl);
-    gratings{gi,2} = mglCreateTexture(alphamask); % high contrast
+    gratings{1} = mglCreateTexture(alphamaskl);
+    gratings{2} = mglCreateTexture(alphamask); % high contrast
 %     mglBltTexture(gratings{gi,1},[crad 0],0,0,round(rand)*90);
-end
-
+% end
+% 
 stimulus.live.gratings = gratings;
 
+% mglFlush
+
+%% test rectangle
+% mglClearScreen
+% spc = 1.1;
+% xs = 9;
+% xpos = linspace(-floor(xs/2)*spc,floor(xs/2)*spc,xs);
+% ys = 7;
+% ypos = linspace(-floor(ys/2)*spc,floor(ys/2)*spc,ys);
+% data = zeros(5,7);
+% for x = 1:xs
+%     for y = 1:ys
+%         if (~xpos(x)==0) || (~ypos(y)==0)
+%             mglBltTexture(gratings{randi(2)},[xpos(x),ypos(y)],0,0,round(rand)*90);
+%         end
+%     end
+% end
+% mglFlush
+%% test polar
+% add = 90;
+% mglClearScreen(0.5)
+% for out = 1:8
+%     if mod(out,2) % odd
+%         inc = 90 / (out+1);
+%         pos = 0;
+%         while pos<=360
+%             [x,y] = pol2cart(deg2rad(pos),out);
+%             if 1, mglBltTexture(gratings{randi(2)},[x,y],0,0,round(rand)*add+pos); end
+%             pos = pos+inc;
+%         end
+%     else % even
+%         inc = 90 / (out+2);
+%         pos = inc/2;
+%         while pos<=360
+%             [x,y] = pol2cart(deg2rad(pos),out);
+%             if 1, mglBltTexture(gratings{randi(2)},[x,y],0,0,round(rand)*add+pos); end
+%             pos = pos+inc;
+%         end
+%     end
+% end
+% % mglBltTexture(gratings{2},[1 0],0,0,0);
 % mglFlush
