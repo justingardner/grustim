@@ -53,7 +53,8 @@ stimulus.cur{end}.K = 5;
 stimulus.cur_ = stimulus.cur{end};
 
 if ~isfield(stimulus,'learn')
-    stimulus.learn = randi(8);
+    opts = [2 3 6 7];
+    stimulus.learn = opts(randi(4));
     disp('(unlearn) WARNING: New quadrant part chosen for learning');
 end
 disp(sprintf('(unlearn) Subject %s is learning quadrant part #%i',mglGetSID,stimulus.learn));
