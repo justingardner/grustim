@@ -214,12 +214,7 @@ task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to us
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.pattern2 = nan;
-<<<<<<< HEAD
 task{1}{1}.randVars.calculated.vertical2 = nan;
-=======
-task{1}{1}.randVars.calculated.num1 = nan;
-task{1}{1}.randVars.calculated.num1 = nan;
->>>>>>> origin/master
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -368,23 +363,15 @@ mask1 = mask1(randperm(length(mask1))); % randomize
 orient1 = zeros(1,gsize);
 orient1(mask1(1:task.thistrial.vertical1)) = 1;
 
-increments = [2 4 6];
 if task.thistrial.impossible
     % change a bunch randomly
     inc=0;
 elseif task.thistrial.match==1
     % increase verticals (ones)
-<<<<<<< HEAD
     inc=task.thistrial.difficulty;
 else
     % increase horizontals (zeros) 
     inc=-task.thistrial.difficulty;
-=======
-    num2 = num1+increments(randi(3));
-else
-    % increase horizontals (zeros) 
-    num2 = num1+increments(randi(3));
->>>>>>> origin/master
 end
 task.thistrial.vertical2 = task.thistrial.vertical1+inc;
 
