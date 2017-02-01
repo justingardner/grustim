@@ -214,7 +214,12 @@ task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to us
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.pattern2 = nan;
+<<<<<<< HEAD
 task{1}{1}.randVars.calculated.vertical2 = nan;
+=======
+task{1}{1}.randVars.calculated.num1 = nan;
+task{1}{1}.randVars.calculated.num1 = nan;
+>>>>>>> origin/master
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -363,15 +368,23 @@ mask1 = mask1(randperm(length(mask1))); % randomize
 orient1 = zeros(1,gsize);
 orient1(mask1(1:task.thistrial.vertical1)) = 1;
 
+increments = [2 4 6];
 if task.thistrial.impossible
     % change a bunch randomly
     inc=0;
 elseif task.thistrial.match==1
     % increase verticals (ones)
+<<<<<<< HEAD
     inc=task.thistrial.difficulty;
 else
     % increase horizontals (zeros) 
     inc=-task.thistrial.difficulty;
+=======
+    num2 = num1+increments(randi(3));
+else
+    % increase horizontals (zeros) 
+    num2 = num1+increments(randi(3));
+>>>>>>> origin/master
 end
 task.thistrial.vertical2 = task.thistrial.vertical1+inc;
 
@@ -387,6 +400,8 @@ stimulus.live.data1 = data1;
 stimulus.live.data2 = data2;
 stimulus.live.orient1 = orient1;
 stimulus.live.orient2 = orient2;
+task.thistrial.num1 = num1;
+task.thistrial.num2 = num2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -457,7 +472,7 @@ if stimulus.live.stim
     
     % draw background on debug
     if stimulus.debug
-        partialDiskFuckOGL(0,0,stimulus.cur_.isize-0.5,stimulus.cur_.osize+3,(stimulus.learn-1)*stimulus.cur_.angle,stimulus.cur_.angle,[163 93 93]/255,6,2);
+%         partialDiskFuckOGL(0,0,stimulus.cur_.isize-0.5,stimulus.cur_.osize+3,(stimulus.learn-1)*stimulus.cur_.angle,stimulus.cur_.angle,[163 93 93]/255,6,2);
     end
     
     % draw rings
@@ -470,6 +485,13 @@ if stimulus.live.stim
 %             mglTextDraw(num2str(si+1),[(stimulus.cur_.osize+1)*cos(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2)) (stimulus.cur_.osize+1)*sin(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2))]);
 %         end
 %     end
+
+    % draw V or I for valid/invalid trials
+    if stimulus.debug
+        text = {'V','I'};
+        mglTextSet([],32,stimulus.colors.white);
+        mglTextDraw(text{task.thistrial.impossible+1},[-7.5 -7.5]);
+    end
 end
 
 if stimulus.live.fix
