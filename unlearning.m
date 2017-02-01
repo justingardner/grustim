@@ -27,6 +27,12 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
         clear s;
         disp(sprintf('(unlearn) Data file: %s loaded.',fname));
         
+    else
+        if isfield(stimulus,'patternopts') || isfield(stimulus,'learn')
+            disp('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
+            disp(sprintf('WARNING: File was not loaded--but patterns are already set for this subject'));
+            disp('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX');
+        end
     end
 end
 disp(sprintf('(unlearn) This is run #%i',stimulus.counter));
@@ -42,19 +48,20 @@ if ~isfield(stimulus,'cur'), stimulus.cur = {}; end
 % data = zeros(5,7);
 
 stimulus.cur{end+1} = struct;
-stimulus.cur{end}.spc = 1.1;
+stimulus.cur{end}.spc = 2.2;
 % rows/cols are per quadrant
-stimulus.cur{end}.rows = 4;
-stimulus.cur{end}.cols = 4;
-stimulus.cur{end}.pos = linspace(-4*stimulus.cur{end}.spc,4*stimulus.cur{end}.spc,9);
-stimulus.cur{end}.N = 8;
-stimulus.cur{end}.K = 5;
+stimulus.cur{end}.rows = 3;
+stimulus.cur{end}.cols = 3;
+stimulus.cur{end}.pos = linspace(-3*stimulus.cur{end}.spc,3*stimulus.cur{end}.spc,7);
+stimulus.cur{end}.N = 36;
+stimulus.cur{end}.K = 24;
 
 stimulus.cur_ = stimulus.cur{end};
 
 if ~isfield(stimulus,'learn')
-    opts = [2 3 6 7];
-    stimulus.learn = opts(randi(4));
+% %     opts = [2 3 6 7];
+% %     stimulus.learn = opts(randi(4));
+    stimulus.learn = 1;
     disp('(unlearn) WARNING: New quadrant part chosen for learning');
 end
 disp(sprintf('(unlearn) Subject %s is learning quadrant part #%i',mglGetSID,stimulus.learn));
@@ -162,17 +169,42 @@ task{1}{1}.numTrials = 50;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
 task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
+task{1}{1}.parameter.vertical1 = [10 12 14];
+task{1}{1}.parameter.difficulty = [2 4];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
 
-stimulus.patterns = unique(perms([ones(1,stimulus.cur_.K) zeros(1,stimulus.cur_.N-stimulus.cur_.K)]),'rows');
-% select 5 patterns for permanent use
+% select 6 patterns for permanent use
 if ~isfield(stimulus,'patternopts')
-    stimulus.patternopts = randperm(size(stimulus.patterns,1),5);
-    stimulus.generalopts = setdiff(1:size(stimulus.patterns,1),stimulus.patternopts);
-    disp('(unlearn) WARNING: New pattern options detected');
+    disp('(unlearn) WARNING: New pattern options are generating...');
+    % caution: the patterns need to be controlled for having consistent
+    % proportions of 1 / 0 at each location. This is key in making sure
+    % that all spatial locations provide equal information. Fortunately
+    % there are 15 111100 patterns, so every location can be randomized
+    % from one of these to generate the full pattern. We will generate two
+    % sets of patterns, a main pattern, and a holdout set.
+    bases = unique(perms([1 1 1 1 0 0]),'rows');
+    
+    % caution--this can take a while, we want exactly 24 1s per row and 4
+    % per column!
+    patterns = zeros(36,6);
+    holdout = zeros(36,6);
+    while any(sum(patterns,1)~=24)
+        for r = 1:36 % which row we are on
+            patterns(r,:) = bases(randi(15),:);
+        end
+    end
+    while any(sum(holdout,1)~=24)
+        for r = 1:36 % which row we are on
+            holdout(r,:) = bases(randi(15),:);
+        end
+    end
+    
+    stimulus.patterns = [patterns';holdout'];
+    stimulus.patternopts = 1:6;
+    stimulus.holdoutopts = 7:12;
 end
 stimulus.npatterns = length(stimulus.patternopts);
 task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to use for the first stim
@@ -182,6 +214,7 @@ task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to us
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.pattern2 = nan;
+task{1}{1}.randVars.calculated.vertical2 = nan;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -268,16 +301,17 @@ global stimulus
 % Setup the displays
 % .rings holds N rings consisting of num segments
 
-gxpos = [1:2;3:4;5:6;7:8;7:8;5:6;3:4;1:2];
-gypos = [1:4;1:4;1:4;1:4;5:8;5:8;5:8;5:8];
+gxpos = 1:6;
+gypos = 1:6;
 
 data2 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls the contrast 2 levels
 data1 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls the contrast 1 levels
-orient2 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls orientation 2
-orient1 = zeros(2*stimulus.cur_.rows,2*stimulus.cur_.cols); % controls orientation 1
 sz = size(data1);
 
-for group = 1:8
+gsize = 36;
+gx = 6; gy = 6;
+
+for group = 1:size(gxpos,1)
     % set contrast information
     if group==stimulus.learn
         % set same different pattern
@@ -291,19 +325,20 @@ for group = 1:8
             task.thistrial.pattern2 = notpatterns(randi(length(notpatterns)));
             patA = stimulus.patterns(stimulus.patternopts(task.thistrial.pattern2),:);
         end
-        for j = 1:stimulus.cur_.N
-            if patA(j)==1 && round(rand)
-                patA(j) = 2;
-            end
-            if patB(j)==1 && round(rand)
-                patB(j) = 2;
-            end
-        end
-        data2(gypos(group,:),gxpos(group,:)) = reshape(patB,4,2);
-        data1(gypos(group,:),gxpos(group,:)) = reshape(patA,4,2);
+        % in patA and patB we're required to have 12=0, 12=1, and 12=2
+        % here we set 12=2
+        maskA = find(patA==1);
+        maskA = maskA(randperm(length(maskA)));
+        patA(maskA(1:12)) = 2;
+        maskB = find(patB==1);
+        maskB = maskB(randperm(length(maskB)));
+        patB(maskB(1:12)) = 2;
+        data2(gypos(group,:),gxpos(group,:)) = reshape(patB,gy,gx);
+        data1(gypos(group,:),gxpos(group,:)) = reshape(patA,gy,gx);
     else
+        disp('full pattern model has failed');
         % pick how many will be 0/1/2
-        lgroup = randi(3,1,8)-1; count = 1;
+        lgroup = randi(3,1,gsize)-1; count = 1;
         perm1 = lgroup(randperm(length(lgroup)));
         perm2 = lgroup(randperm(length(lgroup)));
         for x = gxpos(group,:);
@@ -321,29 +356,29 @@ end
 mask1 = data1>0;
 mask2 = data2>0;
 
-s = 0;t = sum(mask1(:));
-while (s<0.4) || (s>0.6)
-    orient1 = round(rand(size(data1))).*mask1;
-    s = sum(orient1(:)==1)/t;
-end
+% set orient1 positions (depending on task.thistrial.vertical1)
+mask1 = find(mask1(:));
+mask1 = mask1(randperm(length(mask1))); % randomize
 
-num1 = sum(orient1(:)==1);
+orient1 = zeros(1,gsize);
+orient1(mask1(1:task.thistrial.vertical1)) = 1;
 
 if task.thistrial.impossible
     % change a bunch randomly
-    num2 = num1;
+    inc=0;
 elseif task.thistrial.match==1
     % increase verticals (ones)
-    num2 = num1+4;
+    inc=task.thistrial.difficulty;
 else
     % increase horizontals (zeros) 
-    num2 = num1-4;
+    inc=-task.thistrial.difficulty;
 end
+task.thistrial.vertical2 = task.thistrial.vertical1+inc;
 
 pos = find(mask2(:));
 pos = pos(randperm(length(pos)));
-orient2 = zeros(size(orient1));
-orient2(pos(1:num2)) = 1;
+orient2 = zeros(1,gsize);
+orient2(pos(1:task.thistrial.vertical2)) = 1;
 
 orient1 = reshape(orient1,sz);
 orient2 = reshape(orient2,sz);
@@ -469,11 +504,11 @@ end
 
 function upData(data,orient,stimulus)
 
-xp = stimulus.cur_.pos([1:4 6:9]);
+xp = stimulus.cur_.pos([1:floor(length(stimulus.cur_.pos)/2) (length(stimulus.cur_.pos)-(floor(length(stimulus.cur_.pos)/2)-1)):length(stimulus.cur_.pos)]);
 yp = fliplr(xp);
 
-for x = 1:8
-    for y = 1:8
+for x = 1:size(data,1)
+    for y = 1:size(data,2)
         if data(x,y)>0
             mglBltTexture(stimulus.live.gratings{data(x,y)},[xp(y) yp(x)],0,0,orient(x,y)*90);
         end
@@ -559,7 +594,7 @@ gratings = cell(1,stimulus.cur_.N);
     % get total degrees around circle
 %     degs = 2*pi*crad;
 %     sz = degs/stimulus.cur_.num*0.6;
-    sz = 1;
+    sz = 2;
     % use total degs / num to compute size
     grating = 255/2*mglMakeGrating(sz,sz,6,0) + 255/2;
     lgrating = (255*0.25)/2*mglMakeGrating(sz,sz,6,0) + 255/2;
