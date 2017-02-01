@@ -338,16 +338,16 @@ if stimulus.live.stim
 
     mglStencilSelect(0);
 end
-if stimulus.fixate || stimulus.live.fix || stimulus.live.resp==1
+if stimulus.live.fix || stimulus.live.resp==1
     upFix(stimulus);
 end
 
-if stimulus.framegrab==1
-    if stimulus.frame.count < size(stimulus.frame.frames,3)
-        stimulus.frame.frames(:,:,stimulus.frame.count) = mean(mglFrameGrab(stimulus.frame.coords),3);
-        stimulus.frame.count = stimulus.frame.count+1;
-    end
-end
+% if stimulus.framegrab==1
+%     if stimulus.frame.count < size(stimulus.frame.frames,3)
+%         stimulus.frame.frames(:,:,stimulus.frame.count) = mean(mglFrameGrab(stimulus.frame.coords),3);
+%         stimulus.frame.count = stimulus.frame.count+1;
+%     end
+% end
 
 % if stimulus.live.triggerWaiting
 %     now = mglGetSecs;
@@ -419,91 +419,20 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 %%
-stimulus.staircase
 stimulus.staircase = doStaircase('init','upDown',...
         'initialThreshold',0.25,... % radians of rotation (
         'initialStepsize',0.05,...
         'minThreshold=0.001','maxThreshold=1.57','stepRule','pest',...
         'nTrials=50','maxStepsize=0.1','minStepsize=0.001');
 
-function stimulus = resetStair(stimulus)
-
-if doStaircase('stop',stimulus.staircase)
-    disp('(berlin) Initializing new staircase...');
-    stimulus.staircase = doStaircase('init',stimulus.staircase);
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
+disp('not implemented');
+return
 
-if ~stimulus.localizer && ~stimulus.staircasing
-    disp(sprintf('Participant %s has earned $%2.2f',mglGetSID,stimulus.run.points/100));
-end
-% load the luminance table
-% % % load(myscreen.calibFullFilename)
-% % % luminance = interp1(calib.tableCorrected.outputValues,calib.tableCorrected.luminance,0:1/255:255);
-if stimulus.staircasing
-    %%
-    notstaircase = stimulus.staircase;
-    thresholds = zeros(size(stimulus.run.stimLengths));
-    for i = 1:length(stimulus.staircase)
-        out = doStaircase('threshold',notstaircase{i},'type','weibull','dispFig=0');
-        thresholds(i) = out.threshold;
-    end
-    % reorganize into matrix
-    stimCons = unique(stimulus.run.stimCon);
-    stimCons = sort(stimCons);
-    stimLengths = unique(stimulus.run.stimLengths);
-    stimLengths = sort(stimLengths);
-    datamat = nan(length(stimCons),length(stimLengths),5);
-    for ci = 1:length(stimCons)
-        for li = 1:length(stimLengths)
-            idxs = logical((stimulus.run.stimLengths==stimLengths(li)) .* (stimulus.run.stimCon==stimCons(ci)));
-            datamat(ci,li,1:sum(idxs)) = thresholds(idxs);
-        end
-    end
-    if any(thresholds<0) || any(thresholds>1)
-        % remove errant thresholds
-        warning('should remove some thresholds...');
-    end
-    datamat(datamat>1) = NaN;
-    datamat(datamat<=0) = NaN;
-    %%
-    datamu = nanmean(datamat,3);
-    datamu(datamu==0) = NaN;
-    datamu = round((1-datamu)*255);
-    datasd = nanstd(datamat,[],3);
-    datasd(datasd==0) = NaN;
-    %% plot
-    cmap = brewermap(length(stimCons)+1,'Purples');
-    cmap = cmap(2:end,:);
-    figure, hold on
-    legs = {};
-    for i = 1:length(stimCons)
-        plot(stimLengths,datamu(i,:),'o','MarkerFaceColor',cmap(i,:),'MarkerEdgeColor',[1 1 1],'MarkerSize',10);
-        errbar(stimLengths,datamu(i,:),datasd(i,:),'-','Color',cmap(i,:));
-        legs{end+1} = sprintf('Stimulus luminance: %i/255',stimCons(i));
-    end
-    a = axis;
-    axis([50 100 0 a(4)]);
-    legend(legs)
-    xlabel('Stimulus length (ms)');
-    ylabel('Mask contrast at just noticeable difference (% luminance)');
-    drawPublishAxis
-elseif stimulus.localizer
-else
-%     perf = zeros(size(stimulus.istaircase));
-%     for i = 1:length(stimulus.istaircase)
-%         perf(i) = mean(stimulus.istaircase(i).response);
-%     end
-%     figure
-%     plot(1:length(perf),perf,'o','MarkerFaceColor',[0 0 0],'MarkerEdgeColor',[1 1 1]);
-%     set(gca,'XAxisTick',1:length(perf));
-%     drawPublishAxis
-end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for optic flow
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
