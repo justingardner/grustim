@@ -92,9 +92,9 @@ stimulus = initStaircase(stimulus);
 [myscreen] = initStimulus('stimulus',myscreen);
 
 if stimulus.scan
-    stimulus.responseKeys = [2 1]; % corresponds to NOMATCH, MATCH
+    stimulus.responseKeys = [50];
 else
-    stimulus.responseKeys = [2 1]; % corresponds to  NOMATCH, MATCH
+    stimulus.responseKeys = [50];
 end
 
 stimulus.colors.black = [0 0 0];
@@ -102,14 +102,14 @@ stimulus.colors.white = [1 1 1];
 stimulus.colors.green = [0 1 0];
 stimulus.colors.red = [1 0 0];
 
-stimulus.motion.minecc = 6;
-stimulus.motion.maxecc = 10;
-stimulus.motion.minrad = 3;
-stimulus.motion.maxrad = 4.5;
+% stimulus.motion.minecc = 6;
+% stimulus.motion.maxecc = 10;
+% stimulus.motion.minrad = 3;
+% stimulus.motion.maxrad = 4.5;
 
 stimulus.motion.ecc = 8;
 stimulus.motion.pos = rand*2*pi; % randomize position
-stimulus.motion.rad = 3.75;
+stimulus.motion.rad = 3.75; % 7.5 degree stimulus diameter
 
 stimulus.motion.x = stimulus.motion.ecc * cos(stimulus.motion.pos);
 stimulus.motion.y = stimulus.motion.ecc * sin(stimulus.motion.pos);
@@ -142,17 +142,18 @@ task{1}{1}.waitForBacktick = 1;
 
 stimulus.curTrial = 0;
 
-task{1}{1}.segmin = [0.4 .650 1.000 .650 0.5];
-task{1}{1}.segmax = [0.4 .650 1.000 .650 1.5];
+task{1}{1}.segmin = [inf .650 1.000 .650 1 inf];
+task{1}{1}.segmax = [inf .650 1.000 .650 1 inf];
 
 stimulus.seg.ITI1 = 1;
 stimulus.seg.stim1 = 2;
 stimulus.seg.delay = 3;
 stimulus.seg.stim2 = 4;
-stimulus.seg.ITI2 = 5;
+stimulus.seg.resp = 5;
+stimulus.seg.ITI2 = 6;
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
-task{1}{1}.getResponse = [0 0 0 1 1];
+task{1}{1}.getResponse = [0 0 0 0 0];
 task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.dir1 = stimulus.direction.opts; % which orientation to use (0 deg or 135 deg)
@@ -161,11 +162,6 @@ task{1}{1}.parameter.match = [0 1];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
-
-% if stimulus.timingOverride
-%     task{1}{1}.seglen(stimulus.seg.delay) = stimulus.timingOverride;
-%     task{1}{1}.seglen(stimulus.seg.ITI) = stimulus.timingOverride;
-% end 
 
 %% Tracking
 
@@ -177,7 +173,7 @@ task{1}{1}.randVars.calculated.pos = nan; % will be 0->2*pi
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
-    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
+    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,[],@startTrialCallback,[],[]);
 end
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -276,6 +272,7 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 %%
 
 global stimulus
+stimulus.live.fixColor = stimulus.colors.white;
 
 stimulus.live.triggerWaiting = 0;
 if any(task.thistrial.thisseg==[stimulus.seg.ITI1])
@@ -305,8 +302,14 @@ if task.thistrial.thisseg==stimulus.seg.stim1
 elseif task.thistrial.thisseg==stimulus.seg.stim2
     stimulus.live.stim=1;
     stimulus.dots.dir = task.thistrial.dir2; % for gratings
-% elseif task.thistrial.thisseg==stimulus.seg.resp
-%     stimulus.live.fix = 1;
+elseif task.thistrial.thisseg==stimulus.seg.ITI2
+    stimulus.live.fix = 0;
+    if task.thistrial.gotResponse==0 && ~stimulus.dead
+        % if we didn't respond yet, check and see if we are right
+        task.thistrial.gotResponse=1;
+        task.thistrial.correct = ~task.thistrial.match;
+        doResponse(task);
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -317,26 +320,62 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 mglClearScreen(0);
+
+if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>2
+    jumpSegment(task,inf);
+end
+
 % check eye pos
 if ~stimulus.noeye
     [pos,~] = mglEyelinkGetCurrentEyePos;
     dist = hypot(pos(1),pos(2));
 end
 
-if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI2 && ~stimulus.scan
+if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.seg.ITI2 stimulus.seg.resp]) && ~stimulus.scan
     if ~any(isnan(pos))
         if dist > 2 && stimulus.live.eyeCount > 30
             mglTextSet([],32,stimulus.colors.red);
             disp('Eye movement detected!!!!');
             mglTextDraw('Eye Movement Detected',[0 0]);
-            mglFlush
-            myscreen.flushMode = 1;
             stimulus.dead = 1;
             return
         elseif dist > 2
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
         end
     end
+end
+
+if ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.seg.ITI2 stimulus.seg.resp])
+    if ~stimulus.live.spaceDown
+        mglTextSet([],32,stimulus.colors.red);
+        disp('Space bar lift detected!!!!');
+        mglTextDraw('Space bar lifted',[0 0]);
+        stimulus.dead =1;
+        return
+    end
+end
+
+stimulus.live.spaceDown = logical(mglGetKeys(50));
+
+if task.thistrial.thisseg==stimulus.seg.ITI1
+    if stimulus.noeye && stimulus.live.spaceDown
+        disp('Starting trial--space detected');
+        task = jumpSegment(task);
+    end
+end
+
+if task.thistrial.thisseg==stimulus.seg.ITI2
+    if ~stimulus.live.spaceDown && mglGetSecs(task.thistrial.segStartSeconds)>0.5
+        disp('Ending trial--space lifted');
+        task = jumpSegment(task);
+    end
+end
+
+
+if (task.thistrial.thisseg==stimulus.seg.resp) && ~stimulus.live.spaceDown
+    disp('Match response detected');
+    
+    [task,myscreen] = customResponseCallback(task,myscreen);
 end
 
 if stimulus.live.stim
@@ -356,7 +395,7 @@ end
 %     end
 % end
 
-if stimulus.live.triggerWaiting
+if ~stimulus.noeye && stimulus.live.triggerWaiting
     now = mglGetSecs;
     % check eye position, if 
     if ~any(isnan(pos))
@@ -367,8 +406,8 @@ if stimulus.live.triggerWaiting
         end
         stimulus.live.lastTrigger = now;
     end
-    if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-        disp('Eye position centered');
+    if stimulus.live.spaceDown && stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+        disp('Starting trial--eye centered and space pressed.');
         task = jumpSegment(task);
     end
 end
@@ -388,32 +427,33 @@ stimulus.dots = updateDots(stimulus.dots,stimulus.live.coherence,myscreen,true);
 mglPoints2(stimulus.dots.x+stimulus.live.x,stimulus.dots.y+stimulus.live.y,...
     stimulus.dots.dotsize,stimulus.live.dotColor);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%
-function [task, myscreen] = getResponseCallback(task, myscreen)
+%%%%%
+function [task, myscreen] = customResponseCallback(task,myscreen)
 
-global stimulus
+if task.thistrial.gotResponse == 0
+    task.thistrial.gotResponse = task.thistrial.gotResponse+1;
+    
+    task.thistrial.correct = task.thistrial.match; % if match, then we are correct
+    
+    doResponse(task);
+else
+    disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
+end
+
+function doResponse(task)
+global stimulus 
 
 if stimulus.dead, return; end
+
 responseText = {'Incorrect','Correct'};
-sideText = {'Left','Right'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
-    
-if any(task.thistrial.whichButton == stimulus.responseKeys)
-    if task.thistrial.gotResponse == 0
-        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
-        disp(sprintf('Subject pressed %i: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},responseText{task.thistrial.correct+1}));
-        stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-        stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
-        stimulus.live.resp = 1;
-        stimulus.live.dots = 0;
-        stimulus.live.fix=1;
-    else
-        disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
-    end
-end
+
+disp(sprintf('Subject responded: %s',responseText{task.thistrial.correct+1}));
+stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
+stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
+stimulus.live.resp = 1;
+stimulus.live.dots = 0;
+stimulus.live.fix=1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
