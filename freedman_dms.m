@@ -31,7 +31,7 @@ global stimulus
 scan = 0;
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=1'});
+getArgs(varargin,{'scan=0','plots=0','noeye=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -64,8 +64,8 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/freedman_dms/%s',mglGetSID))
         
         s = load(sprintf('~/data/freedman_dms/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
-        stimulus.staircase = s.stimulus.staircase;
         stimulus.counter = s.stimulus.counter + 1;
+        stimulus.staircases = s.stimulus.staircases;
 
         clear s;
         stimulus.initStair = 0;
@@ -84,14 +84,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if stimulus.initStair
-    % We are starting our staircases from scratch
-    disp(sprintf('(berlin) Initializing staircase'));
-    stimulus = initStaircase(stimulus);
-else
-%     disp('(berlin) Checking staircase resets from previous run...');
-%     stimulus = resetStair(stimulus);
-end
+
+disp(sprintf('(berlin) Initializing staircase'));
+stimulus = initStaircase(stimulus);
 
 %% Initialize Stimulus
 [myscreen] = initStimulus('stimulus',myscreen);
@@ -158,7 +153,7 @@ stimulus.seg.ITI2 = 5;
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = [0 0 0 1 1];
-task{1}{1}.numTrials = 65;
+task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.dir1 = stimulus.direction.opts; % which orientation to use (0 deg or 135 deg)
 task{1}{1}.parameter.match = [0 1];
@@ -177,6 +172,7 @@ end
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.dir2 = nan; % will be 0->2*pi
+task{1}{1}.randVars.calculated.pos = nan; % will be 0->2*pi
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -224,6 +220,12 @@ mglFlush
 myscreen.flushMode = 1;
 mglWaitSecs(3);
 
+% save staircases
+if ~isfield(stimulus,'staircases')
+    stimulus.staircases = {};
+end
+stimulus.staircases{end+1} = stimulus.staircase;
+
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -261,6 +263,8 @@ disp(sprintf('Trial %i Dir1: %i Dir2: %i',stimulus.curTrial,round(180/pi*task.th
 
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
+
+task.thistrial.pos = stimulus.motion.pos;
 
 stimulus.live.fixColor = stimulus.colors.white;
 
@@ -314,23 +318,26 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0);
 % check eye pos
-% % % if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI && ~stimulus.scan
-% % %     [pos,time] = mglEyelinkGetCurrentEyePos;
-% % %     if ~any(isnan(pos))
-% % %         dist = hypot(pos(1),pos(2));
-% % %         if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
-% % %             mglTextSet([],32,stimulus.colors.red);
-% % %             disp('Eye movement detected!!!!');
-% % %             mglTextDraw('Eye Movement Detected',[0 0]);
-% % %             mglFlush
-% % %             myscreen.flushMode = 1;
-% % %             stimulus.dead = 1;
-% % %             return
-% % %         elseif dist > stimulus.ring.inner-1
-% % %             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-% % %         end
-% % %     end
-% % % end
+if ~stimulus.noeye
+    [pos,~] = mglEyelinkGetCurrentEyePos;
+    dist = hypot(pos(1),pos(2));
+end
+
+if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI2 && ~stimulus.scan
+    if ~any(isnan(pos))
+        if dist > 2 && stimulus.live.eyeCount > 30
+            mglTextSet([],32,stimulus.colors.red);
+            disp('Eye movement detected!!!!');
+            mglTextDraw('Eye Movement Detected',[0 0]);
+            mglFlush
+            myscreen.flushMode = 1;
+            stimulus.dead = 1;
+            return
+        elseif dist > 2
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
+    end
+end
 
 if stimulus.live.stim
     mglStencilSelect(1);
@@ -349,24 +356,22 @@ end
 %     end
 % end
 
-% if stimulus.live.triggerWaiting
-%     now = mglGetSecs;
-%     % check eye position, if 
-%     [pos,time] = mglEyelinkGetCurrentEyePos;
-%     if ~any(isnan(pos))
-%         dist = hypot(pos(1),pos(2));
-%         wasCentered = stimulus.live.centered;
-%         stimulus.live.centered = dist<2;
-%         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
-%             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
-%         end
-%         stimulus.live.lastTrigger = now;
-%     end
-%     if stimulus.live.triggerTime > 0.75 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-%         disp('Eye position centered');
-%         task = jumpSegment(task);
-%     end
-% end
+if stimulus.live.triggerWaiting
+    now = mglGetSecs;
+    % check eye position, if 
+    if ~any(isnan(pos))
+        wasCentered = stimulus.live.centered;
+        stimulus.live.centered = dist<2;
+        if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+            stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
+        end
+        stimulus.live.lastTrigger = now;
+    end
+    if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+        disp('Eye position centered');
+        task = jumpSegment(task);
+    end
+end
 
 function upFix(stimulus)
 %%
