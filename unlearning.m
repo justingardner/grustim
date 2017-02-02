@@ -387,8 +387,6 @@ stimulus.live.data1 = data1;
 stimulus.live.data2 = data2;
 stimulus.live.orient1 = orient1;
 stimulus.live.orient2 = orient2;
-task.thistrial.num1 = num1;
-task.thistrial.num2 = num2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
