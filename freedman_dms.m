@@ -68,12 +68,11 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/freedman_dms/%s',mglGetSID))
         stimulus.staircases = s.stimulus.staircases;
 
         clear s;
-        stimulus.initStair = 0;
-        disp(sprintf('(berlin) Data file: %s loaded.',fname));
+        disp(sprintf('(freedman) Data file: %s loaded.',fname));
         
     end
 end
-disp(sprintf('(berlin) This is run #%i',stimulus.counter));
+disp(sprintf('(freedman) This is run #%i',stimulus.counter));
 
 
 if stimulus.plots==2
@@ -85,7 +84,7 @@ end
 %% init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-disp(sprintf('(berlin) Initializing staircase'));
+disp(sprintf('(freedman) Initializing staircase'));
 stimulus = initStaircase(stimulus);
 
 %% Initialize Stimulus
@@ -154,7 +153,7 @@ stimulus.seg.ITI2 = 6;
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = [0 0 0 0 0];
-task{1}{1}.numTrials = 60;
+task{1}{1}.numTrials = 45;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.dir1 = stimulus.direction.opts; % which orientation to use (0 deg or 135 deg)
 task{1}{1}.parameter.match = [0 1];
@@ -169,6 +168,7 @@ end
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.dir2 = nan; % will be 0->2*pi
 task{1}{1}.randVars.calculated.pos = nan; % will be 0->2*pi
+task{1}{1}.randVars.calculated.nomatchResp = nan; % will be 0->2*pi
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -192,7 +192,7 @@ mglFixationCross(0.2,0.2,stimulus.colors.white);
 mglFlush
 
 % let the user know
-disp(sprintf('(berlin) Starting run number: %i.',stimulus.counter));
+disp(sprintf('(freedman) Starting run number: %i.',stimulus.counter));
 % if stimulus.unattended
 myscreen.flushMode = 1;
 % end
@@ -216,17 +216,11 @@ mglFlush
 myscreen.flushMode = 1;
 mglWaitSecs(3);
 
-% save staircases
-if ~isfield(stimulus,'staircases')
-    stimulus.staircases = {};
-end
-stimulus.staircases{end+1} = stimulus.staircase;
-
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
 if stimulus.plots
-    disp('(berlin) Displaying plots');
+    disp('(freedman) Displaying plots');
     dispInfo(stimulus);
 end
 
@@ -245,10 +239,10 @@ stimulus.curTrial = stimulus.curTrial + 1;
 
 myscreen.flushMode = 0;
 
-[rotation, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 
 % set whether this trial matches or not
 rot = [-1 1];
+[rotation, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 if task.thistrial.match
     task.thistrial.dir2 = task.thistrial.dir1;
 else
@@ -259,6 +253,7 @@ disp(sprintf('Trial %i Dir1: %i Dir2: %i',stimulus.curTrial,round(180/pi*task.th
 
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
+stimulus.live.responded = 0;
 
 task.thistrial.pos = stimulus.motion.pos;
 
@@ -291,6 +286,9 @@ stimulus.live.fix = 1;
 
 stimulus.live.dotColor = stimulus.colors.white;
 
+stimulus.live.eyeDead =0 ;
+stimulus.live.barDead =0 ;
+
 % use only for constant mode
 % if task.thistrial.thisphase==1
 %     return
@@ -303,10 +301,11 @@ elseif task.thistrial.thisseg==stimulus.seg.stim2
     stimulus.live.stim=1;
     stimulus.dots.dir = task.thistrial.dir2; % for gratings
 elseif task.thistrial.thisseg==stimulus.seg.ITI2
-    stimulus.live.fix = 0;
+    stimulus.live.fix =0 ;
     if task.thistrial.gotResponse==0 && ~stimulus.dead
         % if we didn't respond yet, check and see if we are right
         task.thistrial.gotResponse=1;
+        task.thistrial.nomatchResp = 1; 
         task.thistrial.correct = ~task.thistrial.match;
         doResponse(task);
     end
@@ -319,10 +318,23 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
+
 mglClearScreen(0);
 
-if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>2
-    jumpSegment(task,inf);
+if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
+    jumpSegment(task,inf); stimulus.dead=0;
+end
+
+if stimulus.dead
+    if stimulus.live.barDead
+        mglTextSet([],32,stimulus.colors.red);
+        mglTextDraw('Space bar lifted',[0 0]);
+    end
+    if stimulus.dead && stimulus.live.eyeDead
+        mglTextSet([],32,stimulus.colors.red);
+        mglTextDraw('Eye Movement Detected',[0 0]);
+    end
+    return
 end
 
 % check eye pos
@@ -333,13 +345,12 @@ end
 
 if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.seg.ITI2 stimulus.seg.resp]) && ~stimulus.scan
     if ~any(isnan(pos))
-        if dist > 2 && stimulus.live.eyeCount > 30
-            mglTextSet([],32,stimulus.colors.red);
+        if dist > 3 && stimulus.live.eyeCount > 30
             disp('Eye movement detected!!!!');
-            mglTextDraw('Eye Movement Detected',[0 0]);
             stimulus.dead = 1;
+            stimulus.live.eyeDead=1;
             return
-        elseif dist > 2
+        elseif dist > 3
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
         end
     end
@@ -347,10 +358,9 @@ end
 
 if ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.seg.ITI2 stimulus.seg.resp])
     if ~stimulus.live.spaceDown
-        mglTextSet([],32,stimulus.colors.red);
         disp('Space bar lift detected!!!!');
-        mglTextDraw('Space bar lifted',[0 0]);
         stimulus.dead =1;
+        stimulus.live.barDead=1;
         return
     end
 end
@@ -359,22 +369,22 @@ stimulus.live.spaceDown = logical(mglGetKeys(50));
 
 if task.thistrial.thisseg==stimulus.seg.ITI1
     if stimulus.noeye && stimulus.live.spaceDown
-        disp('Starting trial--space detected');
+        disp('(freedman) Starting trial--space detected');
         task = jumpSegment(task);
     end
 end
 
 if task.thistrial.thisseg==stimulus.seg.ITI2
     if ~stimulus.live.spaceDown && mglGetSecs(task.thistrial.segStartSeconds)>0.5
-        disp('Ending trial--space lifted');
+        disp('(freedman) Ending trial--space lifted');
         task = jumpSegment(task);
     end
 end
 
 
-if (task.thistrial.thisseg==stimulus.seg.resp) && ~stimulus.live.spaceDown
-    disp('Match response detected');
-    
+if (task.thistrial.thisseg==stimulus.seg.resp) && ~stimulus.live.spaceDown && ~stimulus.live.responded
+    disp('(freedman) Match response detected');
+    stimulus.live.responded = 1;
     [task,myscreen] = customResponseCallback(task,myscreen);
 end
 
@@ -388,19 +398,12 @@ if stimulus.live.fix || stimulus.live.resp==1
     upFix(stimulus);
 end
 
-% if stimulus.framegrab==1
-%     if stimulus.frame.count < size(stimulus.frame.frames,3)
-%         stimulus.frame.frames(:,:,stimulus.frame.count) = mean(mglFrameGrab(stimulus.frame.coords),3);
-%         stimulus.frame.count = stimulus.frame.count+1;
-%     end
-% end
-
 if ~stimulus.noeye && stimulus.live.triggerWaiting
     now = mglGetSecs;
     % check eye position, if 
     if ~any(isnan(pos))
         wasCentered = stimulus.live.centered;
-        stimulus.live.centered = dist<2;
+        stimulus.live.centered = dist<3;
         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
         end
@@ -433,11 +436,12 @@ function [task, myscreen] = customResponseCallback(task,myscreen)
 if task.thistrial.gotResponse == 0
     task.thistrial.gotResponse = task.thistrial.gotResponse+1;
     
+    task.thistrial.nomatchResp = 0; 
     task.thistrial.correct = task.thistrial.match; % if match, then we are correct
     
     doResponse(task);
 else
-    disp(sprintf('(berlin) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
+    disp(sprintf('(freedman) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
 end
 
 function doResponse(task)
@@ -450,10 +454,25 @@ fixColors = {stimulus.colors.red,stimulus.colors.green};
 
 disp(sprintf('Subject responded: %s',responseText{task.thistrial.correct+1}));
 stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
+if ~task.thistrial.match
+    stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.nomatchResp);
+else
+    stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.nomatchResp,0);
+end
 stimulus.live.resp = 1;
 stimulus.live.dots = 0;
-stimulus.live.fix=1;
+stimulus.live.fix = 1;
+
+% check staircase
+
+% save staircases
+if doStaircase('stop',stimulus.staircase)
+    if ~isfield(stimulus,'staircases')
+        stimulus.staircases = {};
+    end
+    stimulus.staircases{end+1} = stimulus.staircase;
+    stimulus = initStaircase(stimulus);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
@@ -465,18 +484,32 @@ stimulus.live.fix=1;
 function stimulus = initStaircase(stimulus)
 %%
 stimulus.staircase = doStaircase('init','upDown',...
-        'initialThreshold',0.25,... % radians of rotation (
+        'initialThreshold',0.5,... % radians of rotation (
         'initialStepsize',0.05,...
         'minThreshold=0.001','maxThreshold=1.57','stepRule','pest',...
-        'nTrials=50','maxStepsize=0.1','minStepsize=0.001');
+        'nTrials=80','maxStepsize=0.1','minStepsize=0.001');
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
-disp('not implemented');
-return
+t = {};
+threshs = [];
+for si = 1:length(stimulus.staircases)
+    t{end+1} = doStaircase('threshold',stimulus.staircases{si});
+    threshs(end+1) = t{end}.threshold;
+end
+
+h = figure;
+
+plot(threshs*180/pi);
+
+xlabel('Run number');
+ylabel('Threshold (degs)');
+
+drawPublishAxis
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for optic flow
