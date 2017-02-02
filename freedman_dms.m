@@ -65,7 +65,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/freedman_dms/%s',mglGetSID))
         s = load(sprintf('~/data/freedman_dms/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
-        stimulus.staircases = s.stimulus.staircases;
+        stimulus.staircase = s.stimulus.staircase;
 
         clear s;
         disp(sprintf('(freedman) Data file: %s loaded.',fname));
@@ -451,8 +451,9 @@ if stimulus.dead, return; end
 
 responseText = {'Incorrect','Correct'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
+matchText = {'Match','Non-Match'};
 
-disp(sprintf('Subject responded: %s',responseText{task.thistrial.correct+1}));
+disp(sprintf('Subject responded: %s, %s',matchText{task.thistrial.nomatchResp+1},responseText{task.thistrial.correct+1}));
 stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
 if ~task.thistrial.match
     stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.nomatchResp);
@@ -463,17 +464,6 @@ stimulus.live.resp = 1;
 stimulus.live.dots = 0;
 stimulus.live.fix = 1;
 
-% check staircase
-
-% save staircases
-if doStaircase('stop',stimulus.staircase)
-    if ~isfield(stimulus,'staircases')
-        stimulus.staircases = {};
-    end
-    stimulus.staircases{end+1} = stimulus.staircase;
-    stimulus = initStaircase(stimulus);
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -483,11 +473,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 %%
-stimulus.staircase = doStaircase('init','upDown',...
-        'initialThreshold',0.5,... % radians of rotation (
-        'initialStepsize',0.05,...
-        'minThreshold=0.001','maxThreshold=1.57','stepRule','pest',...
-        'nTrials=80','maxStepsize=0.1','minStepsize=0.001');
+if ~isfield(stimulus,'staircase')
+    stimulus.staircase = doStaircase('init','fixed','fixedVals',[2 4 8 16 32 64]*pi/180);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
