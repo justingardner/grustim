@@ -4,8 +4,16 @@ function [ myscreen ] = unlearning( varargin )
 % Unconscious learning of spatial patterns. This experiment runs two
 % simultaneous tasks. 
 %
+% COLORS
+%   Valid: FF8F8F, accent: B25252
+%   Impossible: 5EA1CC, accent: 3F86B2
+%   Neutral: FFFEA8
 
 global stimulus
+
+stimulus.colors.valid = [255,143,143]/255;
+stimulus.colors.impossible = [94,161,204]/255;
+stimulus.colors.chance = [255,254,168]/255;
 
 stimulus = struct;
 %% Open Old Stimfile
@@ -568,19 +576,92 @@ end
 function dispInfo(task,myscreen,stimulus)
 %%
 
+% ctask = task; cscreen = myscreen; % save this incase we need them
+
 % compute % correct for valid and invalid trials, display learning over
 % time (including history from other runs)
 % exp = getTaskParameters(task,myscreen);
 disp('(unlearn) Display info not implemented yet');
 
-function partialDiskFuckOGL(x,y,isize,osize,sangle,dist,col,slices,loops)
-% fucking opengl! wtf!
-mglGluPartialDisk(x,y,isize,osize,fuckopengl(sangle),-dist,col,slices,loops);
+% get the files list
+files = dir(fullfile(sprintf('~/data/unlearning/%s/*.mat',mglGetSID)));
 
-function deg = fuckopengl(deg)
-% BECAUSE FUCK YOU OPENGL
-deg = -deg+90;
+% load the files and pull out the data (long form)
+%  run #    local trial     real trial   impossible   match   vert1
+%    1             2            3            4          5        6
+%  vert2  pattern1    pattern2    response    correct
+%     7      8           9           10         11
+count = 1; data = zeros(10000,11);
 
+for fi = 1:length(files)
+    load(fullfile(sprintf('~/data/unlearning/%s/%s',mglGetSID,files(fi).name)));
+    
+    e = getTaskParameters(myscreen,task);
+    e = e{1}; % why?!
+    
+    data(count:count+(e.nTrials-1),:) = [repmat(stimulus.counter,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+        e.parameter.impossible' e.parameter.match' e.parameter.vertical1' ...
+        e.randVars.vertical2' e.parameter.pattern1' e.randVars.pattern2' ...
+        e.response' e.randVars.correct'];
+    
+    count = count+e.nTrials;
+end
+
+data = data(1:(count-1),:);
+
+% separate data into impossible and valid
+idata = data(data(:,4)==1,:);
+vdata = data(data(:,4)==0,:);
+
+% check statistics across sessions
+uruns = unique(data(:,1));
+
+vci_ = zeros(length(uruns),:);
+ici_ = zeros(length(uruns),:);
+
+for ri = 1:length(uruns)
+    run = uruns(ri);
+    % valid
+    vdat = vdata(vdata(:,1)==run,11);
+    vci = bootci(1000,@nanmean,vdat); vperf = mean(vci);
+    vcis = sprintf('[%2.0f%% %2.0f%%]',vci(1)*100,vci(2)*100);
+    vci_(ri,:) = vci;
+    % impossible
+    idat = idata(idata(:,1)==run,11);
+    ici = bootci(1000,@nanmean,idat); iperf = mean(ici);
+    icis = sprintf('[%2.0f%% %2.0f%%]',ici(1)*100,ici(2)*100);
+    ici_(ri,:) = ici;
+    
+    
+    disp(sprintf('Performance on run %i. Valid: %2.0f%% %s Impossible: %2.0f%% %s',run,100*vperf,vcis,100*iperf,icis));
+end
+
+%% plot
+h = figure; hold on;
+
+offset = .05;
+title(sprintf('Subj: %s performance and error over time',mglGetSID));
+% valid
+plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',stimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
+errbar(uruns-offset,mean(vci_,2),vci_(:,2)-mean(vci_,2),'-','Color',stimulus.colors.valid);
+
+% invalid
+plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',stimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
+errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',stimulus.colors.impossible);
+
+legend({'Valid','Impossible'});
+z = hline(0.5,'--k');
+% set(z,'Color',stimulus.colors.chance);
+
+xlabel('Run (#)');
+ylabel('Performance (% correct)');
+
+set(gca,'XTick',[uruns]);
+set(gca,'YTick',[0 0.25 0.5 0.75 1],'YTickLabels',{'0','25%','50%','75%','100%'});
+
+drawPublishAxis
+
+savepdf(h,fullfile(sprintf('~/data/unlearning/%s/%s_performance.pdf',mglGetSID,mglGetSID)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
