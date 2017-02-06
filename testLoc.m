@@ -34,18 +34,20 @@ stimulus.flickerNFrame = round(myscreen.framesPerSecond/stimulus.flickerRate);
 % set up task
 %%%%%%%%%%%%%%%%%%%%%
 task{2}{1}.waitForBacktick = 1;
-task{2}{1}.segmin = [1 2 1];
-task{2}{1}.segmax = [1 2 3];
+task{2}{1}.segmin = [2 1];
+task{2}{1}.segmax = [2 12];
 
 if stimulus.scan
-    task{2}{1}.synchToVol = [0 0 1];
+    task{2}{1}.synchToVol = [0 1];
 end
 
 % parameters & randomization
-task{2}{1}.parameter.contrast = [.25 .5 1];
+task{2}{1}.parameter.contrast = [.25 1];
 task{2}{1}.parameter.location = [-14 -8 8 14];
 task{2}{1}.randVars.block.orientation = 0:45:135;
 task{2}{1}.random = 1;
+
+task{2}{1}.randVars.calculated.loccon = nan;
 
 % initialize the task
 for phaseNum = 1:length(task{2})
@@ -87,6 +89,13 @@ if task.thistrial.thisseg == 1
     stimulus.flickerIndex = 0;
     stimulus.gaborIndex = 0;
     stimulus.gaborNum = 1;
+    
+    stimulus = updateGabor(stimulus,myscreen);
+    
+    task.thistrial.loccon = 2*(find(stimulus.location == task.parameter.location)-1)+find(stimulus.contrast == task.parameter.contrast);
+    
+    disp(sprintf('(testLoc) Trial %i:[%i] Location %i Contrast %0.2f ITI %0.2fs', ...
+        task.trialnum, task.thistrial.loccon, task.thistrial.location, task.thistrial.contrast, task.thistrial.seglen(end)));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -95,8 +104,21 @@ end
 function [task myscreen] = updateScreenCallback(task, myscreen)
 global stimulus
 mglClearScreen;
-if task.thistrial.thisseg == 2
-    stimulus = updateGabor(stimulus,myscreen);
+if task.thistrial.thisseg == 1
+    
+% show a flickering gabor patch
+if mod(stimulus.flickerIndex, stimulus.flickerNFrame) == 0 
+    stimulus.gaborIndex = stimulus.gaborIndex + 1;
+    if mod(stimulus.gaborIndex,2)==1
+        stimulus.gaborNum = 1;
+    else
+        stimulus.gaborNum = 2;
+    end
+end
+stimulus.flickerIndex = stimulus.flickerIndex+1;
+    
+mglBltTexture(stimulus.tex(stimulus.gaborNum), [stimulus.location, 0], 0,0, stimulus.orientation);
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -117,16 +139,3 @@ stimulus.gabor1 = (255*(stimulus.contrast*stimulus.grating1.*stimulus.gaussian+1
 stimulus.gabor2 = (255*(stimulus.contrast*stimulus.grating2.*stimulus.gaussian+1)/2);
 stimulus.tex(1) = mglCreateTexture(stimulus.gabor1);
 stimulus.tex(2) = mglCreateTexture(stimulus.gabor2);
-
-% show a flickering gabor patch
-if mod(stimulus.flickerIndex, stimulus.flickerNFrame) == 0 
-    stimulus.gaborIndex = stimulus.gaborIndex + 1;
-    if mod(stimulus.gaborIndex,2)==1
-        stimulus.gaborNum = 1;
-    else
-        stimulus.gaborNum = 2;
-    end
-end
-stimulus.flickerIndex = stimulus.flickerIndex+1;
-    
-mglBltTexture(stimulus.tex(stimulus.gaborNum), [stimulus.location, 0], 0,0, stimulus.orientation);
