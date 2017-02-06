@@ -5,6 +5,35 @@
 %       date: 02/06/17
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: program for demonstration of attention tasks for psych 50
+% 
+%             First run with no arguments:
+%             introCogNeuroAttention
+%
+%             This will show a single motion patch
+%             on the left which moves inwards or outwards. Task is to hit 1 for inwards
+%             and 2 for outwards. It will step down slowly in coherence - when you get
+%             to a coherence where people start to get confused, call that threshold (it's
+%             not so important to get exactly right)
+%
+%             Now you can run the full task with that coherence threshold. Say the coherence
+%             threshold was 0.3
+%             introCogNeuroAttention(.3)
+%
+%             This is the main task. Two patches come up. The fixation arm will point red
+%             towards one or both of the patches. Tell them to attend to the location indicated
+%             by the cue - if both arms are red, then they should distribute their attention
+%             across both patches. After the patches disappear, one arm of the fixation cross
+%             will turn green and they will have to report about that patch (same task - in or outward
+%             motion).
+%
+%
+%             To discuss about suppressing stimuli, you can add distractors:
+%             introCogNeuroAttention(0.3,1);
+% 
+%             This is exactly the same task except there are 4 other distractor patches. They
+%             should simply be ignored - the hope is that people will find this difficult - and
+%             can talk about selection / biased competition models
+%       
 %
 function myscreen = introCogNeuro_attention(thresholdCoherence,useDistractors)
 
