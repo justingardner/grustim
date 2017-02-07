@@ -656,7 +656,7 @@ z = hline(0.5,'--k');
 xlabel('Run (#)');
 ylabel('Performance (% correct)');
 
-set(gca,'XTick',[uruns]);
+set(gca,'XTick',uruns);
 set(gca,'YTick',[0 0.25 0.5 0.75 1],'YTickLabels',{'0','25%','50%','75%','100%'});
 
 drawPublishAxis
