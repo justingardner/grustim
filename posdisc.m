@@ -5,11 +5,14 @@
 %       date: 10/14/16
 %    purpose: spatial localization task
 %
-function myscreen = posdisc(stimType)
+function myscreen = posdisc(stimType,eccNum)
 
 % gabor VS gaussian
 if ~exist('stimType','var')
     stimType = 'gaussian';
+end
+if ~exist('eccNum','var')
+    eccNum = 0;
 end
 
 clear global stimulus
@@ -18,6 +21,11 @@ global stimulus
 stimulus.stimType = stimType;
 stimulus.width = 10;
 stimulus.sf = 1.8;
+stimulus.eccNum = eccNum;
+stimulus.eccList = [7.5 10 12.5 15];
+if stimulus.eccNum ~= 0
+    stimulus.eccentricity = stimulus.eccList(stimulus.eccNum);
+end
 
 stimulus.stimDur = .015; % 15ms
 stimulus.ISI = .1; % 100ms
@@ -52,7 +60,9 @@ task{1}{1}.numBlocks = 8;
 % task{1}{1}.parameter.reliability = [1 2]; % Low High
 % task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right
 task{1}{1}.parameter.contrast = [0.0625 0.125 0.25 0.5 1];
+if stimulus.eccNum == 0
 task{1}{1}.parameter.eccentricity = [7.5 10 12.5 15];
+end
 task{1}{1}.parameter.posDiff = [-5 -2.5 -1.25 -.5 -.25 -.125 0 .125 .25 .5 1.25 2.5 5];
 
 task{1}{1}.random = 1;
@@ -92,7 +102,7 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-dispPsychometric(task{1}{1});
+dispPsychometric(task{1}{1}, stimulus);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
@@ -111,10 +121,15 @@ if task.thistrial.thisseg == 1
     task.thistrial.xpos = [0 0];
     
     stimulus.contrast = task.thistrial.contrast;
-    stimulus.eccentricity = task.thistrial.eccentricity;
+    if stimulus.eccNum == 0
+        stimulus.eccentricity = task.thistrial.eccentricity;
+        task.thistrial.ecc = task.thistrial.eccentricity;
+    else
+        task.thistrial.ecc = stimulus.eccentricity;
+    end
     task.thistrial.diff = task.thistrial.posDiff;
     task.thistrial.con = task.thistrial.contrast;
-    task.thistrial.ecc = task.thistrial.eccentricity;
+
 %     task.thistrial.hemi = task.thistrial.whichHemifield;
     stimulus = initGaussian(stimulus,myscreen);
     
@@ -214,9 +229,10 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dispPsychometric(task)
+function dispPsychometric(task,stimulus)
 posDiff = task.parameter.posDiff;
 contrast = task.parameter.contrast;
+if stimulus.eccNum == 0
 eccentricity = task.parameter.eccentricity;
 %percent Interval 1
 for c = 1:length(contrast)
@@ -244,4 +260,33 @@ for c = 1:length(contrast)
     ylabel('Percent choices Interval 1 (%)');
     xlabel('Postition difference of targets between interval 1 and 2 (deg)');
     yaxis(0,100);
+end
+else
+    ecc = 1;
+    %percent Interval 1
+for c = 1:length(contrast)
+    
+    for i = 1:length(posDiff)
+        resp{c}{ecc}{i} = task.randVars.resp(task.randVars.con == contrast(c) & ...
+           task.randVars.diff == posDiff(i));
+        n{c}{ecc}(i) = sum(resp{c}{ecc}{i} == 1 | resp{c}{ecc}{i} == 2);
+        k{c}{ecc}(i) = sum(resp{c}{ecc}{i} == 1);
+    end
+    percent{c}{ecc} = k{c}{ecc}./n{c}{ecc};
+
+end
+figure;
+for c = 1:length(contrast)
+    subplot(2,3,c)
+        plot(posDiff, percent{c}{ecc}*100, 'ko', 'MarkerSize', 7, 'MarkerFaceColor', 'k');
+        hold on;
+
+    title(sprintf('Contrast=%0.4f', contrast(c)));
+    legend(sprintf('ecc=%0.1f',stimulus.eccentricity),'Location','SouthEast');
+    box off;
+    ylabel('Percent choices Interval 1 (%)');
+    xlabel('Postition difference of targets between interval 1 and 2 (deg)');
+    yaxis(0,100);
+end
+
 end
