@@ -58,7 +58,7 @@ myscreen.background = 'black';
 myscreen = initScreen(myscreen);
 
 % task parameters
-task{1}.seglen = [1 0.5 1 5];
+task{1}.seglen = [1 0.5 1 inf];
 task{1}.getResponse = [0 0 0 1];
 task{1}.parameter.cue = [-1 1 0];
 task{1}.parameter.coherence = thresholdCoherence;
@@ -273,6 +273,7 @@ if any(task.thistrial.whichButton == [1 2]);
       stimulus.responseText = mglText(sprintf('Wrong: %s patch was %s',targetLocStr,targetDirStr));
     end
   end
+  task.thistrial.seglen(end) = mglGetSecs(task.thistrial.segstart)+2;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
