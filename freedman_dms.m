@@ -474,7 +474,7 @@ stimulus.live.fix = 1;
 function stimulus = initStaircase(stimulus)
 %%
 if ~isfield(stimulus,'staircase')
-    stimulus.staircase = doStaircase('init','fixed','fixedVals',[2 4 8 16 32 64]*pi/180);
+    stimulus.staircase = doStaircase('init','fixed','fixedVals',[2 4 8 16 32]*pi/180);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -482,19 +482,32 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
-t = {};
-threshs = [];
-for si = 1:length(stimulus.staircases)
-    t{end+1} = doStaircase('threshold',stimulus.staircases{si});
-    threshs(end+1) = t{end}.threshold;
+
+tv = stimulus.staircase.testValues;
+nm = stimulus.staircase.response;
+
+utv = unique(tv);
+pnm = zeros(size(utv));
+num = zeros(size(utv));
+
+for ui = 1:length(utv)
+    val = utv(ui);
+    pnm(ui) = sum(nm(tv==val));
+    num(ui) = sum(tv==val);
 end
 
-h = figure;
+fit = fitweibull(utv,pnm,'ntotal',num,'gamma=0');
 
-plot(threshs*180/pi);
+h = figure; hold on
 
-xlabel('Run number');
-ylabel('Threshold (degs)');
+plot(fit.signal*180/pi,fit.pcorrect,'o','MarkerFaceColor','black','MarkerEdgeColor','white');
+errbar(fit.signal*180/pi,fit.pcorrect,fit.pcorrectste*1.96,'-k');
+% plot(fit.x*180/pi,fit.y,'-k');
+
+set(gca,'YTick',[0 0.5 1],'YTickLabel',{'0%','50%','100%'});
+
+xlabel('Angle difference (degs)');
+ylabel('Percent non-match choices');
 
 drawPublishAxis
 
