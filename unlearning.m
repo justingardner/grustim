@@ -11,10 +11,6 @@ function [ myscreen ] = unlearning( varargin )
 
 global stimulus
 
-stimulus.colors.valid = [255,143,143]/255;
-stimulus.colors.impossible = [94,161,204]/255;
-stimulus.colors.chance = [255,254,168]/255;
-
 stimulus = struct;
 %% Open Old Stimfile
 stimulus.initStair = 1;
@@ -29,7 +25,6 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
         
         s = load(sprintf('~/data/unlearning/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
-        stimulus = s.stimulus;
         stimulus.counter = stimulus.counter + 1;
 
         clear s;
@@ -111,11 +106,6 @@ myscreen.background = 0.5;
 
 %% Plot and return
 
-if stimulus.plots==2
-    dispInfo(stimulus);
-    return
-end
-
 %% Initialize Stimulus
 
 myscreen.stimulusNames{1} = 'stimulus';
@@ -133,6 +123,10 @@ stimulus.colors.white = [1 1 1];
 stimulus.colors.green = [0 1 0];
 stimulus.colors.red = [1 0 0];
 
+stimulus.colors.valid = [255,143,143]/255;
+stimulus.colors.impossible = [94,161,204]/255;
+stimulus.colors.chance = [255,254,168]/255;
+
 % % %% Generate stencils
 % % % The stencil is a series of arcs 
 % % mglStencilCreateBegin(1);
@@ -144,14 +138,19 @@ stimulus.colors.red = [1 0 0];
 % % mglClearScreen(0.5);
 % % myscreen.flushMode = 1;
 
+if stimulus.plots==2
+    dispInfo;
+    return
+end
+
 %% Setup Task
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 stimulus.curTrial = 0;
 
-task{1}{1}.segmin = [inf .650 1.000 .650 0.500 1.500 0.500];
-task{1}{1}.segmax = [inf .650 1.000 .650 0.500 1.500 1.500];
+task{1}{1}.segmin = [inf .500 0.750 .500 0.2 1.500 0.250];
+task{1}{1}.segmax = [inf .500 0.750 .500 0.2 1.500 1.000];
 
 if stimulus.debug
     task{1}{1}.segmin = [inf 1.5 1.000 1.5 0.500 1.500 0.500];
@@ -173,7 +172,7 @@ stimulus.seg.ITI2 = 7;
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
-task{1}{1}.numTrials = 50;
+task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
 task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
@@ -274,7 +273,7 @@ mglClearScreen(0.5);
 
 if stimulus.plots
     disp('(unlearn) Displaying plots');
-    dispInfo(stimulus);
+    dispInfo();
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
@@ -573,8 +572,10 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
-function dispInfo(task,myscreen,stimulus)
+function dispInfo(task,myscreen)
 %%
+global stimulus
+rstimulus = stimulus;
 
 % ctask = task; cscreen = myscreen; % save this incase we need them
 
@@ -635,6 +636,10 @@ for ri = 1:length(uruns)
     
     disp(sprintf('Performance on run %i. Valid: %2.0f%% %s Impossible: %2.0f%% %s',run,100*vperf,vcis,100*iperf,icis));
 end
+%% write data
+% header = {'Run','Trial'
+% csvwriteh(fullfile(sprintf('~/data/unlearning/%s/%s_data.mat',mglGetSID,mglGetSID)),data,header);
+save(fullfile(sprintf('~/data/unlearning/%s/%s_data.mat',mglGetSID,mglGetSID)),'data');
 
 %% plot
 h = figure; hold on;
@@ -642,12 +647,12 @@ h = figure; hold on;
 offset = .05;
 title(sprintf('Subj: %s performance and error over time',mglGetSID));
 % valid
-plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',stimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
-errbar(uruns-offset,mean(vci_,2),vci_(:,2)-mean(vci_,2),'-','Color',stimulus.colors.valid);
+plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',rstimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
+errbar(uruns-offset,mean(vci_,2),vci_(:,2)-mean(vci_,2),'-','Color',rstimulus.colors.valid);
 
 % invalid
-plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',stimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
-errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',stimulus.colors.impossible);
+plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',rstimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
+errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',rstimulus.colors.impossible);
 
 legend({'Valid','Impossible'});
 z = hline(0.5,'--k');
