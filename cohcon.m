@@ -41,13 +41,15 @@ nocatch = [];
 stablecon = 0;
 stablecoh = 0;
 constant = [];
+noeye = 0;
 getArgs(varargin,{'stimFileNum=-1','nocatch=0',...
-    'plots=0','overrideTask=0','scan=0','constant=1','stablecon=0','stablecoh=0'});
+    'plots=0','overrideTask=0','scan=0','constant=1','stablecon=0','stablecoh=0','noeye=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.nocatch = nocatch;
 stimulus.stablecon = stablecon;
 stimulus.stablecoh = stablecoh;
+stimulus.noeye = noeye;
 stimulus.constant = constant; % new param, keeps stimulus on screen at all times with 0% coherence
 
 if stimulus.scan && ~stimulus.nocatch
@@ -296,15 +298,6 @@ else
 end
 stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
 
-% Put up text that should be invisible if everything
-% with the gamma table is working.
-setGammaTable_flowMax(0);
-mglWaitSecs(1);
-mglClearScreen(0.5);
-mglTextSet([],32,0.9);
-mglTextDraw('If you can see this STOP THE EXPERIMENT',[0 0]);
-mglFlush;
-mglWaitSecs(1);
 
 %% Character textures
 mglTextSet('Helvetica',32,stimulus.colors.white,0,0,0,0,0,0,0);
@@ -412,13 +405,24 @@ else
     checkStaircaseStop();
 end
 
+
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%if ~stimulus.scan
-%     myscreen = eyeCalibDisp(myscreen);
-%end
+if ~stimulus.scan
+    myscreen = eyeCalibDisp(myscreen);
+end
+
+% Put up text that should be invisible if everything
+% with the gamma table is working.
+setGammaTable_flowMax(0);
+mglWaitSecs(1);
+mglClearScreen(0.5);
+mglTextSet([],32,0.9);
+mglTextDraw('If you can see this STOP THE EXPERIMENT',[0 0]);
+mglFlush;
+mglWaitSecs(1);
 
 %% Get Ready...
 % clear screen    
@@ -559,6 +563,8 @@ stimulus.dotsL.dir = task.thistrial.dir;
 stimulus.dotsR.dir = task.thistrial.dir;
 
 myscreen.flushMode = 0;
+stimulus.live.eyeCount = 0;
+stimulus.dead = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -607,6 +613,25 @@ global stimulus
 
 
 mglClearScreen(0.5);
+
+% check eye pos
+if ~stimulus.noeye && task.thistrial.thisseg~=stimulus.seg.ITI
+    [pos,time] = mglEyelinkGetCurrentEyePos;
+    if ~any(isnan(pos))
+        dist = hypot(pos(1),pos(2));
+        if dist > 5 && stimulus.live.eyeCount > 30
+            mglTextSet([],32,[1 0 0]);
+            disp('Eye movement detected!!!!');
+            mglTextDraw('Eye Movement Detected',[0 0]);
+            mglFlush
+            myscreen.flushMode = 1;
+            stimulus.dead = 1;
+            return
+        elseif dist > 5
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
+    end
+end
 
 if stimulus.live.dots==1, stimulus = upDots(task,stimulus,myscreen); end
 upFix(task,stimulus);
@@ -688,6 +713,9 @@ function [task, myscreen] = getResponseCallback(task, myscreen)
 
 global stimulus
 
+if stimulus.dead
+    return
+end
 responseText = {'Incorrect','Correct'};
 responsePos = {'Left','Right'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};

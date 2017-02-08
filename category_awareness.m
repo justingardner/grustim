@@ -109,8 +109,8 @@ task{1}{1}.segmax = [0.15 0.050 0.450 0.4 1.2 2.5];
 task{1}{1}.synchToVol = [0 0 0 0 0];
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
-    task{1}{1}.segmin = [0.15 0.050 0.450 2 2 2];
-    task{1}{1}.segmax = [0.15 0.050 0.450 11 2 11];
+    task{1}{1}.segmin = [0.15 0.050 0.450 6 2 2];
+    task{1}{1}.segmax = [0.15 0.050 0.450 8 2 11];
 end
 task{1}{1}.getResponse = [0 0 0 0 0]; task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.parameter.category = [1 2 3]; % which category is shown on this trial
@@ -137,13 +137,17 @@ end
 stimulus.nostairperf = [3/6 4/6 5/6]; % these are the performances we want to use when no staircase is running
 if stimulus.dostaircase
     % use a range of phases
-    images.phases = repmat(0:.1:.75,3,1);
+    images.phases = repmat([0 0.2 0.35 0.4 0.45 0.5 0.55 0.6 0.75],3,1);
     if stimulus.initStair
         % We are starting our staircases from scratch
-        disp(sprintf('(cohcon) Initializing staircases'));
+        disp(sprintf('(cat_awe) Initializing staircases from scratch.'));
         stimulus = initStaircase(stimulus);
     else
-        disp('(cohcon) Re-using staircase from previous run...');
+        disp('(cat_awe) Re-using staircase from previous run.');
+        if ~isequal(length(images.phases),length(stimulus.staircase{1}.s.fixedVals))
+            disp('(cat_awe) Staircases and phases requested do not match--your data will not be consistent!!');
+            return
+        end
     end
 else
     if stimulus.initStair
@@ -168,7 +172,7 @@ else
             end
         end
         stop = 1;
-        stimulus.phases = testPhases;
+        images.phases = testPhases;
     end
 end
 
