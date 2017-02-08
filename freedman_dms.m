@@ -474,7 +474,7 @@ stimulus.live.fix = 1;
 function stimulus = initStaircase(stimulus)
 %%
 if ~isfield(stimulus,'staircase')
-    stimulus.staircase = doStaircase('init','fixed','fixedVals',[2 4 8 16 32]*pi/180);
+    stimulus.staircase = doStaircase('init','fixed','fixedVals',[3 6 9 12 24 36]*pi/180);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -489,20 +489,25 @@ nm = stimulus.staircase.response;
 utv = unique(tv);
 pnm = zeros(size(utv));
 num = zeros(size(utv));
+ci = zeros(length(utv),2);
 
 for ui = 1:length(utv)
     val = utv(ui);
     pnm(ui) = sum(nm(tv==val));
     num(ui) = sum(tv==val);
+    [~,ci_] = binofit(pnm(ui),num(ui));
+    ci(ui,:) = ci_;
 end
 
-fit = fitweibull(utv,pnm,'ntotal',num,'gamma=0');
+fit = fitsigmoid(tv,nm);
+
+disp(sprintf('c50 estimate is %2.2f degs',fit.params(2)*180/pi));
 
 h = figure; hold on
 
-plot(fit.signal*180/pi,fit.pcorrect,'o','MarkerFaceColor','black','MarkerEdgeColor','white');
-errbar(fit.signal*180/pi,fit.pcorrect,fit.pcorrectste*1.96,'-k');
-% plot(fit.x*180/pi,fit.y,'-k');
+plot(utv*180/pi,mean(ci,2)','o','MarkerFaceColor','black','MarkerEdgeColor','white');
+errbar(utv*180/pi,mean(ci,2)',ci(:,2)-mean(ci,2),'-k');
+plot(fit.fitx*180/pi,fit.fity,'-k');
 
 set(gca,'YTick',[0 0.5 1],'YTickLabel',{'0%','50%','100%'});
 
