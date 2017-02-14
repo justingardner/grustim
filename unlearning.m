@@ -25,7 +25,13 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
         
         s = load(sprintf('~/data/unlearning/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
-        stimulus.counter = stimulus.counter + 1;
+        stimulus.counter = s.stimulus.counter + 1;
+        % copy patterns
+        stimulus.patterns = s.stimulus.patterns;
+        stimulus.patternopts = s.stimulus.patternopts;
+        stimulus.holdoutopts = s.stimulus.holdoutopts;
+        stimulus.npatterns = s.stimulus.npatterns;
+        stimulus.learn = s.stimulus.learn;
 
         clear s;
         disp(sprintf('(unlearn) Data file: %s loaded.',fname));
@@ -76,7 +82,7 @@ scan = 0;
 plots = 0;
 noeye = 0;
 debug = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=1','debug=0'});
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -297,7 +303,7 @@ opts = {'Non-match','Match'};
 % if  
 dopts = {'Right','Left'};
 vopts = {'Valid','Impossible'};
-disp(sprintf('(unlearn) %s:%s trial, %s. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},dopts{task.thistrial.match+1},vopts{task.thistrial.impossible+1},task.thistrial.pattern1,task.thistrial.pattern2));
+disp(sprintf('(unlearn) %s:%s trial (%i), %s. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},dopts{task.thistrial.match+1},task.trialnum,vopts{task.thistrial.impossible+1},task.thistrial.pattern1,task.thistrial.pattern2));
     
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
@@ -521,7 +527,7 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
         end
         stimulus.live.lastTrigger = now;
     end
-    if stimulus.live.spaceDown && stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+    if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
         disp('Starting trial--eye centered and space pressed.');
         task = jumpSegment(task);
     end
