@@ -307,7 +307,6 @@ function task = buildData(task)
 global stimulus
 % Setup the displays
 % .rings holds N rings consisting of num segments
-
 gxpos = 1:6;
 gypos = 1:6;
 
@@ -412,6 +411,7 @@ if any(task.thistrial.thisseg==[stimulus.seg.ITI1])
     stimulus.live.lastTrigger = -1;
 end
 
+stimulus.live.eyeDead =0 ;
 stimulus.live.resp = 0;
 stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.fix = 1;
@@ -433,24 +433,37 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 mglClearScreen(0.5);
+
+if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
+    jumpSegment(task,inf); stimulus.dead=0;
+end
+
+if stimulus.dead
+    if stimulus.dead && stimulus.live.eyeDead
+        mglTextSet([],32,stimulus.colors.red);
+        mglTextDraw('Eye Movement Detected',[0 0]);
+    end
+    return
+end
+
 % check eye pos
-% if ~stimulus.noeye && ~stimulus.scan
-%     [pos,~] = mglEyelinkGetCurrentEyePos;
-%     if ~any(isnan(pos))
-%         dist = hypot(pos(1),pos(2));
-%         if dist > stimulus.ring.inner && stimulus.live.eyeCount > 30
-%             mglTextSet([],32,stimulus.colors.red);
-%             disp('Eye movement detected!!!!');
-%             mglTextDraw('Eye Movement Detected',[0 0]);
-%             mglFlush
-%             myscreen.flushMode = 1;
-%             stimulus.dead = 1;
-%             return
-%         elseif dist > stimulus.ring.inner-1
-%             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-%         end
-%     end
-% end
+if ~stimulus.noeye
+    [pos,~] = mglEyelinkGetCurrentEyePos;
+    dist = hypot(pos(1),pos(2));
+end
+
+if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.seg.ITI2 stimulus.seg.resp]) && ~stimulus.scan
+    if ~any(isnan(pos))
+        if dist > 3 && stimulus.live.eyeCount > 30
+            disp('Eye movement detected!!!!');
+            stimulus.dead = 1;
+            stimulus.live.eyeDead=1;
+            return
+        elseif dist > 3
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
+    end
+end
 
 
 if stimulus.live.stim
@@ -497,24 +510,22 @@ if stimulus.live.fix
     end
 end
 
-% if stimulus.live.triggerWaiting
-%     now = mglGetSecs;
-%     % check eye position, if 
-%     [pos,~] = mglEyelinkGetCurrentEyePos;
-%     if ~any(isnan(pos))
-%         dist = hypot(pos(1),pos(2));
-%         wasCentered = stimulus.live.centered;
-%         stimulus.live.centered = dist<2;
-%         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
-%             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
-%         end
-%         stimulus.live.lastTrigger = now;
-%     end
-%     if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-%         disp('Eye position centered');
-%         task = jumpSegment(task);
-%     end
-% end
+if ~stimulus.noeye && stimulus.live.triggerWaiting
+    now = mglGetSecs;
+    % check eye position, if 
+    if ~any(isnan(pos))
+        wasCentered = stimulus.live.centered;
+        stimulus.live.centered = dist<3;
+        if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+            stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
+        end
+        stimulus.live.lastTrigger = now;
+    end
+    if stimulus.live.spaceDown && stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+        disp('Starting trial--eye centered and space pressed.');
+        task = jumpSegment(task);
+    end
+end
 
 function upData(data,orient,stimulus)
 
