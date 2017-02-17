@@ -42,7 +42,8 @@ stablecon = 0;
 stablecoh = 0;
 constant = [];
 noeye = 0;
-getArgs(varargin,{'stimFileNum=-1','nocatch=0',...
+time = 0;
+getArgs(varargin,{'stimFileNum=-1','nocatch=0','time=0',...
     'plots=0','overrideTask=0','scan=0','constant=1','stablecon=0','stablecoh=0','noeye=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
@@ -50,6 +51,7 @@ stimulus.nocatch = nocatch;
 stimulus.stablecon = stablecon;
 stimulus.stablecoh = stablecoh;
 stimulus.noeye = noeye;
+stimulus.time = time;
 stimulus.constant = constant; % new param, keeps stimulus on screen at all times with 0% coherence
 
 if stimulus.scan && ~stimulus.nocatch
@@ -319,6 +321,12 @@ stimulus.seg.resp = 4;
 stimulus.seg.ITI = 5;
 task{1}{1}.segmin = [0.5 0 .5 1 .2];
 task{1}{1}.segmax = [0.5 0 1 1 .4];
+
+if stimulus.time
+    disp(sprintf('(cohcon) Warning: stimulus time changed to %i ms',stimulus.time));
+    task{1}{1}.segmin(1) = stimulus.time;
+    task{1}{1}.segmax(1) = stimulus.time;
+end
 
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
