@@ -570,7 +570,7 @@ else
 end
 
 if stimulus.time
-    disp(sprintf('(cohcon) Trial %i starting. Length: %i; Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.time,task.thistrial.trialNum,...
+    disp(sprintf('(cohcon) Trial %i starting. Length: %i; Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,task.thistrial.time,...
         task.thistrial.lCoh,task.thistrial.rCoh,...
         task.thistrial.lCon,task.thistrial.rCon));
 else
@@ -765,9 +765,9 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
                     timeOpts = [250 500 1000];
                     timeOpt = find(timeOpts==task.thistrial.time);
                     stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false),timeOpt} = ...
-                        doStaircase('update',stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
+                        doStaircase('update',stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false),timeOpt},task.thistrial.correct);
                 else
-                    stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false),timeOpt} = ...
+                    stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false)} = ...
                         doStaircase('update',stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
                 end
             end
@@ -981,7 +981,7 @@ if stimulus.time
             end
         end
     end
-    axis([0 1 0 1]);
+    axis([0 1 0 0.5]);
     drawPublishAxis;
     return
 end
