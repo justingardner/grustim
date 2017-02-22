@@ -231,6 +231,12 @@ elseif stimulus.nocatch
     stimulus.stairInfo.pedestals.coherence = [0.15 0.3 0.45 0.6];
 end
 
+if stimulus.time
+    % use two contrast and two coherences (12 total staircases to estimate)
+    stimulus.stairInfo.pedestals.contrast = [0.325 0.85];
+    stimulus.stairInfo.pedestals.coherence = [0.15 0.6];
+end
+
 %% Colors
 stimulus.colors.rmed = 127.5;
 
@@ -322,12 +328,6 @@ stimulus.seg.ITI = 5;
 task{1}{1}.segmin = [0.5 0 .5 1 .2];
 task{1}{1}.segmax = [0.5 0 1 1 .4];
 
-if stimulus.time
-    disp(sprintf('(cohcon) Warning: stimulus time changed to %i ms',stimulus.time));
-    task{1}{1}.segmin(1) = stimulus.time;
-    task{1}{1}.segmax(1) = stimulus.time;
-end
-
 if stimulus.scan
     task{1}{1}.segmin(stimulus.seg.ITI) = 2;
     task{1}{1}.segmax(stimulus.seg.ITI) = 11;
@@ -344,6 +344,9 @@ task{1}{1}.parameter.dir = [-1 1];
 task{1}{1}.parameter.conPedestal = 1:length(stimulus.stairInfo.pedestals.contrast); % target contrast
 task{1}{1}.parameter.cohPedestal = 1:length(stimulus.stairInfo.pedestals.coherence); % target flow coherence
 task{1}{1}.parameter.catch = [1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; % 15% chance of being a catch trial
+if stimulus.time
+    task{1}{1}.parameter.time = [250 500 1000];
+end
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = 65;
 
@@ -496,6 +499,10 @@ global stimulus
 
 if task.thistrial.thisphase==2 && stimulus.scan
     task.thistrial.seglen(end) = 1.05^(rand*30+20);
+end
+
+if stimulus.time
+    task.thistrial.seglen(1) = task.thistrial.time;
 end
 
 stimulus.curTrial = stimulus.curTrial + 1;
@@ -827,38 +834,53 @@ function stimulus = initStaircase(stimulus)
 % we're going to be fucking organized this time and put all the staircases
 % in one place.... duh.
 stimulus.staircases = struct;
-%%
-stimulus.staircases.catch = cell(2,stimulus.stairInfo.catchP); % task first, pedestal second
-stimulus.staircases.main = cell(2,stimulus.stairInfo.mainP);
-stimulus.staircases.nocatch = cell(2,stimulus.stairInfo.nocatchP);
 
-if size(stimulus.staircases.catch,2)>1, error('Staircase Initialization Failure'); end
-% Catch && Main staircases
-for task = 1:2
-    stimulus.staircases.catch{task,1} = doStaircase('init','upDown',...
-        'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
-        'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
-        'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
-        'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
-    stimulus.staircases.main{task,1} = doStaircase('init','upDown',...
-        'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
-        'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
-        'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
-        'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
-end
+if stimulus.time
+    % motion first then contrast
+    for task = 1:2
+        stimulus.staircases.nocatch{task,1} = doStaircase('init','upDown',...
+            'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
+            'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
+            'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
+            'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
+        for p = 2:size(stimulus.staircases.nocatch,2)
+            stimulus.staircases.nocatch{task,p} = stimulus.staircases.nocatch{task,1};
+        end
+    end
+else
+    %%
+    stimulus.staircases.catch = cell(2,stimulus.stairInfo.catchP); % task first, pedestal second
+    stimulus.staircases.main = cell(2,stimulus.stairInfo.mainP);
+    stimulus.staircases.nocatch = cell(2,stimulus.stairInfo.nocatchP);
+
+    if size(stimulus.staircases.catch,2)>1, error('Staircase Initialization Failure'); end
+    % Catch && Main staircases
+    for task = 1:2
+        stimulus.staircases.catch{task,1} = doStaircase('init','upDown',...
+            'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
+            'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
+            'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
+            'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
+        stimulus.staircases.main{task,1} = doStaircase('init','upDown',...
+            'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
+            'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
+            'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
+            'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
+    end
 
 
-% NoCatch staircases: Warning, these have different sizes in scan sessions
+    % NoCatch staircases: Warning, these have different sizes in scan sessions
 
-% motion first then contrast
-for task = 1:2
-    stimulus.staircases.nocatch{task,1} = doStaircase('init','upDown',...
-        'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
-        'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
-        'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
-        'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
-    for p = 2:size(stimulus.staircases.nocatch,2)
-        stimulus.staircases.nocatch{task,p} = stimulus.staircases.nocatch{task,1};
+    % motion first then contrast
+    for task = 1:2
+        stimulus.staircases.nocatch{task,1} = doStaircase('init','upDown',...
+            'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
+            'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
+            'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
+            'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
+        for p = 2:size(stimulus.staircases.nocatch,2)
+            stimulus.staircases.nocatch{task,p} = stimulus.staircases.nocatch{task,1};
+        end
     end
 end
 %%
