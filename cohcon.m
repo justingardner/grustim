@@ -179,6 +179,10 @@ else
     stimulus.runs.curTask = abs(stimulus.runs.taskList(stimulus.counter));
 end
 
+if stimulus.time && stimulus.runs.curTask<0
+    disp('(cohcon) Warning: you forgot to set a task!');
+end
+
 
 %% Useful stimulus stuff
 
@@ -913,44 +917,73 @@ end
 function dispInfoNum(stimulus)
 %%
 
-if stimulus.time
-    return
-    
-end
-
-
 trials = 0;
 nmain = 0;
 ncatch = 0;
 ncontrol = 0;
-for t = 1:2
-    cmain = stimulus.staircases.main{t};
-    for i = 1:length(cmain)
-        trials = trials + cmain(i).trialNum;
-        nmain = nmain + cmain(i).trialNum;
+if stimulus.time
+    for t = 1:2
+        for p = 1:2
+            for ti = 1:3
+                trials = trials + stimlus.staircases.nocatch{t,p,ti}.trialNum;
+            end
+        end
     end
-    ccatch = stimulus.staircases.catch{t};
-    for i = 1:length(ccatch)
-        trials = trials + ccatch(i).trialNum;
-        ncatch = ncatch + ccatch(i).trialNum;
-    end
-    
-    for n = 1:4
-        cno = stimulus.staircases.nocatch{t,n};
-        for i = 1:length(cno)
-            trials = trials + cno(i).trialNum;
-            ncontrol = ncontrol + cno(i).trialNum;
+else
+    for t = 1:2
+        cmain = stimulus.staircases.main{t};
+        for i = 1:length(cmain)
+            trials = trials + cmain(i).trialNum;
+            nmain = nmain + cmain(i).trialNum;
+        end
+        ccatch = stimulus.staircases.catch{t};
+        for i = 1:length(ccatch)
+            trials = trials + ccatch(i).trialNum;
+            ncatch = ncatch + ccatch(i).trialNum;
+        end
+
+        for n = 1:4
+            cno = stimulus.staircases.nocatch{t,n};
+            for i = 1:length(cno)
+                trials = trials + cno(i).trialNum;
+                ncontrol = ncontrol + cno(i).trialNum;
+            end
         end
     end
 end
+
+
+
 disp(sprintf('(dispInfo) Subject %s has completed %i trials so far. %i main, %i catch, %i control.',mglGetSID,trials,nmain,ncatch,ncontrol));
 function dispInfo(stimulus)
 %%
 if stimulus.time
-    keyboard
+    %%
+    data = zeros(2,2,3);
+%     datas = zeros(2,2,3);
+    tasks = {'coherence','contrast'};
     
+    h = figure; hold on
+    cmap = brewermap(7,'PuOr');
+    cols = [5 6 7;3 2 1];
+    for task = 1:2
+        for ped = 1:2
+            for time = 1:3
+                if stimulus.staircases.nocatch{task,ped,time}.trialNum>1
+                    out = doStaircase('threshold',stimulus.staircases.nocatch{task,ped,time},'type','weibull','dispFig=0');
+%                     out =
+%                     doStaircase('threshold',stimulus.staircases.nocatch{task,ped,time}); % no weibull option
+                    data(task,ped,time) = out.threshold;
+                    pedOpts = stimulus.stairInfo.pedestals.(tasks{task});
+                    plot(pedOpts(ped),out.threshold,'o','MarkerFaceColor',cmap(cols(task,time),:),'MarkerEdgeColor',[1 1 1],'MarkerSize',15);
+                end
+%                 datas(task,ped,time) = out.thresholdSTE;
+            end
+        end
+    end
+    axis([0 1 0 1]);
+    drawPublishAxis;
     return
-    
 end
 
 try
