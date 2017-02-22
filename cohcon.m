@@ -925,7 +925,7 @@ if stimulus.time
     for t = 1:2
         for p = 1:2
             for ti = 1:3
-                trials = trials + stimlus.staircases.nocatch{t,p,ti}.trialNum;
+                trials = trials + stimulus.staircases.nocatch{t,p,ti}.trialNum;
             end
         end
     end
