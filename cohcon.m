@@ -5,7 +5,7 @@
 %       date: 11/10/14
 %    purpose: contrast change detection with cued selective attention.
 %
-%        use: call flowAwe() to initialize. The first
+%        use: call cohcon() to initialize. The first
 %             run takes significantly longer due to loading stimuli.
 %
 %      flags: stimFileNum (-1/#) - Load a specific stimfile from a
@@ -43,7 +43,7 @@ stablecoh = 0;
 constant = [];
 noeye = 0;
 time = 0;
-getArgs(varargin,{'stimFileNum=-1','nocatch=0','time=0',...
+getArgs(varargin,{'stimFileNum=-1','nocatch=1','time=1',...
     'plots=0','overrideTask=0','scan=0','constant=1','stablecon=0','stablecoh=0','noeye=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
@@ -502,7 +502,7 @@ if task.thistrial.thisphase==2 && stimulus.scan
 end
 
 if stimulus.time
-    task.thistrial.seglen(1) = task.thistrial.time;
+    task.thistrial.seglen(1) = task.thistrial.time/1000;
 end
 
 stimulus.curTrial = stimulus.curTrial + 1;
@@ -565,9 +565,15 @@ else
     task.thistrial.lCoh = task.thistrial.coherence;
 end
 
-disp(sprintf('(cohcon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
-    task.thistrial.lCoh,task.thistrial.rCoh,...
-    task.thistrial.lCon,task.thistrial.rCon));
+if stimulus.time
+    disp(sprintf('(cohcon) Trial %i starting. Length: %i; Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.time,task.thistrial.trialNum,...
+        task.thistrial.lCoh,task.thistrial.rCoh,...
+        task.thistrial.lCon,task.thistrial.rCon));
+else
+    disp(sprintf('(cohcon) Trial %i starting. Coherence: L %.02f; R %.02f Contrast: L %.02f; R %.02f',task.thistrial.trialNum,...
+        task.thistrial.lCoh,task.thistrial.rCoh,...
+        task.thistrial.lCon,task.thistrial.rCon));
+end
 
 % set the gammaTable for this trial
 setGammaTable_flowMax(task.thistrial.contrast + task.thistrial.conDelta);
@@ -751,8 +757,15 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
                 stimulus.staircases.main{task.thistrial.task,curPedValue(task,false)} = ...
                     doStaircase('update',stimulus.staircases.main{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
             else
-                stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false)} = ...
-                    doStaircase('update',stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
+                if stimulus.time
+                    timeOpts = [250 500 1000];
+                    timeOpt = find(timeOpts==task.thistrial.time);
+                    stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false),timeOpt} = ...
+                        doStaircase('update',stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
+                else
+                    stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false),timeOpt} = ...
+                        doStaircase('update',stimulus.staircases.nocatch{task.thistrial.task,curPedValue(task,false)},task.thistrial.correct);
+                end
             end
         else
             stimulus.live.fixColor = stimulus.colors.black; % we never show information about catch trials
@@ -775,31 +788,38 @@ end
 
 function [cohPed, conPed, stimulus] = getDeltaPed(task,stimulus)
 %%
-if stimulus.runs.curTask == 1
-    % COHERENCE MAIN TASK    
-    if ~stimulus.nocatch
-        [cohPed, stimulus.staircases.main{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircases.main{1,curPedVal(task,1)});
-    else
-        [cohPed, stimulus.staircases.nocatch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircases.nocatch{1,curPedVal(task,1)});
-    end
-    
-    if task.thistrial.catch > 0
-        [conPed, stimulus.staircases.catch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.catch{2,curPedVal(task,2)});
-    else
-        conPed = stimulus.stairInfo.increments.contrast(randi(length(stimulus.stairInfo.increments.contrast)));
-    end
+if stimulus.time
+    timeOpts = [250 500 1000];
+    timeOpt = find(timeOpts==task.thistrial.time);
+    [cohPed, stimulus.staircases.nocatch{1,curPedVal(task,1),timeOpt}] = doStaircase('testValue',stimulus.staircases.nocatch{1,curPedVal(task,1),timeOpt});
+    [conPed, stimulus.staircases.nocatch{2,curPedVal(task,2),timeOpt}] = doStaircase('testValue',stimulus.staircases.nocatch{2,curPedVal(task,2),timeOpt});
 else
-    % CONTRAST MAIN TASK
-    if ~stimulus.nocatch
-        [conPed, stimulus.staircases.main{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.main{2,curPedVal(task,2)});
+    if stimulus.runs.curTask == 1
+        % COHERENCE MAIN TASK    
+        if ~stimulus.nocatch
+            [cohPed, stimulus.staircases.main{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircases.main{1,curPedVal(task,1)});
+        else
+            [cohPed, stimulus.staircases.nocatch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircases.nocatch{1,curPedVal(task,1)});
+        end
+
+        if task.thistrial.catch > 0
+            [conPed, stimulus.staircases.catch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.catch{2,curPedVal(task,2)});
+        else
+            conPed = stimulus.stairInfo.increments.contrast(randi(length(stimulus.stairInfo.increments.contrast)));
+        end
     else
-        [conPed, stimulus.staircases.nocatch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.nocatch{2,curPedVal(task,2)});
-    end
-    
-    if task.thistrial.catch > 0
-        [cohPed, stimulus.staircases.catch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircases.catch{1,curPedVal(task,1)});
-    else
-        cohPed = stimulus.stairInfo.increments.coherence(randi(length(stimulus.stairInfo.increments.coherence)));
+        % CONTRAST MAIN TASK
+        if ~stimulus.nocatch
+            [conPed, stimulus.staircases.main{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.main{2,curPedVal(task,2)});
+        else
+            [conPed, stimulus.staircases.nocatch{2,curPedVal(task,2)}] = doStaircase('testValue',stimulus.staircases.nocatch{2,curPedVal(task,2)});
+        end
+
+        if task.thistrial.catch > 0
+            [cohPed, stimulus.staircases.catch{1,curPedVal(task,1)}] = doStaircase('testValue',stimulus.staircases.catch{1,curPedVal(task,1)});
+        else
+            cohPed = stimulus.stairInfo.increments.coherence(randi(length(stimulus.stairInfo.increments.coherence)));
+        end
     end
 end
 
@@ -838,13 +858,15 @@ stimulus.staircases = struct;
 if stimulus.time
     % motion first then contrast
     for task = 1:2
-        stimulus.staircases.nocatch{task,1} = doStaircase('init','upDown',...
+        stimulus.staircases.nocatch{task,1,1} = doStaircase('init','upDown',...
             'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
             'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
             'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
             'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
-        for p = 2:size(stimulus.staircases.nocatch,2)
-            stimulus.staircases.nocatch{task,p} = stimulus.staircases.nocatch{task,1};
+        stimulus.staircases.nocatch{task,2,1} = stimulus.staircases.nocatch{task,1,1};
+        for p = 2:3
+            stimulus.staircases.nocatch{task,1,p} = stimulus.staircases.nocatch{task,1,1};
+            stimulus.staircases.nocatch{task,2,p} = stimulus.staircases.nocatch{task,1,1};
         end
     end
 else
@@ -890,6 +912,13 @@ end
 
 function dispInfoNum(stimulus)
 %%
+
+if stimulus.time
+    return
+    
+end
+
+
 trials = 0;
 nmain = 0;
 ncatch = 0;
@@ -917,6 +946,13 @@ end
 disp(sprintf('(dispInfo) Subject %s has completed %i trials so far. %i main, %i catch, %i control.',mglGetSID,trials,nmain,ncatch,ncontrol));
 function dispInfo(stimulus)
 %%
+if stimulus.time
+    keyboard
+    
+    return
+    
+end
+
 try
     %% No-Catch Performance
     nocatch = zeros(2,4);
@@ -1010,6 +1046,12 @@ end
 %% checkStaircaseStop
 function checkStaircaseStop()
 global stimulus
+
+if stimulus.time
+    % do not reset staircases
+    
+    return
+end
 
 for task = 1:2
     stimulus.staircases.catch{task,1} = resetStair(stimulus.staircases.catch{task,1});
