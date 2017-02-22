@@ -183,7 +183,7 @@ task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
 task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
 task{1}{1}.parameter.vertical1 = [10 12 14];
-task{1}{1}.parameter.difficulty = [1 2];
+task{1}{1}.parameter.difficulty = [2 4];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
