@@ -65,15 +65,13 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/freedman_dms/%s',mglGetSID))
         s = load(sprintf('~/data/freedman_dms/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
-        stimulus.staircase = s.stimulus.staircase;
+        stimulus.nonmatchOpts = s.stimulus.nonmatchOpts;
 
         clear s;
         disp(sprintf('(freedman) Data file: %s loaded.',fname));
         
     end
 end
-disp(sprintf('(freedman) This is run #%i',stimulus.counter));
-
 
 if stimulus.plots==2
     dispInfo(stimulus);
@@ -84,8 +82,16 @@ end
 %% init staircase
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-disp(sprintf('(freedman) Initializing staircase'));
-stimulus = initStaircase(stimulus);
+% disp(sprintf('(freedman) Initializing staircase'));
+% stimulus = initStaircase(stimulus);
+
+if ~isfield(stimulus,'nonmatchOpts')
+    disp('WARNING: New non-match options set');
+    opts = [2,4,8,16,32];
+    stimulus.nonmatchOpts = opts(randperm(length(opts)));
+end
+
+disp(sprintf('(freedman) This is run %i/%i',stimulus.counter,length(stimulus.nonmatchOpts)));
 
 %% Initialize Stimulus
 [myscreen] = initStimulus('stimulus',myscreen);
@@ -242,14 +248,16 @@ myscreen.flushMode = 0;
 
 % set whether this trial matches or not
 rot = [-1 1];
-[rotation, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+% [rotation, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+rotation = stimulus.nonmatchOpts(stimulus.counter);
+
 if task.thistrial.match
     task.thistrial.dir2 = task.thistrial.dir1;
 else
     task.thistrial.dir2 = task.thistrial.dir1+rot(randi(2))*rotation;
 end
 
-disp(sprintf('Trial %i Dir1: %i Dir2: %i',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2)));
+disp(sprintf('(freedman) Trial %i Dir1: %i Dir2: %i',stimulus.curTrial,round(180/pi*task.thistrial.dir1),round(180/pi*task.thistrial.dir2)));
 
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
@@ -455,11 +463,11 @@ matchText = {'Match','Non-Match'};
 
 disp(sprintf('Subject responded: %s, %s',matchText{task.thistrial.nomatchResp+1},responseText{task.thistrial.correct+1}));
 stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-if ~task.thistrial.match
-    stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.nomatchResp);
-else
-    stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.nomatchResp,0);
-end
+% if ~task.thistrial.match
+%     stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.nomatchResp);
+% else
+%     stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.nomatchResp,0);
+% end
 stimulus.live.resp = 1;
 stimulus.live.dots = 0;
 stimulus.live.fix = 1;
@@ -482,6 +490,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(stimulus)
 %%
+
+keyboard
 
 tv = stimulus.staircase.testValues;
 nm = stimulus.staircase.response;
