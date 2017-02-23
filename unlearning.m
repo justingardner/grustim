@@ -183,7 +183,7 @@ task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
 task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
 task{1}{1}.parameter.vertical1 = [10 12 14];
-task{1}{1}.parameter.difficulty = [2 4];
+task{1}{1}.parameter.difficulty = [1 2 3];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -599,7 +599,6 @@ rstimulus = stimulus;
 % compute % correct for valid and invalid trials, display learning over
 % time (including history from other runs)
 % exp = getTaskParameters(task,myscreen);
-disp('(unlearn) Display info not implemented yet');
 
 % get the files list
 files = dir(fullfile(sprintf('~/data/unlearning/%s/*.mat',mglGetSID)));
@@ -664,14 +663,14 @@ h = figure; hold on;
 offset = .05;
 title(sprintf('Subj: %s performance and error over time',mglGetSID));
 % valid
-plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',rstimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
+p1 = plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',rstimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
 errbar(uruns-offset,mean(vci_,2),vci_(:,2)-mean(vci_,2),'-','Color',rstimulus.colors.valid);
 
 % invalid
-plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',rstimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',5);
+p2 = plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',rstimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
 errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',rstimulus.colors.impossible);
 
-legend({'Valid','Impossible'});
+legend([p1,p2],{'Valid','Impossible'});
 z = hline(0.5,'--k');
 % set(z,'Color',stimulus.colors.chance);
 
@@ -679,7 +678,7 @@ xlabel('Run (#)');
 ylabel('Performance (% correct)');
 
 set(gca,'XTick',uruns);
-set(gca,'YTick',[0 0.25 0.5 0.75 1],'YTickLabels',{'0','25%','50%','75%','100%'});
+set(gca,'YTick',[0 0.25 0.5 0.75 1],'YTickLabel',{'0','25%','50%','75%','100%'});
 
 drawPublishAxis
 
