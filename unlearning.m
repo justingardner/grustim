@@ -183,7 +183,7 @@ task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
 task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
 task{1}{1}.parameter.vertical1 = [10 12 14];
-task{1}{1}.parameter.difficulty = [1 2 3];
+task{1}{1}.parameter.difficulty = [2 4];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -661,7 +661,7 @@ save(fullfile(sprintf('~/data/unlearning/%s/%s_data.mat',mglGetSID,mglGetSID)),'
 h = figure; hold on;
 
 offset = .05;
-title(sprintf('Subj: %s performance and error over time',mglGetSID));
+title(sprintf('Subj: %s performance and error (trials=%i)',mglGetSID,size(data,1)));
 % valid
 p1 = plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',rstimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
 errbar(uruns-offset,mean(vci_,2),vci_(:,2)-mean(vci_,2),'-','Color',rstimulus.colors.valid);
