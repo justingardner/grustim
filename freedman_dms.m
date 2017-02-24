@@ -31,11 +31,13 @@ global stimulus
 scan = 0;
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=0'});
+diff = 0;
+getArgs(varargin,{'scan=0','plots=0','noeye=0','diff=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
-clear localizer invisible scan category noeye task
+stimulus.diff = diff;
+clear localizer invisible scan category noeye task diff
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
 
@@ -249,7 +251,11 @@ myscreen.flushMode = 0;
 % set whether this trial matches or not
 rot = [-1 1];
 % [rotation, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
-rotation = stimulus.nonmatchOpts(stimulus.counter);
+rotation = stimulus.nonmatchOpts(stimulus.counter)*pi/180;
+
+if stimulus.diff
+    rotation = stimulus.diff;
+end
 
 if task.thistrial.match
     task.thistrial.dir2 = task.thistrial.dir1;
@@ -491,41 +497,74 @@ end
 function dispInfo(stimulus)
 %%
 
-keyboard
+% get the files list
+files = dir(fullfile(sprintf('~/data/freedman_dms/%s/*.mat',mglGetSID)));
 
-tv = stimulus.staircase.testValues;
-nm = stimulus.staircase.response;
+% load the files and pull out the data (long form)
+%    1          2               3           4       5        6
+%  run #    local trial     real trial   match     dir1     dir2 
+%    7           8             9
+%   pos      nomatchResp     correct
+count = 1; data = zeros(10000,9);
 
-utv = unique(tv);
-pnm = zeros(size(utv));
-num = zeros(size(utv));
-ci = zeros(length(utv),2);
-
-for ui = 1:length(utv)
-    val = utv(ui);
-    pnm(ui) = sum(nm(tv==val));
-    num(ui) = sum(tv==val);
-    [~,ci_] = binofit(pnm(ui),num(ui));
-    ci(ui,:) = ci_;
+for fi = 1:length(files)
+    load(fullfile(sprintf('~/data/freedman_dms/%s/%s',mglGetSID,files(fi).name)));
+    
+    e = getTaskParameters(myscreen,task);
+    e = e{1}; % why?!
+    
+    data(count:count+(e.nTrials-1),:) = [repmat(stimulus.counter,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+        e.parameter.match' e.parameter.dir1' e.randVars.dir2' ...
+        e.randVars.pos' e.randVars.nomatchResp' e.randVars.correct'];
+    
+    count = count+e.nTrials;
 end
 
-fit = fitsigmoid(tv,nm);
+data = data(1:(count-1),:);
 
-disp(sprintf('c50 estimate is %2.2f degs',fit.params(2)*180/pi));
+data = data(~isnan(data(:,9)),:);
+
+data(:,end+1) = abs(data(:,5)-data(:,6)); % diff
+data(:,10) = round(data(:,10)*180/pi);
+
+udegs = unique(data(:,10));
+%%
+runs = unique(data(:,1));
+degs = zeros(1,length(runs));
+dprime = zeros(1,length(runs));
+for ui = 1:length(runs) % 5 runs?
+    dat_ = sel(data,1,runs(ui));
+    
+    % norminv(hits) - norminv(false alarms)
+    
+    % present = non-match
+    dat_nm = sel(dat_,4,0);
+    dat_m = sel(dat_,4,1);
+    
+    dprime(ui) = norminv(mean(dat_nm(:,8))) - norminv(mean(dat_m(:,8)));
+    degs(ui) = max(dat_(:,10));
+end
+
+dprime(dprime==Inf) = max(dprime(dprime~=Inf));
+
+%%
 
 h = figure; hold on
 
-plot(utv*180/pi,mean(ci,2)','o','MarkerFaceColor','black','MarkerEdgeColor','white');
-errbar(utv*180/pi,mean(ci,2)',ci(:,2)-mean(ci,2),'-k');
-plot(fit.fitx*180/pi,fit.fity,'-k');
+plot(degs,dprime,'o','MarkerFaceColor','black','MarkerEdgeColor','white');
+hline(1,'--r');
 
-set(gca,'YTick',[0 0.5 1],'YTickLabel',{'0%','50%','100%'});
+axis([0 35 0 3])
+
+set(gca,'YTick',[0 1 2 3]);
+set(gca,'XTick',[2 4 8 16 32]);
 
 xlabel('Angle difference (degs)');
-ylabel('Percent non-match choices');
+ylabel('d''');
 
 drawPublishAxis
 
+% savepdf(h,fullfile(sprintf('~/data/freedman_dms/%s/%s_dprime.pdf',mglGetSID,mglGetSID)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for optic flow
