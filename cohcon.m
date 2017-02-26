@@ -925,7 +925,13 @@ if stimulus.time
     for t = 1:2
         for p = 1:2
             for ti = 1:3
-                trials = trials + stimulus.staircases.nocatch{t,p,ti}.trialNum;
+                if length(stimulus.staircases.nocatch{t,p,ti})>1
+                    for i = 1:length(stimulus.staircases.nocatch{t,p,ti})
+                        trials = trials + stimulus.staircases.nocatch{t,p,ti}(i).trialNum;
+                    end
+                else
+                    trials = trials + stimulus.staircases.nocatch{t,p,ti}.trialNum;
+                end
             end
         end
     end
@@ -969,7 +975,7 @@ if stimulus.time
     for task = 1:2
         for ped = 1:2
             for time = 1:3
-                if stimulus.staircases.nocatch{task,ped,time}.trialNum>1
+                if stimulus.staircases.nocatch{task,ped,time}(1).trialNum>1
                     out = doStaircase('threshold',stimulus.staircases.nocatch{task,ped,time},'type','weibull','dispFig=0');
 %                     out =
 %                     doStaircase('threshold',stimulus.staircases.nocatch{task,ped,time}); % no weibull option
@@ -1082,7 +1088,13 @@ global stimulus
 
 if stimulus.time
     % do not reset staircases
-    
+    for t= 1:2
+        for p = 1:2
+            for ti = 1:3
+                stimulus.staircases.nocatch{t,p,ti} = resetStair(stimulus.staircases.nocatch{t,p,ti},t);
+            end
+        end
+    end
     return
 end
 
@@ -1101,8 +1113,9 @@ for task = 1:2
     end
 end
 
-function s = resetStair(s)
+function s = resetStair(s,task)
 
+global stimulus 
 if isempty(s)
     return
 end
@@ -1111,6 +1124,15 @@ if doStaircase('stop',s)
     % this is a bit of a pain... you can't pass an initialThreshold
     % argument do doStaircase('init',s, ...), it ignores everything and
     % resets using the calculated threshold. Because you can't override it
+    if stimulus.time
+        s(end+1) = doStaircase('init','upDown',...
+            'initialThreshold',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task}),...
+            'initialStepsize',stimulus.stairInfo.initThresh.(stimulus.stairInfo.pedOpts{task})/3,...
+            'minThreshold=0.001','maxThreshold=2','stepRule','pest',...
+            'nTrials=50','maxStepsize=0.2','minStepsize=0.001');
+        return
+    end
+    
     [args, vals, ~] = getArgs(s(1).initArgs);
     threshPos = -1;
     stepPos = -1;
