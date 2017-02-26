@@ -431,6 +431,50 @@ elseif task.thistrial.thisseg==stimulus.seg.ITI2
     stimulus.live.fix = 0;
 end
 
+for i = 1:2
+    mglClearScreen(0.5);
+    if stimulus.live.stim
+        if task.thistrial.thisseg==stimulus.seg.stim1
+            data = stimulus.live.data1;
+            orient = stimulus.live.orient1;
+        else
+            data = stimulus.live.data2;
+            orient = stimulus.live.orient2;
+        end
+
+        % draw background on debug
+        if stimulus.debug
+    %         partialDiskFuckOGL(0,0,stimulus.cur_.isize-0.5,stimulus.cur_.osize+3,(stimulus.learn-1)*stimulus.cur_.angle,stimulus.cur_.angle,[163 93 93]/255,6,2);
+        end
+
+        % draw rings
+        upData(data,orient,stimulus);
+        % revert stencil
+
+    %     if stimulus.debug
+    %         mglTextSet([],32,stimulus.colors.white);
+    %         for si = 0:(stimulus.cur_.num-1)
+    %             mglTextDraw(num2str(si+1),[(stimulus.cur_.osize+1)*cos(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2)) (stimulus.cur_.osize+1)*sin(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2))]);
+    %         end
+    %     end
+
+        % draw V or I for valid/invalid trials
+        if stimulus.debug
+            text = {'V','I'};
+            mglTextSet([],32,stimulus.colors.white);
+            mglTextDraw(text{task.thistrial.impossible+1},[-7.5 -7.5]);
+        end
+    end
+    
+    if stimulus.live.fix
+    %      cover
+            mglFillOval(0,0,[1 1],0.5);
+            upFix(stimulus);
+    end
+
+    mglFlush
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -438,7 +482,6 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
-mglClearScreen(0.5);
 
 if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
     jumpSegment(task,inf); stimulus.dead=0;
@@ -468,51 +511,6 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.s
         elseif dist > 3
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
         end
-    end
-end
-
-
-if stimulus.live.stim
-    if task.thistrial.thisseg==stimulus.seg.stim1
-        data = stimulus.live.data1;
-        orient = stimulus.live.orient1;
-    else
-        data = stimulus.live.data2;
-        orient = stimulus.live.orient2;
-    end
-    
-    % draw background on debug
-    if stimulus.debug
-%         partialDiskFuckOGL(0,0,stimulus.cur_.isize-0.5,stimulus.cur_.osize+3,(stimulus.learn-1)*stimulus.cur_.angle,stimulus.cur_.angle,[163 93 93]/255,6,2);
-    end
-    
-    % draw rings
-    upData(data,orient,stimulus);
-    % revert stencil
-    
-%     if stimulus.debug
-%         mglTextSet([],32,stimulus.colors.white);
-%         for si = 0:(stimulus.cur_.num-1)
-%             mglTextDraw(num2str(si+1),[(stimulus.cur_.osize+1)*cos(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2)) (stimulus.cur_.osize+1)*sin(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2))]);
-%         end
-%     end
-
-    % draw V or I for valid/invalid trials
-    if stimulus.debug
-        text = {'V','I'};
-        mglTextSet([],32,stimulus.colors.white);
-        mglTextDraw(text{task.thistrial.impossible+1},[-7.5 -7.5]);
-    end
-end
-
-if stimulus.live.fix
-%      cover
-    if stimulus.live.resp==1
-        mglTextSet([],32,stimulus.live.fixColor);
-        mglTextDraw(stimulus.live.respText,[0 0]);
-    else
-        mglFillOval(0,0,[1 1],0.5);
-        upFix(stimulus);
     end
 end
 
@@ -577,6 +575,11 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         stimulus.live.resp = 1;
         stimulus.live.fix = 1;
         stimulus.live.respText = respText{task.thistrial.correct+1};
+        for i = 1:2
+            mglTextSet([],32,stimulus.live.fixColor);
+            mglTextDraw(stimulus.live.respText,[0 0]);
+            mglFlush
+        end
     else
         disp(sprintf('(unlearn) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
     end
