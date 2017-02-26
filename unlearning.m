@@ -99,17 +99,6 @@ if ~isfield(stimulus,'counter')
     stimulus.counter = 1; % This keeps track of what "run" we are on.
 end
 
-%% Setup Screen
-
-if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
-else
-    myscreen = initScreen('VPixx');
-end
-
-% set background to grey
-myscreen.background = 0.5;
-
 %% Plot and return
 
 %% Initialize Stimulus
@@ -145,9 +134,20 @@ stimulus.colors.chance = [255,254,168]/255;
 % % myscreen.flushMode = 1;
 
 if stimulus.plots==2
-    dispInfo;
+    dispInfo(stimulus);
     return
 end
+
+%% Setup Screen
+
+if stimulus.scan
+    myscreen = initScreen('fMRIprojFlex');
+else
+    myscreen = initScreen('VPixx');
+end
+
+% set background to grey
+myscreen.background = 0.5;
 
 %% Setup Task
 task{1}{1} = struct;
@@ -279,7 +279,7 @@ mglClearScreen(0.5);
 
 if stimulus.plots
     disp('(unlearn) Displaying plots');
-    dispInfo();
+    dispInfo(stimulus);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
@@ -589,10 +589,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
-function dispInfo(task,myscreen)
+function dispInfo(rstimulus)
 %%
-global stimulus
-rstimulus = stimulus;
 
 % ctask = task; cscreen = myscreen; % save this incase we need them
 
@@ -601,22 +599,23 @@ rstimulus = stimulus;
 % exp = getTaskParameters(task,myscreen);
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/unlearning/%s/*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/unlearning/%s/17*stim*.mat',mglGetSID)));
 
 % load the files and pull out the data (long form)
-%  run #    local trial     real trial   impossible   match   vert1
-%    1             2            3            4          5        6
+%  rrun # counter #    local trial     real trial   impossible   match   vert1
+%    1             2            3            4          5        6        7
 %  vert2  pattern1    pattern2    response    correct
-%     7      8           9           10         11
-count = 1; data = zeros(10000,11);
+%      8           9           10         11    12
+count = 1; data = zeros(10000,12);
 
 for fi = 1:length(files)
     load(fullfile(sprintf('~/data/unlearning/%s/%s',mglGetSID,files(fi).name)));
     
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
-    
-    data(count:count+(e.nTrials-1),:) = [repmat(stimulus.counter,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+    run = stimulus.counter;
+        
+    data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
         e.parameter.impossible' e.parameter.match' e.parameter.vertical1' ...
         e.randVars.vertical2' e.parameter.pattern1' e.randVars.pattern2' ...
         e.response' e.randVars.correct'];
@@ -627,8 +626,8 @@ end
 data = data(1:(count-1),:);
 
 % separate data into impossible and valid
-idata = data(data(:,4)==1,:);
-vdata = data(data(:,4)==0,:);
+idata = data(data(:,5)==1,:);
+vdata = data(data(:,5)==0,:);
 
 % check statistics across sessions
 uruns = unique(data(:,1));
@@ -639,12 +638,12 @@ ici_ = zeros(length(uruns),2);
 for ri = 1:length(uruns)
     run = uruns(ri);
     % valid
-    vdat = vdata(vdata(:,1)==run,11);
+    vdat = vdata(vdata(:,1)==run,12);
     vci = bootci(1000,@nanmean,vdat); vperf = mean(vci);
     vcis = sprintf('[%2.0f%% %2.0f%%]',vci(1)*100,vci(2)*100);
     vci_(ri,:) = vci;
     % impossible
-    idat = idata(idata(:,1)==run,11);
+    idat = idata(idata(:,1)==run,12);
     ici = bootci(1000,@nanmean,idat); iperf = mean(ici);
     icis = sprintf('[%2.0f%% %2.0f%%]',ici(1)*100,ici(2)*100);
     ici_(ri,:) = ici;
@@ -673,12 +672,12 @@ errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',rstimulus.co
 legend([p1,p2],{'Valid','Impossible'});
 z = hline(0.5,'--k');
 % set(z,'Color',stimulus.colors.chance);
-
-xlabel('Run (#)');
+axis([min(uruns) max(uruns) .25 1]);
+xlabel('Trials (#)');
 ylabel('Performance (% correct)');
 
-set(gca,'XTick',uruns);
-set(gca,'YTick',[0 0.25 0.5 0.75 1],'YTickLabel',{'0','25%','50%','75%','100%'});
+set(gca,'XTick',uruns,'XTickLabel',uruns*60);
+set(gca,'YTick',[0.25 0.5 0.75 1],'YTickLabel',{'25%','50%','75%','100%'});
 
 drawPublishAxis
 
