@@ -46,6 +46,36 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
 end
 disp(sprintf('(unlearn) This is run #%i',stimulus.counter));
 
+
+
+%% Initialize Variables
+
+% add arguments later
+scan = 0;
+plots = 0;
+noeye = 0;
+debug = 0;
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0'});
+stimulus.scan = scan;
+stimulus.plots = plots;
+stimulus.noeye = noeye;
+stimulus.debug = debug;
+clear localizer invisible scan category noeye task
+
+if stimulus.scan
+    warning('Not setup for scanning');
+end
+%% Setup Screen
+
+% if stimulus.scan
+%     myscreen = initScreen('fMRIprojFlex');
+% else
+    myscreen = initScreen('VPixx');
+% end
+
+% set background to grey
+myscreen.background = 0.5;
+
 %% EXPERIMENT PARAMETERS
 if ~isfield(stimulus,'cur'), stimulus.cur = {}; end
 
@@ -75,23 +105,6 @@ if ~isfield(stimulus,'learn')
 end
 disp(sprintf('(unlearn) Subject %s is learning quadrant part #%i',mglGetSID,stimulus.learn));
 
-%% Initialize Variables
-
-% add arguments later
-scan = 0;
-plots = 0;
-noeye = 0;
-debug = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0'});
-stimulus.scan = scan;
-stimulus.plots = plots;
-stimulus.noeye = noeye;
-stimulus.debug = debug;
-clear localizer invisible scan category noeye task
-
-if stimulus.scan
-    warning('Not setup for scanning');
-end
 
 %% Setup missing initial variables
 
@@ -137,17 +150,6 @@ if stimulus.plots==2
     dispInfo(stimulus);
     return
 end
-
-%% Setup Screen
-
-if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
-else
-    myscreen = initScreen('VPixx');
-end
-
-% set background to grey
-myscreen.background = 0.5;
 
 %% Setup Task
 task{1}{1} = struct;
