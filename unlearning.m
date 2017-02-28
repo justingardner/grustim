@@ -656,6 +656,28 @@ for ri = 1:length(uruns)
     
     disp(sprintf('Performance on run %i. Valid: %2.0f%% %s Impossible: %2.0f%% %s',run,100*vperf,vcis,100*iperf,icis));
 end
+
+%% Per 250-block performance
+
+trials = size(data,1);
+
+bsize = 300;
+blocks = floor(trials/bsize);
+
+vci_b = zeros(blocks,2);
+ici_b = zeros(blocks,2);
+bpos = zeros(blocks,1);
+
+for i = 1:blocks
+    dat_ = data((i-1)*bsize+1:(i-1)*bsize+bsize,:);
+    bpos(i) = 2.5+(i-1)*5;
+    vdat_ = dat_(dat_(:,5)==0,12);
+    idat_ = dat_(dat_(:,5)==1,12);
+    
+    vci_b(i,:) = bootci(1000,@nanmean,vdat_);
+    ici_b(i,:) = bootci(1000,@nanmean,idat_);
+end
+
 %% write data
 % header = {'Run','Trial'
 % csvwriteh(fullfile(sprintf('~/data/unlearning/%s/%s_data.mat',mglGetSID,mglGetSID)),data,header);
@@ -667,22 +689,28 @@ h = figure; hold on;
 offset = .05;
 title(sprintf('Subj: %s performance and error (trials=%i)',mglGetSID,size(data,1)));
 % valid
-p1 = plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',rstimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
 errbar(uruns-offset,mean(vci_,2),vci_(:,2)-mean(vci_,2),'-','Color',rstimulus.colors.valid);
+p1 = plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',rstimulus.colors.valid','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
+
+errbar(bpos-offset,mean(vci_b,2),vci_b(:,2)-mean(vci_b,2),'-','Color',rstimulus.colors.valid);
+plot(bpos-offset,mean(vci_b,2),'s','MarkerFaceColor','black','MarkerEdgeColor',rstimulus.colors.valid','MarkerSize',10);
 
 % invalid
-p2 = plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',rstimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
 errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',rstimulus.colors.impossible);
+p2 = plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',rstimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
+
+errbar(bpos+offset,mean(ici_b,2),vci_b(:,2)-mean(ici_b,2),'-','Color',rstimulus.colors.impossible);
+plot(bpos+offset,mean(ici_b,2),'s','MarkerFaceColor','black','MarkerEdgeColor',rstimulus.colors.impossible','MarkerSize',10);
 
 legend([p1,p2],{'Valid','Impossible'});
 z = hline(0.5,'--k');
 % set(z,'Color',stimulus.colors.chance);
-axis([min(uruns) max(uruns) .25 1]);
+axis([min(uruns) max(uruns) 0 1]);
 xlabel('Trials (#)');
 ylabel('Performance (% correct)');
 
 set(gca,'XTick',uruns,'XTickLabel',uruns*60);
-set(gca,'YTick',[0.25 0.5 0.75 1],'YTickLabel',{'25%','50%','75%','100%'});
+set(gca,'YTick',[0 0.25 0.5 0.75 1],'YTickLabel',{'0%','25%','50%','75%','100%'});
 
 drawPublishAxis
 
