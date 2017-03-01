@@ -55,11 +55,13 @@ scan = 0;
 plots = 0;
 noeye = 0;
 debug = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0'});
+noimp = 0;
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','noimp=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
+stimulus.noimp = noimp;
 clear localizer invisible scan category noeye task
 
 if stimulus.scan
@@ -695,14 +697,16 @@ p1 = plot(uruns-offset,mean(vci_,2),'o','MarkerFaceColor',rstimulus.colors.valid
 errbar(bpos-offset,mean(vci_b,2),vci_b(:,2)-mean(vci_b,2),'-','Color',rstimulus.colors.valid);
 plot(bpos-offset,mean(vci_b,2),'s','MarkerFaceColor','black','MarkerEdgeColor',rstimulus.colors.valid','MarkerSize',10);
 
-% invalid
-errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',rstimulus.colors.impossible);
-p2 = plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',rstimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
+if ~rstimulus.noimp
+    % invalid
+    errbar(uruns+offset,mean(ici_,2),ici_(:,2)-mean(ici_,2),'-','Color',rstimulus.colors.impossible);
+    p2 = plot(uruns+offset,mean(ici_,2),'o','MarkerFaceColor',rstimulus.colors.impossible','MarkerEdgeColor',[1 1 1],'MarkerSize',15);
 
-errbar(bpos+offset,mean(ici_b,2),vci_b(:,2)-mean(ici_b,2),'-','Color',rstimulus.colors.impossible);
-plot(bpos+offset,mean(ici_b,2),'s','MarkerFaceColor','black','MarkerEdgeColor',rstimulus.colors.impossible','MarkerSize',10);
+    errbar(bpos+offset,mean(ici_b,2),vci_b(:,2)-mean(ici_b,2),'-','Color',rstimulus.colors.impossible);
+    plot(bpos+offset,mean(ici_b,2),'s','MarkerFaceColor','black','MarkerEdgeColor',rstimulus.colors.impossible','MarkerSize',10);
+    legend([p1,p2],{'Valid','Impossible'});
+end
 
-legend([p1,p2],{'Valid','Impossible'});
 z = hline(0.5,'--k');
 % set(z,'Color',stimulus.colors.chance);
 axis([min(uruns) max(uruns) 0 1]);

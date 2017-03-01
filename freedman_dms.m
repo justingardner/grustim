@@ -36,7 +36,7 @@ getArgs(varargin,{'scan=0','plots=0','noeye=0','diff=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
-stimulus.diff = diff;
+stimulus.diff = diff/360;
 clear localizer invisible scan category noeye task diff
 
 stimulus.counter = 1; % This keeps track of what "run" we are on.
@@ -73,6 +73,10 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/freedman_dms/%s',mglGetSID))
         disp(sprintf('(freedman) Data file: %s loaded.',fname));
         
     end
+end
+
+if isfield(stimulus,'nonmatchOpts') && stimulus.counter>length(stimulus.nonmatchOpts)
+    stimulus.nonmatchOpts = [stimulus.nonmatchOpts stimulus.nonmatchOpts];
 end
 
 if stimulus.plots==2
@@ -528,12 +532,20 @@ data(:,end+1) = abs(data(:,5)-data(:,6)); % diff
 data(:,10) = round(data(:,10)*180/pi);
 
 udegs = unique(data(:,10));
+udegs = udegs(udegs~=0);
 %%
 runs = unique(data(:,1));
-degs = zeros(1,length(runs));
-dprime = zeros(1,length(runs));
-for ui = 1:length(runs) % 5 runs?
-    dat_ = sel(data,1,runs(ui));
+degs = zeros(1,length(udegs));
+dprime = zeros(1,length(udegs));
+crit = dprime;
+for ui = 1:length(udegs) % 5 runs?
+    dat__ = sel(data,10,udegs(ui)); % find data with this, get all unique runs
+    cruns = unique(dat__(:,1));
+    
+    dat_ = [];
+    for ci = 1:length(cruns)
+        dat_ = [dat_;sel(data,1,cruns(ci))];
+    end
     
     % norminv(hits) - norminv(false alarms)
     
@@ -541,26 +553,52 @@ for ui = 1:length(runs) % 5 runs?
     dat_nm = sel(dat_,4,0);
     dat_m = sel(dat_,4,1);
     
-    dprime(ui) = norminv(mean(dat_nm(:,8))) - norminv(mean(dat_m(:,8)));
+    nm_ = mean(dat_nm(:,8));
+    m_ = mean(dat_m(:,8));
+    
+    if nm_==1, nm_=1-eps; end
+    if m_==0, m_=eps; end
+    
+    dprime(ui) = norminv(nm_) - norminv(m_);
+    crit(ui) = -0.5 * (norminv(nm_)+norminv(m_));
     degs(ui) = max(dat_(:,10));
 end
 
-dprime(dprime==Inf) = max(dprime(dprime~=Inf));
+% dprime(dprime==Inf) = max(dprime(dprime~=Inf));
 
 %%
 
-h = figure; hold on
+h = figure; 
+subplot(211);
+hold on
 
 plot(degs,dprime,'o','MarkerFaceColor','black','MarkerEdgeColor','white');
 hline(1,'--r');
 
-axis([0 35 0 3])
+a = axis;
+axis([0 35 0 max(a(4),3)]);
 
 set(gca,'YTick',[0 1 2 3]);
 set(gca,'XTick',[2 4 8 16 32]);
 
 xlabel('Angle difference (degs)');
 ylabel('d''');
+
+drawPublishAxis
+
+subplot(212);
+hold on
+plot(degs,crit,'o','MarkerFaceColor','black','MarkerEdgeColor','white');
+hline(0,'--r');
+
+axis([0 35 -1.1 1.1]);
+set(gca,'XTick',[2 4 8 16 32]);
+
+title('Criterion');
+xlabel('Angle difference (degs)');
+% ylabel('Criterion');
+
+set(gca,'YTick',[-1 0 1],'YTickLabel',{'Always non-match','Unbiased','Always match'});
 
 drawPublishAxis
 
