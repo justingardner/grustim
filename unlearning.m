@@ -89,7 +89,7 @@ if ~isfield(stimulus,'cur'), stimulus.cur = {}; end
 % data = zeros(5,7);
 
 stimulus.cur{end+1} = struct;
-stimulus.cur{end}.spc = 2.2;
+stimulus.cur{end}.spc = 1.25;
 % rows/cols are per quadrant
 stimulus.cur{end}.rows = 3;
 stimulus.cur{end}.cols = 3;
@@ -186,8 +186,9 @@ task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.match = [0 1];
 task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
-task{1}{1}.parameter.vertical1 = [10 12 14];
-task{1}{1}.parameter.difficulty = [2 4];
+task{1}{1}.parameter.angle1 = [-1/16*pi 0 1/16*pi]+pi/2;
+% task{1}{1}.parameter.flip = 1; % DO NOT USE flips from right angles to left angles
+task{1}{1}.parameter.difficulty = [0.025 0.05 ];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -231,7 +232,7 @@ task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to us
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.pattern2 = nan;
-task{1}{1}.randVars.calculated.vertical2 = nan;
+task{1}{1}.randVars.calculated.angle2 = nan;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -307,7 +308,10 @@ opts = {'Non-match','Match'};
 % if  
 dopts = {'Right','Left'};
 vopts = {'Valid','Impossible'};
-disp(sprintf('(unlearn) %s:%s trial (%i), %s. Pattern A: %i, pattern B: %i',opts{task.thistrial.match+1},dopts{task.thistrial.match+1},task.trialnum,vopts{task.thistrial.impossible+1},task.thistrial.pattern1,task.thistrial.pattern2));
+disp(sprintf('(unlearn) %s:%s trial (%i), %s. Angle 1: %3.0f Angle 2: %3.0f Pattern A: %i, pattern B: %i',...
+    opts{task.thistrial.match+1},dopts{task.thistrial.match+1},task.trialnum,vopts{task.thistrial.impossible+1},...
+    task.thistrial.angle1*180/pi,task.thistrial.angle2*180/pi,...
+    task.thistrial.pattern1,task.thistrial.pattern2));
     
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
@@ -372,12 +376,19 @@ end
 mask1 = data1>0;
 mask2 = data2>0;
 
-% set orient1 positions (depending on task.thistrial.vertical1)
+% set angle1 positions (depending on task.thistrial.vertical1)
 mask1 = find(mask1(:));
 mask1 = mask1(randperm(length(mask1))); % randomize
 
-orient1 = zeros(1,gsize);
-orient1(mask1(1:task.thistrial.vertical1)) = 1;
+% set the positions to values, be careful to replicate and mirror values
+% over the 45 degree line to guarantee that the mean is correct
+
+% we need 12 values
+angles = randn(1,12)*0.1+task.thistrial.angle1;
+angles = [angles (task.thistrial.angle1-1*(angles-task.thistrial.angle1))];
+
+angles1 = zeros(1,gsize);
+angles1(mask1) = angles;
 
 if task.thistrial.impossible
     % change a bunch randomly
@@ -389,20 +400,32 @@ else
     % increase horizontals (zeros) 
     inc=-task.thistrial.difficulty;
 end
-task.thistrial.vertical2 = task.thistrial.vertical1+inc;
+task.thistrial.angle2 = task.thistrial.angle1+inc;
+
+angles = randn(1,12)*0.1+task.thistrial.angle2;
+angles = [angles (task.thistrial.angle2-1*(angles-task.thistrial.angle2))];
 
 pos = find(mask2(:));
 pos = pos(randperm(length(pos)));
-orient2 = zeros(1,gsize);
-orient2(pos(1:task.thistrial.vertical2)) = 1;
+angles2 = zeros(1,gsize);
+angles2(pos) = angles;
 
-orient1 = reshape(orient1,sz);
-orient2 = reshape(orient2,sz);
+% if task.thistrial.flip
+%     % if flip is enabled, mirror everything over the 90 degree axis (pi -
+%     % angles)
+%     angles1 = angles1+pi/2;
+%     angles2 = angles2+pi/2;
+%     task.thistrial.angle1 = task.thistrial.angle1+pi/2;
+%     task.thistrial.angle2 = task.thistrial.angle2+pi/2;
+% end
+
+angles1 = reshape(angles1,sz);
+angles2 = reshape(angles2,sz);
     
 stimulus.live.data1 = data1;
 stimulus.live.data2 = data2;
-stimulus.live.orient1 = orient1;
-stimulus.live.orient2 = orient2;
+stimulus.live.angles1 = angles1;
+stimulus.live.angles2 = angles2;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -440,10 +463,10 @@ for i = 1:2
     if stimulus.live.stim
         if task.thistrial.thisseg==stimulus.seg.stim1
             data = stimulus.live.data1;
-            orient = stimulus.live.orient1;
+            orient = stimulus.live.angles1;
         else
             data = stimulus.live.data2;
-            orient = stimulus.live.orient2;
+            orient = stimulus.live.angles2;
         end
 
         % draw background on debug
@@ -543,7 +566,7 @@ yp = fliplr(xp);
 for x = 1:size(data,1)
     for y = 1:size(data,2)
         if data(x,y)>0
-            mglBltTexture(stimulus.live.gratings{data(x,y)},[xp(y) yp(x)],0,0,orient(x,y)*90);
+            mglBltTexture(stimulus.live.gratings{data(x,y)},[xp(y) yp(x)],0,0,orient(x,y)*180/pi);
         end
     end
 end
@@ -680,6 +703,24 @@ for i = 1:blocks
     ici_b(i,:) = bootci(1000,@nanmean,idat_);
 end
 
+%% Check +2/+4 difficulty
+
+diff_ = abs(data(:,7)-data(:,8));
+udiff = unique(diff_);
+
+vcorr = zeros(1,length(udiff));
+icorr = zeros(1,length(udiff));
+
+for ui = 1:length(udiff)
+    dat = data(diff_==udiff(ui),:);
+    vdat = dat(dat(:,5)==0,12);
+    vcorr(ui) = nanmean(vdat);
+    idat = dat(dat(:,5)==0,12);
+    icorr(ui) = nanmean(idat);
+end
+
+disp(sprintf('Subj %s has gotten %2.0f%% +2 and %2.0f%% +4 correct.',mglGetSID,vcorr(2)*100,vcorr(3)*100));
+
 %% write data
 % header = {'Run','Trial'
 % csvwriteh(fullfile(sprintf('~/data/unlearning/%s/%s_data.mat',mglGetSID,mglGetSID)),data,header);
@@ -739,10 +780,10 @@ gratings = cell(1,stimulus.cur_.N);
     % get total degrees around circle
 %     degs = 2*pi*crad;
 %     sz = degs/stimulus.cur_.num*0.6;
-    sz = 2;
+    sz = 1.5;
     % use total degs / num to compute size
     grating = 255/2*mglMakeGrating(sz,sz,6,0) + 255/2;
-    lgrating = (255*0.25)/2*mglMakeGrating(sz,sz,6,0) + 255/2;
+    lgrating = (255*0.5)/2*mglMakeGrating(sz,sz,6,0) + 255/2;
 %     gratings{gi} = mglCreateTexture(grating);
     gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 %     alphamask = zeros(size(gauss,1),size(gauss,2),4);
