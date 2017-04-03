@@ -13,7 +13,6 @@ global stimulus
 
 stimulus = struct;
 %% Open Old Stimfile
-stimulus.initStair = 1;
 stimulus.counter = 1;
 
 if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
@@ -26,6 +25,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
         s = load(sprintf('~/data/unlearning/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
+        stimulus.staircase = s.stimulus.staircase;
         % copy patterns
         stimulus.patterns = s.stimulus.patterns;
         stimulus.patternopts = s.stimulus.patternopts;
@@ -56,12 +56,14 @@ plots = 0;
 noeye = 0;
 debug = 0;
 noimp = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','noimp=0'});
+training = 0;
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','noimp=0','training=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
 stimulus.noimp = noimp;
+stimulus.training = training;
 clear localizer invisible scan category noeye task
 
 if stimulus.scan
@@ -107,6 +109,13 @@ if ~isfield(stimulus,'learn')
 end
 disp(sprintf('(unlearn) Subject %s is learning quadrant part #%i',mglGetSID,stimulus.learn));
 
+%% Staircase
+if ~isfield(stimulus,'staircase')
+    disp('(unlearn) WARNING: New staircase');
+    stimulus.staircase = initStair();
+else
+    stimulus.staircase = resetStair(stimulus);
+end
 
 %% Setup missing initial variables
 
@@ -188,7 +197,6 @@ task{1}{1}.parameter.match = [0 1];
 task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
 task{1}{1}.parameter.angle1 = [-1/16*pi 0 1/16*pi]+pi/2;
 % task{1}{1}.parameter.flip = 1; % DO NOT USE flips from right angles to left angles
-task{1}{1}.parameter.difficulty = [0.025 0.05 ];
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -233,6 +241,7 @@ task{1}{1}.parameter.pattern1 = 1:stimulus.npatterns; % which test pattern to us
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.pattern2 = nan;
 task{1}{1}.randVars.calculated.angle2 = nan;
+task{1}{1}.randVars.calculated.difficulty = nan;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -301,6 +310,13 @@ global stimulus
 stimulus.curTrial = stimulus.curTrial + 1;
 
 myscreen.flushMode = 0;
+
+[task.thistrial.difficulty, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+
+if stimulus.training
+    task.thistrial.difficulty = 0.15;
+    task.thistrial.impossible = 0;
+end
 
 task = buildData(task);
 
@@ -597,6 +613,9 @@ fixColors = {stimulus.colors.red,stimulus.colors.green};
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
         task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
+        if ~task.thistrial.impossible
+            stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
+        end
         disp(sprintf('Subject pressed %i/%s: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},matchText{stimulus.responseKeys(task.thistrial.whichButton)},responseText{task.thistrial.correct+1}));
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
         stimulus.live.resp = 1;
@@ -615,6 +634,22 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function staircase = initStair()
+
+staircase = doStaircase('init','upDown',...
+            'initialThreshold',0.10,...
+            'initialStepsize',0.025,...
+            'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
+            'nTrials=50','maxStepsize=0.2','minStepsize=0.0001');
+        
+function staircase = resetStair(stimulus)
+      
+if doStaircase('stop',stimulus.staircase)
+    staircase = doStaircase('init',stimulus.staircase(end));
+else
+    staircase = stimulus.staircase;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
@@ -703,23 +738,23 @@ for i = 1:blocks
     ici_b(i,:) = bootci(1000,@nanmean,idat_);
 end
 
-%% Check +2/+4 difficulty
-
-diff_ = abs(data(:,7)-data(:,8));
-udiff = unique(diff_);
-
-vcorr = zeros(1,length(udiff));
-icorr = zeros(1,length(udiff));
-
-for ui = 1:length(udiff)
-    dat = data(diff_==udiff(ui),:);
-    vdat = dat(dat(:,5)==0,12);
-    vcorr(ui) = nanmean(vdat);
-    idat = dat(dat(:,5)==0,12);
-    icorr(ui) = nanmean(idat);
-end
-
-disp(sprintf('Subj %s has gotten %2.0f%% +2 and %2.0f%% +4 correct.',mglGetSID,vcorr(2)*100,vcorr(3)*100));
+% %% Check +2/+4 difficulty
+% 
+% diff_ = abs(data(:,7)-data(:,8));
+% udiff = unique(diff_);
+% 
+% vcorr = zeros(1,length(udiff));
+% icorr = zeros(1,length(udiff));
+% 
+% for ui = 1:length(udiff)
+%     dat = data(diff_==udiff(ui),:);
+%     vdat = dat(dat(:,5)==0,12);
+%     vcorr(ui) = nanmean(vdat);
+%     idat = dat(dat(:,5)==0,12);
+%     icorr(ui) = nanmean(idat);
+% end
+% 
+% disp(sprintf('Subj %s has gotten %2.0f%% +2 and %2.0f%% +4 correct.',mglGetSID,vcorr(2)*100,vcorr(3)*100));
 
 %% write data
 % header = {'Run','Trial'
