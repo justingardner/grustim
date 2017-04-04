@@ -32,6 +32,22 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
         stimulus.holdoutopts = s.stimulus.holdoutopts;
         stimulus.npatterns = s.stimulus.npatterns;
         stimulus.learn = s.stimulus.learn;
+        stimulus.totalTrials = totalTrials;
+        if isfield(s.stimulus,'out')
+            stimulus.out = s.stimulus.out;
+            stimulus.outThreshold = s.stimulus.outThreshold;
+        else
+            % If total trials is > 1000, then fit the threshold and just use
+            % that estimate
+            if stimulus.totalTrials > 1000
+                stimulus.out = doStaircase('threshold',stimulus.staircase);
+                stimulus.outThreshold = stimulus.out.threshold;
+                if (stimulus.outThreshold<0 || stimulus.outThreshold>0.3)
+                    disp('(unlearnin) WARNING: Estimated threshold seems too low or too high');
+                    keyboard
+                end
+            end
+        end
 
         clear s;
         disp(sprintf('(unlearn) Data file: %s loaded.',fname));
@@ -311,7 +327,11 @@ stimulus.curTrial = stimulus.curTrial + 1;
 
 myscreen.flushMode = 0;
 
-[task.thistrial.difficulty, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+if isfield(stimulus,'outThreshold')
+    task.thistrial.difficulty = stimulus.outThreshold;
+else
+    [task.thistrial.difficulty, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+end
 
 if stimulus.training
     task.thistrial.difficulty = 0.15;
@@ -646,9 +666,24 @@ staircase = doStaircase('init','upDown',...
 function staircase = resetStair(stimulus)
       
 if doStaircase('stop',stimulus.staircase)
-    staircase = doStaircase('init',stimulus.staircase(end));
+    disp('(unlearn) Staircase is being reset');
+    staircase(end+1) = doStaircase('init',stimulus.staircase(end));
 else
     staircase = stimulus.staircase;
+end
+
+function trials = totalTrials()
+%%
+% get the files list
+files = dir(fullfile(sprintf('~/data/unlearning/%s/17*stim*.mat',mglGetSID)));
+
+trials = 0;
+for fi = 1:length(files)
+    load(fullfile(sprintf('~/data/unlearning/%s/%s',mglGetSID,files(fi).name)));
+    
+    e = getTaskParameters(myscreen,task);
+    e = e{1}; % why?!
+    trials = trials + e.nTrials;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -667,9 +702,9 @@ function dispInfo(rstimulus)
 files = dir(fullfile(sprintf('~/data/unlearning/%s/17*stim*.mat',mglGetSID)));
 
 % load the files and pull out the data (long form)
-%  rrun # counter #    local trial     real trial   impossible   match   vert1
+%  rrun # counter #    local trial     real trial   impossible   match   angle 1
 %    1             2            3            4          5        6        7
-%  vert2  pattern1    pattern2    response    correct
+%  angle2  pattern1    pattern2    response    correct
 %      8           9           10         11    12
 count = 1; data = zeros(10000,12);
 
@@ -681,8 +716,8 @@ for fi = 1:length(files)
     run = stimulus.counter;
         
     data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-        e.parameter.impossible' e.parameter.match' e.parameter.vertical1' ...
-        e.randVars.vertical2' e.parameter.pattern1' e.randVars.pattern2' ...
+        e.parameter.impossible' e.parameter.match' e.parameter.angle1' ...
+        e.randVars.angle2' e.parameter.pattern1' e.randVars.pattern2' ...
         e.response' e.randVars.correct'];
     
     count = count+e.nTrials;
