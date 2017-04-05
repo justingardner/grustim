@@ -4,40 +4,138 @@
 %         by: minyoung lee
 %       date: 10/14/16
 %    purpose: spatial localization task
-%
-function myscreen = posdisc(stimType,eccNum)
+%       e.g.: myscreen = posdisc()
 
-% gabor VS gaussian
-if ~exist('stimType','var')
-    stimType = 'gaussian';
-end
-if ~exist('eccNum','var')
-    eccNum = 0;
-end
+%             contrast staircase at a fixed eccentricity:
+%             myscreen = posdisc('gabor','staircase=1')
+
+%      flags: 
+%      usage: myscreen = posdisc('gabor=1', 'stairCon=1')
+%             myscreen = posdisc('gabor=1', 'fixCon=1', 'contrast=0.125', 'ecc=10')
+%             myscreen = posdisc('gabor=1', 'fixEcc=1', 'contrast=0.50', 'ecc=20')
+%             myscreen = posdisc('gabor=1', 'constant=1', 'ecc=20')
+%
+function myscreen = posdisc(varargin)
 
 clear global stimulus
 mglEatKeys('12`');
 global stimulus
-stimulus.stimType = stimType;
-stimulus.width = 10;
-stimulus.sf = 1.8;
-stimulus.eccNum = eccNum;
-stimulus.eccList = [7.5 10 12.5 15];
-if stimulus.eccNum ~= 0
-    stimulus.eccentricity = stimulus.eccList(stimulus.eccNum);
+
+% get arguments
+% stim type
+gabor=0; gaussian=0;
+% task type
+stairCon=0; fixCon=0; fixEcc=0; constant=0;
+ecc=[]; contrast=[]; plots=0;
+stairDist=1;
+getArgs(varargin,{'gabor=0','gaussian=0','stairCon=0','constant=0','fixCon=0','fixEcc=0','plots=0','ecc=[]', 'contrast=[]'},'verbose=1');
+stimType = 'gabor';
+if gabor
+    stimType='gabor';
+elseif gaussian
+    stimType='gaussian';
+elseif ~gabor && ~gaussian
+    warning('(posdisc) Target stimulus undefined. Setting to default: gabor.');
+end
+if sum([stairCon, fixCon, fixEcc, constant]) > 1
+    warning('(posdisc) More than one task type detected.');
+    return
+elseif sum([stairCon, fixCon, fixEcc, constant]) == 0
+    warning('(posdisc) Must specify task type.')
+    return
+end
+    
+if stairCon 
+    if ~isempty(contrast)
+     warning('(posdisc) Staircasing contrast. Overriding contrast argument...');
+     contrast=[];
+    end
+    % Not staircasing position difference
+    stairDist = 0;
+    ecc=[];
+    taskType=1;
+    disp('(posdisc) stairCon=1');
+else
+    if ~isempty(ecc) && ~any(ecc == [10, 15, 17.5, 20])
+        warning('(posdisc) Eccentricity must be one from [10 15 17.5 20]');
+        return
+    elseif isempty(ecc)
+        warning('(posdisc) Must specify ecc');
+    end
+    
+    if fixCon 
+        if ~isempty(contrast) && ~any(contrast == [0.125 0.5]) 
+            warning('(posdisc) Contrast value must be one from [0.125 0.5]');
+            return
+        elseif isempty(contrast)
+            warning('(posdisc) Must specify contrast');
+            return
+        end
+        taskType=2;
+        disp('(posdisc) fixCon=1');
+    elseif fixEcc 
+        if ~isempty(contrast) && ~any(contrast == [0.125 0.5]) 
+            warning('(posdisc) Contrast value must be one from [0.125 0.5]');
+            return
+        elseif isempty(contrast)
+            warning('(posdisc) Must specify contrast');
+            return
+        end
+        taskType=3;
+        disp('(posdisc) fixEcc=1');
+    elseif constant
+        stairDist = 0;
+        contrast = [];
+        taskType=4;
+        disp('(posdisc) constant=1');
+    end
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%%  %%
+%%%%%%%%%%%%%%%%%%%%%%%%%
+stimulus.stimType = stimType;
+stimulus.eccentricity = ecc;
+stimulus.stairCon = stairCon;
+stimulus.stairDist = stairDist;
+stimulus.contrast = contrast;
+stimulus.taskType = taskType;
+
+stimulus.width = 10;
+stimulus.sf = 1.8;
 stimulus.stimDur = .015; % 15ms
 stimulus.ISI = .1; % 100ms
-
 stimulus.interval = [2 4];
-% stimulus.string = {'Low','High'};
-
+stimulus.n = 0; %count n trials
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
+stimulus.fixOrigin = [-10 0];
+% [7.5 10 12.5 15]
+stimulus.eccList = [10 12.5 15 17.5 20] + stimulus.fixOrigin(1); 
+if ~isempty(stimulus.eccentricity)
+    stimulus.eccentricity = stimulus.eccentricity + stimulus.fixOrigin(1);
+end
 
-stimulus.n = 0;
+% set up staircase
+if stimulus.stairDist
+    stimulus.stair.dist.initialThreshold = 1.25;
+    stimulus.stair.dist.minStepsize = 0.005;
+    stimulus.stair.dist.minThreshold = 0;
+    stimulus.stair.dist.maxThreshold = 5;
+end
+if stimulus.stairCon
+    
+    stimulus.stair.con.initialThreshold = .25;
+    stimulus.stair.con.minStepsize = 0.005;
+    stimulus.stair.con.minThreshold = 0.01;
+    stimulus.stair.con.maxThreshold = 100;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    stimulus.posDiff = 1.25; % fixing position difference
+    stimulus.eccentricity = 15 + stimulus.fixOrigin(1); % fixing eccentricity
+end
 
 % initalize the screen
 myscreen.background = 0.5;
@@ -54,28 +152,31 @@ task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 
-task{1}{1}.numBlocks = 8;
-
-% parameters & randomization
-% task{1}{1}.parameter.reliability = [1 2]; % Low High
-% task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right
-task{1}{1}.parameter.contrast = [0.0625 0.125 0.25 0.5 1];
-if stimulus.eccNum == 0
-task{1}{1}.parameter.eccentricity = [7.5 10 12.5 15];
+% task{1}{1}.numBlocks = 8;
+if stimulus.taskType==4
+    task{1}{1}.numBlocks = 4;
+else
+    task{1}.numTrials = 110;
 end
-task{1}{1}.parameter.posDiff = [-5 -2.5 -1.25 -.5 -.25 -.125 0 .125 .25 .5 1.25 2.5 5];
-
+% parameters & randomization
+% task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right
+task{1}{1}.parameter.whichInterval = [1 2]; % more eccentric (to the right) in which interval (1 or 2)
 task{1}{1}.random = 1;
 
+if stimulus.taskType == 4 % constant stimuli
+    task{1}{1}.parameter.contrast = [0.125 0.5];
+    task{1}{1}.parameter.posDiff = [0 .125 .25 .5 1.25 2.5 5];
+end
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
 
-task{1}{1}.randVars.calculated.rel = nan;
+% task{1}{1}.randVars.calculated.rel = nan;
 task{1}{1}.randVars.calculated.diff = nan;
 % task{1}{1}.randVars.calculated.hemi = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.con = nan;
 task{1}{1}.randVars.calculated.ecc = nan;
+task{1}{1}.randVars.calculated.whichint = nan;
 
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -84,7 +185,8 @@ end
 
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
-
+% init the staircase
+stimulus = initStair(stimulus);
 % to initialize the stimulus for your experiment.
 % stimulus = initGaussian(stimulus,myscreen);
 
@@ -102,7 +204,7 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-dispPsychometric(task{1}{1}, stimulus);
+%dispPsychometric(task{1}{1}, stimulus);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
@@ -114,35 +216,46 @@ if task.thistrial.thisseg == 1
 
         if stimulus.n>1 && isnan(task.randVars.correct(stimulus.n-1))
         disp(sprintf('(posdisc) Trial %i: contrast %0.4f ecc %0.1f diff %0.4f No resp', ...
-        stimulus.n-1, stimulus.contrast, stimulus.eccentricity, task.randVars.diff(stimulus.n-1)))
+        stimulus.n-1, stimulus.contrast, stimulus.eccentricity-stimulus.fixOrigin(1), task.randVars.diff(stimulus.n-1)))
         end
     
     stimulus.fixColor = [1 1 1];
     task.thistrial.xpos = [0 0];
     
-    stimulus.contrast = task.thistrial.contrast;
-    if stimulus.eccNum == 0
-        stimulus.eccentricity = task.thistrial.eccentricity;
-        task.thistrial.ecc = task.thistrial.eccentricity;
-    else
-        task.thistrial.ecc = stimulus.eccentricity;
+    task.thistrial.ecc = stimulus.eccentricity-stimulus.fixOrigin(1);
+    
+    switch stimulus.taskType
+        case 1 % stair contrast
+            task.thistrial.diff = stimulus.posDiff;
+            task.thistrial.posDiff = stimulus.posDiff;
+            
+            stimulus.contrast = stimulus.stair.con.s.threshold;
+            task.thistrial.con = stimulus.stair.con.s.threshold;
+        case 4 % constant stimuli
+            task.thistrial.diff = task.thistrial.posDiff;
+            
+            stimulus.contrast = task.thistrial.contrast;
+            task.thistrial.con = task.thistrial.contrast;
+        otherwise % fixed contrast/eccentricity
+            task.thistrial.posDiff = stimulus.stair.dist.s.threshold;
+            task.thistrial.diff = stimulus.stair.dist.s.threshold;
+            
+            task.thistrial.con=stimulus.contrast;
+            
     end
-    task.thistrial.diff = task.thistrial.posDiff;
-    task.thistrial.con = task.thistrial.contrast;
 
 %     task.thistrial.hemi = task.thistrial.whichHemifield;
-    stimulus = initGaussian(stimulus,myscreen);
+    stimulus = initTarget(stimulus,myscreen);
     
-    if task.thistrial.posDiff ~= 0 % <0: 1st left, 2nd right  // >0: 1st right, 2nd left
+    if task.thistrial.whichInterval == 1 % first one more eccentric
         task.thistrial.xpos = [stimulus.x + task.thistrial.posDiff/2, ...
             stimulus.x - task.thistrial.posDiff/2];
-%         task.thistrial.xpos = [stimulus.meanXpos(task.thistrial.whichHemifield) + task.thistrial.posDiff/2, ...
-%             stimulus.meanXpos(task.thistrial.whichHemifield) - task.thistrial.posDiff/2];
-    else % diff = 0
-        task.thistrial.xpos = [stimulus.x, ...
-            stimulus.x];
+        task.thistrial.whichint = 1;
+    else % second one more eccentric
+        task.thistrial.xpos = [stimulus.x - task.thistrial.posDiff/2, ...
+            stimulus.x + task.thistrial.posDiff/2];
+        task.thistrial.whichint = 2;
     end
-
 end
 if task.thistrial.thisseg == 6
     if exist('task.thistrial.reactionTime', 'var')
@@ -165,9 +278,9 @@ end
 
 %draw fixation cross
 if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
-    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor*.75);
+    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor*.75,stimulus.fixOrigin);
 else
-    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
+    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor,stimulus.fixOrigin);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -177,31 +290,42 @@ function [task myscreen] = responseCallback(task,myscreen)
 global stimulus
 % here, we just check whether this is the first time we got a response
 if ~task.thistrial.gotResponse
-    % posDiff<0: 1st left, 2nd right  // >0: 1st right, 2nd left
-    if (task.thistrial.posDiff < 0 && task.thistrial.whichButton == 2) || (task.thistrial.posDiff > 0 && task.thistrial.whichButton == 1) 
+    if task.thistrial.posDiff && (task.thistrial.whichInterval == task.thistrial.whichButton)
         % correct
         task.thistrial.correct = 1;
         % feeback
         stimulus.fixColor = [0 1 0];
+        
         disp(sprintf('(posdisc) Trial %i: contrast %0.4f ecc %0.1f diff %0.4f resp %i correct', ...
-            task.trialnum, stimulus.contrast, stimulus.eccentricity, task.thistrial.posDiff, task.thistrial.whichButton))
+            task.trialnum, stimulus.contrast, stimulus.eccentricity-stimulus.fixOrigin(1), task.thistrial.posDiff, task.thistrial.whichButton))
     else
         % incorrect
         task.thistrial.correct = 0;
         stimulus.fixColor = [1 0 0];
+        
         disp(sprintf('(posdisc) Trial %i: contrast %0.4f ecc %0.1f diff %0.4f resp %i incorrect', ...
-            task.trialnum, stimulus.contrast, stimulus.eccentricity, task.thistrial.posDiff, task.thistrial.whichButton))
+            task.trialnum, stimulus.contrast, stimulus.eccentricity-stimulus.fixOrigin(1), task.thistrial.posDiff, task.thistrial.whichButton))
     end 
     task.thistrial.resp = task.thistrial.whichButton;
+    
+    if stimulus.stairCon
+        [testValue, stimulus.stair.con] = doStaircase('getTestValue',stimulus.stair.con);
+         stimulus.stair.con = doStaircase('update', stimulus.stair.con, task.thistrial.correct);
+    elseif stimulus.stairDist
+        [testValue, stimulus.stair.dist] = doStaircase('getTestValue',stimulus.stair.dist);
+         stimulus.stair.dist = doStaircase('update', stimulus.stair.dist, task.thistrial.correct);
+    end
 
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initGaussian(stimulus,myscreen)
+function stimulus = initTarget(stimulus,myscreen)
 
-if strcmpi(stimulus.stimType,'gaussian')
+switch stimulus.stimType
+    case 'gaussian'
+
 % compute the guassian
 gauss = mglMakeGaussian(stimulus.width,stimulus.width,stimulus.width/8, stimulus.width/8);
 % gaussHigh = mglMakeGaussian(stimulus.width,stimulus.width,stimulus.width/8, stimulus.width/8);
@@ -214,7 +338,7 @@ end
 %create texture
 stimulus.tex = mglCreateTexture(gaussian);
 
-elseif strcmpi(stimulus.stimType, 'gabor')
+    case 'gabor'
     grating = mglMakeGrating(stimulus.width,stimulus.width,stimulus.sf, 0,0);
     gaussian = mglMakeGaussian(stimulus.width,stimulus.width,stimulus.width/8, stimulus.width/8);
     gabor = (255*(stimulus.contrast*grating.*gaussian+1)/2);
@@ -225,6 +349,24 @@ end
 [stimulus.x, stimulus.y] = pol2cart(0*pi/180,stimulus.eccentricity);
 % [stimulus.x, stimulus.y] = pol2cart(30*pi/180,stimulus.eccentricity);
 % [stimulus.x, stimulus.y] = pol2cart(330*pi/180,stimulus.eccentricity);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% function to init the stimulus
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initStair(stimulus)
+
+% init Stair
+if stimulus.stairCon
+stimulus.stair.con = doStaircase('init','upDown','nup=1','ndown=3',...
+    'initialThreshold=.25', 'initialStepsize=0.05', ...
+    'minStepsize=0.005','maxStepsize=0.1','minThreshold=0.01','maxThreshold=1', ...
+    'nTrials=100', 'dispFig=1', 'stepRule=Pest');
+elseif stimulus.stairDist
+    stimulus.stair.dist = doStaircase('init','upDown','nup=1','ndown=3',...
+    'initialThreshold=2.5','initialStepsize=0.05', ...
+    'minStepsize=0.005','maxStepsize=1','minThreshold=0','maxThreshold=5', ...
+    'nTrials=100', 'dispFig=1', 'stepRule=Pest');
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
