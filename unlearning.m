@@ -32,22 +32,27 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/unlearning/%s',mglGetSID))
         stimulus.holdoutopts = s.stimulus.holdoutopts;
         stimulus.npatterns = s.stimulus.npatterns;
         stimulus.learn = s.stimulus.learn;
-        stimulus.totalTrials = totalTrials;
-        if isfield(s.stimulus,'out')
-            stimulus.out = s.stimulus.out;
-            stimulus.outThreshold = s.stimulus.outThreshold;
-        else
-            % If total trials is > 1000, then fit the threshold and just use
-            % that estimate
-            if stimulus.totalTrials > 1000
-                stimulus.out = doStaircase('threshold',stimulus.staircase);
-                stimulus.outThreshold = stimulus.out.threshold;
-                if (stimulus.outThreshold<0 || stimulus.outThreshold>0.3)
-                    disp('(unlearnin) WARNING: Estimated threshold seems too low or too high');
-                    keyboard
-                end
-            end
-        end
+%         stimulus.totalTrials = totalTrials;
+%         disp('%i trials so far',stimulus.totalTrials);
+%         if isfield(s.stimulus,'out')
+%             stimulus.out = s.stimulus.out;
+%             stimulus.outThreshold = s.stimulus.outThreshold;
+%             % override
+%             stimulus.outThreshold = 0.18;
+%             disp(sprintf('Calculated threshold is being used, frozen at: %0.2f',stimulus.outThreshold));
+%         else
+%             % If total trials is > 1000, then fit the threshold and just use
+%             % that estimate
+%             if stimulus.totalTrials > 1000
+%                 stimulus.out = doStaircase('threshold',stimulus.staircase);
+%                 stimulus.outThreshold = stimulus.out.threshold;
+%                 disp(sprintf('Calculated threshold is being used, frozen at: %0.2f',stimulus.outThreshold));
+%                 if (stimulus.outThreshold<0 || stimulus.outThreshold>0.3)
+%                     disp('(unlearnin) WARNING: Estimated threshold seems too low or too high');
+%                     keyboard
+%                 end
+%             end
+%         end
 
         clear s;
         disp(sprintf('(unlearn) Data file: %s loaded.',fname));
@@ -130,7 +135,7 @@ if ~isfield(stimulus,'staircase')
     disp('(unlearn) WARNING: New staircase');
     stimulus.staircase = initStair();
 else
-    stimulus.staircase = resetStair(stimulus);
+    resetStair();
 end
 
 %% Setup missing initial variables
@@ -633,7 +638,7 @@ fixColors = {stimulus.colors.red,stimulus.colors.green};
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
         task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
-        if ~task.thistrial.impossible
+        if ~task.thistrial.impossible && ~isfield(stimulus,'outThreshold')
             stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
         end
         disp(sprintf('Subject pressed %i/%s: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},matchText{stimulus.responseKeys(task.thistrial.whichButton)},responseText{task.thistrial.correct+1}));
@@ -663,28 +668,46 @@ staircase = doStaircase('init','upDown',...
             'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
             'nTrials=50','maxStepsize=0.2','minStepsize=0.0001');
         
-function staircase = resetStair(stimulus)
-      
+function resetStair()
+global stimulus
+
 if doStaircase('stop',stimulus.staircase)
     disp('(unlearn) Staircase is being reset');
-    staircase(end+1) = doStaircase('init',stimulus.staircase(end));
-else
-    staircase = stimulus.staircase;
+    stimulus.staircase(end+1) = doStaircase('init',stimulus.staircase(end));
 end
 
-function trials = totalTrials()
+function [trials] = totalTrials()
 %%
+
+% Counts trials + estimates the threshold based on the last 500 trials
+
 % get the files list
 files = dir(fullfile(sprintf('~/data/unlearning/%s/17*stim*.mat',mglGetSID)));
 
 trials = 0;
+
+% count = 1; data = zeros(10000,3);
+% trial  difficulty  correct
+%   1        2          3
+
 for fi = 1:length(files)
     load(fullfile(sprintf('~/data/unlearning/%s/%s',mglGetSID,files(fi).name)));
     
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
     trials = trials + e.nTrials;
+    
+%     data(count:count+(e.nTrials-1),:) = [(count:count+(e.nTrials-1))' ...
+%         e.randVars.difficulty' ...
+%         e.randVars.correct'];
+%     
+%     count = count+e.nTrials;
 end
+% data = data(1:(count-1),:);
+% stop = 1;
+% % compute 500 trial threshold
+% valRange = [500:1000 size(data,1)-500:size(data,1)];
+% fit = fitweibull(data(valRange,2),data(valRange,3),'dispfig=1');
 
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
