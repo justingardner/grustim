@@ -10,10 +10,10 @@
 %             myscreen = posdisc('gabor','staircase=1')
 
 %      flags: 
-%      usage: myscreen = posdisc('gabor=1', 'stairCon=1')
-%             myscreen = posdisc('gabor=1', 'fixCon=1', 'contrast=0.125', 'ecc=10')
-%             myscreen = posdisc('gabor=1', 'fixEcc=1', 'contrast=0.50', 'ecc=20')
-%             myscreen = posdisc('gabor=1', 'constant=1', 'ecc=20')
+%      usage: posdisc('gabor=1', 'stairCon=1')
+%             posdisc('gabor=1', 'fixCon=1', 'contrast=0.125', 'ecc=10')
+%             posdisc('gabor=1', 'fixEcc=1', 'contrast=0.50', 'ecc=20')
+%             posdisc('gabor=1', 'constant=1', 'ecc=20')
 %
 function myscreen = posdisc(varargin)
 
@@ -26,9 +26,9 @@ global stimulus
 gabor=0; gaussian=0;
 % task type
 stairCon=0; fixCon=0; fixEcc=0; constant=0;
-ecc=[]; contrast=[]; plots=0;
+ecc=[]; contrast=[]; plots=0; laststim=0;
 stairDist=1;
-getArgs(varargin,{'gabor=0','gaussian=0','stairCon=0','constant=0','fixCon=0','fixEcc=0','plots=0','ecc=[]', 'contrast=[]'},'verbose=1');
+getArgs(varargin,{'gabor=0','gaussian=0','stairCon=0','constant=0','fixCon=0','fixEcc=0','plots=0','ecc=[]', 'contrast=[]', 'laststim=0'},'verbose=1');
 stimType = 'gabor';
 if gabor
     stimType='gabor';
@@ -64,8 +64,8 @@ else
     end
     
     if fixCon 
-        if ~isempty(contrast) && ~any(contrast == [0.125 0.5]) 
-            warning('(posdisc) Contrast value must be one from [0.125 0.5]');
+        if ~isempty(contrast) && ~any(contrast == [0.125 0.25 0.5]) 
+            warning('(posdisc) Contrast value must be one from [0.125 0.25 0.5]');
             return
         elseif isempty(contrast)
             warning('(posdisc) Must specify contrast');
@@ -74,8 +74,8 @@ else
         taskType=2;
         disp('(posdisc) fixCon=1');
     elseif fixEcc 
-        if ~isempty(contrast) && ~any(contrast == [0.125 0.5]) 
-            warning('(posdisc) Contrast value must be one from [0.125 0.5]');
+        if ~isempty(contrast) && ~any(contrast == [0.125 0.25 0.5]) 
+            warning('(posdisc) Contrast value must be one from [0.125 0.25 0.5]');
             return
         elseif isempty(contrast)
             warning('(posdisc) Must specify contrast');
@@ -111,7 +111,11 @@ stimulus.n = 0; %count n trials
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
-stimulus.fixOrigin = [-10 0];
+if stimulus.eccentricity == 20
+    stimulus.fixOrigin = [-5 0];
+else
+    stimulus.fixOrigin = [0 0];
+end
 % [7.5 10 12.5 15]
 stimulus.eccList = [10 12.5 15 17.5 20] + stimulus.fixOrigin(1); 
 if ~isempty(stimulus.eccentricity)
@@ -119,21 +123,21 @@ if ~isempty(stimulus.eccentricity)
 end
 
 % set up staircase
-if stimulus.stairDist
-    stimulus.stair.dist.initialThreshold = 1.25;
-    stimulus.stair.dist.minStepsize = 0.005;
-    stimulus.stair.dist.minThreshold = 0;
-    stimulus.stair.dist.maxThreshold = 5;
-end
+% if stimulus.stairDist
+%     stimulus.stair.dist.initialThreshold = 1.25;
+%     stimulus.stair.dist.minStepsize = 0.005;
+%     stimulus.stair.dist.minThreshold = 0;
+%     stimulus.stair.dist.maxThreshold = 5;
+% end
 if stimulus.stairCon
     
-    stimulus.stair.con.initialThreshold = .25;
-    stimulus.stair.con.minStepsize = 0.005;
-    stimulus.stair.con.minThreshold = 0.01;
-    stimulus.stair.con.maxThreshold = 100;
+%     stimulus.stair.con.initialThreshold = .25;
+%     stimulus.stair.con.minStepsize = 0.005;
+%     stimulus.stair.con.minThreshold = 0.01;
+%     stimulus.stair.con.maxThreshold = 100;
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    stimulus.posDiff = 1.25; % fixing position difference
+    stimulus.posDiff = 0.5; % fixing position difference
     stimulus.eccentricity = 15 + stimulus.fixOrigin(1); % fixing eccentricity
 end
 
@@ -156,7 +160,7 @@ task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.taskType==4
     task{1}{1}.numBlocks = 4;
 else
-    task{1}.numTrials = 110;
+    task{1}{1}.numTrials = 110;
 end
 % parameters & randomization
 % task{1}{1}.parameter.whichHemifield = [1 2]; % Left Right
@@ -194,7 +198,8 @@ stimulus = initStair(stimulus);
 % Main display loop
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 phaseNum = 1;
-while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
+stimulus.endflag = 0;
+while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc && ~stimulus.endflag
   % update the task
   [task{1} myscreen phaseNum] = updateTask(task{1},myscreen,phaseNum);
   % flip screen
@@ -212,6 +217,11 @@ myscreen = endTask(myscreen,task);
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 if task.thistrial.thisseg == 1
+    if (stimulus.stairCon && (stimulus.stair.con.s.reversaln==20)) || ...
+            (stimulus.stairDist && (stimulus.stair.dist.s.reversaln==20))
+        stimulus.endflag=1;
+    end
+        
     stimulus.n = stimulus.n+1;
 
         if stimulus.n>1 && isnan(task.randVars.correct(stimulus.n-1))
@@ -358,12 +368,12 @@ function stimulus = initStair(stimulus)
 % init Stair
 if stimulus.stairCon
 stimulus.stair.con = doStaircase('init','upDown','nup=1','ndown=3',...
-    'initialThreshold=.25', 'initialStepsize=0.05', ...
+    'initialThreshold=.50', 'initialStepsize=0.05', ...
     'minStepsize=0.005','maxStepsize=0.1','minThreshold=0.01','maxThreshold=1', ...
     'nTrials=100', 'dispFig=1', 'stepRule=Pest');
 elseif stimulus.stairDist
     stimulus.stair.dist = doStaircase('init','upDown','nup=1','ndown=3',...
-    'initialThreshold=2.5','initialStepsize=0.05', ...
+    'initialThreshold=5','initialStepsize=0.5', ...
     'minStepsize=0.005','maxStepsize=1','minThreshold=0','maxThreshold=5', ...
     'nTrials=100', 'dispFig=1', 'stepRule=Pest');
 end
