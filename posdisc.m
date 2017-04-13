@@ -117,8 +117,9 @@ else
     stimulus.fixOrigin = [0 0];
 end
 % [7.5 10 12.5 15]
-stimulus.eccList = [10 12.5 15 17.5 20] + stimulus.fixOrigin(1); 
+% stimulus.eccList = [10 12.5 15 17.5 20] + stimulus.fixOrigin(1); 
 if ~isempty(stimulus.eccentricity)
+    stimulus.eccentricity_org = stimulus.eccentricity;
     stimulus.eccentricity = stimulus.eccentricity + stimulus.fixOrigin(1);
 end
 
