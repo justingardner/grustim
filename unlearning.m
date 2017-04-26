@@ -189,8 +189,8 @@ task{1}{1}.waitForBacktick = 1;
 
 stimulus.curTrial = 0;
 
-task{1}{1}.segmin = [inf .500 0.750 .500 0.2 1.500 0.250];
-task{1}{1}.segmax = [inf .500 0.750 .500 0.2 1.500 1.000];
+task{1}{1}.segmin = [inf .500 0.750 .500 0.2 1.250 0.200];
+task{1}{1}.segmax = [inf .500 0.750 .500 0.2 1.250 0.700];
 
 if stimulus.debug
     task{1}{1}.segmin = [inf 1.5 1.000 1.5 0.500 1.500 0.500];
@@ -663,9 +663,9 @@ end
 function staircase = initStair()
 
 staircase = doStaircase('init','upDown',...
-            'initialThreshold',0.10,...
+            'initialThreshold',0.40,...
             'initialStepsize',0.025,...
-            'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
+            'minThreshold=0.0873','maxThreshold=0.4','stepRule','pest',...
             'nTrials=50','maxStepsize=0.2','minStepsize=0.0001');
         
 function resetStair()
@@ -674,6 +674,9 @@ global stimulus
 if doStaircase('stop',stimulus.staircase)
     disp('(unlearn) Staircase is being reset');
     stimulus.staircase(end+1) = doStaircase('init',stimulus.staircase(end));
+    if ~(stimulus.staircase(end).s.minThreshold>.05)
+        stimulus.staircase(end).s.minThreshold = .0873;
+    end
 end
 
 function [trials] = totalTrials()
