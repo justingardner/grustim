@@ -1,4 +1,4 @@
-function [ myscreen ] = posjdg( varargin )
+function [ myscreen ] = posjdg_Endo( varargin )
 %POSITIONJUDGMENTS 
 %
 % Position judgment task with three attentional conditions. 
@@ -6,6 +6,14 @@ function [ myscreen ] = posjdg( varargin )
 global stimulus
 
 stimulus = struct;
+
+%% Stimulus parameters 
+
+% new prior for each run
+stimulus.prior = rand*2*pi;
+stimulus.sd = pi/4;
+stimulus.ecc = 6;
+
 %% Open Old Stimfile
 stimulus.counter = 1;
 
@@ -29,17 +37,15 @@ disp(sprintf('(posjdg) This is run #%i',stimulus.counter));
 
 %% Initialize Variables
 
-stimulus.attentionModes = {'Prior','Exo','Saccade'};
 % add arguments later
 scan = 0;
 plots = 0;
 noeye = 0;
 debug = 0;
 noimp = 0;
-training = 0; attmode= 0;
-getArgs(varargin,{'scan=0','attmode=1','plots=0','noeye=0','debug=0','training=0'});
+training = 0;
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','training=0'});
 stimulus.scan = scan;
-stimulus.attentionMode = attmode;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
@@ -51,7 +57,6 @@ if stimulus.scan
     warning('Not setup for scanning');
 end
 
-disp(sprintf('Attention mode: %s',stimulus.attentionModes{stimulus.attentionMode}));
 
 if any(stimulus.attentionMode==[2 3])
     keyboard
@@ -71,7 +76,7 @@ myscreen.background = 0.5;
 %% Staircase
 if ~isfield(stimulus,'staircase')
     disp('(posjdg) WARNING: New staircase');
-    stimulus.staircase = initStair();
+    initStair();
 else
     resetStair();
 end
@@ -83,6 +88,10 @@ if ~isfield(stimulus,'counter')
 end
 
 %% Plot and return
+if stimulus.plots==2
+    dispInfo(stimulus);
+    return
+end
 
 %% Initialize Stimulus
 
@@ -105,41 +114,26 @@ stimulus.colors.valid = [255,143,143]/255;
 stimulus.colors.impossible = [94,161,204]/255;
 stimulus.colors.chance = [255,254,168]/255;
 
-% % %% Generate stencils
-% % % The stencil is a series of arcs 
-% % mglStencilCreateBegin(1);
-% % % Draw an annulus at every buffer location
-% % for i = 0:(stimulus.cur_.num-1)
-% %     partialDiskFuckOGL(0,0,stimulus.cur_.isize,stimulus.cur_.osize,i*stimulus.cur_.angle+stimulus.cur_.buffer/2,stimulus.cur_.angle-stimulus.cur_.buffer,[1 1 1],60,2);
-% % end
-% % mglStencilCreateEnd;
-% % mglClearScreen(0.5);
-% % myscreen.flushMode = 1;
-
-if stimulus.plots==2
-    dispInfo(stimulus);
-    return
-end
-
 %% Setup Task
+
+%%%%%%%%%%%%% PHASE ONE %%%%%%%%%%%%%%%%%
+%%%%% PRIOR + ESTIMATE OF THRESHOLD %%%%%
+
+stimulus.curTrial(1) = 0;
+
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
-stimulus.curTrial = 0;
+% task waits for fixation on first segment
+task{1}{1}.segmin = [inf 0.000 .200 inf];
+task{1}{1}.segmax = [inf 2.000 .200 inf];
 
-if stimulus.attentionMode==1
-    % task waits for fixation on first segment
-    task{1}{1}.segmin = [inf .200 0.200 1.000 0.250];
-    task{1}{1}.segmax = [inf .200 0.800 1.000 0.750];
+stimulus.seg = {};
 
-    stimulus.seg.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
-    stimulus.seg.stim = 2;
-    stimulus.seg.delay = 3;
-    stimulus.seg.resp = 4;
-    stimulus.seg.ITI2 = 5;
-else
-    keyboard;
-end
+stimulus.seg{1}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
+stimulus.seg{1}.delay = 2;
+stimulus.seg{1}.stim = 3;
+stimulus.seg{1}.resp = 4;
 
 if stimulus.noeye==1
     task{1}{1}.segmin(1) = 0.5;
@@ -148,27 +142,57 @@ end
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
-task{1}{1}.numTrials = 60;
+task{1}{1}.numTrials = 30;
 task{1}{1}.random = 1;
-task{1}{1}.parameter.ecc = 6; % eccentricity of display
-if stimulus.attentionMode==1
-    task{1}{1}.parameter.target = 6; % prior center (used as cue or saccade target in aM==2/3)
-    task{1}{1}.parameter.priorSTD = 0.3; % radians
-else
-    keyboard
-end
-% task{1}{1}.parameter.flip = 1; % DO NOT USE flips from right angles to left angles
+task{1}{1}.parameter.ecc = stimulus.ecc; % eccentricity of display
+task{1}{1}.parameter.target = stimulus.prior; % prior center
+task{1}{1}.parameter.priorSTD = stimulus.sd; % radians
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
 
+%%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
+%%%%% PRIOR + ESTIMATE OF THRESHOLD %%%%%
+
+stimulus.curTrial(2) = 0;
+
+task{1}{2} = struct;
+task{1}{2}.waitForBacktick = 1;
+
+% task waits for fixation on first segment
+task{1}{2}.segmin = [inf .200 0.000 inf];
+task{1}{2}.segmax = [inf .200 2.000 inf];
+
+stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
+stimulus.seg{2}.stim = 2;
+stimulus.seg{2}.delay = 3;
+stimulus.seg{2}.resp = 4;
+
+if stimulus.noeye==1
+    task{1}{1}.segmin(1) = 0.5;
+    task{1}{1}.segmax(1) = 0.5;
+end
+
+task{1}{2}.synchToVol = zeros(size(task{1}{1}.segmin));
+task{1}{2}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
+task{1}{2}.numTrials = 100;
+task{1}{2}.random = 1;
+task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
+task{1}{2}.parameter.target = stimulus.prior; % prior center
+task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
+
+if stimulus.scan
+    task{1}{2}.synchToVol(stimulus.seg.ITI) = 1;
+end
+
 %% Tracking
 
 % these are variables that we want to track for later analysis.
-task{1}{1}.randVars.calculated.correct = nan;
-task{1}{1}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
-task{1}{1}.randVars.calculated.rotation = nan; % rotation of the grating
+task{1}{2}.randVars.calculated.correct = nan;
+task{1}{2}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
+task{1}{2}.randVars.calculated.rotation = nan; % rotation of the grating
+task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -182,19 +206,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = eyeCalibDisp(myscreen);
 
-%% Get Ready...
-% clear screen    
-% % % mglWaitSecs(1);
-% % % mglFixationCross(0.1,0.1,stimulus.colors.white);
-% % % if stimulus.scan        
-% % %     mglTextDraw('DO NOT MOVE',[0 1.5]);
-% % % end
-% % % mglFlush
-
 % let the user know
 disp(sprintf('(posjdg) Starting run number: %i.',stimulus.counter));
 
 %% Main Task Loop
+
+setGammaTable(1);
+mglClearScreen(0.5);
 
 phaseNum = 1;
 % Again, only one phase.
@@ -234,16 +252,19 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-stimulus.curTrial = stimulus.curTrial + 1;
+stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
+
+% compute missing variables
+task.thistrial.angle = randn(task.thistrial.target,task.thistrial.priorSTD);
+task.thistrial.rotation = rand*2*pi;
+
+% contrast from staircase
+[task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 
 myscreen.flushMode = 0;
 
-dopts = {'Right','Left'};
-vopts = {'Valid','Impossible'};
-disp(sprintf('(posjdg) %s:%s trial (%i), %s. Angle 1: %3.0f Angle 2: %3.0f Pattern A: %i, pattern B: %i',...
-    opts{task.thistrial.match+1},dopts{task.thistrial.match+1},task.trialnum,vopts{task.thistrial.impossible+1},...
-    task.thistrial.angle1*180/pi,task.thistrial.angle2*180/pi,...
-    task.thistrial.pattern1,task.thistrial.pattern2));
+disp(sprintf('(posjdg) Trial (%i): rotation: %02.0f, angle: %02.0f, contrast: %0.02f',...
+    task.trialnum,task.thistrial.rotation,task.thistrial.angle,task.thistrial.contrast));
     
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
@@ -271,53 +292,28 @@ stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.fix = 1;
 stimulus.live.stim = 0;
 
-if any(task.thistrial.thisseg==[stimulus.seg.stim1 stimulus.seg.stim2])
+if task.thistrial.thisseg==stimulus.seg.stim
     stimulus.live.stim = 1;
 elseif task.thistrial.thisseg==stimulus.seg.resp
-    stimulus.live.fix = 0;
-elseif task.thistrial.thisseg==stimulus.seg.ITI2
-    stimulus.live.fix = 0;
+    setGammaTable(1);
+    stimulus.live.resp = 1;
 end
-
+    
 for i = 1:2
     mglClearScreen(0.5);
     if stimulus.live.stim
-        if task.thistrial.thisseg==stimulus.seg.stim1
-            data = stimulus.live.data1;
-            orient = stimulus.live.angles1;
-        else
-            data = stimulus.live.data2;
-            orient = stimulus.live.angles2;
-        end
-
-        % draw background on debug
-        if stimulus.debug
-    %         partialDiskFuckOGL(0,0,stimulus.cur_.isize-0.5,stimulus.cur_.osize+3,(stimulus.learn-1)*stimulus.cur_.angle,stimulus.cur_.angle,[163 93 93]/255,6,2);
-        end
-
-        % draw rings
-        upData(data,orient,stimulus);
-        % revert stencil
-
-    %     if stimulus.debug
-    %         mglTextSet([],32,stimulus.colors.white);
-    %         for si = 0:(stimulus.cur_.num-1)
-    %             mglTextDraw(num2str(si+1),[(stimulus.cur_.osize+1)*cos(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2)) (stimulus.cur_.osize+1)*sin(deg2rad(si*stimulus.cur_.angle+stimulus.cur_.angle/2))]);
-    %         end
-    %     end
-
-        % draw V or I for valid/invalid trials
-        if stimulus.debug
-            text = {'V','I'};
-            mglTextSet([],32,stimulus.colors.white);
-            mglTextDraw(text{task.thistrial.impossible+1},[-7.5 -7.5]);
-        end
+        setGammaTable(task.thistrial.contrast);
+        x = stimulus.ecc * acos(task.thistrial.angle);
+        y = stimulus.ecc * asin(task.thistrial.angle);
+        mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
     end
+    
+    % resp is updated in screenUpdate
     
     if stimulus.live.fix
     %      cover
-            mglFillOval(0,0,[1 1],0.5);
-            upFix(stimulus);
+        mglFillOval(0,0,[1 1],0.5);
+        upFix(stimulus);
     end
 
     mglFlush
@@ -366,6 +362,11 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.s
     end
 end
 
+if stimulus.live.resp
+    mglClearScreen(0.5);
+    mglFillOval(stimulus.live.respx,stimulus.live.respy,1,stimulus.colors.white);
+end
+
 % Trial trigger on eye fixation code  
 if ~stimulus.noeye && stimulus.live.triggerWaiting
     now = mglGetSecs;
@@ -381,19 +382,6 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
     if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
         disp('Starting trial--eye centered and space pressed.');
         task = jumpSegment(task);
-    end
-end
-
-function upData(data,orient,stimulus)
-
-xp = stimulus.cur_.pos([1:floor(length(stimulus.cur_.pos)/2) (length(stimulus.cur_.pos)-(floor(length(stimulus.cur_.pos)/2)-1)):length(stimulus.cur_.pos)]);
-yp = fliplr(xp);
-
-for x = 1:size(data,1)
-    for y = 1:size(data,2)
-        if data(x,y)>0
-            mglBltTexture(stimulus.live.gratings{data(x,y)},[xp(y) yp(x)],0,0,orient(x,y)*180/pi);
-        end
     end
 end
 
@@ -415,7 +403,6 @@ global stimulus
 
 if stimulus.dead, return; end
 responseText = {'Incorrect','Correct'};
-respText = {'-1','+5'};
 sideText = {'Left','Right'};
 matchText = {'Non-match','Match'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
@@ -430,10 +417,10 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
         stimulus.live.resp = 1;
         stimulus.live.fix = 1;
-        stimulus.live.respText = respText{task.thistrial.correct+1};
+        stimulus.live.responseText = responseText{task.thistrial.correct+1};
         for i = 1:2
             mglTextSet([],32,stimulus.live.fixColor);
-            mglTextDraw(stimulus.live.respText,[0 0]);
+            mglTextDraw(stimulus.live.responseText,[0 0]);
             mglFlush
         end
     else
@@ -445,25 +432,22 @@ end
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function staircase = initStair()
-
-staircase = cell(1,3);
-for i = 1:3
-    staircase = doStaircase('init','upDown',...
-                'initialThreshold',0.10,...
-                'initialStepsize',0.025,...
-                'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
-                'nTrials=50','maxStepsize=0.2','minStepsize=0.0001');
-end
-        
-function resetStair()
+function initStair()
 global stimulus
 
-for i = 1:3
-    if doStaircase('stop',stimulus.staircase{i})
-        disp('(posjdg) Staircase is being reset');
-        stimulus.staircase{i}(end+1) = doStaircase('init',stimulus.staircase{i}(end));
-    end
+stimulus.staircase = doStaircase('init','upDown',...
+            'initialThreshold',0.10,...
+            'initialStepsize',0.025,...
+            'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
+            'nTrials=50','maxStepsize=0.2','minStepsize=0.0001');
+        
+function resetStair()
+
+global stimulus
+
+if doStaircase('stop',stimulus.staircase)
+    disp('(posjdg) Staircase is being reset');
+    stimulus.staircase(end+1) = doStaircase('init',stimulus.staircase(end));
 end
 
 function [trials] = totalTrials()
@@ -518,3 +502,65 @@ alphamask(:,:,4) = gauss*255;
 
 % we'll adjust the gamma table to control contrast
 stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% sets the gamma table so that we can have
+% finest possible control over the stimulus contrast.
+%
+% stimulus.colors.reservedColors should be set to the reserved colors (for cue colors, etc).
+% maxContrast is the maximum contrast you want to be able to display.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function setGammaTable(maxContrast)
+
+global stimulus;
+
+% set the bottom
+gammaTable(1:size(stimulus.colors.reservedBottom,1),1:size(stimulus.colors.reservedBottom,2)) = stimulus.colors.reservedBottom;
+
+% set the gamma table
+if maxContrast == 1
+    % create the rest of the gamma table
+    cmax = 1;cmin = 0;
+    luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
+
+    % now get the linearized range
+    redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
+    greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
+    blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
+elseif maxContrast > 0
+    % create the rest of the gamma table
+    cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
+    luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
+
+    % now get the linearized range
+    redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
+    greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
+    blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
+else
+    % if we are asked for 0 contrast then simply set all the values to gray
+    redLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,.5,'linear'),1,stimulus.colors.nUnreserved);
+    greenLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,.5,'linear'),1,stimulus.colors.nUnreserved);
+    blueLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,.5,'linear'),1,stimulus.colors.nUnreserved);
+end
+
+% add to the table!
+gammaTable((stimulus.colors.mrmin:stimulus.colors.mrmax)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
+
+% set the top
+gammaTable = [gammaTable; stimulus.colors.reservedTop];
+
+if size(gammaTable,1)~=256
+    disp('(setGammaTable) Failure: Incorrect number of colors in gamma table produced');
+    keyboard
+end
+
+% set the gamma table
+succ = mglSetGammaTable(gammaTable);
+
+if ~succ
+    warning('Gamma table set failure');
+    keyboard
+end
+
+% remember what the current maximum contrast is that we can display
+stimulus.curMaxContrast = maxContrast;
