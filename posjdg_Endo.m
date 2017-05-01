@@ -57,11 +57,6 @@ if stimulus.scan
     warning('Not setup for scanning');
 end
 
-
-if any(stimulus.attentionMode==[2 3])
-    keyboard
-    disp('Not implemented');
-end
 %% Setup Screen
 
 % if stimulus.scan
@@ -100,19 +95,26 @@ myscreen.stimulusNames{1} = 'stimulus';
 localInitStimulus();
     
 if stimulus.scan
-    stimulus.responseKeys = [2 1]; % corresponds to NOMATCH, MATCH
+    stimulus.responseKeys = 3; % corresponds to NOMATCH, MATCH
 else
-    stimulus.responseKeys = [2 1]; % corresponds to  NOMATCH, MATCH
+    stimulus.responseKeys = 3; % corresponds to  NOMATCH, MATCH
 end
 
-stimulus.colors.black = [0 0 0];
-stimulus.colors.white = [1 1 1];
-stimulus.colors.green = [0 1 0];
-stimulus.colors.red = [1 0 0];
+%% Colors
+initGammaTable(myscreen);
+stimulus.colors.rmed = 127.5;
 
-stimulus.colors.valid = [255,143,143]/255;
-stimulus.colors.impossible = [94,161,204]/255;
-stimulus.colors.chance = [255,254,168]/255;
+% We're going to add an equal number of reserved colors to the top and
+% bottom, to try to keep the center of the gamma table stable.
+stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
+stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
+stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
+stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
+stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
+stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
+
+stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
+stimulus.colors.mrmin = stimulus.colors.nReserved;
 
 %% Setup Task
 
@@ -125,8 +127,8 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{1}.segmin = [inf 0.000 .200 inf];
-task{1}{1}.segmax = [inf 2.000 .200 inf];
+task{1}{1}.segmin = [inf 0.000 .200 0.500];
+task{1}{1}.segmax = [inf 2.000 .200 0.500];
 
 stimulus.seg = {};
 
@@ -141,7 +143,7 @@ if stimulus.noeye==1
 end
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
-task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
+task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg{1}.resp)=1;
 task{1}{1}.numTrials = 30;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.ecc = stimulus.ecc; % eccentricity of display
@@ -151,6 +153,11 @@ task{1}{1}.parameter.priorSTD = stimulus.sd; % radians
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
+
+task{1}{1}.randVars.calculated.respAngle = nan;
+task{1}{1}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
+task{1}{1}.randVars.calculated.rotation = nan; % rotation of the grating
+task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
 %%%%% PRIOR + ESTIMATE OF THRESHOLD %%%%%
@@ -175,7 +182,7 @@ if stimulus.noeye==1
 end
 
 task{1}{2}.synchToVol = zeros(size(task{1}{1}.segmin));
-task{1}{2}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
+task{1}{2}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg{2}.resp)=1;
 task{1}{2}.numTrials = 100;
 task{1}{2}.random = 1;
 task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
@@ -189,7 +196,7 @@ end
 %% Tracking
 
 % these are variables that we want to track for later analysis.
-task{1}{2}.randVars.calculated.correct = nan;
+task{1}{2}.randVars.calculated.respAngle = nan;
 task{1}{2}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
 task{1}{2}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
@@ -212,6 +219,8 @@ disp(sprintf('(posjdg) Starting run number: %i.',stimulus.counter));
 %% Main Task Loop
 
 setGammaTable(1);
+mglClearScreen(0.5);
+mglFlush
 mglClearScreen(0.5);
 
 phaseNum = 1;
@@ -252,10 +261,15 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
+if (task.thistrial.thisphase==1) && (~isempty(task.lasttrial))
+    stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.correct);
+    disp(sprintf('Subject did not see %02.0f%% contrast',task.thistrial.contrast*100));
+end
+
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
-task.thistrial.angle = randn(task.thistrial.target,task.thistrial.priorSTD);
+task.thistrial.angle = randn*task.thistrial.priorSTD+task.thistrial.target;
 task.thistrial.rotation = rand*2*pi;
 
 % contrast from staircase
@@ -263,8 +277,8 @@ task.thistrial.rotation = rand*2*pi;
 
 myscreen.flushMode = 0;
 
-disp(sprintf('(posjdg) Trial (%i): rotation: %02.0f, angle: %02.0f, contrast: %0.02f',...
-    task.trialnum,task.thistrial.rotation,task.thistrial.angle,task.thistrial.contrast));
+disp(sprintf('(posjdg) Trial (%i): rotation: %02.0f, angle: %02.0f, contrast: %02.0f%%',...
+    task.trialnum,task.thistrial.rotation,task.thistrial.angle,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
@@ -279,7 +293,7 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 stimulus.live.triggerWaiting = 0;
-if any(task.thistrial.thisseg==[stimulus.seg.ITI1])
+if any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1])
     stimulus.live.triggerWaiting = 1;
     stimulus.live.centered = 0;
     stimulus.live.triggerTime = 0;
@@ -292,17 +306,22 @@ stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.fix = 1;
 stimulus.live.stim = 0;
 
-if task.thistrial.thisseg==stimulus.seg.stim
+if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
     stimulus.live.stim = 1;
-elseif task.thistrial.thisseg==stimulus.seg.resp
+elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     setGammaTable(1);
     stimulus.live.resp = 1;
+    stimulus.live.angle = 0*2*pi;
+    convertRespXY();
 end
     
+if stimulus.live.stim
+    setGammaTable(task.thistrial.contrast);
+end
+
 for i = 1:2
     mglClearScreen(0.5);
     if stimulus.live.stim
-        setGammaTable(task.thistrial.contrast);
         x = stimulus.ecc * acos(task.thistrial.angle);
         y = stimulus.ecc * asin(task.thistrial.angle);
         mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
@@ -349,7 +368,7 @@ if ~stimulus.noeye
 end
 
 % Eye movement detection code
-if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.seg.ITI2 stimulus.seg.resp]) && ~stimulus.scan
+if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1 stimulus.seg{task.thistrial.thisphase}.resp]) && ~stimulus.scan
     if ~any(isnan(pos))
         if dist > 2.5 && stimulus.live.eyeCount > 30
             disp('Eye movement detected!!!!');
@@ -362,9 +381,21 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI1 stimulus.s
     end
 end
 
-if stimulus.live.resp
+if (task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp) && 0
+    
+elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
+    keys = find(mglGetKeys);
+    if any(keys==19)
+        stimulus.live.angle = stimulus.live.angle+0.02;
+    elseif any(keys==20)
+        stimulus.live.angle = stimulus.live.angle-0.02;
+    end
+    convertRespXY();
+end
+
+if stimulus.live.resp && task.thistrial.thisphase==2
     mglClearScreen(0.5);
-    mglFillOval(stimulus.live.respx,stimulus.live.respy,1,stimulus.colors.white);
+    mglFillOval(stimulus.live.respx,stimulus.live.respy,[0.5 0.5],stimulus.colors.white);
 end
 
 % Trial trigger on eye fixation code  
@@ -385,6 +416,12 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
     end
 end
 
+function convertRespXY()
+global stimulus
+
+stimulus.live.respx = stimulus.ecc*cos(stimulus.live.angle);
+stimulus.live.respy = stimulus.ecc*sin(stimulus.live.angle);
+
 function upFix(stimulus)
 %%
 % for this experiment use a circle to indicate where participants can
@@ -402,26 +439,23 @@ function [task, myscreen] = getResponseCallback(task, myscreen)
 global stimulus
 
 if stimulus.dead, return; end
+
 responseText = {'Incorrect','Correct'};
 sideText = {'Left','Right'};
 matchText = {'Non-match','Match'};
-fixColors = {stimulus.colors.red,stimulus.colors.green};
     
 if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse == 0
-        task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
-        if ~task.thistrial.impossible && ~isfield(stimulus,'outThreshold')
+        if task.thistrial.thisphase==1
+            % they saw it, sot hey got it right
+            task.thistrial.correct = 1;
             stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
-        end
-        disp(sprintf('Subject pressed %i/%s: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},matchText{stimulus.responseKeys(task.thistrial.whichButton)},responseText{task.thistrial.correct+1}));
-        stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-        stimulus.live.resp = 1;
-        stimulus.live.fix = 1;
-        stimulus.live.responseText = responseText{task.thistrial.correct+1};
-        for i = 1:2
-            mglTextSet([],32,stimulus.live.fixColor);
-            mglTextDraw(stimulus.live.responseText,[0 0]);
-            mglFlush
+            disp(sprintf('Subject saw %02.0f%% contrast',task.thistrial.contrast*100));
+        elseif task.thistrial.thisphase==2
+            % they are actually reporting locations
+            task.thistrial.respAngle = stimulus.live.angle;
+            disp(sprintf('Subject pressed %i/%s: %s %s',task.thistrial.whichButton,sideText{task.thistrial.whichButton},matchText{stimulus.responseKeys(task.thistrial.whichButton)},responseText{task.thistrial.correct+1}));
+            stimulus.live.fix = 0;
         end
     else
         disp(sprintf('(posjdg) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
@@ -436,10 +470,10 @@ function initStair()
 global stimulus
 
 stimulus.staircase = doStaircase('init','upDown',...
-            'initialThreshold',0.10,...
+            'initialThreshold',0.5,...
             'initialStepsize',0.025,...
             'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
-            'nTrials=50','maxStepsize=0.2','minStepsize=0.0001');
+            'nTrials=25','maxStepsize=0.2','minStepsize=0.0001');
         
 function resetStair()
 
@@ -564,3 +598,39 @@ end
 
 % remember what the current maximum contrast is that we can display
 stimulus.curMaxContrast = maxContrast;
+
+
+function initGammaTable(myscreen)
+global stimulus
+%% Gamma Table Initialization
+
+% get gamma table
+if ~isfield(myscreen,'gammaTable')
+  stimulus.linearizedGammaTable = mglGetGammaTable;
+  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+  disp(sprintf('(cuecon:initGratings) No gamma table found in myscreen. Contrast displays like this'));
+  disp(sprintf('         should be run with a valid calibration made by moncalib for this monitor.'));
+  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+else
+  % check to make sure this matches the calibration file
+  
+  % get each channel table that should have been set by mglGetGammaTable
+  redTable = myscreen.initScreenGammaTable.redTable(:);
+  greenTable = myscreen.initScreenGammaTable.greenTable(:);
+  blueTable = myscreen.initScreenGammaTable.blueTable(:);
+  % get what the calibration structure says it should have been set to
+  gammaTable = myscreen.gammaTable(:);
+  % table values are only good to 10 bits
+  redTable = round(redTable*1024)/1024;
+  greenTable = round(greenTable*1024)/1024;
+  blueTable = round(blueTable*1024)/1024;
+  gammaTable = round(gammaTable*1024)/1024;
+  % compare, ignoring nans
+  if ~isequaln(mglGetGammaTable,myscreen.initScreenGammaTable) || ~isequaln(redTable,gammaTable) || ~isequaln(greenTable,gammaTable) || ~isequaln(blueTable,gammaTable)
+    disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+    disp(sprintf('(curecon:initGrating) Gamma table does not match calibration'));
+    disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+    keyboard
+  end
+end
+stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
