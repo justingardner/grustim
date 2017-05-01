@@ -150,9 +150,13 @@ task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin)); task{1}{1}.getResponse(stimulus.seg.resp)=1;
 task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
-task{1}{1}.parameter.match = [0 1];
-task{1}{1}.parameter.impossible = [0 0 0 0 0 0 1 1 1 1];
-task{1}{1}.parameter.angle1 = [-1/16*pi 0 1/16*pi]+pi/2;
+task{1}{1}.parameter.ecc = 6; % eccentricity of display
+if stimulus.attentionMode==1
+    task{1}{1}.parameter.target = 6; % prior center (used as cue or saccade target in aM==2/3)
+    task{1}{1}.parameter.priorSTD = 0.3; % radians
+else
+    keyboard
+end
 % task{1}{1}.parameter.flip = 1; % DO NOT USE flips from right angles to left angles
 
 if stimulus.scan
@@ -163,9 +167,8 @@ end
 
 % these are variables that we want to track for later analysis.
 task{1}{1}.randVars.calculated.correct = nan;
-task{1}{1}.randVars.calculated.pattern2 = nan;
-task{1}{1}.randVars.calculated.angle2 = nan;
-task{1}{1}.randVars.calculated.difficulty = nan;
+task{1}{1}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
+task{1}{1}.randVars.calculated.rotation = nan; % rotation of the grating
 
 %% Full Setup
 % Initialize task (note phase == 1)
