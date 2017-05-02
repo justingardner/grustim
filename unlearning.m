@@ -357,6 +357,8 @@ disp(sprintf('(unlearn) %s:%s trial (%i), %s. Angle 1: %3.0f Angle 2: %3.0f Patt
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
 
+stimulus.live.gotResponse=0;
+
 function task = buildData(task)
 
 global stimulus
@@ -636,7 +638,7 @@ matchText = {'Non-match','Match'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
     
 if any(task.thistrial.whichButton == stimulus.responseKeys)
-    if task.thistrial.gotResponse == 0
+    if stimulus.live.gotResponse == 0
         task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
         if ~task.thistrial.impossible && ~isfield(stimulus,'outThreshold')
             stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
@@ -652,8 +654,9 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
             mglFlush
         end
     else
-        disp(sprintf('(unlearn) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
+        disp(sprintf('(unlearn) Subject responded multiple times: %i',stimulus.live.gotResponse+1));
     end
+    stimulus.live.gotResponse = stimulus.live.gotResponse + 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
