@@ -171,7 +171,7 @@ task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
-%%%%% PRIOR + ESTIMATE OF THRESHOLD %%%%%
+%%%%% POSITION JUDGMENT + RESPONSE %%%%%%
 
 stimulus.curTrial(2) = 0;
 
@@ -191,11 +191,6 @@ stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye f
 stimulus.seg{2}.stim = 2;
 stimulus.seg{2}.delay = 3;
 stimulus.seg{2}.resp = 4;
-
-if stimulus.noeye==1
-    task{1}{1}.segmin(1) = 0.5;
-    task{1}{1}.segmax(1) = 0.5;
-end
 
 task{1}{2}.synchToVol = zeros(size(task{1}{2}.segmin));
 task{1}{2}.getResponse = zeros(size(task{1}{2}.segmin));
@@ -307,7 +302,6 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 task.thistrial.angle = randn*task.thistrial.priorSTD+task.thistrial.target;
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
-`
 
 % contrast from staircase
 [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
