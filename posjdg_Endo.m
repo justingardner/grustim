@@ -17,14 +17,14 @@ stimulus.ecc = 6;
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/posjdg/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/posjdg_Endo/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/posjdg/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/posjdg_Endo/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         fname = files(end).name;
         
-        s = load(sprintf('~/data/posjdg/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/posjdg_Endo/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.staircase = s.stimulus.staircase;
@@ -46,7 +46,7 @@ noimp = 0;
 training = 0;
 powerwheel = 0;
 test2 =0 ;
-getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','training=0','powerwheel=0','test2=0'});
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','training=0','powerwheel=1','test2=0'});
 stimulus.scan = scan;
 stimulus.powerwheel = powerwheel;
 stimulus.plots = plots;
@@ -262,6 +262,7 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     myscreen = tickScreen(myscreen,task);
 end
 
+mglDisplayCursor(1);
 % task ended
 mglClearScreen(0.5);
 mglTextSet([],32,stimulus.colors.white);
@@ -292,7 +293,7 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
 if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0)
-    if ~stimulus.test2
+    if (task.thistrial.thisphase==1) && ~stimulus.test2
         stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     end
     disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
@@ -306,6 +307,7 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 task.thistrial.angle = randn*task.thistrial.priorSTD+task.thistrial.target;
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
+`
 
 % contrast from staircase
 [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
@@ -335,6 +337,7 @@ if any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1])
     stimulus.live.lastTrigger = -1;
 end
 
+mglDisplayCursor(0);
 stimulus.live.eyeDead =0 ;
 stimulus.live.resp = 0;
 stimulus.live.fixColor = stimulus.colors.white;
@@ -418,9 +421,8 @@ end
 
 if (task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp) && stimulus.powerwheel
     mInfo = mglGetMouse(myscreen.screenNumber);
-    stimulus.live.angle = mod(mInfo.x/100, 2*pi);
+    stimulus.live.angle = mod(-mInfo.x/90, 2*pi);
     convertRespXY(task);
-    disp(sprintf('Angle: %02.2f',stimulus.live.angle));
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     keys = find(mglGetKeys);
     if any(keys==19)
