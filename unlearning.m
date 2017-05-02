@@ -552,7 +552,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
 if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
-    jumpSegment(task,inf); stimulus.dead=0;
+    task = jumpSegment(task,inf); stimulus.dead=0;
 end
 
 if stimulus.dead
