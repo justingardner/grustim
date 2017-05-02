@@ -179,8 +179,8 @@ task{1}{2} = struct;
 task{1}{2}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{2}.segmin = [inf .200 0.200 3.000];
-task{1}{2}.segmax = [inf .200 2.000 3.000];
+task{1}{2}.segmin = [inf .200 0.200 5.000];
+task{1}{2}.segmax = [inf .200 2.000 5.000];
 
 if stimulus.noeye==1
     task{1}{2}.segmin(1) = 0.5;
@@ -346,13 +346,7 @@ if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     setGammaTable(1);
     stimulus.live.resp = 1;
-    if stimulus.powerwheel
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        stimulus.live.angle = mod(mInfo.x/100, 2*pi);
-        disp(stimulus.live.angle);
-    else
-        stimulus.live.angle=0;
-    end
+    stimulus.live.angle=0;
     convertRespXY(task);
 end
     
@@ -424,8 +418,9 @@ end
 
 if (task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp) && stimulus.powerwheel
     mInfo = mglGetMouse(myscreen.screenNumber);
-    stimulus.live.angle = mod(mInfo.x, 360);
+    stimulus.live.angle = mod(mInfo.x/100, 2*pi);
     convertRespXY(task);
+    disp(sprintf('Angle: %02.2f',stimulus.live.angle));
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     keys = find(mglGetKeys);
     if any(keys==19)
@@ -502,7 +497,7 @@ if validResponse
             % they saw it
             task.thistrial.detected = 1;
             % they are actually reporting locations
-            task.thistrial.respAngle = mod(stimulus.live.angle,360);
+            task.thistrial.respAngle = stimulus.live.angle;
             disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',task.thistrial.respAngle*180/pi,task.thistrial.angle*180/pi,task.thistrial.contrast*100));
             stimulus.live.fix = 0;
             stimulus.live.resp = 0;
