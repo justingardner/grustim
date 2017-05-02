@@ -739,14 +739,17 @@ for fi = 1:length(files)
     
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
-    run = stimulus.counter;
-        
-    data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-        e.parameter.impossible' e.parameter.match' e.parameter.angle1' ...
-        e.randVars.angle2' e.parameter.pattern1' e.randVars.pattern2' ...
-        e.response' e.randVars.correct'];
     
-    count = count+e.nTrials;
+    if e.nTrials>1
+        run = stimulus.counter;
+
+        data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+            e.parameter.impossible' e.parameter.match' e.parameter.angle1' ...
+            e.randVars.angle2' e.parameter.pattern1' e.randVars.pattern2' ...
+            e.response' e.randVars.correct'];
+
+        count = count+e.nTrials;
+    end
 end
 
 data = data(1:(count-1),:);
