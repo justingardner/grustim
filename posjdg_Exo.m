@@ -10,7 +10,7 @@ stimulus = struct;
 %% Stimulus parameters 
 
 % new prior for each run
-stimulus.prior = rand*2*pi;
+%stimulus.cue= rand*2*pi;
 stimulus.sd = pi/8;
 stimulus.ecc = 6;
 
@@ -156,8 +156,7 @@ end
 task{1}{1}.numTrials = 25;
 task{1}{1}.random = 1;
 task{1}{1}.parameter.ecc = stimulus.ecc; % eccentricity of display
-task{1}{1}.parameter.target = stimulus.prior; % prior center
-task{1}{1}.parameter.priorSTD = stimulus.sd; % radians
+task{1}{1}.parameter.cueSTD= stimulus.sd; % radians
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
@@ -204,8 +203,7 @@ end
 task{1}{2}.numTrials = 100;
 task{1}{2}.random = 1;
 task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
-task{1}{2}.parameter.target = stimulus.prior; % prior center
-task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
+task{1}{2}.parameter.cueSTD = stimulus.sd; % radians
 
 if stimulus.scan
     task{1}{2}.synchToVol(stimulus.seg.ITI) = 1;
@@ -225,6 +223,7 @@ task{1}{2}.randVars.calculated.detected = 0; % did they see the grating
 if stimulus.test2
     task{1}{1} = task{1}{2};
     task{1}(2) = [];
+    stimulus.seg{1} = stimulus.seg{2};
 end
 
 %% Full Setup
@@ -301,8 +300,9 @@ stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
-%task.thistrial.angle = randn*task.thistrial.priorSTD+task.thistrial.target;
-task.thistrial.angle = rand*2*pi;
+task.thistrial.angle = rand*2*pi; % phase 1 stim angle is random
+task.thistrial.cue = rand*2*pi; % phase 2 cue angle is random
+task.thistrial.angle2 = randn*task.thistrial.cueSTD+task.thistrial.cue; %phase 2 stim angle is normally distributed around cue angle
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
 
@@ -335,11 +335,12 @@ if any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1])
 end
 
 mglDisplayCursor(0);
-stimulus.live.eyeDead =0 ;
+stimulus.live.eyeDead = 0;
 stimulus.live.resp = 0;
 stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.fix = 1;
 stimulus.live.stim = 0;
+stimulus.live.cue = 0;
 
 if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
     stimulus.live.stim = 1;
@@ -348,6 +349,8 @@ elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     stimulus.live.resp = 1;
     stimulus.live.angle=0;
     convertRespXY(task);
+elseif (task.thistrial.thisphase==2 || stimulus.test2) && task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
+    stimulus.live.cue = 1;
 end
     
 if stimulus.live.stim
@@ -357,9 +360,18 @@ end
 for i = 1:2
     mglClearScreen(0.5);
     if stimulus.live.stim
-        x = task.thistrial.ecc * cos(task.thistrial.angle);
-        y = task.thistrial.ecc * sin(task.thistrial.angle);
+        if task.thistrial.thisphase == 1 && ~stimulus.test2
+            x = task.thistrial.ecc * cos(task.thistrial.angle);
+            y = task.thistrial.ecc * sin(task.thistrial.angle);
+        elseif task.thistrial.thisphase == 2 || stimulus.test2
+            x = task.thistrial.ecc * cos(task.thistrial.angle2);
+            y = task.thistrial.ecc * sin(task.thistrial.angle2);
+        end
         mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
+    elseif stimulus.live.cue
+        x = task.thistrial.ecc * cos(task.thistrial.cue);
+        y = task.thistrial.ecc * sin(task.thistrial.cue);
+        mglQuad([x-.25; x-.25; x+.25; x+.25], [y-.25; y+.25; y+.25; y-.25], [1; 1; 1], 1)
     end
     
     % resp is updated in screenUpdate
@@ -497,7 +509,7 @@ if validResponse
             task.thistrial.detected = 1;
             % they are actually reporting locations
             task.thistrial.respAngle = stimulus.live.angle;
-            disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',task.thistrial.respAngle*180/pi,task.thistrial.angle*180/pi,task.thistrial.contrast*100));
+            disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',task.thistrial.respAngle*180/pi,task.thistrial.angle2*180/pi,task.thistrial.contrast*100));
             stimulus.live.fix = 0;
             stimulus.live.resp = 0;
             task = jumpSegment(task,inf);
