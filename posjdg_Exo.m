@@ -179,7 +179,7 @@ task{1}{2} = struct;
 task{1}{2}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{2}.segmin = [inf 0.100 0.200 0.200 5.000]; %fixate, cue, delay, probe, delay, response
+task{1}{2}.segmin = [inf 0.100 0.200 0.200 5.000]; %fixate, cue, stim, delay, response
 task{1}{2}.segmax = [inf 0.100 0.200 2.000 5.000];
    % 200 ms cue + post-cue delay; 200ms stim; 200ms-2sec delay; 5 sec to respond
 
@@ -190,7 +190,6 @@ end
 
 stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
 stimulus.seg{2}.cue = 2;
-%stimulus.seg{2}.delay1 = 3;
 stimulus.seg{2}.stim = 3;
 stimulus.seg{2}.delay2 = 4;
 stimulus.seg{2}.resp = 5;
@@ -302,9 +301,8 @@ stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
-%task.thistrial.angle = rand*2*pi; % phase 1 stim angle is random
-task.thistrial.cue = rand*2*pi; % phase 2 cue angle is random
-task.thistrial.angle = randn*task.thistrial.cueSTD+task.thistrial.cue; %phase 2 stim angle is normally distributed around cue angle
+task.thistrial.cue = rand*2*pi; % cue angle is random
+task.thistrial.angle = randn*task.thistrial.cueSTD+task.thistrial.cue; % stim angle is normally distributed around cue angle
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
 
