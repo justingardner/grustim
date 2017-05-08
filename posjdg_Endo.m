@@ -103,9 +103,9 @@ myscreen.stimulusNames{1} = 'stimulus';
 localInitStimulus();
     
 if stimulus.powerwheel
-    stimulus.responseKeys = [3 4]; % detection key (when powerwheel not in use)
+    stimulus.responseKeys = 1; % detection key (when powerwheel not in use)
 else
-    stimulus.responseKeys = [3 4]; % 
+    stimulus.responseKeys = [1 2 3]; % 
 end
 
 %% Colors
@@ -135,8 +135,8 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{1}.segmin = [inf 0.000 .200 0.500];
-task{1}{1}.segmax = [inf 2.000 .200 0.500];
+task{1}{1}.segmin = [inf 0.000 .200 0.900];
+task{1}{1}.segmax = [inf 1.500 .200 0.900];
 
 stimulus.seg = {};
 
@@ -173,6 +173,7 @@ task{1}{1}.randVars.calculated.angle = nan; % angle at which displayed, depends 
 task{1}{1}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
+task{1}{1}.randVars.calculated.dead = 0;
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
 %%%%% POSITION JUDGMENT + RESPONSE %%%%%%
@@ -222,6 +223,7 @@ task{1}{2}.randVars.calculated.angle = nan; % angle at which displayed, depends 
 task{1}{2}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{2}.randVars.calculated.detected = 0; % did they see the grating
+task{1}{2}.randVars.calculated.dead = 0; % did the trial get canceled
 
 %% Testing 2
 if stimulus.test2
@@ -261,7 +263,6 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     myscreen = tickScreen(myscreen,task);
 end
 
-mglDisplayCursor(1);
 % task ended
 mglClearScreen(0.5);
 mglTextSet([],32,stimulus.colors.white);
@@ -273,7 +274,6 @@ myscreen.flushMode = 1;
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-mglDisplayCursor(1);
 if stimulus.plots
     disp('(posjdg) Displaying plots');
     dispInfo(stimulus);
@@ -292,7 +292,7 @@ if ~isempty(task.lasttrial)
 end
 global stimulus
 
-if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0)
+if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && ~task.lasttrial.dead
     stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
 end
@@ -310,15 +310,13 @@ task.thistrial.startRespAngle = rand*2*pi;
 % contrast from staircase
 [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 
-mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,myscreen);
-mglDisplayCursor(0);
+mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 
 disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %02.0f%%',...
     task.trialnum,(task.thistrial.angle+task.thistrial.target)*180/pi,task.thistrial.rotation*180/pi,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
-stimulus.dead = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -388,13 +386,13 @@ global stimulus
 
 % jump to next trial if you are dead and 1 second has elapsed since eye
 % movement
-if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
-    task = jumpSegment(task,inf); stimulus.dead=0;
+if task.thistrial.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
+    task = jumpSegment(task,inf);
 end
 
 % skip screen updates if you are already dead
-if stimulus.dead
-    if stimulus.dead && stimulus.live.eyeDead
+if task.thistrial.dead
+    if task.thistrial.dead && stimulus.live.eyeDead
         mglTextSet([],32,stimulus.colors.red);
         mglTextDraw('Eye Movement Detected',[0 0]);
     end
@@ -410,12 +408,12 @@ end
 % Eye movement detection code
 if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1]) && ~stimulus.scan
     if ~any(isnan(pos))
-        if dist > 2.5 && stimulus.live.eyeCount > 30
+        if dist > 1.5 && stimulus.live.eyeCount > 30
             disp('Eye movement detected!!!!');
-            stimulus.dead = 1;
+            task.thistrial.dead = 1;
             stimulus.live.eyeDead=1;
             return
-        elseif dist > 2.5
+        elseif dist > 1.5
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
         end
     end
@@ -488,8 +486,13 @@ function [task, myscreen] = getResponseCallback(task, myscreen)
 
 global stimulus
 
-if stimulus.dead, return; end
+if task.thistrial.dead, return; end
     
+if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1))
+    % subject didn't see anything
+    task = jumpSegment(task,inf);
+end
+
 if stimulus.powerwheel
     validResponse = task.thistrial.mouseButton == 1;
 else
@@ -531,10 +534,10 @@ function initStair()
 global stimulus
 
 stimulus.staircase = doStaircase('init','upDown',...
-            'initialThreshold',0.5,...
+            'initialThreshold',0.25,...
             'initialStepsize',0.025,...
             'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
-            'nTrials=30','maxStepsize=0.2','minStepsize=0.0001');
+            'nTrials=40','maxStepsize=0.2','minStepsize=0.0001');
         
 function resetStair()
 
@@ -543,9 +546,9 @@ global stimulus
 if doStaircase('stop',stimulus.staircase)
     disp('(posjdg) Staircase is being reset');
     stimulus.staircase(end+1) = doStaircase('init',stimulus.staircase(end));
-    if stimulus.staircase(end).s.threshold>0.4
-        disp('(posjdg) Bad staircase threshold: setting to 0.4');
-        stimulus.staircase(end).s.threshold=0.4;
+    if stimulus.staircase(end).s.threshold>0.3
+        disp('(posjdg) Bad staircase threshold: setting to 0.3');
+        stimulus.staircase(end).s.threshold=0.3;
     elseif stimulus.staircase(end).s.threshold<0
         disp('(posjdg) Bad staircase threshold: setting to 0.05');
         stimulus.staircase(end).s.threshold=0.05;
@@ -598,9 +601,9 @@ for fi = 1:length(files)
     load(fullfile(sprintf('~/data/posjdg_Endo/%s/%s',mglGetSID,files(fi).name)));
     
     e = getTaskParameters(myscreen,task);
-    e = e{1}(2); % why?!
+    if e{1}(1).nTrials>1
+        e = e{1}(2); % why?!
     
-    if e.nTrials>1
         run = stimulus.counter;
 
         data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
@@ -618,35 +621,51 @@ if any(data(:,6)>pi), data(data(:,6)>pi,6) = data(data(:,6)>pi,6)-2*pi; end
 %% Compute angle-target and respAngle-target plot
 h = figure; hold on
 
-Y = data(~isnan(data(:,6)),6);
-X = [ones(size(Y)) data(~isnan(data(:,6)),5)];
+low = [0 0.075 0.081 0.09 inf];
 
-b = X\Y;
+for i = 1:4
+    subplot(4,1,i); hold on
+    % data(:,6) = data(:,6)-data(:,5);
 
-c = [X Y];
+    % remove no-response trials
+    data_ = data(~isnan(data(:,6)),:);
+    data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
+    % find the trials where stimulus is - relative to the prior
+    flip = data_(:,5)<0; flip = flip*1;
+    flip(flip==1) = -1; flip(flip==0) = 1;
+    % flip all the stimulus-target to be in the positive space
+    data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
+    Y = data_(:,6);
+    X = [ones(size(Y)) data_(:,5)];
+    b = X\Y;
+    c = [X Y];
 
-bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
+    bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
 
-plot(data(:,5),data(:,6),'*');
-% plot constant line
-plot([-1 1],[-1 1],'--r');
-% plot fit
-x = -1:1;
-plot(x,b(1)+b(2)*x,'--k');
-% compute SD of residuals? 
-% todo
-xlabel('Stimulus - Target (deg)');
-ylabel('Resp - Target (deg)');
-title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
+    % [p,s] = polyfit(data_(:,5),data_(:,6),1);
 
-axis([-1 1 -1 1]);
-axis square
 
-set(gca,'XTick',-1:.5:1,'XTickLabel',round((-1:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
+    plot(data_(:,5),data_(:,6),'*');
+    % plot constant line
+    plot([-1 1],[-1 1],'--r');
+    % plot fit
+    x = -1:1;
+    plot(x,b(1)+b(2)*x,'--k');
+    % compute SD of residuals? 
+    % todo
+    xlabel('Stimulus - Target (deg)');
+    ylabel('Resp - Target (deg)');
+    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-drawPublishAxis;
-% h = figure;
-% hist(data(:,5)-data(:,6));
+    axis([-1 1 -1 1]);
+    axis square
+
+    set(gca,'XTick',-1:.5:1,'XTickLabel',round((-1:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
+
+    drawPublishAxis;
+    % h = figure;
+    % hist(data(:,5)-data(:,6));
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus

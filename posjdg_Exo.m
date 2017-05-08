@@ -131,8 +131,8 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{1}.segmin = [inf 0.000 0.100 0.200 0.500]; % Fixate, delay, cue, stim, response
-task{1}{1}.segmax = [inf 2.000 0.100 0.200 0.500];
+task{1}{1}.segmin = [inf 0.000 0.100 0.200 1.000]; % Fixate, delay, cue, stim, response
+task{1}{1}.segmax = [inf 2.000 0.100 0.200 1.000];
 
 stimulus.seg = {};
 
@@ -289,7 +289,7 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0)
+if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && (task.lasttrial.visible==1)
     if (task.thistrial.thisphase==1) && ~stimulus.test2
         stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     end
@@ -343,16 +343,16 @@ stimulus.live.stim = 0;
 stimulus.live.cue = 0;
 
 if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
-    stimulus.live.stim = 1;
+    if ~(task.thistrial.thisphase == 1 && ~stimulus.test2 && rand < 0.5) % During phase 1, only show cue with 50% probability
+        stimulus.live.stim = 1;
+    end
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     setGammaTable(1);
     stimulus.live.resp = 1;
     stimulus.live.angle=0;
     convertRespXY(task);
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
-    if ~(task.thistrial.thisphase == 1 && ~stimulus.test2 && rand < 0.5) % During phase 1, only show cue with 50% probability
-      stimulus.live.cue = 1;
-    end
+    stimulus.live.cue = 1;
 end
     
 if stimulus.live.stim
