@@ -350,7 +350,9 @@ elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     stimulus.live.angle=0;
     convertRespXY(task);
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
-    stimulus.live.cue = 1;
+    if ~(task.thistrial.thisphase == 1 && ~stimulus.test2 && rand < 0.5) % During phase 1, only show cue with 50% probability
+      stimulus.live.cue = 1;
+    end
 end
     
 if stimulus.live.stim
