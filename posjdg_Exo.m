@@ -131,15 +131,16 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{1}.segmin = [inf 0.000 .200 0.500];
-task{1}{1}.segmax = [inf 2.000 .200 0.500];
+task{1}{1}.segmin = [inf 0.000 0.100 0.200 0.500]; % Fixate, delay, cue, stim, response
+task{1}{1}.segmax = [inf 2.000 0.100 0.200 0.500];
 
 stimulus.seg = {};
 
 stimulus.seg{1}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
 stimulus.seg{1}.delay = 2;
-stimulus.seg{1}.stim = 3;
-stimulus.seg{1}.resp = 4;
+stimulus.seg{1}.cue = 3;
+stimulus.seg{1}.stim = 4;
+stimulus.seg{1}.resp = 5;
 
 if stimulus.noeye==1
     task{1}{1}.segmin(1) = 0.5;
@@ -178,8 +179,9 @@ task{1}{2} = struct;
 task{1}{2}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{2}.segmin = [inf .200 0.200 0.200 0.200 5.000]; %fixate, cue, delay, probe, delay, response
-task{1}{2}.segmax = [inf .200 2.000 0.200 2.000 5.000];
+task{1}{2}.segmin = [inf 0.100 0.200 0.200 5.000]; %fixate, cue, delay, probe, delay, response
+task{1}{2}.segmax = [inf 0.100 0.200 2.000 5.000];
+   % 200 ms cue + post-cue delay; 200ms stim; 200ms-2sec delay; 5 sec to respond
 
 if stimulus.noeye==1
     task{1}{2}.segmin(1) = 0.5;
@@ -188,10 +190,10 @@ end
 
 stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
 stimulus.seg{2}.cue = 2;
-stimulus.seg{2}.delay1 = 3;
-stimulus.seg{2}.stim = 4;
-stimulus.seg{2}.delay2 = 5;
-stimulus.seg{2}.resp = 6;
+%stimulus.seg{2}.delay1 = 3;
+stimulus.seg{2}.stim = 3;
+stimulus.seg{2}.delay2 = 4;
+stimulus.seg{2}.resp = 5;
 
 task{1}{2}.synchToVol = zeros(size(task{1}{2}.segmin));
 task{1}{2}.getResponse = zeros(size(task{1}{2}.segmin));
@@ -300,9 +302,9 @@ stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
-task.thistrial.angle = rand*2*pi; % phase 1 stim angle is random
+%task.thistrial.angle = rand*2*pi; % phase 1 stim angle is random
 task.thistrial.cue = rand*2*pi; % phase 2 cue angle is random
-task.thistrial.angle2 = randn*task.thistrial.cueSTD+task.thistrial.cue; %phase 2 stim angle is normally distributed around cue angle
+task.thistrial.angle = randn*task.thistrial.cueSTD+task.thistrial.cue; %phase 2 stim angle is normally distributed around cue angle
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
 
@@ -349,7 +351,7 @@ elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     stimulus.live.resp = 1;
     stimulus.live.angle=0;
     convertRespXY(task);
-elseif (task.thistrial.thisphase==2 || stimulus.test2) && task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
+elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
     stimulus.live.cue = 1;
 end
     
@@ -360,18 +362,15 @@ end
 for i = 1:2
     mglClearScreen(0.5);
     if stimulus.live.stim
-        if task.thistrial.thisphase == 1 && ~stimulus.test2
-            x = task.thistrial.ecc * cos(task.thistrial.angle);
-            y = task.thistrial.ecc * sin(task.thistrial.angle);
-        elseif task.thistrial.thisphase == 2 || stimulus.test2
-            x = task.thistrial.ecc * cos(task.thistrial.angle2);
-            y = task.thistrial.ecc * sin(task.thistrial.angle2);
-        end
+        x = task.thistrial.ecc * cos(task.thistrial.angle);
+        y = task.thistrial.ecc * sin(task.thistrial.angle);
         mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
-    elseif stimulus.live.cue
+    elseif stimulus.live.cue && i == 1
         x = task.thistrial.ecc * cos(task.thistrial.cue);
         y = task.thistrial.ecc * sin(task.thistrial.cue);
-        mglQuad([x-.25; x-.25; x+.25; x+.25], [y-.25; y+.25; y+.25; y-.25], [1; 1; 1], 1)
+        mglPolygon([x-.15, x-.15, x+.15, x+.15], [y-.15, y+.15, y+.15, y-.15], stimulus.colors.white)
+        mglFlush();
+        mglClearScreen(0.5);
     end
     
     % resp is updated in screenUpdate
@@ -509,7 +508,8 @@ if validResponse
             task.thistrial.detected = 1;
             % they are actually reporting locations
             task.thistrial.respAngle = stimulus.live.angle;
-            disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',task.thistrial.respAngle*180/pi,task.thistrial.angle2*180/pi,task.thistrial.contrast*100));
+            reportAngle = mod((task.thistrial.respAngle + task.thistrial.startRespAngle)*180/pi, 360);
+            disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',reportAngle,task.thistrial.angle*180/pi,task.thistrial.contrast*100));
             stimulus.live.fix = 0;
             stimulus.live.resp = 0;
             task = jumpSegment(task,inf);
