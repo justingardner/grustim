@@ -14,9 +14,11 @@ stimulus.prior = rand*2*pi;
 while (abs(mod(stimulus.prior,pi/2)<0.15))
     stimulus.prior = rand*2*pi;
 end
-    disp(sprintf('Prior chosen to be %02.0f, dist was: %02.2f',stimulus.prior*180/pi,abs(mod(stimulus.prior,pi/2))));
+disp(sprintf('Prior chosen to be %02.0f, dist was: %02.2f',stimulus.prior*180/pi,abs(mod(stimulus.prior,pi/2))));
 stimulus.sd = pi/8;
 stimulus.ecc = 6;
+stimulus.live.contrastPercs = 0.9;
+
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -114,10 +116,10 @@ stimulus.colors.rmed = 127.5;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
-stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
-stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
-stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
+stimulus.colors.reservedBottom = [1 0 0; 0 0 0]; % fixation cross colors
+stimulus.colors.reservedTop = [1 1 1; 0 1 0]; % correct/incorrect colors
+stimulus.colors.black = 1/255; stimulus.colors.white = 254/255;
+stimulus.colors.red = 0/255; stimulus.colors.green = 255/255;
 stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
 stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
 
@@ -135,8 +137,8 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{1}.segmin = [inf 0.000 .200 0.900];
-task{1}{1}.segmax = [inf 1.500 .200 0.900];
+task{1}{1}.segmin = [inf 0.000 .200 0.800];
+task{1}{1}.segmax = [inf 1.000 .200 0.800];
 
 stimulus.seg = {};
 
@@ -157,7 +159,11 @@ if stimulus.powerwheel
 else
     task{1}{1}.getResponse(stimulus.seg{1}.resp)=1;
 end
-task{1}{1}.numTrials = 25;
+if stimulus.counter<=2
+    task{1}{1}.numTrials = 65;
+else
+    task{1}{1}.numTrials = 25;
+end
 task{1}{1}.random = 1;
 task{1}{1}.parameter.ecc = stimulus.ecc; % eccentricity of display
 task{1}{1}.parameter.target = stimulus.prior; % prior center
@@ -209,6 +215,7 @@ task{1}{2}.random = 1;
 task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
 task{1}{2}.parameter.target = stimulus.prior; % prior center
 task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
+task{1}{2}.parameter.contrastOpt = 1:length(stimulus.live.contrastPercs); % 60/70/80/90 % correct
 
 if stimulus.scan
     task{1}{2}.synchToVol(stimulus.seg.ITI) = 1;
@@ -292,9 +299,25 @@ if ~isempty(task.lasttrial)
 end
 global stimulus
 
-if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && ~task.lasttrial.dead
+if (~isempty(task.lasttrial)) && (task.thistrial.thisphase==1) && (task.lasttrial.detected==0) && ~task.lasttrial.dead
     stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
+end
+
+% Compute staircase
+if stimulus.curTrial(task.thistrial.thisphase)==0 && (task.thistrial.thisphase==2) || (stimulus.test2)
+    % compute stimulus.live.contrast options
+    out = doStaircase('threshold',stimulus.staircase,'type=weibull','dispFig=1');
+    x = 0:.001:1;
+    y = weibull(x,out.fit.fitparams);
+    for yi = 1:length(stimulus.live.contrastPercs)
+        val = x(find(y>=stimulus.live.contrastPercs(yi),1));
+        if ~isempty(val)
+            stimulus.live.contrastOpts(yi) = val;
+        else
+            stimulus.live.contrastOpts(yi) = 0;
+        end
+    end
 end
 
 stimulus.live.gotResponse = 0;
@@ -308,7 +331,11 @@ task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
 
 % contrast from staircase
-[task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+if task.thistrial.thisphase==1
+    [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+else
+    task.thistrial.contrast = stimulus.live.contrastOpts(task.thistrial.contrastOpt);
+end
 
 mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
@@ -318,6 +345,8 @@ disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %0
     
 stimulus.live.eyeCount = 0;
 
+setGammaTable(task.thistrial.contrast);
+    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -344,17 +373,12 @@ stimulus.live.stim = 0;
 if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
     stimulus.live.stim = 1;
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
-    setGammaTable(1);
     stimulus.live.resp = 1;
     stimulus.live.angle = task.thistrial.startRespAngle;
     stimulus.live.anyAngleAdj = false;
     mInfo = mglGetMouse(myscreen.screenNumber);
     stimulus.live.trackingAngle = -mInfo.x/90;
     convertRespXY(task);
-end
-    
-if stimulus.live.stim
-    setGammaTable(task.thistrial.contrast);
 end
 
 for i = 1:2
@@ -509,10 +533,10 @@ if validResponse
             stimulus.live.fix = 0;
         elseif ((task.thistrial.thisphase==2) || stimulus.test2)
             % they saw it
-            if stimulus.live.anyAngleAdj == true
-                task.thistrial.detected = 1;
-                stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
-            end
+%             if stimulus.live.anyAngleAdj == true
+%                 task.thistrial.detected = 1;
+%                 stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
+%             end
             % they are actually reporting locations
             task.thistrial.respAngle = stimulus.live.angle;
             disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',task.thistrial.respAngle*180/pi,task.thistrial.angle*180/pi,task.thistrial.contrast*100));
@@ -687,7 +711,7 @@ global stimulus
 %     sz = degs/stimulus.cur_.num*0.6;
 sz = 1.5;
 % use total degs / num to compute size
-grating = 255/2*mglMakeGrating(sz,sz,6,0) + 255/2;
+grating = 251/2*mglMakeGrating(sz,sz,2,0) + 255/2;
 gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 alphamask = repmat(grating,1,1,4);
 alphamask(:,:,4) = gauss*255;
