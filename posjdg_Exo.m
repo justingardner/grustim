@@ -169,6 +169,7 @@ task{1}{1}.randVars.calculated.angle = nan; % angle at which displayed, depends 
 task{1}{1}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
+task{1}{1}.randVars.calculated.visible = nan;
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
 %% CUE + POSITION JUDGMENT + RESPONSE %%%
@@ -219,6 +220,7 @@ task{1}{2}.randVars.calculated.angle = nan; % angle at which displayed, depends 
 task{1}{2}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{2}.randVars.calculated.detected = 0; % did they see the grating
+task{1}{2}.randVars.calculated.visible = 1; % were they shown a grating
 
 %% Testing 2
 if stimulus.test2
@@ -294,6 +296,8 @@ if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && (task.lasttrial
         stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     end
     disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
+elseif (~isempty(task.lasttrial)) && ~task.lasttrial.visible
+    disp('No stimulus shown');
 end
 
 stimulus.live.gotResponse = 0;
@@ -305,6 +309,11 @@ task.thistrial.cue = rand*2*pi; % cue angle is random
 task.thistrial.angle = randn*task.thistrial.cueSTD+task.thistrial.cue; % stim angle is normally distributed around cue angle
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
+if task.thistrial.thisphase == 1 && ~stimulus.test2
+  task.thistrial.visible = (rand > 0.5);
+else
+  task.thistrial.visible = 1;
+end
 
 % contrast from staircase
 [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
@@ -343,7 +352,7 @@ stimulus.live.stim = 0;
 stimulus.live.cue = 0;
 
 if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
-    if ~(task.thistrial.thisphase == 1 && ~stimulus.test2 && rand < 0.5) % During phase 1, only show cue with 50% probability
+    if task.thistrial.visible % During phase 1, only show cue with 50% probability
         stimulus.live.stim = 1;
     end
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
@@ -518,6 +527,8 @@ if validResponse
         disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
     end
     stimulus.live.gotResponse=stimulus.live.gotResponse+1;
+elseif ~task.thistrial.visible
+    disp(sprintf('Stimulus not shown on this trial'));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
