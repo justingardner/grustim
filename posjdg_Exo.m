@@ -110,10 +110,10 @@ stimulus.colors.rmed = 127.5;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; 1 1 1]; % fixation cross colors
-stimulus.colors.reservedTop = [1 0 0; 0 1 0]; % correct/incorrect colors
-stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
-stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
+stimulus.colors.reservedBottom = [1 0 0; 0 0 0]; % fixation cross colors
+stimulus.colors.reservedTop = [1 1 1; 0 1 0]; % correct/incorrect colors
+stimulus.colors.black = 1/255; stimulus.colors.white = 254/255;
+stimulus.colors.red = 0/255; stimulus.colors.green = 255/255;
 stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
 stimulus.colors.nUnreserved = 256-(2*stimulus.colors.nReserved);
 
@@ -132,7 +132,7 @@ task{1}{1}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
 task{1}{1}.segmin = [inf 0.000 0.100 0.200 1.000]; % Fixate, delay, cue, stim, response
-task{1}{1}.segmax = [inf 2.000 0.100 0.200 1.000];
+task{1}{1}.segmax = [inf 1.000 0.100 0.200 1.000];
 
 stimulus.seg = {};
 
@@ -154,7 +154,11 @@ if stimulus.powerwheel
 else
     task{1}{1}.getResponse(stimulus.seg{1}.resp)=1;
 end
-task{1}{1}.numTrials = 25;
+if stimulus.counter <=2
+    task{1}{1}.numTrials = 65;
+else
+    task{1}{1}.numTrials = 25;
+end
 task{1}{1}.random = 1;
 task{1}{1}.parameter.ecc = stimulus.ecc; % eccentricity of display
 task{1}{1}.parameter.cueSTD= stimulus.sd; % radians
@@ -170,6 +174,7 @@ task{1}{1}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{1}.randVars.calculated.visible = nan;
+task{1}{1}.randVars.calculated.dead = 0;
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
 %% CUE + POSITION JUDGMENT + RESPONSE %%%
@@ -206,6 +211,7 @@ task{1}{2}.numTrials = 100;
 task{1}{2}.random = 1;
 task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
 task{1}{2}.parameter.cueSTD = stimulus.sd; % radians
+task{1}{2}.parameter.contrastOpt = 1:length(stimulus.live.contrastPercs); %60/70/80/90
 
 if stimulus.scan
     task{1}{2}.synchToVol(stimulus.seg.ITI) = 1;
@@ -221,6 +227,7 @@ task{1}{2}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{2}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{2}.randVars.calculated.visible = 1; % were they shown a grating
+task{1}{2}.randVars.calculated.dead = 0;
 
 %% Testing 2
 if stimulus.test2
@@ -261,7 +268,6 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     myscreen = tickScreen(myscreen,task);
 end
 
-mglDisplayCursor(1);
 % task ended
 mglClearScreen(0.5);
 mglTextSet([],32,stimulus.colors.white);
@@ -291,7 +297,7 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && (task.lasttrial.visible==1)
+if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && (task.lasttrial.visible==1) && ~task.lasttrial.dead
     if (task.thistrial.thisphase==1) && ~stimulus.test2
         stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     end
@@ -318,13 +324,13 @@ end
 % contrast from staircase
 [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 
+mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 
 disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %02.0f%%',...
     task.trialnum,task.thistrial.angle*180/pi,task.thistrial.rotation*180/pi,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
-stimulus.dead = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -403,13 +409,13 @@ global stimulus
 
 % jump to next trial if you are dead and 1 second has elapsed since eye
 % movement
-if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
+if task.thistrial.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
     task = jumpSegment(task,inf); stimulus.dead=0;
 end
 
 % skip screen updates if you are already dead
-if stimulus.dead
-    if stimulus.dead && stimulus.live.eyeDead
+if task.thistrial.dead
+    if task.thistrial.dead && stimulus.live.eyeDead
         mglTextSet([],32,stimulus.colors.red);
         mglTextDraw('Eye Movement Detected',[0 0]);
     end
@@ -427,10 +433,10 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.
     if ~any(isnan(pos))
         if dist > 2.5 && stimulus.live.eyeCount > 30
             disp('Eye movement detected!!!!');
-            stimulus.dead = 1;
+            task.thistrial.dead = 1;
             stimulus.live.eyeDead=1;
             return
-        elseif dist > 2.5
+        elseif dist > 1.5
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
         end
     end
@@ -496,7 +502,7 @@ function [task, myscreen] = getResponseCallback(task, myscreen)
 
 global stimulus
 
-if stimulus.dead, return; end
+if task.thistrial.dead, return; end
     
 if stimulus.powerwheel
     validResponse = task.thistrial.mouseButton == 1;
