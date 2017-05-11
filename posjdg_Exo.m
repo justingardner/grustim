@@ -10,9 +10,9 @@ stimulus = struct;
 %% Stimulus parameters 
 
 % new prior for each run
-%stimulus.cue= rand*2*pi;
 stimulus.sd = pi/8;
 stimulus.ecc = 6;
+stimulus.live.contrastPercs = 0.9;
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -279,8 +279,6 @@ myscreen.flushMode = 1;
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-mglClearScreen(0.5);
-
 if stimulus.plots
     disp('(posjdg) Displaying plots');
     dispInfo(stimulus);
@@ -297,17 +295,29 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
-if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && (task.lasttrial.visible==1) && ~task.lasttrial.dead
-    if (task.thistrial.thisphase==1) && ~stimulus.test2
-        stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
-    end
+if (~isempty(task.lasttrial)) && (task.thistrial.thisphase==1) && ~stimulus.test2 && (task.lasttrial.detected==0) && (task.lasttrial.visible==1) && ~task.lasttrial.dead
+    stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
 elseif (~isempty(task.lasttrial)) && ~task.lasttrial.visible
-    disp('No stimulus shown');
+    disp('No stimulus displayed on this trial.');
+end
+
+%Compute Staircase
+if stimulus.curTrial(task.thistrial.thisphase)==0 && (task.thistrial.thisphase==2) || (stimulus.test2)
+    out = doStaircase('threshold', stimulus.staircase, 'type=weibull', 'dispFig=1');
+    x = 0:.001:1;
+    y = weibull(x,out.fit.fitparams);
+    for yi = 1:length(stimulus.live.contrastPercs)
+        val = x(find(y>=stimulus.live.contrastPercs(yi),1));
+        if ~isempty(val)
+            stimulus.live.contrastOpts(yi) = val;
+        else
+            stimulus.live.contrastOpts(yi) = 0;
+        end
+    end
 end
 
 stimulus.live.gotResponse = 0;
-
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
@@ -322,7 +332,11 @@ else
 end
 
 % contrast from staircase
-[task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+if task.thistrial.thisphase==1 && ~stimulus.test2
+    [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue', stimulus.staircase);
+else
+    task.thistrial.contrast = stimulus.live.contrastOpts(task.thistrial.contrastOpt);
+end
 
 mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
@@ -331,6 +345,8 @@ disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %0
     task.trialnum,task.thistrial.angle*180/pi,task.thistrial.rotation*180/pi,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
+
+setGammaTable(task.thistrial.contrast);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -362,7 +378,6 @@ if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
         stimulus.live.stim = 1;
     end
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
-    setGammaTable(1);
     stimulus.live.resp = 1;
     stimulus.live.angle=0;
     convertRespXY(task);
@@ -370,10 +385,6 @@ elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
     stimulus.live.cue = 1;
 end
     
-if stimulus.live.stim
-    setGammaTable(task.thistrial.contrast);
-end
-
 for i = 1:2
     mglClearScreen(0.5);
     if stimulus.live.stim
@@ -504,6 +515,10 @@ global stimulus
 
 if task.thistrial.dead, return; end
     
+if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1))
+    task = jumpSegment(task, inf);
+end
+
 if stimulus.powerwheel
     validResponse = task.thistrial.mouseButton == 1;
 else
@@ -525,9 +540,9 @@ if validResponse
             task.thistrial.respAngle = stimulus.live.angle;
             reportAngle = mod((task.thistrial.respAngle + task.thistrial.startRespAngle)*180/pi, 360);
             disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',reportAngle,task.thistrial.angle*180/pi,task.thistrial.contrast*100));
-            stimulus.live.fix = 0;
-            stimulus.live.resp = 0;
-            task = jumpSegment(task,inf);
+            %stimulus.live.fix = 0;
+            %stimulus.live.resp = 0;
+            %task = jumpSegment(task,inf);
         end
     else
         disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
@@ -545,23 +560,28 @@ function initStair()
 global stimulus
 
 stimulus.staircase = doStaircase('init','upDown',...
-            'initialThreshold',0.5,...
+            'initialThreshold',0.25,...
             'initialStepsize',0.025,...
             'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
-            'nTrials=25','maxStepsize=0.2','minStepsize=0.0001');
+            'nTrials=40','maxStepsize=0.2','minStepsize=0.0001');
         
 function resetStair()
 
 global stimulus
 
-if doStaircase('stop',stimulus.staircase)
+ if doStaircase('stop',stimulus.staircase)
     disp('(posjdg) Staircase is being reset');
     stimulus.staircase(end+1) = doStaircase('init',stimulus.staircase(end));
+    if stimulus.staircase(end).s.threshold>0.3
+        disp('(posjdg) Bad staircase threshold: setting to 0.3');
+        stimulus.staircase(end).s.threshold=0.3;
+    elseif stimulus.staircase(end).s.threshold<0
+        disp('(posjdg) Bad staircase threshold: setting to 0.05');
+        stimulus.staircase(end).s.threshold=0.05;
+    end
 end
 
 function [trials] = totalTrials()
-%%
-
 % Counts trials + estimates the threshold based on the last 500 trials
 
 % get the files list
@@ -581,8 +601,66 @@ end
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
 function dispInfo(rstimulus)
-%%
-disp('dispInfo not implemented');
+% get the files list
+files = dir(fullfile(sprintf('~/data/posjdg_Exo/%s/17*stim*.mat',mglGetSID)));          
+    % load the files and pull out the data (long form)
+    %  rrun # counter #    local trial     real trial   angle     respAngle    
+    %     1       2             3              4           5           6
+    %  target    startRespAngle     contrast     detected      ecc    priorsd
+    %     7            8                9           10          11      12
+    %    rotation
+    %       13
+count = 1; data = zeros(10000,13);
+                   
+for fi = 1:length(files)
+
+    load(fullfile(sprintf('~/data/posjdg_Exo/%s/%s',mglGetSID,files(fi).name)));
+    e = getTaskParameters(myscreen,task);
+    if e{1}(1).nTrials>1
+        e = e{1}(2);
+        run = stimulus.counter;
+        data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+             e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
+             e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
+             e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
+        count = count+e.nTrials;
+    end
+end
+
+data = data(1:(count-1),:);
+  
+if any(data(:,6)>pi), data(data(:,6)>pi,6) = data(data(:,6)>pi,6)-2*pi; end
+
+h = figure; hold on
+low = [0 0.075 0.081 0.09 inf];
+
+for i = 1:4
+
+    subplot(4,1,i); hold on
+    data_ = data(~isnan(data(:,6)),:);
+    data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
+    % find the trials where stimulus is - relative to the prior
+    flip = data_(:,5)<0; flip = flip*1;
+    flip(flip==1) = -1; flip(flip==0) = 1;
+    % flip all the stimulus-target to be in the positive space
+    data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
+    Y = data_(:,6);
+    X = [ones(size(Y)) data_(:,5)];
+    b = X\Y;
+    c = [X Y];
+
+    bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
+    plot(data_(:,5),data_(:,6),'*');
+    plot([-1 1],[-1 1],'--r');
+    x = -1:1;plot(x,b(1)+b(2)*x,'--k');
+    xlabel('Stimulus - Target (deg)');
+    ylabel('Resp - Target (deg)');
+    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
+    axis([-1 1 -1 1]);
+    axis square
+    set(gca,'XTick',-1:.5:1,'XTickLabel',round((-1:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
+    drawPublishAxis;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -604,7 +682,7 @@ global stimulus
 %     sz = degs/stimulus.cur_.num*0.6;
 sz = 1.5;
 % use total degs / num to compute size
-grating = 255/2*mglMakeGrating(sz,sz,6,0) + 255/2;
+grating = 251/2*mglMakeGrating(sz,sz,6,0) + 255/2;
 gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 alphamask = repmat(grating,1,1,4);
 alphamask(:,:,4) = gauss*255;
