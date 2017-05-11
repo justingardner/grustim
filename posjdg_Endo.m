@@ -105,7 +105,7 @@ myscreen.stimulusNames{1} = 'stimulus';
 localInitStimulus();
     
 if stimulus.powerwheel
-    stimulus.responseKeys = 1; % detection key (when powerwheel not in use)
+    stimulus.responseKeys = 5; % detection key (when powerwheel not in use)
 else
     stimulus.responseKeys = [1 2 3]; % 
 end
@@ -159,7 +159,7 @@ if stimulus.powerwheel
 else
     task{1}{1}.getResponse(stimulus.seg{1}.resp)=1;
 end
-if stimulus.counter<=2
+if stimulus.counter==1
     task{1}{1}.numTrials = 65;
 else
     task{1}{1}.numTrials = 25;
@@ -307,7 +307,7 @@ end
 % Compute staircase
 if stimulus.curTrial(task.thistrial.thisphase)==0 && (task.thistrial.thisphase==2) || (stimulus.test2)
     % compute stimulus.live.contrast options
-    out = doStaircase('threshold',stimulus.staircase,'type=weibull','dispFig=1');
+    out = doStaircase('threshold',stimulus.staircase,'type=weibull');
     x = 0:.001:1;
     y = weibull(x,out.fit.fitparams);
     for yi = 1:length(stimulus.live.contrastPercs)
@@ -645,15 +645,13 @@ if any(data(:,6)>pi), data(data(:,6)>pi,6) = data(data(:,6)>pi,6)-2*pi; end
 %% Compute angle-target and respAngle-target plot
 h = figure; hold on
 
-low = [0 0.075 0.081 0.09 inf];
+% low = [0 0.075 0.081 0.09 inf];
 
-for i = 1:4
-    subplot(4,1,i); hold on
     % data(:,6) = data(:,6)-data(:,5);
 
     % remove no-response trials
     data_ = data(~isnan(data(:,6)),:);
-    data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
+%     data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
     % find the trials where stimulus is - relative to the prior
     flip = data_(:,5)<0; flip = flip*1;
     flip(flip==1) = -1; flip(flip==0) = 1;
@@ -679,17 +677,17 @@ for i = 1:4
     % todo
     xlabel('Stimulus - Target (deg)');
     ylabel('Resp - Target (deg)');
-    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
+    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f]',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-    axis([-1 1 -1 1]);
+    axis([0 1 -0.3 1]);
     axis square
 
-    set(gca,'XTick',-1:.5:1,'XTickLabel',round((-1:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
+    set(gca,'XTick',0:.5:1,'XTickLabel',round((0:.5:1)*180/pi,2),'YTick',0:.5:1,'YTickLabel',round((0:.5:1)*180/pi,2));
 
     drawPublishAxis;
     % h = figure;
     % hist(data(:,5)-data(:,6));
-end
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus

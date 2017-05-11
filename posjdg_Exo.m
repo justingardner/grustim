@@ -99,7 +99,7 @@ myscreen.stimulusNames{1} = 'stimulus';
 localInitStimulus();
     
 if stimulus.powerwheel
-    stimulus.responseKeys = [3 4]; % detection key (when powerwheel not in use)
+    stimulus.responseKeys = 5; % detection key (when powerwheel not in use)
 else
     stimulus.responseKeys = [3 4]; % 
 end
@@ -131,8 +131,8 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{1}.segmin = [inf 0.000 0.100 0.200 1.000]; % Fixate, delay, cue, stim, response
-task{1}{1}.segmax = [inf 1.000 0.100 0.200 1.000];
+task{1}{1}.segmin = [inf 0.000 0.100 0.200 0.800]; % Fixate, delay, cue, stim, response
+task{1}{1}.segmax = [inf 1.000 0.100 0.200 0.800];
 
 stimulus.seg = {};
 
@@ -154,10 +154,10 @@ if stimulus.powerwheel
 else
     task{1}{1}.getResponse(stimulus.seg{1}.resp)=1;
 end
-if stimulus.counter <=2
+if stimulus.counter <=1
     task{1}{1}.numTrials = 65;
 else
-    task{1}{1}.numTrials = 25;
+    task{1}{1}.numTrials = 15;
 end
 task{1}{1}.random = 1;
 task{1}{1}.parameter.ecc = stimulus.ecc; % eccentricity of display
@@ -185,8 +185,8 @@ task{1}{2} = struct;
 task{1}{2}.waitForBacktick = 1;
 
 % task waits for fixation on first segment
-task{1}{2}.segmin = [inf 0.100 0.200 0.200 5.000]; %fixate, cue, stim, delay, response
-task{1}{2}.segmax = [inf 0.100 0.200 2.000 5.000];
+task{1}{2}.segmin = [inf 0.100 0.200 0.500 5.000]; %fixate, cue, stim, delay, response
+task{1}{2}.segmax = [inf 0.100 0.200 0.500 5.000];
    % 200 ms cue + post-cue delay; 200ms stim; 200ms-2sec delay; 5 sec to respond
 
 if stimulus.noeye==1
@@ -440,7 +440,7 @@ if ~stimulus.noeye
 end
 
 % Eye movement detection code
-if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1 stimulus.seg{task.thistrial.thisphase}.resp]) && ~stimulus.scan
+if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1]) && ~stimulus.scan
     if ~any(isnan(pos))
         if dist > 2.5 && stimulus.live.eyeCount > 30
             disp('Eye movement detected!!!!');
@@ -540,9 +540,9 @@ if validResponse
             task.thistrial.respAngle = stimulus.live.angle;
             reportAngle = mod((task.thistrial.respAngle + task.thistrial.startRespAngle)*180/pi, 360);
             disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',reportAngle,task.thistrial.angle*180/pi,task.thistrial.contrast*100));
-            %stimulus.live.fix = 0;
-            %stimulus.live.resp = 0;
-            %task = jumpSegment(task,inf);
+            stimulus.live.fix = 0;
+            stimulus.live.resp = 0;
+            task = jumpSegment(task,inf);
         end
     else
         disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
