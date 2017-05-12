@@ -187,7 +187,6 @@ task{1}{2}.waitForBacktick = 1;
 % task waits for fixation on first segment
 task{1}{2}.segmin = [inf 0.100 0.200 0.500 5.000]; %fixate, cue, stim, delay, response
 task{1}{2}.segmax = [inf 0.100 0.200 0.500 5.000];
-   % 200 ms cue + post-cue delay; 200ms stim; 200ms-2sec delay; 5 sec to respond
 
 if stimulus.noeye==1
     task{1}{2}.segmin(1) = 0.5;
