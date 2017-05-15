@@ -77,12 +77,12 @@ stimulus.probeDown = 10;
 
 stimulus.live.grid = zeros(length(stimulus.stimx),length(stimulus.stimy));
 stimulus.live.gridCon = zeros(length(stimulus.stimx),length(stimulus.stimy));
-stimulus.live.gridCons = cell(length(stimulus.stimx),length(stimulus.stimy));
 stimulus.live.gridSize = zeros(length(stimulus.stimx),length(stimulus.stimy));
-stimulus.live.gridSizes = cell(length(stimulus.stimx),length(stimulus.stimy));
 
 stimulus.gratingContrasts = [0.1 0.2 1.0];
+stimulus.live.gridCons = zeros(length(gratingContrasts));
 stimulus.gratingSizes = [1 2 4];
+stimulus.live.gridSizes = zeros(length(gratingSizes));
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -98,6 +98,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.staircase = s.stimulus.staircase;
+        stimulus.live = s.stimulus.live;
         clear s;
         disp(sprintf('(posjdg) Data file: %s loaded.',fname));
     end
@@ -275,18 +276,48 @@ for x = 1:length(stimulus.stimx)
                 % turn on grid location
                 stimulus.live.grid(x,y) = stimulus.probeDown + stimulus.probeUp;
                 % pick attributes
-                cOpts = stimulus.gratingContrasts;
-                sOpts = stimulus.gratingSizes;
+                conOpts = osum(stimulus.live.gridCons);
+                conOpts = cumsum(conOpts)/sum(conOpts);
+                r = rand;
+                conChoice = find(r<conOpts);
+                stimulus.live.gridCons(conChoice) = stimulus.live.gridCons(conChoice) + 1;
+                stimulus.live.gridCon(x,y) = conChoice;
+                    
+                sizeOpts = osum(stimulus.live.gridSizes);
+                sizeOpts = cumsum(sizeOpts)/sum(sizeOpts);
+                r = rand;
+                sizeChoice = find(r<sizeOpts);
+                stimulus.live.gridSizes(sizechoice) = stimulus.live.gridSizes(sizeChoice) + 1;
+                stimulus.live.gridSize(x,y) = sizeChoice;
             end
         end
     end
 end
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function [task, myscreen] = screenUpdateCallback1(task, myscreen)
+%%
+global stimulus
+
+% draw gratings for probe task
+
+for xi = 1:length(stimulus.stimx)
+    for yi = 1:length(stimulus.stimy)
+        x = stimulus.stimx(xi);
+        y = stimulus.stimy(yi);
+        
+        
+    end
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [task, myscreen] = startSegmentCallback(task, myscreen)
+function [task, myscreen] = startSegmentCallback2(task, myscreen)
 %%
 
 global stimulus
@@ -348,7 +379,7 @@ end
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function [task, myscreen] = screenUpdateCallback(task, myscreen)
+function [task, myscreen] = screenUpdateCallback2(task, myscreen)
 %%
 global stimulus
 
@@ -450,7 +481,7 @@ mglFixationCross(1,1,stimulus.live.fixColor);
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
-function [task, myscreen] = getResponseCallback(task, myscreen)
+function [task, myscreen] = getResponseCallback2(task, myscreen)
 
 global stimulus
 
@@ -752,3 +783,9 @@ end
 %   end
 % end
 % stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
+
+function ovals = osum(ivals)
+% compute the "other" sum, i.e. vals[i] = sum(vals[~i])
+for i = 1:length(ivals)
+    ovals(i) = sum(ivals(setdiff(1:length(ivals),i)));
+end
