@@ -109,8 +109,8 @@ stimulus.curTrial = 0;
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 % task waits for fixation on first segment
-task{1}{1}.segmin = [0.500 1 0.200 1];
-task{1}{1}.segmax = [2.500 1 0.200 1];
+task{1}{1}.segmin = [1 0.500 0.200 1];
+task{1}{1}.segmax = [1 0.500 0.200 1];
 
 stimulus.seg.ITI = 1;
 stimulus.seg.delay1 = 2;
@@ -203,7 +203,7 @@ stimulus.curTrial = stimulus.curTrial+1;
 stimulus.live.wn = mglCreateTexture(repmat(128+randi(127,1,myscreen.screenWidth,myscreen.screenHeight,'uint8'),4,1,1));
 
 stimulus.gaussian = {};
-sz = 1;
+sz = 5;
 gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 alphamask = repmat(255*ones(size(gauss)),1,1,4);
 alphamask(:,:,4) = gauss*255*task.thistrial.contrast;
@@ -231,7 +231,7 @@ if (task.thistrial.thisseg==stimulus.seg.stim)
     if task.thistrial.present
         mglBltTexture(stimulus.gaussian,[stimulus.live.aX,stimulus.live.aY]);
     end
-else
+elseif (task.thistrial.thisseg==stimulus.seg.ITI)
     for i = 1:8
         mglGluPartialDisk(stimulus.live.aX,stimulus.live.aY,0.99,1.01,(i-1)*360/8-11.25,360/16,stimulus.colors.white);
     end

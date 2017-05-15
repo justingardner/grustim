@@ -71,9 +71,16 @@ end
 stimulus.stimx = -stimulus.stimX:stimulus.stimR:stimulus.stimX;
 stimulus.stimy = -stimulus.stimY:stimulus.stimR:stimulus.stimY;
 
-stimulus.probeOn = .025;
+stimulus.probeOn = .002;
+stimulus.live.probeOnGrid = zeros(length(stimulus.stimx),length(stimulus.stimy));
+% stimulus.probeMaxLag = 30;
 stimulus.probeUp = 2;
 stimulus.probeDown = 10;
+
+stimulus.gridCount = 1;
+stimulus.grid.on = zeros(5000,length(stimulus.stimx),length(stimulus.stimy));
+stimulus.grid.con = stimulus.grid.on;
+stimulus.grid.sz = stimulus.grid.on;
 
 stimulus.live.grid = zeros(length(stimulus.stimx),length(stimulus.stimy));
 stimulus.live.gridCon = zeros(length(stimulus.stimx),length(stimulus.stimy));
@@ -87,6 +94,15 @@ stimulus.live.gridSizes = zeros(1,length(stimulus.gratingSizes));
 stimulus.live.rotations = zeros(length(stimulus.stimx),length(stimulus.stimy));
 
 stimulus.live.attend = 0;
+
+stimulus.blanks.rotTR = 15; % every 15 TRs (7.5s) rotate through blanks
+stimulus.blanks.xmin = [-inf 0 0 -inf -inf];
+stimulus.blanks.xmax = [0 inf inf 0 inf];
+stimulus.blanks.ymin = [0 0 -inf -inf -inf];
+stimulus.blanks.ymax = [inf inf 0 0 inf];
+stimulus.live.cBlank = 0;
+stimulus.live.blankTime = stimulus.blanks.rotTR;
+stimulus.live.numBlanks = length(stimulus.blanks.ymax);
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -103,7 +119,6 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.staircase = s.stimulus.staircase;
         stimulus.live = s.stimulus.live;
-        stimulus.live = rmfield(stimulus.live,'grating');
         stimulus.live.attend = mod(stimulus.live.attend+1,3);
         clear s;
         disp(sprintf('(posjdg) Data file: %s loaded.',fname));
@@ -194,38 +209,43 @@ task{1}{1}.randVars.calculated.probesOn = nan;
 
 stimulus.curTrial = 0;
 
-task{2}{1} = struct;
-task{2}{1}.waitForBacktick = 0;
-% task waits for fixation on first segment
-task{2}{1}.segmin = [0.500 1 0.200 1];
-task{2}{1}.segmax = [2.500 1 0.200 1];
+global fixStimulus
 
-stimulus.seg.ITI = 1;
-stimulus.seg.delay1 = 2;
-stimulus.seg.stim = 3;
-stimulus.seg.resp = 4;
-
-task{2}{1}.synchToVol = [0 0 0 0];
-task{2}{1}.getResponse = [0 0 0 1];
-
-task{2}{1}.numTrials = Inf;
-
-task{2}{1}.parameter.rotation = [-1 1];
-
-task{2}{1}.random = 1;
-
-if stimulus.scan
-    task{2}{1}.synchToVol = 1;
-end
-
-task{2}{1}.randVars.calculated.resp = nan;
-task{2}{1}.randVars.calculated.correct = nan;
+fixStimulus.diskSize = 0.3;
+fixStimulus.fixWidth = 0.25;
+[task{2}, myscreen] = fixStairInitTask(myscreen);
+% task{2}{1} = struct;
+% task{2}{1}.waitForBacktick = 0;
+% % task waits for fixation on first segment
+% task{2}{1}.segmin = [0.500 1 0.200 1];
+% task{2}{1}.segmax = [2.500 1 0.200 1];
+% 
+% stimulus.seg.ITI = 1;
+% stimulus.seg.delay1 = 2;
+% stimulus.seg.stim = 3;
+% stimulus.seg.resp = 4;
+% 
+% task{2}{1}.synchToVol = [0 0 0 0];
+% task{2}{1}.getResponse = [0 0 0 1];
+% 
+% task{2}{1}.numTrials = Inf;
+% 
+% task{2}{1}.parameter.rotation = [-1 1];
+% 
+% task{2}{1}.random = 1;
+% 
+% if stimulus.scan
+%     task{2}{1}.synchToVol = 1;
+% end
+% 
+% task{2}{1}.randVars.calculated.resp = nan;
+% task{2}{1}.randVars.calculated.correct = nan;
 
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
     [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback1,@screenUpdateCallback1,[],@startTrialCallback1,[],[]);
-    [task{2}{phaseNum}, myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback2,@screenUpdateCallback2,@getResponseCallback2,@startTrialCallback2,[],[]);
+%     [task{2}{phaseNum}, myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback2,@screenUpdateCallback2,@getResponseCallback2,@startTrialCallback2,[],[]);
 end
 
 %% EYE CALIB
@@ -240,10 +260,10 @@ disp(sprintf('(posjdg) Starting run number: %i.',stimulus.counter));
 %% Main Task Loop
 
 % setGammaTable(1);
-mglClearScreen(0.5); mglFixationCross(1,1,stimulus.colors.white);
+mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
 
 mglFlush
-mglClearScreen(0.5); mglFixationCross(1,1,stimulus.colors.white);
+mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
 
 phaseNum = 1;
 % Again, only one phase.
@@ -285,6 +305,16 @@ function [task, myscreen] = startTrialCallback1(task,myscreen)
 %%
 global stimulus
 
+% Deal with blanks
+stimulus.live.blankTime = stimulus.live.blankTime - 1;
+if stimulus.live.blankTime == 0
+    stimulus.live.blankTime = stimulus.blanks.rotTR;
+    stimulus.live.cBlank = stimulus.live.cBlank + 1;
+    if stimulus.live.cBlank > stimulus.live.numBlanks
+        stimulus.live.cBlank = 0;
+    end
+end
+
 % Design the state space
 for x = 1:length(stimulus.stimx)
     for y = 1:length(stimulus.stimy)
@@ -297,30 +327,51 @@ for x = 1:length(stimulus.stimx)
             stimulus.live.gridCon(x,y) = 0;
             stimulus.live.gridSize(x,y) = 0;
             stimulus.live.rotations(x,y) = 0;
+            stimulus.live.prboeOnGrid(x,y) = 0;
         else
-            if rand < stimulus.probeOn
-                % turn on grid location
-                stimulus.live.grid(x,y) = stimulus.probeDown + stimulus.probeUp;
-                % pick attributes
-                conOpts = osum(stimulus.live.gridCons);
-                conOpts = cumsum(conOpts)/sum(conOpts);
-                r = rand;
-                conChoice = find(r<conOpts,1);
-                stimulus.live.gridCons(conChoice) = stimulus.live.gridCons(conChoice) + 1;
-                stimulus.live.gridCon(x,y) = conChoice;
-                    
-                sizeOpts = osum(stimulus.live.gridSizes);
-                sizeOpts = cumsum(sizeOpts)/sum(sizeOpts);
-                r = rand;
-                sizeChoice = find(r<sizeOpts,1);
-                stimulus.live.gridSizes(sizeChoice) = stimulus.live.gridSizes(sizeChoice) + 1;
-                stimulus.live.gridSize(x,y) = sizeChoice;
+            xp = stimulus.stimx(x); yp = stimulus.stimy(y);
+            if (stimulus.live.cBlank>0)
+                check = (xp<stimulus.blanks.xmax(stimulus.live.cBlank) && xp > stimulus.blanks.xmin(stimulus.live.cBlank)) && (yp<stimulus.blanks.ymax(stimulus.live.cBlank) && yp>stimulus.blanks.ymin(stimulus.live.cBlank));
+            else
+                check = false;
+            end
+            % if check is true we skip this position (i.e. don't turn on in
+            % blank locations)
+            
+            if ~check
+                probeOn = stimulus.live.probeOnGrid(x,y);
+                stimulus.live.probeOnGrid(x,y) = min(1,stimulus.live.probeOnGrid(x,y)+stimulus.probeOn);
+                if rand < probeOn
+                    % turn on grid location
+                    stimulus.live.grid(x,y) = stimulus.probeDown + stimulus.probeUp;
+                    % pick attributes
+                    conOpts = osum(stimulus.live.gridCons);
+                    conOpts = cumsum(conOpts)/sum(conOpts);
+                    r = rand;
+                    conChoice = find(r<conOpts,1);
+                    stimulus.live.gridCons(conChoice) = stimulus.live.gridCons(conChoice) + 1;
+                    stimulus.live.gridCon(x,y) = conChoice;
+
+                    sizeOpts = osum(stimulus.live.gridSizes);
+                    sizeOpts = cumsum(sizeOpts)/sum(sizeOpts);
+                    r = rand;
+                    sizeChoice = find(r<sizeOpts,1);
+                    stimulus.live.gridSizes(sizeChoice) = stimulus.live.gridSizes(sizeChoice) + 1;
+                    stimulus.live.gridSize(x,y) = sizeChoice;
+
+                    stimulus.live.rotations(x,y) = rand*2*pi;
+                end
+            else
                 
-                stimulus.live.rotations(x,y) = rand*2*pi;
             end
         end
     end
 end
+
+stimulus.grid.on(stimulus.gridCount,:,:) = stimulus.live.grid;
+stimulus.grid.con(stimulus.gridCount,:,:) = stimulus.live.gridCon;
+stimulus.grid.sz(stimulus.gridCount,:,:) = stimulus.live.gridSize;
+stimulus.gridCount = stimulus.gridCount + 1;
 
 task.thistrial.probesOn = sum(stimulus.live.grid(:)>stimulus.probeDown);
     
@@ -344,7 +395,7 @@ for xi = 1:length(stimulus.stimx)
             con = stimulus.live.gridCon(xi,yi);
             sz = stimulus.live.gridSize(xi,yi);
             
-            mglBltTexture(stimulus.live.grating(con,sz),[x y],0,0,stimulus.live.rotations(xi,yi)*180/pi);
+            mglBltTexture(stimulus.grating(con,sz),[x y],0,0,stimulus.live.rotations(xi,yi)*180/pi);
         end
     end
 end
@@ -423,7 +474,7 @@ mglFixationCross(1,1,stimulus.live.fixColor);
 
 function upStim(stimulus)
 
-mglBltTexture(stimulus.live.grating(3,1),[stimulus.live.aX,stimulus.live.aY],0,0,stimulus.live.rotation+90);
+mglBltTexture(stimulus.grating(3,1),[stimulus.live.aX,stimulus.live.aY],0,0,stimulus.live.rotation+90);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -547,14 +598,14 @@ global stimulus
 
 for ci = 1:length(stimulus.gratingContrasts)
     for si = 1:length(stimulus.gratingSizes)
-        sz = 1.5 * stimulus.gratingSizes(si);
+        sz = 4 * stimulus.gratingSizes(si); % make it twice as a big, so that the FWHM can be equal to the size
         % use total degs / num to compute size
-        grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz,sz,2,0) + 255/2;
-        gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
+        grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz,sz,4/stimulus.gratingSizes(si),0) + 255/2;
+        gauss = mglMakeGaussian(sz,sz,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2);
         alphamask = repmat(grating,1,1,4);
         alphamask(:,:,4) = gauss*255;
 
-        stimulus.live.grating(ci,si)  = mglCreateTexture(alphamask); % high contrast
+        stimulus.grating(ci,si)  = mglCreateTexture(alphamask); % high contrast
     end
 end
 % 
