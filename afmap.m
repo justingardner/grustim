@@ -60,8 +60,8 @@ end
 
 %% Stimulus parameters
 
-stimulus.stimX = 24; % max ecc in any direction
-stimulus.stimY = 12;
+stimulus.stimX = 25; % max ecc in any direction
+stimulus.stimY = 13;
 stimulus.stimR = 2; % deg between each stimulus
 
 if mod(stimulus.stimX,stimulus.stimR)==1 || mod(stimulus.stimY,stimulus.stimR)==1
@@ -79,10 +79,14 @@ stimulus.live.grid = zeros(length(stimulus.stimx),length(stimulus.stimy));
 stimulus.live.gridCon = zeros(length(stimulus.stimx),length(stimulus.stimy));
 stimulus.live.gridSize = zeros(length(stimulus.stimx),length(stimulus.stimy));
 
-stimulus.gratingContrasts = [0.1 0.2 1.0];
-stimulus.live.gridCons = zeros(length(gratingContrasts));
-stimulus.gratingSizes = [1 2 4];
-stimulus.live.gridSizes = zeros(length(gratingSizes));
+stimulus.gratingContrasts = [0.1 0.85 1.0];
+stimulus.live.gridCons = zeros(1,length(stimulus.gratingContrasts)-1);
+stimulus.gratingSizes = [1 2 3];
+stimulus.live.gridSizes = zeros(1,length(stimulus.gratingSizes));
+
+stimulus.live.rotations = zeros(length(stimulus.stimx),length(stimulus.stimy));
+
+stimulus.live.attend = 0;
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -99,11 +103,20 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.staircase = s.stimulus.staircase;
         stimulus.live = s.stimulus.live;
+        stimulus.live = rmfield(stimulus.live,'grating');
+        stimulus.live.attend = mod(stimulus.live.attend+1,3);
         clear s;
         disp(sprintf('(posjdg) Data file: %s loaded.',fname));
     end
 end
 disp(sprintf('(posjdg) This is run #%i',stimulus.counter));
+
+%% Setup attention
+
+stimulus.attendX = [0 5 5];
+stimulus.attendY = [0 5 -5];
+stimulus.live.aX = stimulus.attendX(stimulus.live.attend+1);
+stimulus.live.aY = stimulus.attendY(stimulus.live.attend+1);
 
 %% Setup Screen
 myscreen = initScreen('VPixx');
@@ -129,7 +142,9 @@ end
 
 myscreen.stimulusNames{1} = 'stimulus';
 
-localInitStimulus();
+if ~isfield(stimulus.live,'grating')
+    localInitStimulus();
+end
     
 stimulus.responseKeys = [1 2]; % left right
 
@@ -160,7 +175,9 @@ task{1}{1}.seglen = 0.450;
 
 stimulus.seg.stim = 1;
 
-task{1}{1}.synchToVol = 1;
+if stimulus.scan
+    task{1}{1}.synchToVol = 1;
+end
 task{1}{1}.getResponse = 0;
 
 task{1}{1}.numTrials = Inf;
@@ -175,35 +192,39 @@ task{1}{1}.randVars.calculated.probesOn = nan;
 
 %% Setup Attention Task
 
+stimulus.curTrial = 0;
+
 task{2}{1} = struct;
 task{2}{1}.waitForBacktick = 0;
 % task waits for fixation on first segment
-task{2}{1}.segmin = [0.200 1 0.200 1 1];
-taks{2}{1}.segmax = [0.200 1 0.200 1 1];
+task{2}{1}.segmin = [0.500 1 0.200 1];
+task{2}{1}.segmax = [2.500 1 0.200 1];
 
-stimulus.seg.stim1 = 1;
+stimulus.seg.ITI = 1;
 stimulus.seg.delay1 = 2;
-stimulus.seg.stim2 = 3;
-stimulus.seg.delay2 = 4;
-stimulus.seg.resp = 5;
+stimulus.seg.stim = 3;
+stimulus.seg.resp = 4;
 
-task{2}{1}.synchToVol = [0 0 0 0 0];
-task{2}{1}.getResponse = [0 0 0 0 1];
+task{2}{1}.synchToVol = [0 0 0 0];
+task{2}{1}.getResponse = [0 0 0 1];
 
 task{2}{1}.numTrials = Inf;
 
-task{2}{1}.random = 0;
+task{2}{1}.parameter.rotation = [-1 1];
+
+task{2}{1}.random = 1;
 
 if stimulus.scan
     task{2}{1}.synchToVol = 1;
 end
 
-task{2}{1}.randVars.calculated.probesOn = nan;
+task{2}{1}.randVars.calculated.resp = nan;
+task{2}{1}.randVars.calculated.correct = nan;
 
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
-    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,[],@screenUpdateCallback1,[],@startTrialCallback,[],[]);
+    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback1,@screenUpdateCallback1,[],@startTrialCallback1,[],[]);
     [task{2}{phaseNum}, myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback2,@screenUpdateCallback2,@getResponseCallback2,@startTrialCallback2,[],[]);
 end
 
@@ -218,7 +239,7 @@ disp(sprintf('(posjdg) Starting run number: %i.',stimulus.counter));
 
 %% Main Task Loop
 
-setGammaTable(1);
+% setGammaTable(1);
 mglClearScreen(0.5); mglFixationCross(1,1,stimulus.colors.white);
 
 mglFlush
@@ -256,6 +277,10 @@ end
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+function [task, myscreen] = startSegmentCallback1(task,myscreen)
+% pass
+
+
 function [task, myscreen] = startTrialCallback1(task,myscreen)
 %%
 global stimulus
@@ -271,6 +296,7 @@ for x = 1:length(stimulus.stimx)
             stimulus.live.grid(x,y) = 0;
             stimulus.live.gridCon(x,y) = 0;
             stimulus.live.gridSize(x,y) = 0;
+            stimulus.live.rotations(x,y) = 0;
         else
             if rand < stimulus.probeOn
                 % turn on grid location
@@ -279,20 +305,24 @@ for x = 1:length(stimulus.stimx)
                 conOpts = osum(stimulus.live.gridCons);
                 conOpts = cumsum(conOpts)/sum(conOpts);
                 r = rand;
-                conChoice = find(r<conOpts);
+                conChoice = find(r<conOpts,1);
                 stimulus.live.gridCons(conChoice) = stimulus.live.gridCons(conChoice) + 1;
                 stimulus.live.gridCon(x,y) = conChoice;
                     
                 sizeOpts = osum(stimulus.live.gridSizes);
                 sizeOpts = cumsum(sizeOpts)/sum(sizeOpts);
                 r = rand;
-                sizeChoice = find(r<sizeOpts);
-                stimulus.live.gridSizes(sizechoice) = stimulus.live.gridSizes(sizeChoice) + 1;
+                sizeChoice = find(r<sizeOpts,1);
+                stimulus.live.gridSizes(sizeChoice) = stimulus.live.gridSizes(sizeChoice) + 1;
                 stimulus.live.gridSize(x,y) = sizeChoice;
+                
+                stimulus.live.rotations(x,y) = rand*2*pi;
             end
         end
     end
 end
+
+task.thistrial.probesOn = sum(stimulus.live.grid(:)>stimulus.probeDown);
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -302,17 +332,39 @@ function [task, myscreen] = screenUpdateCallback1(task, myscreen)
 %%
 global stimulus
 
+mglClearScreen();
+
 % draw gratings for probe task
 
 for xi = 1:length(stimulus.stimx)
     for yi = 1:length(stimulus.stimy)
-        x = stimulus.stimx(xi);
-        y = stimulus.stimy(yi);
-        
-        
+        if stimulus.live.grid(xi,yi) > stimulus.probeDown
+            x = stimulus.stimx(xi);
+            y = stimulus.stimy(yi);
+            con = stimulus.live.gridCon(xi,yi);
+            sz = stimulus.live.gridSize(xi,yi);
+            
+            mglBltTexture(stimulus.live.grating(con,sz),[x y],0,0,stimulus.live.rotations(xi,yi)*180/pi);
+        end
     end
 end
 
+
+function [task, myscreen] = startTrialCallback2(task,myscreen)
+%%
+global stimulus
+
+stimulus.curTrial = stimulus.curTrial + 1;
+
+[rotation, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+task.thistrial.rotation = rotation*task.thistrial.rotation;
+
+rotText = {'-','+'};
+disp(sprintf('Trial %i: %s%01.2f',stimulus.curTrial,rotText{1+(task.thistrial.rotation>0)},abs(task.thistrial.rotation)*180/pi));
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -322,57 +374,17 @@ function [task, myscreen] = startSegmentCallback2(task, myscreen)
 
 global stimulus
 
-stimulus.live.triggerWaiting = 0;
-if any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1])
-    stimulus.live.triggerWaiting = 1;
-    stimulus.live.centered = 0;
-    stimulus.live.triggerTime = 0;
-    stimulus.live.lastTrigger = -1;
-end
-
-stimulus.live.eyeDead = 0;
-stimulus.live.resp = 0;
-stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.fix = 1;
 stimulus.live.stim = 0;
-stimulus.live.cue = 0;
+stimulus.live.fixColor = stimulus.colors.white;
 
-if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
-    if task.thistrial.visible == 1
-        stimulus.live.stim = 1;
-    end
-elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
-    stimulus.live.resp = 1;
-    stimulus.live.angle = task.thistrial.startRespAngle;
-    stimulus.live.anyAngleAdj = false;
-    mInfo = mglGetMouse(myscreen.screenNumber);
-    stimulus.live.trackingAngle = -mInfo.x/90;
-    convertRespXY(task);
-elseif stimulus.att == 2 && task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
-    stimulus.live.cue = 1;
-end
-
-for i = 1:2
-    mglClearScreen(0.5);
-    if stimulus.live.stim
-        x = task.thistrial.ecc * cos(task.thistrial.angle+task.thistrial.target);
-        y = task.thistrial.ecc * sin(task.thistrial.angle+task.thistrial.target);
-        mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
-    elseif stimulus.live.cue && i == 1
-        x = task.thistrial.ecc * cos(task.thistrial.target);
-        y = task.thistrial.ecc * sin(task.thistrial.target);
-        mglPolygon([x-.15, x-.15, x+.15, x+.15], [y-.15, y+.15, y+.15, y-.15], stimulus.colors.white);
-        mglFlush();
-        mglClearScreen(0.5);
-    end
-    
-    % resp is updated in screenUpdate
-    
-    if stimulus.live.fix
-        upFix(stimulus);
-    end
-
-    mglFlush
+if task.thistrial.thisseg==stimulus.seg.ITI
+    stimulus.live.fixColor = stimulus.colors.black;
+elseif task.thistrial.thisseg == stimulus.seg.stim
+    stimulus.live.rotation = task.thistrial.rotation*180/pi;
+    stimulus.live.stim = 1;
+% elseif task.thistrial.thisseg == stimulus.seg.stim2
+%     stimulus.live.rotation = task.thistrial.rotation*180/pi;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -383,91 +395,23 @@ function [task, myscreen] = screenUpdateCallback2(task, myscreen)
 %%
 global stimulus
 
-% jump to next trial if you are dead and 1 second has elapsed since eye
-% movement
-if task.thistrial.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
-    task = jumpSegment(task,inf);
+% mglClearScreen();
+
+if stimulus.live.fix
+    upFix(stimulus);
 end
 
-% skip screen updates if you are already dead
-if task.thistrial.dead
-    if task.thistrial.dead && stimulus.live.eyeDead
-        mglTextSet([],32,stimulus.colors.red);
-        mglTextDraw('Eye Movement Detected',[0 0]);
-    end
-    return
+if stimulus.live.stim
+    upStim(stimulus);
 end
 
-% check eye pos
-if ~stimulus.noeye
-    [pos,~] = mglEyelinkGetCurrentEyePos;
-    dist = hypot(pos(1),pos(2));
+upAttend(stimulus);
+
+function upAttend(stimulus)
+%%
+for i = 1:8
+    mglGluPartialDisk(stimulus.live.aX,stimulus.live.aY,0.99,1.01,(i-1)*360/8-11.25,360/16,stimulus.colors.white);
 end
-
-% Eye movement detection code
-if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1]) && ~stimulus.scan
-    if ~any(isnan(pos))
-        if dist > 1.5 && stimulus.live.eyeCount > 30
-            disp('Eye movement detected!!!!');
-            task.thistrial.dead = 1;
-            stimulus.live.eyeDead=1;
-            return
-        elseif dist > 1.5
-            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-        end
-    end
-end
-
-if (task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp) && stimulus.powerwheel
-    mInfo = mglGetMouse(myscreen.screenNumber);
-    curPos = -mInfo.x/90;
-    stimulus.live.angle = stimulus.live.angle + curPos-stimulus.live.trackingAngle;
-    if abs(curPos-stimulus.live.trackingAngle)>0
-        stimulus.live.anyAngleAdj = true;
-    end
-    stimulus.live.trackingAngle = curPos;
-    convertRespXY(task);
-elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
-    keys = find(mglGetKeys);
-    if any(keys==19)
-        stimulus.live.angle = stimulus.live.angle+0.01;
-        stimulus.live.anyAngleAdj = true;
-    elseif any(keys==20)
-        stimulus.live.angle = stimulus.live.angle-0.01;
-        stimulus.live.anyAngleAdj = true;
-    end
-    convertRespXY(task);
-end
-
-if stimulus.live.resp && ((task.thistrial.thisphase==2) || stimulus.test2)
-    mglClearScreen(0.5);
-    if stimulus.live.fix, upFix(stimulus); end
-    if stimulus.live.resp, mglFillOval(stimulus.live.respx,stimulus.live.respy,[0.5 0.5],stimulus.colors.white); end
-end
-
-% Trial trigger on eye fixation code  
-if ~stimulus.noeye && stimulus.live.triggerWaiting
-    now = mglGetSecs;
-    % check eye position, if 
-    if ~any(isnan(pos))
-        wasCentered = stimulus.live.centered;
-        stimulus.live.centered = dist<2.5;
-        if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
-            stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
-        end
-        stimulus.live.lastTrigger = now;
-    end
-    if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-        disp('Starting trial--eye centered and space pressed.');
-        task = jumpSegment(task);
-    end
-end
-
-function convertRespXY(task)
-global stimulus
-
-stimulus.live.respx = task.thistrial.ecc*cos(stimulus.live.angle+task.thistrial.target);
-stimulus.live.respy = task.thistrial.ecc*sin(stimulus.live.angle+task.thistrial.target);
 
 function upFix(stimulus)
 %%
@@ -477,6 +421,10 @@ function upFix(stimulus)
 % mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
 mglFixationCross(1,1,stimulus.live.fixColor);
 
+function upStim(stimulus)
+
+mglBltTexture(stimulus.live.grating(3,1),[stimulus.live.aX,stimulus.live.aY],0,0,stimulus.live.rotation+90);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -485,44 +433,19 @@ function [task, myscreen] = getResponseCallback2(task, myscreen)
 
 global stimulus
 
-if task.thistrial.dead, return; end
-    
-if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1))
-    % subject didn't see anything
-    task = jumpSegment(task,inf);
-end
-
-if stimulus.powerwheel
-    validResponse = task.thistrial.mouseButton == 1;
-else
-    validResponse = any(task.thistrial.whichButton == stimulus.responseKeys);
-end
-
-if validResponse
-    if stimulus.live.gotResponse==0
-        if (task.thistrial.thisphase==1 && (~stimulus.test2))
-            % they saw it
-            task.thistrial.detected = 1;
-            stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
-            disp(sprintf('Subject saw %01.2f%% contrast',task.thistrial.contrast*100));
-            stimulus.live.fix = 0;
-        elseif ((task.thistrial.thisphase==2) || stimulus.test2)
-            % they saw it
-%             if stimulus.live.anyAngleAdj == true
-%                 task.thistrial.detected = 1;
-%                 stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
-%             end
-            % they are actually reporting locations
-            task.thistrial.respAngle = stimulus.live.angle;
-            disp(sprintf('Subject reported %02.0f real %02.0f at %02.0f%% contrast',task.thistrial.respAngle*180/pi,task.thistrial.angle*180/pi,task.thistrial.contrast*100));
-            stimulus.live.fix = 0;
-            stimulus.live.resp = 0;
-            task = jumpSegment(task,inf);
-        end
+colors = [stimulus.colors.red;stimulus.colors.green];
+text = {'Incorrect','Correct'};
+stext = {'Left','Right'};
+if any(task.thistrial.whichButton==stimulus.responseKeys)
+    if task.thistrial.gotResponse==0
+        task.thistrial.correct = (task.thistrial.whichButton==1 && task.thistrial.rotation>0) || (task.thistrial.whichButton==2 && task.thistrial.rotation<0);
+        stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
+        
+        stimulus.live.fixColor = colors(task.thistrial.correct+1,:);
+        disp(sprintf('Subject responded %s: %s',stext{task.thistrial.whichButton},text{task.thistrial.correct+1}));
     else
-        disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
+        disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse));
     end
-    stimulus.live.gotResponse=stimulus.live.gotResponse+1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -533,10 +456,10 @@ function initStair()
 global stimulus
 
 stimulus.staircase = doStaircase('init','upDown',...
-            'initialThreshold',0.25,...
-            'initialStepsize',0.025,...
+            'initialThreshold',0.15,...
+            'initialStepsize',0.03,...
             'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
-            'nTrials=40','maxStepsize=0.2','minStepsize=0.0001');
+            'nTrials=80','maxStepsize=0.2','minStepsize=0.0001');
         
 function resetStair()
 
@@ -560,12 +483,12 @@ function [trials] = totalTrials()
 % Counts trials + estimates the threshold based on the last 500 trials
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/posjdg/%s/17*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/afmap/%s/17*stim*.mat',mglGetSID)));
 
 trials = 0;
 
 for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/posjdg/%s/%s',mglGetSID,files(fi).name)));
+    load(fullfile(sprintf('~/data/afmap/%s/%s',mglGetSID,files(fi).name)));
     
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
@@ -585,7 +508,7 @@ function dispInfo(rstimulus)
 % exp = getTaskParameters(task,myscreen);
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/posjdg_%s/%s/17*stim*.mat',rstimulus.condition,mglGetSID)));
+files = dir(fullfile(sprintf('~/data/afmap/%s/17*stim*.mat',mglGetSID)));
 
 % load the files and pull out the data (long form)
 %  rrun # counter #    local trial     real trial   angle     respAngle    
@@ -594,77 +517,26 @@ files = dir(fullfile(sprintf('~/data/posjdg_%s/%s/17*stim*.mat',rstimulus.condit
 %     7            8                9           10          11      12
 %    rotation
 %       13
-count = 1; data = zeros(10000,13);
+% count = 1; data = zeros(10000,13);
+% 
+% for fi = 1:length(files)
+%     load(fullfile(sprintf('~/data/posjdg_%s/%s/%s',rstimulus.condition,mglGetSID,files(fi).name)));
+%     
+%     e = getTaskParameters(myscreen,task);
+%     if e{1}(1).nTrials>1
+%         e = e{1}(2); % why?!
+%     
+%         run = stimulus.counter;
+% 
+%         data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+%             e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
+%             e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
+%             e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
+% 
+%         count = count+e.nTrials;
+%     end
+% end
 
-for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/posjdg_%s/%s/%s',rstimulus.condition,mglGetSID,files(fi).name)));
-    
-    e = getTaskParameters(myscreen,task);
-    if e{1}(1).nTrials>1
-        e = e{1}(2); % why?!
-    
-        run = stimulus.counter;
-
-        data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-            e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
-            e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-            e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
-
-        count = count+e.nTrials;
-    end
-end
-
-data = data(1:(count-1),:);
-
-if any(data(:,6)>pi), data(data(:,6)>pi,6) = data(data(:,6)>pi,6)-2*pi; end
-%% Compute angle-target and respAngle-target plot
-h = figure; hold on
-
-low = [0 0.075 0.081 0.09 inf];
-
-for i = 1:4
-    subplot(4,1,i); hold on
-    % data(:,6) = data(:,6)-data(:,5);
-
-    % remove no-response trials
-    data_ = data(~isnan(data(:,6)),:);
-    data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
-    % find the trials where stimulus is - relative to the prior
-    flip = data_(:,5)<0; flip = flip*1;
-    flip(flip==1) = -1; flip(flip==0) = 1;
-    % flip all the stimulus-target to be in the positive space
-    data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
-    Y = data_(:,6);
-    X = [ones(size(Y)) data_(:,5)];
-    b = X\Y;
-    c = [X Y];
-
-    bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
-
-    % [p,s] = polyfit(data_(:,5),data_(:,6),1);
-
-
-    plot(data_(:,5),data_(:,6),'*');
-    % plot constant line
-    plot([-1 1],[-1 1],'--r');
-    % plot fit
-    x = -1:1;
-    plot(x,b(1)+b(2)*x,'--k');
-    % compute SD of residuals? 
-    % todo
-    xlabel('Stimulus - Target (deg)');
-    ylabel('Resp - Target (deg)');
-    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
-
-    axis([-1 1 -1 1]);
-    axis square
-
-    set(gca,'XTick',-1:.5:1,'XTickLabel',round((-1:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
-
-    drawPublishAxis;
-    % h = figure;
-    % hist(data(:,5)-data(:,6));
-end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -786,6 +658,7 @@ end
 
 function ovals = osum(ivals)
 % compute the "other" sum, i.e. vals[i] = sum(vals[~i])
+ivals(ivals==0)=1;
 for i = 1:length(ivals)
     ovals(i) = sum(ivals(setdiff(1:length(ivals),i)));
 end
