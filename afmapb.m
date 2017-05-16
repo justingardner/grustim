@@ -65,11 +65,27 @@ myscreen.stimulusNames{1} = 'stimulus';
 myscreen.background = 0.5;
 
 %% Staircase
+stimulus.useStair = true;
 if ~isfield(stimulus,'staircase')
     disp('(afmapb) WARNING: New staircase');
+    disp('(afmapb) Staircase is running');
     initStair();
-else
+elseif mod(stimulus.counter,5)==0
+    disp('(afmapb) Staircase is running');
     resetStair();
+else
+    stimulus.useStair = false;
+    stimulus.out = doStaircase('threshold',stimulus.staircase,'type=weibull','dispFig=1');
+    stimulus.contrast = stimulus.out.threshold;
+    while true
+        val = input(sprintf('Current value is %01.2f, [enter] or change: ',stimulus.contrast));
+        if ~isempty(val)
+            stimulus.contrast = val;
+        else
+            break;
+        end
+    end
+    disp(sprintf('(afmapb) Contrast is fixed at %01.2f',stimulus.contrast));
 end
 
 %% Plot and return
@@ -80,7 +96,7 @@ end
 
 %% Initialize Stimulus
     
-stimulus.responseKeys = [1 2]; % left right
+stimulus.responseKeys = [2 1]; % absent present
 
 %% Colors
 stimulus.colors.white = [1 1 1]; stimulus.colors.red = [1 0 0];
@@ -198,9 +214,16 @@ function [task, myscreen] = startTrialCallback1(task,myscreen)
 global stimulus
 
 stimulus.curTrial = stimulus.curTrial+1;
-[task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 
-stimulus.live.wn = mglCreateTexture(repmat(128+randi(127,1,myscreen.screenWidth,myscreen.screenHeight,'uint8'),4,1,1));
+if stimulus.useStair
+    [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+else
+    task.thistrial.contrast = stimulus.contrast;
+end
+
+wn = repmat(randi(256,1,myscreen.screenWidth,myscreen.screenHeight,'uint8')-1,3,1,1);
+wn(4,:,:) = 255;
+stimulus.live.wn = mglCreateTexture(wn);
 
 stimulus.gaussian = {};
 sz = 5;
@@ -261,7 +284,7 @@ text = {'Incorrect','Correct'};
 stext = {'Absent','Present'};
 if any(task.thistrial.whichButton==stimulus.responseKeys)
     if task.thistrial.gotResponse==0
-        task.thistrial.resp = task.thistrial.whichButton-1;
+        task.thistrial.resp = stimulus.responseKeys(task.thistrial.whichButton)-1;
         
         task.thistrial.correct = task.thistrial.resp==task.thistrial.present;
         stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
