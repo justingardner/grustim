@@ -33,6 +33,7 @@ if stimulus.scan
     warning('Not setup for scanning');
 end
 
+
 %% Stimulus parameters
 
 stimulus.gaussSz = 1:5;
@@ -87,6 +88,11 @@ else
     end
     disp(sprintf('(afmapb) Contrast is fixed at %01.2f',stimulus.contrast));
 end
+
+%% White noise tracking
+stimulus.wn.count = 1;
+stimulus.wn.img = zeros(10000,myscreen.screenWidth/4,myscreen.screenHeight/4);
+stimulus.wn.trials = cell(1,10000);
 
 %% Plot and return
 if stimulus.plots==2
@@ -145,6 +151,10 @@ task{1}{1}.random = 1;
 task{1}{1}.randVars.calculated.contrast = nan;
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
+task{1}{1}.randVars.calculated.hit = false;
+task{1}{1}.randVars.calculated.fa = false;
+task{1}{1}.randVars.calculated.miss = false;
+task{1}{1}.randVars.calculated.cr = false;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -186,6 +196,8 @@ mglTextDraw('Please wait',[0 0]);
 mglFlush
 myscreen.flushMode = 1;
 
+stimulus.wn.img = stimulus.wn.img(1:(stimulus.wn.count-1),:,:);
+
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -221,9 +233,7 @@ else
     task.thistrial.contrast = stimulus.contrast;
 end
 
-wn = repmat(randi(256,1,myscreen.screenWidth,myscreen.screenHeight,'uint8')-1,3,1,1);
-wn(4,:,:) = 255;
-stimulus.live.wn = mglCreateTexture(wn);
+stimulus.live.wnTimer = -1;
 
 stimulus.gaussian = {};
 sz = 5;
@@ -234,6 +244,18 @@ stimulus.gaussian = mglCreateTexture(alphamask);
 
 disp(sprintf('(afmapb) Trial %i: %02.1f',stimulus.curTrial,task.thistrial.contrast*100));
     
+function refreshWN(myscreen)
+global stimulus
+wn = repmat(randi(256,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
+stimulus.wn.img(stimulus.wn.count,:,:) = wn(1,:,:);
+stimulus.wn.trials{stimulus.curTrial}(end+1) = stimulus.wn.count;
+stimulus.wn.count = stimulus.wn.count+1;
+wn(4,:,:) = 255;
+if isfield(stimulus,'live') && isfield(stimulus.live,'wn')
+    mglDeleteTexture(stimulus.live.wn);
+end
+stimulus.live.wn = mglCreateTexture(wn,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -249,7 +271,11 @@ stimulus.live.aX = 5;
 stimulus.live.aY = 5;
 
 if (task.thistrial.thisseg==stimulus.seg.stim)
-    mglBltTexture(stimulus.live.wn,[0 0]);
+    stimulus.live.wnTimer = stimulus.live.wnTimer+1;
+    if mod(stimulus.live.wnTimer,3)==0
+        refreshWN(myscreen);
+    end
+    mglBltTexture(stimulus.live.wn,[0 0 myscreen.imageWidth myscreen.imageWidth]);
     
     if task.thistrial.present
         mglBltTexture(stimulus.gaussian,[stimulus.live.aX,stimulus.live.aY]);
@@ -287,6 +313,21 @@ if any(task.thistrial.whichButton==stimulus.responseKeys)
         task.thistrial.resp = stimulus.responseKeys(task.thistrial.whichButton)-1;
         
         task.thistrial.correct = task.thistrial.resp==task.thistrial.present;
+        
+        if task.thistrial.present
+            if task.thistrial.correct
+                task.thistrial.hit = true;
+            else
+                task.thistrial.miss = true;
+            end
+        else
+            if task.thistrial.correct
+                task.thistrial.cr = true;
+            else
+                task.thistrial.fa = true;
+            end
+        end
+        
         stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
         
         stimulus.live.fixColor = colors(task.thistrial.correct+1,:);
