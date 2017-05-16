@@ -39,14 +39,14 @@ end
 
 % new prior for each run
 if stimulus.att == 1
-    stimulus.condition = 'endo';
+    stimulus.condition = 'Endo';
     stimulus.prior = rand*2*pi;
     while (abs(mod(stimulus.prior,pi/2)<0.15))
       stimulus.prior = rand*2*pi;
     end
     disp(sprintf('Prior chosen to be %02.0f, dist was: %02.2f',stimulus.prior*180/pi,abs(mod(stimulus.prior,pi/2))));
 elseif stimulus.att == 2
-    stimulus.condition = 'exo';
+    stimulus.condition = 'Exo';
 end
 stimulus.sd = pi/8;
 stimulus.ecc = 6;
@@ -326,6 +326,14 @@ myscreen.flushMode = 1;
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+
+% Move files from posjdg folder to either posjdg_Exo or posjdg_Endo
+%
+if ~isdir(sprintf('~/data/posjdg_%s/%s',stimulus.condition,mglGetSID))
+    disp('No stim directory found, so creating directory now.');
+    mkdir(sprintf('~/data/posjdg_%s/%s',stimulus.condition,mglGetSID))
+end
+movefile(sprintf('~/data/posjdg/%s/*',mglGetSID), sprintf('~/data/posjdg_%s/%s/', stimulus.condition, mglGetSID));
 
 if stimulus.plots
     disp('(posjdg) Displaying plots');
