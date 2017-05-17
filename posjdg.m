@@ -1,7 +1,31 @@
 function [ myscreen ] = posjdg( varargin )
-%POSITIONJUDGMENTS 
 %
-% Position judgment task with three attentional conditions. 
+% POSITION JUDGMENTS 
+%    Position judgment task with three attentional conditions. 
+%
+% Usage: posjdg(varargin)
+% Authors: Dan Birman, Akshay Jagadeesh
+% Date: 05/10/2017
+%
+% Parameters:
+%
+%   To run the endogenous attention experiment
+%      posjdg('att=1') --> default
+%
+%   To run the exogenous attention experiment
+%      posjdg('att=2')
+%     
+%   To run without eyetracking
+%      posjdg('noeye=1') --> default 'noeye=0'
+%   
+%   To run without powerwheel
+%      posjdg('powerwheel=0') --> default 'powerwheel=1'
+%
+%   To run in scanner
+%      posjdg('scan=1') --> default 'scan=0'
+%
+%   To generate plots
+%      posjdg('plots=1') --> default 'plots=0'
 
 global stimulus
 
