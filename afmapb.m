@@ -131,8 +131,12 @@ stimulus.curTrial = 0;
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 % task waits for fixation on first segment
-task{1}{1}.segmin = [1 0.500 0.200 1];
-task{1}{1}.segmax = [1 0.500 0.200 1];
+task{1}{1}.seglen = [inf 0.500 0.200 1];
+% task{1}{1}.segmax = [inf 0.500 0.200 1];
+
+if stimulus.noeye
+    task{1}{1}.seglen(1) = 1;
+end
 
 stimulus.seg.ITI = 1;
 stimulus.seg.delay1 = 2;
@@ -155,6 +159,7 @@ task{1}{1}.randVars.calculated.hit = false;
 task{1}{1}.randVars.calculated.fa = false;
 task{1}{1}.randVars.calculated.miss = false;
 task{1}{1}.randVars.calculated.cr = false;
+task{1}{1}.randVars.calculated.dead = false;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -215,6 +220,15 @@ end
 function [task, myscreen] = startSegmentCallback1(task,myscreen)
 global stimulus
 
+stimulus.live.triggerWaiting = 0;
+if any(task.thistrial.thisseg==[stimulus.seg.ITI])
+    stimulus.live.triggerWaiting = 1;
+    stimulus.live.centered = 0;
+    stimulus.live.triggerTime = 0;
+    stimulus.live.lastTrigger = -1;
+end
+
+stimulus.live.eyeDead = 0;
 stimulus.live.fixColor = stimulus.colors.white;
 
 if task.thistrial.thisseg==stimulus.seg.ITI
@@ -244,6 +258,8 @@ stimulus.gaussian = mglCreateTexture(alphamask);
 
 disp(sprintf('(afmapb) Trial %i: %02.1f',stimulus.curTrial,task.thistrial.contrast*100));
     
+stimulus.live.eyeCount = 0;
+
 function refreshWN(myscreen)
 global stimulus
 wn = repmat(randi(256,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
@@ -266,6 +282,41 @@ global stimulus
 
 mglClearScreen(0.5);
 
+% jump to next trial if you are dead and 1 second has elapsed since eye
+% movement
+if task.thistrial.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
+    task = jumpSegment(task,inf);
+end
+
+% skip screen updates if you are already dead
+if task.thistrial.dead
+    if task.thistrial.dead && stimulus.live.eyeDead
+        mglTextSet([],32,stimulus.colors.red);
+        mglTextDraw('Eye Movement Detected',[0 0]);
+    end
+    return
+end
+
+% check eye pos
+if ~stimulus.noeye
+    [pos,~] = mglEyelinkGetCurrentEyePos;
+    dist = hypot(pos(1),pos(2));
+end
+
+% Eye movement detection code
+if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI]) && ~stimulus.scan
+    if ~any(isnan(pos))
+        if dist > 1.5 && stimulus.live.eyeCount > 20
+            disp('Eye movement detected!!!!');
+            task.thistrial.dead = 1;
+            stimulus.live.eyeDead=1;
+            return
+        elseif dist > 1.5
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
+    end
+end
+
 % draw gratings for probe task
 stimulus.live.aX = 5;
 stimulus.live.aY = 5;
@@ -286,6 +337,23 @@ elseif (task.thistrial.thisseg==stimulus.seg.ITI)
     end
 end
 
+% Trial trigger on eye fixation code  
+if ~stimulus.noeye && stimulus.live.triggerWaiting
+    now = mglGetSecs;
+    % check eye position, if 
+    if ~any(isnan(pos))
+        wasCentered = stimulus.live.centered;
+        stimulus.live.centered = dist<2.5;
+        if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+            stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
+        end
+        stimulus.live.lastTrigger = now;
+    end
+    if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+        disp('Starting trial--eye centered and space pressed.');
+        task = jumpSegment(task);
+    end
+end
 
 upFix(stimulus);
 
