@@ -27,7 +27,7 @@ end
 % polar angles where eccentricity was measured
 mesAngles =  [-15 0 15 30 45 60 75 90];
 % eccentricity measured at the above angles
-mesEcc = [38 35 30 26 24 22 21 21]-1;
+mesEcc = ([38 35 30 26 24 22 21 21]-1)*1.1;
 
 % check match of eccentricity and angles
 if length(mesEcc) ~= length(mesAngles)
