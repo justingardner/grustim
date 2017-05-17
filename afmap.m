@@ -188,7 +188,11 @@ stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 % task waits for fixation on first segment
-task{1}{1}.seglen = 0.450;
+if stimulus.scan
+    task{1}{1}.seglen = 0.450;
+else
+    task{1}{1}.seglen = 0.500;
+end
 
 stimulus.seg.stim = 1;
 
