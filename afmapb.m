@@ -36,7 +36,7 @@ end
 
 %% Stimulus parameters
 
-stimulus.gaussSz = 1:5;
+stimulus.gaussSize = 5;
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -71,22 +71,22 @@ if ~isfield(stimulus,'staircase')
     disp('(afmapb) WARNING: New staircase');
     disp('(afmapb) Staircase is running');
     initStair();
-elseif mod(stimulus.counter,5)==0
+elseif true %mod(stimulus.counter,5)==0
     disp('(afmapb) Staircase is running');
     resetStair();
 else
-    stimulus.useStair = false;
-    stimulus.out = doStaircase('threshold',stimulus.staircase,'type=weibull','dispFig=1');
-    stimulus.contrast = stimulus.out.threshold;
-    while true
-        val = input(sprintf('Current value is %01.2f, [enter] or change: ',stimulus.contrast));
-        if ~isempty(val)
-            stimulus.contrast = val;
-        else
-            break;
-        end
-    end
-    disp(sprintf('(afmapb) Contrast is fixed at %01.2f',stimulus.contrast));
+%     stimulus.useStair = false;
+%     stimulus.out = doStaircase('threshold',stimulus.staircase,'type=weibull','dispFig=0');
+%     stimulus.contrast = stimulus.out.threshold;
+%     while false
+%         val = input(sprintf('Current value is %01.2f, [enter] or change: ',stimulus.contrast));
+%         if ~isempty(val)
+%             stimulus.contrast = val;
+%         else
+%             break;
+%         end
+%     end
+%     disp(sprintf('(afmapb) Contrast is fixed at %01.2f',stimulus.contrast));
 end
 
 %% White noise tracking
@@ -146,7 +146,7 @@ stimulus.seg.resp = 4;
 task{1}{1}.synchToVol = [0 0 0 0];
 task{1}{1}.getResponse = [0 0 0 1];
 
-task{1}{1}.numTrials = Inf;
+task{1}{1}.numTrials = 60;
 
 task{1}{1}.parameter.present = [0 1];
 
@@ -202,6 +202,8 @@ mglFlush
 myscreen.flushMode = 1;
 
 stimulus.wn.img = stimulus.wn.img(1:(stimulus.wn.count-1),:,:);
+stimulus.wn.trials = stimulus.wn.trials(1:(stimulus.wn.count-1));
+stimulus.wn.count = stimulus.wn.count-1;
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
@@ -250,7 +252,7 @@ end
 stimulus.live.wnTimer = -1;
 
 stimulus.gaussian = {};
-sz = 5;
+sz = stimulus.gaussSize;
 gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 alphamask = repmat(255*ones(size(gauss)),1,1,4);
 alphamask(:,:,4) = gauss*255*task.thistrial.contrast;
@@ -468,32 +470,76 @@ function dispInfo(rstimulus)
 files = dir(fullfile(sprintf('~/data/afmapb/%s/17*stim*.mat',mglGetSID)));
 
 % load the files and pull out the data (long form)
-%  rrun # counter #    local trial     real trial   angle     respAngle    
-%     1       2             3              4           5           6
-%  target    startRespAngle     contrast     detected      ecc    priorsd
-%     7            8                9           10          11      12
-%    rotation
-%       13
-% count = 1; data = zeros(10000,13);
-% 
-% for fi = 1:length(files)
-%     load(fullfile(sprintf('~/data/afmapb_%s/%s/%s',rstimulus.condition,mglGetSID,files(fi).name)));
-%     
-%     e = getTaskParameters(myscreen,task);
-%     if e{1}(1).nTrials>1
-%         e = e{1}(2); % why?!
-%     
-%         run = stimulus.counter;
-% 
-%         data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-%             e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
-%             e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-%             e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
-% 
-%         count = count+e.nTrials;
-%     end
+%  rrun # counter #    local trial     real trial   present     resp    
+%     1       2             3              4          5         6
+%  contrast    correct    hit    fa    miss    cr     dead    
+%      7          8       9      10     11      12      13
+
+wn = zeros(10000,480,270);
+count = 1; data = zeros(10000,13);
+
+for fi = 1:length(files)
+    load(fullfile(sprintf('~/data/afmapb/%s/%s',mglGetSID,files(fi).name)));
+    
+    e = getTaskParameters(myscreen,task);
+    if e{1}.nTrials>1
+        e = e{1}; % why?!
+    
+        run = stimulus.counter;
+
+        data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+            e.parameter.present' e.randVars.resp' e.randVars.contrast' ...
+            e.randVars.correct' e.randVars.hit' e.randVars.fa' ...
+            e.randVars.miss' e.randVars.cr' e.randVars.dead'];
+
+        for ti = 1:e.nTrials
+            timg = squeeze(mean(stimulus.wn.img(stimulus.wn.trials{ti},:,:)));
+            wn(count+(ti-1),:,:) = timg;
+%             imagesc(timg);
+%             pause(.01);
+        end
+        count = count+e.nTrials;
+    end
+end
+
+wn = wn(1:count,:,:);
+data = data(1:count,:);
+
+l = size(data,1);
+disp(sprintf('Found %01.2f%% hits %01.2f%% fa %01.2f%% miss %01.2f%% cr',sum(data(:,9))/l*100,sum(data(:,10))/l*100,sum(data(:,11))/l*100,sum(data(:,12))/l*100));
+
+%% test
+% for i = 1:size(wn,1)
+%     imagesc(squeeze(wn(i,:,:)));
+%     pause(.01);
 % end
 
+%% calculate position of stimulus
+fwhm = 2*sqrt(2*log(2))*5/6; % radius of display, at 5,5
+% convert to matrix space
+x = 240 + (5-fwhm)*myscreen.screenHeight/myscreen.imageHeight/4;
+y = 135 + (5-fwhm)*myscreen.screenHeight/myscreen.imageHeight/4;
+d = 2*fwhm*myscreen.screenHeight/myscreen.imageHeight/4;
+
+%% Split data by hit/fa/miss/cr
+img = struct;
+name = {'hit','miss','fa','cr'};
+idx = [9 10 11 12];
+h = figure;
+for ci = 1:4
+    subplot(2,2,ci); hold on
+    img.(name{ci}) = squeeze(mean(wn(logical(data(:,idx(ci))),:,:)));
+    img.(name{ci}) = img.(name{ci})/255;
+    imagesc(img.(name{ci})');
+    set(gca,'YDir','normal');    
+    set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+    set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+    title(name{ci});
+    colormap('gray');
+    caxis([0 1]);
+    axis equal
+    rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
