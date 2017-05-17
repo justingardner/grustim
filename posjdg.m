@@ -100,7 +100,7 @@ end
 
 %% Initialize Stimulus
 
-myscreen.stimulusNames{1} = 'stimulus';
+myscreen = initStimulus('stimulus',myscreen);
 
 localInitStimulus();
     
@@ -166,7 +166,6 @@ switch stimulus.att
         % Task trial parameters
         task{1}{1}.parameter.ecc = stimulus.ecc;
         task{1}{1}.parameter.cueSTD = stimulus.sd;
-
     otherwise
         disp('Invalid attention condition. Quitting...');
         return
@@ -203,6 +202,10 @@ task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
+
+if stimulus.att==2
+    task{1}{1}.randVars.calculated.target = stimulus.prior;
+end
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
 %%%%% POSITION JUDGMENT + RESPONSE %%%%%%
@@ -277,6 +280,10 @@ task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{2}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{2}.randVars.calculated.dead = 0; % did the trial get canceled
 task{1}{2}.randVars.calculated.visible = 1; % were they shown a grating
+
+if stimulus.att==2
+    task{1}{2}.randVars.calculated.target = stimulus.prior;
+end
 
 %% Testing 2
 if stimulus.test2
@@ -706,10 +713,17 @@ for fi = 1:length(files)
     
         run = stimulus.counter;
 
-        data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-            e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
-            e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-            e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
+        if stimulus.att==2
+            data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+                e.randVars.angle' e.randVars.respAngle' e.randVars.target' ...
+                e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
+                e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
+        else
+            data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+                e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
+                e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
+                e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
+        end
 
         count = count+e.nTrials;
     end
