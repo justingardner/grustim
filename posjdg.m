@@ -420,12 +420,13 @@ stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
-task.thistrial.angle = randn*task.thistrial.priorSTD;
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
 switch stimulus.att
     case 1 %Endo
+        task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the 
     case 2 %Exo
+        task.thistrial.angle = rand*2*pi; % stim angle is random
         task.thistrial.target = rand*2*pi; % cue angle is random
         if task.thistrial.thisphase == 1 && ~stimulus.test2
             task.thistrial.visible = (rand > 0.5);
