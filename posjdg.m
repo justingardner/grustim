@@ -41,7 +41,7 @@ debug = 0;
 noimp = 0;
 training = 0;
 powerwheel = 0;
-test2 =0 ;
+test2 = 0;
 att = 1;
 getArgs(varargin,{'att=1', 'scan=0','plots=0','noeye=0','debug=0','training=0','powerwheel=1','test2=0'});
 stimulus.att = att;
@@ -71,6 +71,8 @@ if stimulus.att == 1
     disp(sprintf('Prior chosen to be %02.0f, dist was: %02.2f',stimulus.prior*180/pi,abs(mod(stimulus.prior,pi/2))));
 elseif stimulus.att == 2
     stimulus.condition = 'Exo';
+elseif stimulus.att == 3
+    stimulus.condition = 'Sacc';
 end
 stimulus.sd = pi/8;
 stimulus.ecc = 6;
@@ -173,9 +175,7 @@ switch stimulus.att
         stimulus.seg{1}.resp = 4;
 
         % Task trial parameters
-        task{1}{1}.parameter.ecc = stimulus.ecc;
         task{1}{1}.parameter.target = stimulus.prior;
-        task{1}{1}.parameter.priorSTD = stimulus.sd;
     case 2 %Exo
         task{1}{1}.segmin = [inf 0.000 0.100 0.200 0.800]; % Fixate, delay, cue, stim, response
         task{1}{1}.segmax = [inf 1.000 0.100 0.200 0.800];
@@ -187,9 +187,16 @@ switch stimulus.att
         stimulus.seg{1}.stim = 4;
         stimulus.seg{1}.resp = 5;
 
-        % Task trial parameters
-        task{1}{1}.parameter.ecc = stimulus.ecc;
-        task{1}{1}.parameter.cueSTD = stimulus.sd;
+    case 3 %Sacc
+
+        task{1}{1}.segmin = [inf 0.000 0.100 0.200 1.000];
+        task{1}{1}.segmax = [inf 1.000 0.100 2.000 1.000];
+
+        stimulus.seg{1}.ITI1 = 1;
+        stimulus.seg{1}.delay = 2;
+        stimulus.seg{1}.stim = 3; % stimulus appears and stays on
+        stimulus.seg{1}.delay2 = 4; % variable length delay
+        stimulus.seg{1}.saccade = 5; % Fixation cross turns off, subj saccades to stim.
     otherwise
         disp('Invalid attention condition. Quitting...');
         return
@@ -218,6 +225,11 @@ if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
 
+% Task trial parameters
+task{1}{1}.parameter.ecc = stimulus.ecc;
+task{1}{1}.parameter.priorSTD = stimulus.sd;
+
+% Task variables to be calculated later
 task{1}{1}.randVars.calculated.startRespAngle = nan;
 task{1}{1}.randVars.calculated.respAngle = nan;
 task{1}{1}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
@@ -226,9 +238,8 @@ task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
-
 if stimulus.att==2
-    task{1}{1}.randVars.calculated.target = stimulus.prior;
+    task{1}{1}.randVars.calculated.target = nan; 
 end
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
@@ -250,10 +261,7 @@ switch stimulus.att
         stimulus.seg{2}.delay = 3;
         stimulus.seg{2}.resp = 4;
 
-        task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
         task{1}{2}.parameter.target = stimulus.prior; % prior center
-        task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
-        task{1}{2}.parameter.contrastOpt = 1:length(stimulus.live.contrastPercs); % 60/70/80/90 % correct
 
     case 2
         task{1}{2}.segmin = [inf 0.100 0.200 0.500 5.000]; %fixate, cue, stim, delay, response
@@ -262,12 +270,8 @@ switch stimulus.att
         stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
         stimulus.seg{2}.cue = 2;
         stimulus.seg{2}.stim = 3;
-        stimulus.seg{2}.delay2 = 4;
+        stimulus.seg{2}.delay = 4;
         stimulus.seg{2}.resp = 5;
-
-        task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
-        task{1}{2}.parameter.cueSTD = stimulus.sd; % radians
-        task{1}{2}.parameter.contrastOpt = 1:length(stimulus.live.contrastPercs); %60/70/80/90
 
     otherwise
         disp('Invalid attention condition. Quitting...');
@@ -295,7 +299,12 @@ end
 
 %% Tracking
 
-% these are variables that we want to track for later analysis.
+% Task trial parameters
+task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
+task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
+task{1}{2}.parameter.contrastOpt = 1:length(stimulus.live.contrastPercs); %60/70/80/90
+
+% Task variables to be calculated later 
 task{1}{2}.randVars.calculated.startRespAngle = nan;
 task{1}{2}.randVars.calculated.respAngle = nan;
 task{1}{2}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
@@ -411,16 +420,13 @@ stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
+task.thistrial.angle = randn*task.thistrial.priorSTD;
+task.thistrial.rotation = rand*2*pi;
+task.thistrial.startRespAngle = rand*2*pi;
 switch stimulus.att
     case 1 %Endo
-        task.thistrial.angle = randn*task.thistrial.priorSTD;
-        task.thistrial.rotation = rand*2*pi;
-        task.thistrial.startRespAngle = rand*2*pi;
     case 2 %Exo
         task.thistrial.target = rand*2*pi; % cue angle is random
-        task.thistrial.angle = randn*task.thistrial.cueSTD;
-        task.thistrial.rotation = rand*2*pi;
-        task.thistrial.startRespAngle = rand*2*pi;
         if task.thistrial.thisphase == 1 && ~stimulus.test2
             task.thistrial.visible = (rand > 0.5);
         end
