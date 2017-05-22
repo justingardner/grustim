@@ -26,7 +26,7 @@
 %
 %   TR .5 = 296 volumes (10 * 14 * 2 + 16)
 
-function [myscreen] = cogneuro_workingmemory_manasi(varargin)
+function [myscreen] = cogneuro_workingmemory_corey(varargin)
 
 global stimulus
 clear fixStimulus
@@ -57,8 +57,8 @@ stimulus.colors.rmed = 127.5;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [1 0 0; 0 0 0]; % fixation cross colors
-stimulus.colors.reservedTop = [1 1 1; 0 1 0]; % correct/incorrect colors
+stimulus.colors.reservedBottom = [0.8 0 0; 0 0 0]; % fixation cross colors
+stimulus.colors.reservedTop = [0.8 0.8 0.8; 0 0.8 0]; % correct/incorrect colors
 stimulus.colors.black = 1/255; stimulus.colors.white = 254/255;
 stimulus.colors.red = 0/255; stimulus.colors.green = 255/255;
 stimulus.colors.nReserved = 2; % this is /2 the true number, because it's duplicated
@@ -72,7 +72,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 stimulus.ecc = 6;
 stimulus.angleOpts = [30 120];
 stimulus.shiftPos = 10;
-stimulus.shiftRot = 3;
+stimulus.shiftRot = 6;
 
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
@@ -94,21 +94,21 @@ myscreen.background = 0.5;
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_workingmemory_manasi/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_workingmemory_corey/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/cogneuro_workingmemory_manasi/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/cogneuro_workingmemory_corey/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         fname = files(end).name;
         
-        s = load(sprintf('~/data/cogneuro_workingmemory_manasi/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/cogneuro_workingmemory_corey/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
         clear s;
-        disp(sprintf('(cn_manasi) Data file: %s loaded.',fname));
+        disp(sprintf('(cn_corey) Data file: %s loaded.',fname));
     end
 end
-disp(sprintf('(cn_manasi) This is run #%i',stimulus.counter));
+disp(sprintf('(cn_corey) This is run #%i',stimulus.counter));
 
 %% Initialize Stimulus
 % Setup for MGL
@@ -130,7 +130,7 @@ stimulus.seg.ITI = 6;
 
 % Trial timing (see above for what each column corresponds to)
 task{1}{1}.segmin = [0.500 1.000 0.250 12 2.000 2.500];
-task{1}{1}.segmax = [0.500 1.000 0.250 12 2.000 9.500]; % 6.5 s average 
+task{1}{1}.segmax = [0.500 1.000 0.250 12 2.000 7.500]; % 5 s average 
 
 % When scanning we synchronize the stimulus to the scanner
 task{1}{1}.synchToVol = zeros(length(task{1}{1}.segmin));
@@ -166,7 +166,7 @@ stimulus.curTrial = 0;
 
 %% Gratings
 sz = 4;
-g = mglMakeGrating(sz*2,sz*2,0.5,0,0);
+g = mglMakeGrating(sz*2,sz*2,1,0,0);
 gauss = mglMakeGaussian(sz*2,sz*2,sz/6,sz/6);
 % normalize
 g = (g .* gauss + 1) / 2; % bounded 0-1
@@ -195,7 +195,7 @@ mglFlush
 setGammaTable_flowMax(stimulus.contrast);
 
 % let the user know
-disp(sprintf('(cn_manasi) Starting run number: %i',stimulus.counter));
+disp(sprintf('(cn_corey) Starting run number: %i',stimulus.counter));
 
 %% Main Task Loop
 
@@ -244,7 +244,7 @@ sides = {'left','right'};
 disp(sprintf('Trial %i: task %s, rotation %s',stimulus.curTrial,tasks{task.thistrial.task},sides{task.thistrial.rotation}));
 
 stimulus.live.positions = (0:90:270) + 45*task.thistrial.axis + task.thistrial.jitter;
-stimulus.live.rotations = zeros(1,4); % all vertical gratings
+stimulus.live.rotations = 90*ones(1,4); % all vertical gratings
 
 % WN mask
 wn = repmat(stimulus.colors.mrmin+randi(251,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
@@ -260,6 +260,7 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 myscreen.flushMode = 0;
 global stimulus
 
+stimulus.live.fix = 1;
 stimulus.live.cue = 0;
 stimulus.live.grate = 0;
 stimulus.live.mask = 0;
@@ -275,7 +276,7 @@ switch task.thistrial.thisseg
         stimulus.live.fix = 0;
     case stimulus.seg.resp
         stimulus.live.grate = 1;
-        flip = [-1 1];
+        flip = [1 -1];
         if task.thistrial.task==1
             stimulus.live.positions(task.thistrial.changeLoc) = stimulus.live.positions(task.thistrial.changeLoc) + flip(task.thistrial.rotation)*stimulus.shiftPos;
         else
@@ -306,7 +307,7 @@ end
 % actuall display the grating
 if stimulus.live.grate, upGrate(task); end
 % display the fixation cross (always)
-upFix(stimulus);
+if stimulus.live.fix, upFix(stimulus); end
 % display the cue (this draws over the cross)
 if stimulus.live.cue, upCue(task); end
 
@@ -340,7 +341,9 @@ if task.thistrial.thisseg==stimulus.seg.stim
 elseif task.thistrial.thisseg==stimulus.seg.resp
     x = stimulus.ecc * cos(deg2rad(stimulus.live.positions));
     y = stimulus.ecc * sin(deg2rad(stimulus.live.positions));
-    mglBltTexture(stimulus.live.grating,[x' y'],0,0,stimulus.live.rotations);
+    for i = 1:4
+        mglBltTexture(stimulus.live.grating,[x(i) y(i)],0,0,stimulus.live.rotations(i));
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -363,14 +366,11 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         
         % check if subject was correct
         task.thistrial.correct = task.thistrial.whichButton == task.thistrial.rotation;
-        if task.thistrial.attend==0
-            task.thistrial.correct = true;
-        end
 
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-        disp(sprintf('(cn_manasi) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{stimulus.responseKeys(task.thistrial.whichButton)}));
+        disp(sprintf('(cn_corey) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{stimulus.responseKeys(task.thistrial.whichButton)}));
     else
-        disp(sprintf('(cn_manasi) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
+        disp(sprintf('(cn_corey) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
     end
 end
 

@@ -147,6 +147,7 @@ task{1}{1}.parameter.attend = [1 2];
 task{1}{1}.parameter.change = [0 0 1 1 1 1 1 1 1 1]; % 80% of the time a change occurs
 task{1}{1}.parameter.valid = [0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]; % 85% valid cue
 task{1}{1}.parameter.diff = [1 2];
+task{1}{1}.parameter.dir = [-1 1];
 % This will randomize trials
 task{1}{1}.random = 1;
 % Outside the scanner fix the trial count
@@ -327,8 +328,8 @@ global stimulus
 ctime = ceil(10*mglGetSecs-task.thistrial.segStartSeconds);
 
 if mod(ctime,2)==1 % if time is a multiple of 100 ms display, otherwise no, 10 hz flip rate
-    mglBltTexture(stimulus.live.grating,[-6 0],0,0,stimulus.angleOpts(stimulus.live.rotL+1)+stimulus.live.rotLex);
-    mglBltTexture(stimulus.live.grating,[6 0],0,0,stimulus.angleOpts(stimulus.live.rotR+1)+stimulus.live.rotRex);
+    mglBltTexture(stimulus.live.grating,[-6 0],0,0,stimulus.angleOpts(stimulus.live.rotL+1)+task.thistrial.dir*stimulus.live.rotLex);
+    mglBltTexture(stimulus.live.grating,[6 0],0,0,stimulus.angleOpts(stimulus.live.rotR+1)+task.thistrial.dir*stimulus.live.rotRex);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
