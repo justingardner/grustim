@@ -146,6 +146,7 @@ task{1}{1}.parameter.attend = [0 1 2];
 % Parameter to control which side should be attended on this trial
 task{1}{1}.parameter.diff = [1 2];
 task{1}{1}.parameter.dir = [-1 1];
+task{1}{1}.parameter.dirU = [-1 1];
 % This will randomize trials
 task{1}{1}.random = 1;
 % Outside the scanner fix the trial count
@@ -266,9 +267,11 @@ switch task.thistrial.thisseg
     case stimulus.seg.resp
         stimulus.live.grate = 1;
         if task.thistrial.changeSide==1
-            stimulus.live.rotLex = stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotLex = task.thistrial.dir*stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotRex = task.thistrial.dirU*stimulus.shiftOpts(task.thistrial.diff);
         else
-            stimulus.live.rotRex = stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotRex = task.thistrial.dir*stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotLex = task.thistrial.dirU*stimulus.shiftOpts(task.thistrial.diff);
         end
         if task.thistrial.attend==0
             stimulus.live.fixColor = stimulus.colors.black;
@@ -320,8 +323,8 @@ global stimulus
 ctime = ceil(10*mglGetSecs-task.thistrial.segStartSeconds);
 
 if mod(ctime,2)==1 % if time is a multiple of 100 ms display, otherwise no, 10 hz flip rate
-    mglBltTexture(stimulus.live.grating,[-6 0],0,0,stimulus.angleOpts(stimulus.live.rotL+1)+task.thistrial.dir*stimulus.live.rotLex);
-    mglBltTexture(stimulus.live.grating,[6 0],0,0,stimulus.angleOpts(stimulus.live.rotR+1)+task.thistrial.dir*stimulus.live.rotRex);
+    mglBltTexture(stimulus.live.grating,[-6 0],0,0,stimulus.angleOpts(stimulus.live.rotL+1)+stimulus.live.rotLex);
+    mglBltTexture(stimulus.live.grating,[6 0],0,0,stimulus.angleOpts(stimulus.live.rotR+1)+stimulus.live.rotRex);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -343,7 +346,7 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse < 2
         
         % check if subject was correct
-        task.thistrial.correct = task.thistrial.whichButton == task.thistrial.changeSide;
+        task.thistrial.correct = task.thistrial.whichButton == task.thistrial.dir;
         if task.thistrial.attend==0
             task.thistrial.correct = true;
         end

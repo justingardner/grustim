@@ -77,7 +77,7 @@ stimulus.shiftOpts = [6 9];
 if stimulus.scan
     stimulus.contrast = .25; % 4%
 else
-    stimulus.contrast = .5;
+    stimulus.contrast = 1;
 end
 
 %% Setup Screen
@@ -167,7 +167,16 @@ task{1}{1}.randVars.calculated.changeSide = nan;
 stimulus.curTrial = 0;
 
 %% Gratings
+
 sz = 8;
+% use total degs / num to compute size
+grating = 255/2 * mglMakeGrating(sz,sz,0.5,0) + 255/2;
+gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
+alphamask = repmat(grating,1,1,4);
+alphamask(:,:,4) = gauss*255;
+
+stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
+
 g = mglMakeGrating(sz*2,sz*2,0.5,0,0);
 gauss = mglMakeGaussian(sz*2,sz*2,sz/6,sz/6);
 % normalize
