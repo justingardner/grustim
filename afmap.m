@@ -217,8 +217,8 @@ stimulus.curTrial = 0;
 
 global fixStimulus
 
-fixStimulus.diskSize = 0.45;
-fixStimulus.fixWidth = 0.4;
+fixStimulus.diskSize = 0.75;
+fixStimulus.fixWidth = 0.75;
 fixStimulus.fixLineWidth = 1;
 [task{2}, myscreen] = fixStairInitTask(myscreen);
 % task{2}{1} = struct;
