@@ -761,13 +761,13 @@ h = figure; hold on
 
 low = [0 0.075 0.081 0.09 inf];
 
-for i = 1:4
-    subplot(4,1,i); hold on
+%for i = 1:4
+    %subplot(4,1,i); hold on
     % data(:,6) = data(:,6)-data(:,5);
 
     % remove no-response trials
     data_ = data(~isnan(data(:,6)),:);
-    data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
+    %data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
     % find the trials where stimulus is - relative to the prior
     flip = data_(:,5)<0; flip = flip*1;
     flip(flip==1) = -1; flip(flip==0) = 1;
@@ -795,15 +795,15 @@ for i = 1:4
     ylabel('Resp - Target (deg)');
     title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-    axis([-1 1 -1 1]);
+    axis([0 1 -1 1]);
     axis square
 
-    set(gca,'XTick',-1:.5:1,'XTickLabel',round((-1:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
+    set(gca,'XTick',0:.5:1,'XTickLabel',round((0:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
 
     drawPublishAxis;
     % h = figure;
     % hist(data(:,5)-data(:,6));
-end
+%end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
