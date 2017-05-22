@@ -78,7 +78,7 @@ stimulus.pedestals.initThresh.angle = 10.0; % angle that the staircase will star
 if stimulus.scan
     stimulus.contrast = .04; % 4%
 else
-    stimulus.contrast = .0065;
+    stimulus.contrast = .5;
 end
 
 %% Setup Screen
