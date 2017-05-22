@@ -287,7 +287,7 @@ task{1}{2}.getResponse = zeros(size(task{1}{2}.segmin));
 if stimulus.powerwheel
     task{1}{2}.getResponse(stimulus.seg{2}.resp)=3;
 else
-    task{1}{2}.getResponse(stimulus.seg{2}.resp)=1;
+    task{1}{2}.getResponse(stimulus.seg{2}.resp)=3;
 end
 
 task{1}{2}.numTrials = 100;
@@ -431,6 +431,9 @@ switch stimulus.att
         if task.thistrial.thisphase == 1 && ~stimulus.test2
             task.thistrial.visible = (rand > 0.5);
         end
+    case 3 %Sacc
+        task.thistrial.angle = rand*2*pi;
+        task.thistrial.target = rand*2*pi;
     otherwise
         disp('Invalid attention condition. Quitting...');
 end
