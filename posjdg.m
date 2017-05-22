@@ -416,6 +416,8 @@ if stimulus.curTrial(task.thistrial.thisphase)==0 && (task.thistrial.thisphase==
     end
 end
 
+keyboard
+
 stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
@@ -424,7 +426,7 @@ task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
 switch stimulus.att
     case 1 %Endo
-        task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the 
+        task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the prior
     case 2 %Exo
         task.thistrial.angle = rand*2*pi; % stim angle is random
         task.thistrial.target = rand*2*pi; % cue angle is random
