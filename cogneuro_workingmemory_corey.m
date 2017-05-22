@@ -281,7 +281,7 @@ switch task.thistrial.thisseg
         stimulus.live.fix = 0;
     case stimulus.seg.resp
         stimulus.live.grate = 1;
-        flip = [-1 1];
+        flip = [1 -1];
         if task.thistrial.task==1
             stimulus.live.positions(task.thistrial.changeLoc) = stimulus.live.positions(task.thistrial.changeLoc) + flip(task.thistrial.rotation)*stimulus.shiftPos;
         else
