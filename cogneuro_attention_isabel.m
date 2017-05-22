@@ -75,7 +75,7 @@ stimulus.shiftOpts = [6 9];
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
 if stimulus.scan
-    stimulus.contrast = .1; % 4%
+    stimulus.contrast = .25; % 4%
 else
     stimulus.contrast = .5;
 end
@@ -265,9 +265,9 @@ switch task.thistrial.thisseg
     case stimulus.seg.resp
         stimulus.live.grate = 1;
         if task.thistrial.changeSide==1
-            stimulus.live.rotLex = stimulus.pedestals.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotLex = stimulus.shiftOpts(task.thistrial.diff);
         else
-            stimulus.live.rotRex = stimulus.pedestals.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotRex = stimulus.shiftOpts(task.thistrial.diff);
         end
         if task.thistrial.attend==0
             stimulus.live.fixColor = stimulus.colors.black;
