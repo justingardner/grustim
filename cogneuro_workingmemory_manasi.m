@@ -70,7 +70,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 
 %% Stimulus (oriented gratings) properties
 stimulus.angleOpts = [30 120];
-stimulus.shift = 6;
+stimulus.shift = 30;
 
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
@@ -236,7 +236,7 @@ task.thistrial.rotR = ~task.thistrial.rotL;
 task.thistrial.length = task.thistrial.seglen(4);
  
 sides = {'left','right'};
-disp(sprintf('Trial %i: cue %s, rotation %s, delay: %01.0f',stimulus.curTrial,sides{task.thistrial.attend},task.thistrial.shiftDir,task.thistrial.length));
+disp(sprintf('Trial %i: cue %s, rotation %s, delay: %01.0f',stimulus.curTrial,sides{task.thistrial.attend},sides{task.thistrial.shiftDir},task.thistrial.length));
 
 % WN mask
 wn = repmat(stimulus.colors.mrmin+randi(251,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
@@ -269,7 +269,7 @@ switch task.thistrial.thisseg
         stimulus.live.mask = 1;
     case stimulus.seg.resp
         stimulus.live.grate = 1;
-        flip = [-1 1];
+        flip = [1 -1];
         shift = stimulus.shift * flip(task.thistrial.shiftDir);
         if task.thistrial.attend==1
             stimulus.live.rotC = stimulus.angleOpts(task.thistrial.rotL+1)+shift;
@@ -326,7 +326,7 @@ global stimulus
 if task.thistrial.thisseg==stimulus.seg.cue
     mglBltTexture(stimulus.live.grating,[-6 0],0,0,stimulus.angleOpts(stimulus.live.rotL+1));
     mglBltTexture(stimulus.live.grating,[6 0],0,0,stimulus.angleOpts(stimulus.live.rotR+1));
-elseif task.thistrial.thisseg==stimulus.seg.stim
+elseif task.thistrial.thisseg==stimulus.seg.resp
     mglBltTexture(stimulus.live.grating,[0 0],0,0,stimulus.live.rotC);
 end
 
