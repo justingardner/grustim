@@ -143,7 +143,7 @@ task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 % Parameters that control the direction of each oriented grating
 task{1}{1}.parameter.rotL = [0 1];
-task{1}{1}.parameter.attend = [1 2 1 2 1 2 1 2 0 0];
+task{1}{1}.parameter.attend = [1 2 1 2 1 2 1 2 0 0 0];
 task{1}{1}.parameter.shiftDir = [1 2];
 % This will randomize trials
 task{1}{1}.random = 1;
@@ -235,8 +235,8 @@ task.thistrial.rotR = ~task.thistrial.rotL;
 
 task.thistrial.length = task.thistrial.seglen(4);
  
-sides = {'left','right'};
-disp(sprintf('Trial %i: cue %s, rotation %s, delay: %01.0f',stimulus.curTrial,sides{task.thistrial.attend},sides{task.thistrial.shiftDir},task.thistrial.length));
+sides = {'none','left','right'};
+disp(sprintf('Trial %i: cue %s, rotation %s, delay: %01.0f',stimulus.curTrial,sides{task.thistrial.attend+1},sides{task.thistrial.shiftDir},task.thistrial.length));
 
 % WN mask
 wn = repmat(stimulus.colors.mrmin+randi(251,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
