@@ -71,7 +71,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 %% Stimulus (oriented gratings) properties
 stimulus.ecc = 6;
 stimulus.angleOpts = [30 120];
-stimulus.shiftPos = 10;
+stimulus.shiftPos = 12;
 stimulus.shiftRot = 6;
 
 % set stimulus contrast, scanner absolute luminance is lower so the
