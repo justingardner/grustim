@@ -143,7 +143,7 @@ task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 % Parameters that control the direction of each oriented grating
 task{1}{1}.parameter.rotL = [0 1];
-task{1}{1}.parameter.attend = [1 2];
+task{1}{1}.parameter.attend = [1 2 1 2 1 2 1 2 0 0];
 task{1}{1}.parameter.shiftDir = [1 2];
 % This will randomize trials
 task{1}{1}.random = 1;
@@ -273,8 +273,10 @@ switch task.thistrial.thisseg
         shift = stimulus.shift * flip(task.thistrial.shiftDir);
         if task.thistrial.attend==1
             stimulus.live.rotC = stimulus.angleOpts(task.thistrial.rotL+1)+shift;
-        else
+        elseif task.thistrial.attend==2
             stimulus.live.rotC = stimulus.angleOpts(task.thistrial.rotR+1)+shift;
+        else
+            stimulus.live.fixColor = stimulus.colors.black;
         end
     case stimulus.seg.ITI
         stimulus.live.fixColor = stimulus.colors.black;
@@ -313,6 +315,8 @@ if task.thistrial.attend==1
     mglLines2(0,0,-.5,0,1,stimulus.colors.black);
 elseif task.thistrial.attend==2
     mglLines2(0,0,.5,0,1,stimulus.colors.black);
+else
+    mglLines2(0,0,0,0.5,1,stimulus.colors.black);
 end
 
 function upFix(stimulus)
