@@ -169,16 +169,16 @@ stimulus.curTrial = 0;
 %% Gratings
 
 sz = 8;
-% use total degs / num to compute size
-grating = 255/2 * mglMakeGrating(sz,sz,0.5,0) + 255/2;
-gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
-alphamask = repmat(grating,1,1,4);
-alphamask(:,:,4) = gauss*255;
+% % use total degs / num to compute size
+% grating = 255/2 * mglMakeGrating(sz,sz,0.5,0) + 255/2;
+% gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
+% alphamask = repmat(grating,1,1,4);
+% alphamask(:,:,4) = gauss*255;
+% 
+% stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
 
-stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
-
-g = mglMakeGrating(sz*2,sz*2,0.5,0,0);
-gauss = mglMakeGaussian(sz*2,sz*2,sz/6,sz/6);
+g = mglMakeGrating(sz*1.5,sz*1.5,0.5,0,0);
+gauss = mglMakeGaussian(sz*1.5,sz*1.5,sz/6,sz/6);
 % normalize
 g = (g .* gauss + 1) / 2; % bounded 0-1
 g =  (stimulus.colors.nUnreserved-stimulus.colors.nReserved)* g +stimulus.colors.nReserved + 1;

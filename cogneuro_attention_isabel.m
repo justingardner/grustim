@@ -167,8 +167,8 @@ stimulus.curTrial = 0;
 
 %% Gratings
 sz = 8;
-g = mglMakeGrating(sz*2,sz*2,0.5,0,0);
-gauss = mglMakeGaussian(sz*2,sz*2,sz/6,sz/6);
+g = mglMakeGrating(sz*1.5,sz*1.5,0.5,0,0);
+gauss = mglMakeGaussian(sz*1.5,sz*1.5,sz/6,sz/6);
 % normalize
 g = (g .* gauss + 1) / 2; % bounded 0-1
 g =  (stimulus.colors.nUnreserved-stimulus.colors.nReserved)* g +stimulus.colors.nReserved + 1;
