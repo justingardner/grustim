@@ -26,7 +26,7 @@
 %
 %   TR .5 = 296 volumes (10 * 14 * 2 + 16)
 
-function [myscreen] = cogneuro_attention_eshed(varargin)
+function [myscreen] = cogneuro_attention_isabel(varargin)
 
 global stimulus
 clear fixStimulus
@@ -92,21 +92,21 @@ myscreen.background = 0.5;
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_attention_eshed/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_attention_isabel/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/cogneuro_attention_eshed/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/cogneuro_attention_isabel/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         fname = files(end).name;
         
-        s = load(sprintf('~/data/cogneuro_attention_eshed/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/cogneuro_attention_isabel/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
         clear s;
-        disp(sprintf('(cn_eshed) Data file: %s loaded.',fname));
+        disp(sprintf('(cn_isabel) Data file: %s loaded.',fname));
     end
 end
-disp(sprintf('(cn_eshed) This is run #%i',stimulus.counter));
+disp(sprintf('(cn_isabel) This is run #%i',stimulus.counter));
 
 %% Initialize Stimulus
 % Setup for MGL
@@ -142,10 +142,8 @@ task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 % Parameters that control the direction of each oriented grating
 task{1}{1}.parameter.rotL = [0 1];
-task{1}{1}.parameter.attend = [1 2];
+task{1}{1}.parameter.attend = [0 1 2];
 % Parameter to control which side should be attended on this trial
-task{1}{1}.parameter.change = [0 0 1 1 1 1 1 1 1 1]; % 80% of the time a change occurs
-task{1}{1}.parameter.valid = [0 0 0 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1]; % 85% valid cue
 task{1}{1}.parameter.diff = [1 2];
 % This will randomize trials
 task{1}{1}.random = 1;
@@ -193,7 +191,7 @@ mglFlush
 setGammaTable_flowMax(stimulus.contrast);
 
 % let the user know
-disp(sprintf('(cn_eshed) Starting run number: %i',stimulus.counter));
+disp(sprintf('(cn_isabel) Starting run number: %i',stimulus.counter));
 
 %% Main Task Loop
 
@@ -235,20 +233,10 @@ task.thistrial.trialNum = stimulus.curTrial;
 
 task.thistrial.rotR = ~task.thistrial.rotL;
 
-if task.thistrial.valid
-    task.thistrial.changeSide = task.thistrial.attend;
-else
-    flip = [2 1];
-    task.thistrial.changeSide = flip(task.thistrial.attend);
-end
+task.thistrial.changeSide = task.thistrial.attend;
  
-sides = {'left','right'};
-if task.thistrial.change
-    changeText = sides{task.thistrial.changeSide};
-else
-    changeText = 'none';
-end
-disp(sprintf('Trial %i: cue %s, change %s, difficulty +%i',stimulus.curTrial,sides{task.thistrial.attend},changeText,stimulus.shiftOpts(task.thistrial.diff)));
+sides = {'none','left','right'};
+disp(sprintf('Trial %i: cue %s, difficulty +%i',stimulus.curTrial,sides{task.thistrial.attend+1},stimulus.shiftOpts(task.thistrial.diff)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    runs at the start of each segment       %
@@ -276,12 +264,13 @@ switch task.thistrial.thisseg
         stimulus.live.rotRex = 0;
     case stimulus.seg.resp
         stimulus.live.grate = 1;
-        if task.thistrial.change && (task.thistrial.changeSide==1)
+        if task.thistrial.changeSide==1
             stimulus.live.rotLex = stimulus.pedestals.shiftOpts(task.thistrial.diff);
-        elseif task.thistrial.change
-            stimulus.live.rotRex = stimulus.pedestals.shiftOpts(task.thistrial.diff);
         else
-            % no change is occurring
+            stimulus.live.rotRex = stimulus.pedestals.shiftOpts(task.thistrial.diff);
+        end
+        if task.thistrial.attend==0
+            stimulus.live.fixColor = stimulus.colors.black;
         end
     case stimulus.seg.ITI
         stimulus.live.fixColor = stimulus.colors.black;
@@ -313,8 +302,11 @@ global stimulus
 if task.thistrial.attend==1
     % left
     mglLines2(0,0,-.5,0,1,stimulus.colors.black);
-else
+elseif task.thistrial.attend==2
     mglLines2(0,0,.5,0,1,stimulus.colors.black);
+else
+    % vertical (neutral cue: no response expected)
+    mglLines2(0,0,0,0.5,1,stimulus.colors.black);
 end
 
 function upFix(stimulus)
@@ -351,11 +343,14 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         
         % check if subject was correct
         task.thistrial.correct = task.thistrial.whichButton == task.thistrial.changeSide;
+        if task.thistrial.attend==0
+            task.thistrial.correct = true;
+        end
 
         stimulus.live.fixColor = fixColors{task.thistrial.correct+1};
-        disp(sprintf('(cn_eshed) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{stimulus.responseKeys(task.thistrial.whichButton)}));
+        disp(sprintf('(cn_isabel) Response %s: %s',responseText{task.thistrial.correct+1},responsePos{stimulus.responseKeys(task.thistrial.whichButton)}));
     else
-        disp(sprintf('(cn_eshed) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
+        disp(sprintf('(cn_isabel) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
     end
 end
 
