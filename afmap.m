@@ -47,7 +47,7 @@ scan = 0;
 plots = 0;
 noeye = 0;
 debug = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0'});
+getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -217,8 +217,8 @@ stimulus.curTrial = 0;
 
 global fixStimulus
 
-fixStimulus.diskSize = 0.45;
-fixStimulus.fixWidth = 0.4;
+fixStimulus.diskSize = 0.75;
+fixStimulus.fixWidth = 0.75;
 fixStimulus.fixLineWidth = 1;
 [task{2}, myscreen] = fixStairInitTask(myscreen);
 % task{2}{1} = struct;
@@ -272,7 +272,6 @@ mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
 mglFlush
 mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
 
-tic
 phaseNum = 1;
 % Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -331,7 +330,6 @@ end
 
 if stimulus.live.rotation > 6
     disp(sprintf('All rotations complete'));
-    toc
     return
 end
 
