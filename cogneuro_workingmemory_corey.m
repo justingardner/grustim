@@ -164,6 +164,11 @@ task{1}{1}.randVars.calculated.jitter = nan;
 
 stimulus.curTrial = 0;
 
+%% Generate stencil
+mglStencilCreateBegin(1);
+mglGluAnnulus(0,0,stimulus.ecc-1,stimulus.ecc+1,repmat(stimulus.colors.white,3,1),32);
+mglStencilCreateEnd;
+
 %% Gratings
 sz = 4;
 g = mglMakeGrating(sz*2,sz*2,1,0,0);
@@ -296,7 +301,9 @@ global stimulus
 mglClearScreen(0.5);
 
 if stimulus.live.mask
+    mglStencilSelect(1);
     mglBltTexture(stimulus.live.wn,[0 0 myscreen.imageWidth myscreen.imageWidth]);
+    mglStencilSelect(0);
     if task.thistrial.task==1
         mglBltTexture(stimulus.live.Ptext,[0 0]);
     else

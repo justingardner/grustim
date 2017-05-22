@@ -163,6 +163,12 @@ task{1}{1}.randVars.calculated.length = nan;
 
 stimulus.curTrial = 0;
 
+%% Generate stencil
+mglStencilCreateBegin(1);
+mglFillOval(6,0,[6 6],stimulus.colors.white);
+mglFillOval(-6,0,[6 6],stimulus.colors.white);
+mglStencilCreateEnd;
+
 %% Gratings
 sz = 8;
 g = mglMakeGrating(sz*2,sz*2,0.5,0,0);
@@ -292,7 +298,9 @@ global stimulus
 mglClearScreen(0.5);
 
 if stimulus.live.mask
+    mglStencilSelect(1);
     mglBltTexture(stimulus.live.wn,[0 0 myscreen.imageWidth myscreen.imageWidth]);
+    mglStencilSelect(0);
 end
 
 % actuall display the grating
