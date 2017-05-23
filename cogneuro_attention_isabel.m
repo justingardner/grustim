@@ -70,7 +70,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 
 %% Stimulus (oriented gratings) properties
 stimulus.angleOpts = [30 120];
-stimulus.shiftOpts = [6 9];
+stimulus.shiftOpts = [3 6];
 
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
@@ -83,7 +83,7 @@ end
 %% Setup Screen
 % Settings for Oban/Psychophysics room launch
 if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
+    myscreen = initScreen();
 else
     myscreen = initScreen('VPixx'); % this will default out if your computer isn't the psychophysics computer
 end
@@ -131,13 +131,13 @@ task{1}{1}.segmin = [0.500 0.500 1.000 4.000 1.500 2.500];
 task{1}{1}.segmax = [0.500 0.500 1.000 4.000 1.500 9.500]; % 6.5 s average 
 
 % When scanning we synchronize the stimulus to the scanner
-task{1}{1}.synchToVol = zeros(length(task{1}{1}.segmin));
+task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
 if stimulus.scan
     task{1}{1}.synchToVol(end) = 1;
 end
 
 % Get responses on the resp segment (4)
-task{1}{1}.getResponse = zeros(length(task{1}{1}.segmin));
+task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
 task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 % Parameters that control the direction of each oriented grating
@@ -267,11 +267,11 @@ switch task.thistrial.thisseg
     case stimulus.seg.resp
         stimulus.live.grate = 1;
         if task.thistrial.changeSide==1
-            stimulus.live.rotLex = task.thistrial.dir*stimulus.shiftOpts(task.thistrial.diff);
-            stimulus.live.rotRex = task.thistrial.dirU*stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotLex = -1*task.thistrial.dir*stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotRex = -1*task.thistrial.dirU*stimulus.shiftOpts(task.thistrial.diff);
         else
-            stimulus.live.rotRex = task.thistrial.dir*stimulus.shiftOpts(task.thistrial.diff);
-            stimulus.live.rotLex = task.thistrial.dirU*stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotRex = -1*task.thistrial.dir*stimulus.shiftOpts(task.thistrial.diff);
+            stimulus.live.rotLex = -1*task.thistrial.dirU*stimulus.shiftOpts(task.thistrial.diff);
         end
         if task.thistrial.attend==0
             stimulus.live.fixColor = stimulus.colors.black;
@@ -346,7 +346,8 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
     if task.thistrial.gotResponse < 2
         
         % check if subject was correct
-        task.thistrial.correct = task.thistrial.whichButton == task.thistrial.dir;
+        flip = [1 0 2];
+        task.thistrial.correct = task.thistrial.whichButton == flip(task.thistrial.dir+2);
         if task.thistrial.attend==0
             task.thistrial.correct = true;
         end
