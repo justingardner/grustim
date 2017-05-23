@@ -287,7 +287,7 @@ task{1}{2}.getResponse = zeros(size(task{1}{2}.segmin));
 if stimulus.powerwheel
     task{1}{2}.getResponse(stimulus.seg{2}.resp)=3;
 else
-    task{1}{2}.getResponse(stimulus.seg{2}.resp)=1;
+    task{1}{2}.getResponse(stimulus.seg{2}.resp)=3;
 end
 
 task{1}{2}.numTrials = 100;
@@ -416,6 +416,8 @@ if stimulus.curTrial(task.thistrial.thisphase)==0 && (task.thistrial.thisphase==
     end
 end
 
+keyboard
+
 stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
@@ -424,19 +426,22 @@ task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
 switch stimulus.att
     case 1 %Endo
-        task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the 
+        task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the prior
     case 2 %Exo
         task.thistrial.angle = rand*2*pi; % stim angle is random
         task.thistrial.target = rand*2*pi; % cue angle is random
         if task.thistrial.thisphase == 1 && ~stimulus.test2
             task.thistrial.visible = (rand > 0.5);
         end
+    case 3 %Sacc
+        task.thistrial.angle = rand*2*pi;
+        task.thistrial.target = rand*2*pi;
     otherwise
         disp('Invalid attention condition. Quitting...');
 end
 
 % contrast from staircase
-if task.thistrial.thisphase==1 & ~stimulus.test2
+if task.thistrial.thisphase==1 && ~stimulus.test2
     [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 else
     task.thistrial.contrast = stimulus.live.contrastOpts(task.thistrial.contrastOpt);
@@ -549,7 +554,7 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.
         if dist > 1.5 && stimulus.live.eyeCount > 30
             disp('Eye movement detected!!!!');
             task.thistrial.dead = 1;
-            stimulus.live.eyeDead=1;  111
+            stimulus.live.eyeDead=1;
             return
         elseif dist > 1.5
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
@@ -594,7 +599,7 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
         if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
             stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
         end
-        stimulus.live.lastTrigger = now;1
+        stimulus.live.lastTrigger = now;
     end
     if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
         disp('Starting trial--eye centered and space pressed.');
@@ -748,7 +753,7 @@ for fi = 1:length(files)
             data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
                 e.randVars.angle' e.randVars.respAngle' e.randVars.target' ...
                 e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-                e.parameter.ecc' e.parameter.cueSTD' e.randVars.rotation'];
+                e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
         else
             data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
                 e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
@@ -768,13 +773,13 @@ h = figure; hold on
 
 low = [0 0.075 0.081 0.09 inf];
 
-for i = 1:4
-    subplot(4,1,i); hold on
+%for i = 1:4
+    %subplot(4,1,i); hold on
     % data(:,6) = data(:,6)-data(:,5);
 
     % remove no-response trials
     data_ = data(~isnan(data(:,6)),:);
-    data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
+    %data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
     % find the trials where stimulus is - relative to the prior
     flip = data_(:,5)<0; flip = flip*1;
     flip(flip==1) = -1; flip(flip==0) = 1;
@@ -802,15 +807,15 @@ for i = 1:4
     ylabel('Resp - Target (deg)');
     title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-    axis([-1 1 -1 1]);
+    axis([0 1 -1 1]);
     axis square
 
-    set(gca,'XTick',-1:.5:1,'XTickLabel',round((-1:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
+    set(gca,'XTick',0:.5:1,'XTickLabel',round((0:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
 
     drawPublishAxis;
     % h = figure;
     % hist(data(:,5)-data(:,6));
-end
+%end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
