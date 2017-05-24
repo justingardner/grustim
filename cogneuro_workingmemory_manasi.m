@@ -75,7 +75,7 @@ stimulus.shift = 9;
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
 if stimulus.scan
-    stimulus.contrast = .1; % 4%
+    stimulus.contrast = .25; % 4%
 else
     stimulus.contrast = .5;
 end
@@ -132,18 +132,18 @@ task{1}{1}.segmax = [0.500 1.000 0.200 nan 2.000 9.500]; % 6.5 s average
 task{1}{1}.segdur{4} = [8 16];
 
 % When scanning we synchronize the stimulus to the scanner
-task{1}{1}.synchToVol = zeros(length(task{1}{1}.segmin));
+task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
 if stimulus.scan
     task{1}{1}.synchToVol(end) = 1;
 end
 
 % Get responses on the resp segment (4)
-task{1}{1}.getResponse = zeros(length(task{1}{1}.segmin));
+task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
 task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 % Parameters that control the direction of each oriented grating
 task{1}{1}.parameter.rotL = [0 1];
-task{1}{1}.parameter.attend = [1 2 1 2 1 2 1 2 0 0 0];
+task{1}{1}.parameter.workmem = [1 2 1 2 1 2 1 2 0 0 0];
 task{1}{1}.parameter.shiftDir = [1 2];
 % This will randomize trials
 task{1}{1}.random = 1;
@@ -242,7 +242,7 @@ task.thistrial.rotR = ~task.thistrial.rotL;
 task.thistrial.length = task.thistrial.seglen(4);
  
 sides = {'none','left','right'};
-disp(sprintf('Trial %i: cue %s, rotation %s, delay: %01.0f',stimulus.curTrial,sides{task.thistrial.attend+1},sides{task.thistrial.shiftDir},task.thistrial.length));
+disp(sprintf('Trial %i: cue %s, rotation %s, delay: %01.0f',stimulus.curTrial,sides{task.thistrial.workmem+1},sides{task.thistrial.shiftDir},task.thistrial.length));
 
 % WN mask
 wn = repmat(stimulus.colors.mrmin+randi(251,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
@@ -277,9 +277,9 @@ switch task.thistrial.thisseg
         stimulus.live.grate = 1;
         flip = [1 -1];
         shift = stimulus.shift * flip(task.thistrial.shiftDir);
-        if task.thistrial.attend==1
+        if task.thistrial.workmem==1
             stimulus.live.rotC = stimulus.angleOpts(task.thistrial.rotL+1)+shift;
-        elseif task.thistrial.attend==2
+        elseif task.thistrial.workmem==2
             stimulus.live.rotC = stimulus.angleOpts(task.thistrial.rotR+1)+shift;
         else
             stimulus.live.fixColor = stimulus.colors.black;
@@ -315,13 +315,13 @@ function upCue(task)
 global stimulus
 % some helper code for training
 %atex = {'Attend Left', 'Attend Right'};
-%mglTextDraw(atex{task.thistrial.attend},[0 1.5]);
+%mglTextDraw(atex{task.thistrial.workmem},[0 1.5]);
 
 % otherwise just draw the line over the fixation cross
-if task.thistrial.attend==1
+if task.thistrial.workmem==1
     % left
     mglLines2(0,0,-.5,0,1,stimulus.colors.black);
-elseif task.thistrial.attend==2
+elseif task.thistrial.workmem==2
     mglLines2(0,0,.5,0,1,stimulus.colors.black);
 else
     mglLines2(0,0,0,0.5,1,stimulus.colors.black);
@@ -362,7 +362,7 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
         
         % check if subject was correct
         task.thistrial.correct = task.thistrial.whichButton == task.thistrial.shiftDir;
-        if task.thistrial.attend==0
+        if task.thistrial.workmem==0
             task.thistrial.correct = true;
         end
 

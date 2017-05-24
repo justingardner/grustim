@@ -71,8 +71,8 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 %% Stimulus (oriented gratings) properties
 stimulus.ecc = 6;
 stimulus.angleOpts = [30 120];
-stimulus.shiftPos = 12;
-stimulus.shiftRot = 6;
+stimulus.shiftPos = 18;
+stimulus.shiftRot = 5;
 
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
@@ -129,11 +129,11 @@ stimulus.seg.resp = 5;
 stimulus.seg.ITI = 6;
 
 % Trial timing (see above for what each column corresponds to)
-task{1}{1}.segmin = [0.500 1.000 0.250 12 2.000 2.500];
-task{1}{1}.segmax = [0.500 1.000 0.250 12 2.000 7.500]; % 5 s average 
+task{1}{1}.segmin = [0.500 1.000 0.250 12 2.500 2.500];
+task{1}{1}.segmax = [0.500 1.000 0.250 12 2.500 7.500]; % 5 s average 
 
 % When scanning we synchronize the stimulus to the scanner
-task{1}{1}.synchToVol = zeros(length(task{1}{1}.segmin));
+task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
 if stimulus.scan
     task{1}{1}.synchToVol(end) = 1;
 end
@@ -285,7 +285,7 @@ switch task.thistrial.thisseg
         if task.thistrial.task==1
             stimulus.live.positions(task.thistrial.changeLoc) = stimulus.live.positions(task.thistrial.changeLoc) + flip(task.thistrial.rotation)*stimulus.shiftPos;
         else
-            stimulus.live.rotations = stimulus.live.rotations + stimulus.shiftRot;
+            stimulus.live.rotations = stimulus.live.rotations + flip(task.thistrial.rotation)*stimulus.shiftRot;
         end
     case stimulus.seg.ITI
         stimulus.live.fixColor = stimulus.colors.black;
