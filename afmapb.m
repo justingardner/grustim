@@ -89,16 +89,16 @@ else
 %     disp(sprintf('(afmapb) Contrast is fixed at %01.2f',stimulus.contrast));
 end
 
-%% White noise tracking
-stimulus.wn.count = 1;
-stimulus.wn.img = zeros(10000,myscreen.screenWidth/4,myscreen.screenHeight/4);
-stimulus.wn.trials = cell(1,10000);
-
 %% Plot and return
 if stimulus.plots==2
     dispInfo(stimulus);
     return
 end
+%% White noise tracking
+stimulus.wn.count = 1;
+stimulus.wn.img = zeros(10000,myscreen.screenWidth/4,myscreen.screenHeight/4);
+stimulus.wn.trials = cell(1,10000);
+
 
 %% Initialize Stimulus
     
@@ -540,6 +540,30 @@ for ci = 1:4
     axis equal
     rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
 end
+
+%% 
+
+img = struct;
+name = {'hit','miss','fa','cr'};
+idx = [9 10 11 12];
+h = figure;
+for ci = 1:4
+    img.(name{ci}) = squeeze(wn(logical(data(:,idx(ci))),:,:));
+    img.(name{ci}) = img.(name{ci})/255;
+end
+aimg = [img.hit ; img.fa ; -img.miss ; -img.cr];
+
+aimgm = squeeze(mean(aimg));
+
+imagesc(aimgm');
+set(gca,'YDir','normal');    
+set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+title(name{ci});
+colormap('gray');
+caxis([-1 1]);
+axis equal
+rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
