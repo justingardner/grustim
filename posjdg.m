@@ -239,6 +239,8 @@ task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
 if stimulus.att==2
     task{1}{1}.randVars.calculated.target = nan; 
+elseif stimulus.att==3
+    task{1}{1}.randVars.calculated.perisaccInt = nan;
 end
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
