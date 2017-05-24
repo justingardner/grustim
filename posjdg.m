@@ -130,9 +130,9 @@ myscreen = initStimulus('stimulus',myscreen);
 localInitStimulus();
     
 if stimulus.powerwheel
-    stimulus.responseKeys = 1; % detection key (when powerwheel not in use)
+    stimulus.responseKeys = 5; % no-detection key (when powerwheel is in use)
 else
-    stimulus.responseKeys = [1 2 3]; % 
+    stimulus.responseKeys = [5 1 2 3]; % 
 end
 
 %% Colors
@@ -301,7 +301,6 @@ end
 % Task trial parameters
 task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
 task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
-task{1}{2}.parameter.contrastOpt = 1:length(stimulus.live.contrastPercs); %60/70/80/90
 
 % Task variables to be calculated later 
 task{1}{2}.randVars.calculated.startRespAngle = nan;
@@ -309,9 +308,9 @@ task{1}{2}.randVars.calculated.respAngle = nan;
 task{1}{2}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
 task{1}{2}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
-task{1}{2}.randVars.calculated.detected = 0; % did they see the grating
-task{1}{2}.randVars.calculated.dead = 0; % did the trial get canceled
-task{1}{2}.randVars.calculated.visible = 1; % were they shown a grating
+task{1}{2}.randVars.calculated.detected = nan; % did they see the grating
+task{1}{2}.randVars.calculated.dead = nan; % did the trial get canceled
+task{1}{2}.randVars.calculated.visible = nan; % were they shown a grating
 
 if stimulus.att==2
     task{1}{2}.randVars.calculated.target = nan;
@@ -388,15 +387,25 @@ end
 function [task, myscreen] = startTrialCallback(task,myscreen)
 %%
 if ~isempty(task.lasttrial)
-    disp(sprintf('Last trial, target: %02.0f, stim: %02.0f, resp: %02.0f',task.lasttrial.target*180/pi,task.lasttrial.angle*180/pi,task.lasttrial.respAngle*180/pi));
+    if task.lasttrial.thisphase == 1
+        disp(sprintf('Last trial, target: %02.0f, stim: %02.0f',task.lasttrial.target*180/pi,task.lasttrial.angle*180/pi));
+    elseif task.lasttrial.thisphase == 2
+        disp(sprintf('Last trial, target: %02.0f, stim: %02.0f, resp: %02.0f',task.lasttrial.target*180/pi,task.lasttrial.angle*180/pi,task.lasttrial.respAngle*180/pi));
+    end
 end
 global stimulus
 
-if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && ~task.lasttrial.dead && task.lasttrial.visible==1
+task.thistrial.dead = 0;
+task.thistrial.detected = 0;
+task.thistrial.visible = 1;
+
+if (~isempty(task.lasttrial)) && (task.lasttrial.detected~=1) && ~task.lasttrial.dead && task.lasttrial.visible==1
     stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
-    disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
+    if(task.lasttrial.detected == 0) % only print this during phase 1
+        disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
+    end
 elseif (~isempty(task.lasttrial)) && task.lasttrial.visible==0
-    disp('No stimulus displayed on this trial.');
+    disp('No stimulus displayed on last trial.');
 end
 
 stimulus.live.gotResponse = 0;
@@ -421,17 +430,14 @@ switch stimulus.att
         disp('Invalid attention condition. Quitting...');
 end
 
-% contrast from staircase
-if task.thistrial.thisphase==1 && ~stimulus.test2
-    [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
-else
-    task.thistrial.contrast = stimulus.live.contrastOpts(task.thistrial.contrastOpt);
-end
+% contrast from staircase in both phases
+[task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 
+% Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 
-disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %02.0f%%',...
+disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %02.02f%%',...
     task.trialnum,(task.thistrial.angle+task.thistrial.target)*180/pi,task.thistrial.rotation*180/pi,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
@@ -552,7 +558,7 @@ if (task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp) && stim
     end
     stimulus.live.trackingAngle = curPos;
     convertRespXY(task);
-elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
+elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp % powerwheel==0
     keys = find(mglGetKeys);
     if any(keys==19)
         stimulus.live.angle = stimulus.live.angle+0.01;
@@ -612,18 +618,18 @@ global stimulus
 
 if task.thistrial.dead, return; end
     
-if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1))
+if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1)) && isempty(task.thistrial.mouseButton)
     % subject didn't see anything
     task = jumpSegment(task,inf);
-    task.thistrial.detected = -1;
-    disp('Subject reported not seeing anything');
+    task.thistrial.detected = -1; %-1 means they reported not seeing anything
+    disp(sprintf('Subject reported not seeing %02.02f%% contrast stimulus', task.thistrial.contrast*100));
     return
 end
 
 if stimulus.powerwheel
     validResponse = task.thistrial.mouseButton == 1;
 else
-    validResponse = any(task.thistrial.whichButton == stimulus.responseKeys);
+    validResponse = task.thistrial.whichButton == stimulus.responseKeys(4);
 end
 
 if validResponse
