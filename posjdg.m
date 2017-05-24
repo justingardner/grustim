@@ -76,7 +76,6 @@ elseif stimulus.att == 3
 end
 stimulus.sd = pi/8;
 stimulus.ecc = 6;
-stimulus.live.contrastPercs = 0.9;
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -393,30 +392,12 @@ if ~isempty(task.lasttrial)
 end
 global stimulus
 
-if (~isempty(task.lasttrial)) && (task.thistrial.thisphase==1) && (task.lasttrial.detected==0) && ~task.lasttrial.dead && task.lasttrial.visible==1
+if (~isempty(task.lasttrial)) && (task.lasttrial.detected==0) && ~task.lasttrial.dead && task.lasttrial.visible==1
     stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
     disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
 elseif (~isempty(task.lasttrial)) && task.lasttrial.visible==0
     disp('No stimulus displayed on this trial.');
 end
-
-% Compute staircase
-if stimulus.curTrial(task.thistrial.thisphase)==0 && (task.thistrial.thisphase==2) || (stimulus.test2)
-    % compute stimulus.live.contrast options
-    out = doStaircase('threshold',stimulus.staircase,'type=weibull','dispFig=1');
-    x = 0:.001:1;
-    y = weibull(x,out.fit.fitparams);
-    for yi = 1:length(stimulus.live.contrastPercs)
-        val = x(find(y>=stimulus.live.contrastPercs(yi),1));
-        if ~isempty(val)
-            stimulus.live.contrastOpts(yi) = val;
-        else
-            stimulus.live.contrastOpts(yi) = 0;
-        end
-    end
-end
-
-keyboard
 
 stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
@@ -634,6 +615,9 @@ if task.thistrial.dead, return; end
 if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1))
     % subject didn't see anything
     task = jumpSegment(task,inf);
+    task.thistrial.detected = -1;
+    disp('Subject reported not seeing anything');
+    return
 end
 
 if stimulus.powerwheel
@@ -653,8 +637,8 @@ if validResponse
         elseif ((task.thistrial.thisphase==2) || stimulus.test2)
             % they saw it
 %             if stimulus.live.anyAngleAdj == true
-%                 task.thistrial.detected = 1;
-%                 stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
+            task.thistrial.detected = 1;
+            stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
 %             end
             % they are actually reporting locations
             task.thistrial.respAngle = stimulus.live.angle;
@@ -678,7 +662,7 @@ global stimulus
 
 stimulus.staircase = doStaircase('init','upDown',...
             'initialThreshold',0.25,...
-            'initialStepsize',0.025,...
+            'initialStepsize',0.25/3,...
             'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
             'nTrials=40','maxStepsize=0.2','minStepsize=0.0001');
         
@@ -722,6 +706,7 @@ end
 function dispInfo(rstimulus)
 %%
 
+doStaircase('threshold',rstimulus.staircase,'dispFig=1','type=weibull');
 % ctask = task; cscreen = myscreen; % save this incase we need them
 
 % compute % correct for valid and invalid trials, display learning over
