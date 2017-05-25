@@ -36,7 +36,10 @@ end
 
 %% Stimulus parameters
 
-stimulus.gaussSize = 5;
+stimulus.gaussFWHM = 2;
+stimulus.gaussSD = stimulus.gaussFWHM/(2*sqrt(2*log(2)));
+stimulus.gaussX = 5;
+stimulus.gaussY = 5;
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -122,8 +125,25 @@ stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
 % stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
 % stimulus.colors.mrmin = stimulus.colors.nReserved;
 
-%% Setup Probe Task
+stimulus.gaussX = 5;
+stimulus.gaussY = 5;
+%% Setup Gaussian
+[X,Y] = meshgrid((0.5:(myscreen.screenWidth/4-0.5))-myscreen.screenWidth/8,(0.5:(myscreen.screenHeight/4-0.5))-myscreen.screenHeight/8);
+ppdw = myscreen.screenWidth/myscreen.imageWidth;
+ppdh = myscreen.screenHeight/myscreen.imageHeight;
+if ~(ppdw==ppdh)
+    warning('PIXELS ARE NOT SQUARE');
+end
+stimulus.live.X = X*4./ppdw;
+stimulus.live.Y = Y*4./ppdh;
+% pre-compute distance from gaussian
+stimulus.live.dist = normpdf(hypot(stimulus.live.X-stimulus.gaussX,stimulus.live.Y-stimulus.gaussY),0,stimulus.gaussSD)';
+stimulus.live.dist = uint8(stimulus.live.dist ./ max(stimulus.live.dist(:)) * 255);
+stimulus.live.dist = repmat(reshape(stimulus.live.dist,[1 size(stimulus.live.dist)]),3,1,1);
 
+%%
+imagesc(flipud(squeeze(stimulus.live.dist(1,:,:))'));
+axis equal
 %% Setup Attention Task
 
 stimulus.curTrial = 0;
@@ -251,28 +271,30 @@ end
 
 stimulus.live.wnTimer = -1;
 
-stimulus.gaussian = {};
-sz = stimulus.gaussSize;
-gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
-alphamask = repmat(255*ones(size(gauss)),1,1,4);
-alphamask(:,:,4) = gauss*255*task.thistrial.contrast;
-stimulus.gaussian = mglCreateTexture(alphamask);
+% refreshWN(task,myscreen); it will refresh on the first frame anyways, no
+% need to do it here
 
 disp(sprintf('(afmapb) Trial %i: %02.1f',stimulus.curTrial,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
 
-function refreshWN(myscreen)
+function refreshWN(task,myscreen)
 global stimulus
 wn = repmat(randi(256,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
+% save the white noise
 stimulus.wn.img(stimulus.wn.count,:,:) = wn(1,:,:);
 stimulus.wn.trials{stimulus.curTrial}(end+1) = stimulus.wn.count;
 stimulus.wn.count = stimulus.wn.count+1;
+% check whether we need to add the gaussian
+if task.thistrial.present
+    % add the gaussian
+    wn = min(wn+task.thistrial.contrast*stimulus.live.dist,255);
+end
 wn(4,:,:) = 255;
 if isfield(stimulus,'live') && isfield(stimulus.live,'wn')
-    mglDeleteTexture(stimulus.live.wn);
+    mglDeleteTexture(stimulus.live.tex);
 end
-stimulus.live.wn = mglCreateTexture(wn,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
+stimulus.live.tex = mglCreateTexture(wn,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -319,23 +341,16 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI]) && ~stimu
     end
 end
 
-% draw gratings for probe task
-stimulus.live.aX = 5;
-stimulus.live.aY = 5;
-
 if (task.thistrial.thisseg==stimulus.seg.stim)
     stimulus.live.wnTimer = stimulus.live.wnTimer+1;
     if mod(stimulus.live.wnTimer,3)==0
-        refreshWN(myscreen);
+        refreshWN(task,myscreen);
     end
-    mglBltTexture(stimulus.live.wn,[0 0 myscreen.imageWidth myscreen.imageWidth]);
+    mglBltTexture(stimulus.live.tex,[0 0 myscreen.imageWidth myscreen.imageHeight]);
     
-    if task.thistrial.present
-        mglBltTexture(stimulus.gaussian,[stimulus.live.aX,stimulus.live.aY]);
-    end
 elseif (task.thistrial.thisseg==stimulus.seg.ITI)
     for i = 1:8
-        mglGluPartialDisk(stimulus.live.aX,stimulus.live.aY,0.99,1.01,(i-1)*360/8-11.25,360/16,stimulus.colors.white);
+        mglGluPartialDisk(stimulus.gaussX,stimulus.gaussY,0.99,1.01,(i-1)*360/8-11.25,360/16,stimulus.colors.white);
     end
 end
 
