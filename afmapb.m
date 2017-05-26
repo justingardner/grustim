@@ -491,6 +491,10 @@ files = dir(fullfile(sprintf('~/data/afmapb/%s/17*stim*.mat',mglGetSID)));
 %  contrast    correct    hit    fa    miss    cr     dead    
 %      7          8       9      10     11      12      13
 
+% get the threshold estimate from the last run
+out = doStaircase('threshold',rstimulus.staircase','type=weibull','dispFig=0');
+threshold = out.threshold;
+
 wn = zeros(10000,240,135);
 count = 1; data = zeros(10000,13);
 
@@ -536,49 +540,68 @@ y = stimulus.live.Y;
 d = 1;
 
 %% Split data by hit/fa/miss/cr
-img = struct;
-name = {'hit','miss','fa','cr'};
-idx = [9 10 11 12];
-h = figure;
-for ci = 1:4
-    subplot(2,2,ci); hold on
-    img.(name{ci}) = squeeze(mean(wn(logical(data(:,idx(ci))),:,:)));
-    img.(name{ci}) = img.(name{ci})/255;
-    imagesc(img.(name{ci})');
-    set(gca,'YDir','normal');    
-    set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
-    set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
-    title(name{ci});
-    colormap('gray');
-    caxis([0 1]);
-    axis equal
-    %rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
-end
+% img = struct;
+% name = {'hit','miss','fa','cr'};
+% idx = [9 10 11 12];
+% h = figure;
+% for ci = 1:4
+%     subplot(2,2,ci); hold on
+%     img.(name{ci}) = squeeze(mean(wn(logical(data(:,idx(ci))),:,:)));
+%     img.(name{ci}) = img.(name{ci})/255;
+%     imagesc(img.(name{ci})');
+%     set(gca,'YDir','normal');    
+%     set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+%     set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+%     title(name{ci});
+%     colormap('gray');
+%     caxis([0 1]);
+%     axis equal
+%     %rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
+% end
 
 %% 
 
+% set a threshold offset (how much +/- the threshold we are willing to
+% allow data to come from)
+t_var = 0.5;
+t_idxs = (data(:,7)>(threshold-threshold*t_var)) .* (data(:,7)<(threshold+threshold*t_var));
+disp(sprintf('Using %i of %i when accounting from threshold variability',sum(t_idxs),size(t_idxs,1)));
 img = struct;
 name = {'hit','miss','fa','cr'};
 idx = [9 10 11 12];
 h = figure;
 for ci = 1:4
-    img.(name{ci}) = squeeze(wn(logical(data(:,idx(ci))),:,:));
-    img.(name{ci}) = img.(name{ci})/255;
+    img.(name{ci}) = squeeze(wn(logical(t_idxs .* data(:,idx(ci))),:,:));
+    img.(name{ci}) = img.(name{ci})/255-0.5;
 end
 aimg = [img.hit ; img.fa ; -img.miss ; -img.cr];
 
-aimgm = squeeze(mean(aimg));
+% % Bootstrap takes a VERY VERY VERY long time:
+% am_ = squeeze(bootci(10,@nanmean,aimg));
+% am  = squeeze(mean(am_));
 
-imagesc(aimgm');
-set(gca,'YDir','normal');    
-set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/stimulus.pixelSize)));
-set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/stimulus.pixelSize)));
-title(name{ci});
+am = squeeze(mean(aimg));
+
+imagesc(stimulus.live.X(1,:),stimulus.live.Y(:,1)',flipud(am'));
+
 colormap('gray');
-caxis([-1 1]);
-axis equal
+colorbar
+set(gca,'Clim',[min(am(:)) max(am(:))]);
+
+% subplot(211)
+% imagesc(pm'); colorbar; axis equal
+% subplot(212)
+% imagesc(mm'); colorbar; axis equal
+
+set(gca,'YDir','normal');    
+title('(Hits + FA) - (Miss + CR)');
+
+x = rstimulus.gaussX - rstimulus.gaussFWHM/2;
+y = rstimulus.gaussY - rstimulus.gaussFWHM/2;
+d = rstimulus.gaussFWHM;
 rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
 
+%%
 % 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % sets the gamma table so that we can have
