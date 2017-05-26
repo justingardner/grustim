@@ -143,8 +143,8 @@ stimulus.live.dist = uint8(stimulus.live.dist ./ max(stimulus.live.dist(:)) * 25
 stimulus.live.dist = repmat(reshape(stimulus.live.dist,[1 size(stimulus.live.dist)]),3,1,1);
 % imagesc(squeeze(stimulus.live.dist(1,:,:)));
 %%
-imagesc(flipud(squeeze(stimulus.live.dist(1,:,:))'));
-axis equal
+% imagesc(flipud(squeeze(stimulus.live.dist(1,:,:))'));
+% axis equal
 %% Setup Attention Task
 
 stimulus.curTrial = 0;
@@ -256,6 +256,12 @@ stimulus.live.fixColor = stimulus.colors.white;
 
 if task.thistrial.thisseg==stimulus.seg.ITI
     stimulus.live.fixColor = stimulus.colors.black;
+elseif task.thistrial.thisseg==stimulus.seg.stim
+    refreshWN(task,myscreen);
+    mglBltTexture(stimulus.live.tex,[0 0 myscreen.imageWidth myscreen.imageHeight]);
+    mglFlush
+    mglClearScreen(0.5);
+    mglFlush
 end
 
 function [task, myscreen] = startTrialCallback1(task,myscreen)
@@ -343,11 +349,12 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI]) && ~stimu
 end
 
 if (task.thistrial.thisseg==stimulus.seg.stim)
-    stimulus.live.wnTimer = stimulus.live.wnTimer+1;
-    if mod(stimulus.live.wnTimer,3)==0
-        refreshWN(task,myscreen);
-    end
-    mglBltTexture(stimulus.live.tex,[0 0 myscreen.imageWidth myscreen.imageHeight]);
+    1;
+%     stimulus.live.wnTimer = stimulus.live.wnTimer+1;
+%     if mod(stimulus.live.wnTimer,3)==0
+%         refreshWN(task,myscreen);
+%     end
+%     mglBltTexture(stimulus.live.tex,[0 0 myscreen.imageWidth myscreen.imageHeight]);
     
 elseif (task.thistrial.thisseg==stimulus.seg.ITI)
     for i = 1:8
