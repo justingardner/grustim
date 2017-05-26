@@ -36,7 +36,11 @@ end
 
 %% Stimulus parameters
 
-stimulus.gaussSize = 5;
+stimulus.gaussFWHM = 2;
+stimulus.gaussSD = stimulus.gaussFWHM/(2*sqrt(2*log(2)));
+stimulus.gaussX = 5;
+stimulus.gaussY = 5;
+stimulus.pixelSize = 8;
 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -96,7 +100,7 @@ if stimulus.plots==2
 end
 %% White noise tracking
 stimulus.wn.count = 1;
-stimulus.wn.img = zeros(10000,myscreen.screenWidth/4,myscreen.screenHeight/4);
+stimulus.wn.img = zeros(10000,myscreen.screenWidth/stimulus.pixelSize,myscreen.screenHeight/stimulus.pixelSize);
 stimulus.wn.trials = cell(1,10000);
 
 
@@ -122,8 +126,25 @@ stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
 % stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
 % stimulus.colors.mrmin = stimulus.colors.nReserved;
 
-%% Setup Probe Task
-
+% stimulus.gaussX = 0;
+% stimulus.gaussY = 15;
+%% Setup Gaussian
+[X,Y] = meshgrid((0.5:(myscreen.screenWidth/stimulus.pixelSize-0.5))-myscreen.screenWidth/(stimulus.pixelSize*2),(0.5:(myscreen.screenHeight/stimulus.pixelSize-0.5))-myscreen.screenHeight/(stimulus.pixelSize*2));
+ppdw = myscreen.screenWidth/myscreen.imageWidth;
+ppdh = myscreen.screenHeight/myscreen.imageHeight;
+if ~(ppdw==ppdh)
+    warning('PIXELS ARE NOT SQUARE');
+end
+stimulus.live.X = X*stimulus.pixelSize./ppdw;
+stimulus.live.Y = Y*stimulus.pixelSize./ppdh;
+% pre-compute distance from gaussian
+stimulus.live.dist = normpdf(hypot(stimulus.live.X-stimulus.gaussX,stimulus.live.Y-stimulus.gaussY),0,stimulus.gaussSD)';
+stimulus.live.dist = uint8(stimulus.live.dist ./ max(stimulus.live.dist(:)) * 255);
+stimulus.live.dist = repmat(reshape(stimulus.live.dist,[1 size(stimulus.live.dist)]),3,1,1);
+% imagesc(squeeze(stimulus.live.dist(1,:,:)));
+%%
+% imagesc(flipud(squeeze(stimulus.live.dist(1,:,:))'));
+% axis equal
 %% Setup Attention Task
 
 stimulus.curTrial = 0;
@@ -235,6 +256,12 @@ stimulus.live.fixColor = stimulus.colors.white;
 
 if task.thistrial.thisseg==stimulus.seg.ITI
     stimulus.live.fixColor = stimulus.colors.black;
+elseif task.thistrial.thisseg==stimulus.seg.stim
+    refreshWN(task,myscreen);
+    mglBltTexture(stimulus.live.tex,[0 0 myscreen.imageWidth myscreen.imageHeight]);
+    mglFlush
+    mglClearScreen(0.5);
+    mglFlush
 end
 
 function [task, myscreen] = startTrialCallback1(task,myscreen)
@@ -251,28 +278,30 @@ end
 
 stimulus.live.wnTimer = -1;
 
-stimulus.gaussian = {};
-sz = stimulus.gaussSize;
-gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
-alphamask = repmat(255*ones(size(gauss)),1,1,4);
-alphamask(:,:,4) = gauss*255*task.thistrial.contrast;
-stimulus.gaussian = mglCreateTexture(alphamask);
+% refreshWN(task,myscreen); it will refresh on the first frame anyways, no
+% need to do it here
 
 disp(sprintf('(afmapb) Trial %i: %02.1f',stimulus.curTrial,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
 
-function refreshWN(myscreen)
+function refreshWN(task,myscreen)
 global stimulus
-wn = repmat(randi(256,1,myscreen.screenWidth/4,myscreen.screenHeight/4,'uint8')-1,3,1,1);
+wn = repmat(randi(256,1,myscreen.screenWidth/stimulus.pixelSize,myscreen.screenHeight/stimulus.pixelSize,'uint8')-1,3,1,1);
+% save the white noise
 stimulus.wn.img(stimulus.wn.count,:,:) = wn(1,:,:);
 stimulus.wn.trials{stimulus.curTrial}(end+1) = stimulus.wn.count;
 stimulus.wn.count = stimulus.wn.count+1;
+% check whether we need to add the gaussian
+if task.thistrial.present
+    % add the gaussian
+    wn = min(wn+task.thistrial.contrast*stimulus.live.dist,255);
+end
 wn(4,:,:) = 255;
 if isfield(stimulus,'live') && isfield(stimulus.live,'wn')
-    mglDeleteTexture(stimulus.live.wn);
+    mglDeleteTexture(stimulus.live.tex);
 end
-stimulus.live.wn = mglCreateTexture(wn,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
+stimulus.live.tex = mglCreateTexture(wn,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -319,23 +348,17 @@ if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.ITI]) && ~stimu
     end
 end
 
-% draw gratings for probe task
-stimulus.live.aX = 5;
-stimulus.live.aY = 5;
-
 if (task.thistrial.thisseg==stimulus.seg.stim)
-    stimulus.live.wnTimer = stimulus.live.wnTimer+1;
-    if mod(stimulus.live.wnTimer,3)==0
-        refreshWN(myscreen);
-    end
-    mglBltTexture(stimulus.live.wn,[0 0 myscreen.imageWidth myscreen.imageWidth]);
+    1;
+%     stimulus.live.wnTimer = stimulus.live.wnTimer+1;
+%     if mod(stimulus.live.wnTimer,3)==0
+%         refreshWN(task,myscreen);
+%     end
+%     mglBltTexture(stimulus.live.tex,[0 0 myscreen.imageWidth myscreen.imageHeight]);
     
-    if task.thistrial.present
-        mglBltTexture(stimulus.gaussian,[stimulus.live.aX,stimulus.live.aY]);
-    end
 elseif (task.thistrial.thisseg==stimulus.seg.ITI)
     for i = 1:8
-        mglGluPartialDisk(stimulus.live.aX,stimulus.live.aY,0.99,1.01,(i-1)*360/8-11.25,360/16,stimulus.colors.white);
+        mglGluPartialDisk(stimulus.gaussX,stimulus.gaussY,stimulus.gaussFWHM/2-.01,stimulus.gaussFWHM/2+.01,(i-1)*360/8-11.25,360/16,stimulus.colors.white);
     end
 end
 
@@ -415,7 +438,7 @@ function initStair()
 global stimulus
 
 stimulus.staircase = doStaircase('init','upDown',...
-            'initialThreshold',0.5,...
+            'initialThreshold',1,...
             'initialStepsize',0.1,...
             'minThreshold=0.0001','maxThreshold=1','stepRule','pest',...
             'nTrials=80','maxStepsize=0.3','minStepsize=0.0001');
@@ -475,9 +498,14 @@ files = dir(fullfile(sprintf('~/data/afmapb/%s/17*stim*.mat',mglGetSID)));
 %  contrast    correct    hit    fa    miss    cr     dead    
 %      7          8       9      10     11      12      13
 
-wn = zeros(10000,480,270);
+% get the threshold estimate from the last run
+out = doStaircase('threshold',rstimulus.staircase','type=weibull','dispFig=0');
+threshold = out.threshold;
+
+wn = zeros(10000,240,135);
 count = 1; data = zeros(10000,13);
 
+%figure;
 for fi = 1:length(files)
     load(fullfile(sprintf('~/data/afmapb/%s/%s',mglGetSID,files(fi).name)));
     
@@ -495,8 +523,8 @@ for fi = 1:length(files)
         for ti = 1:e.nTrials
             timg = squeeze(mean(stimulus.wn.img(stimulus.wn.trials{ti},:,:)));
             wn(count+(ti-1),:,:) = timg;
-%             imagesc(timg);
-%             pause(.01);
+             %imagesc(timg);colormap('gray');
+             %pause(.01);
         end
         count = count+e.nTrials;
     end
@@ -514,76 +542,73 @@ disp(sprintf('Found %01.2f%% hits %01.2f%% fa %01.2f%% miss %01.2f%% cr',sum(dat
 %     pause(.01);
 % end
 
-%% calculate position of stimulus
-fwhm = 2*sqrt(2*log(2))*5/6; % radius of display, at 5,5
-% convert to matrix space
-x = 240 + (5-fwhm)*myscreen.screenHeight/myscreen.imageHeight/4;
-y = 135 + (5-fwhm)*myscreen.screenHeight/myscreen.imageHeight/4;
-d = 2*fwhm*myscreen.screenHeight/myscreen.imageHeight/4;
+x = stimulus.live.X;
+y = stimulus.live.Y;
+d = 1;
 
 %% Split data by hit/fa/miss/cr
-img = struct;
-name = {'hit','miss','fa','cr'};
-idx = [9 10 11 12];
-h = figure;
-for ci = 1:4
-    subplot(2,2,ci); hold on
-    img.(name{ci}) = squeeze(mean(wn(logical(data(:,idx(ci))),:,:)));
-    img.(name{ci}) = img.(name{ci})/255;
-    imagesc(img.(name{ci})');
-    set(gca,'YDir','normal');    
-    set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
-    set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
-    title(name{ci});
-    colormap('gray');
-    caxis([0 1]);
-    axis equal
-    rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
-end
+% img = struct;
+% name = {'hit','miss','fa','cr'};
+% idx = [9 10 11 12];
+% h = figure;
+% for ci = 1:4
+%     subplot(2,2,ci); hold on
+%     img.(name{ci}) = squeeze(mean(wn(logical(data(:,idx(ci))),:,:)));
+%     img.(name{ci}) = img.(name{ci})/255;
+%     imagesc(img.(name{ci})');
+%     set(gca,'YDir','normal');    
+%     set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+%     set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
+%     title(name{ci});
+%     colormap('gray');
+%     caxis([0 1]);
+%     axis equal
+%     %rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
+% end
 
 %% 
 
+% set a threshold offset (how much +/- the threshold we are willing to
+% allow data to come from)
+t_var = 0.5;
+t_idxs = (data(:,7)>(threshold-threshold*t_var)) .* (data(:,7)<(threshold+threshold*t_var));
+disp(sprintf('Using %i of %i when accounting from threshold variability',sum(t_idxs),size(t_idxs,1)));
 img = struct;
 name = {'hit','miss','fa','cr'};
 idx = [9 10 11 12];
 h = figure;
 for ci = 1:4
-    img.(name{ci}) = squeeze(wn(logical(data(:,idx(ci))),:,:));
-    img.(name{ci}) = img.(name{ci})/255;
+    img.(name{ci}) = squeeze(wn(logical(t_idxs .* data(:,idx(ci))),:,:));
+    img.(name{ci}) = img.(name{ci})/255-0.5;
 end
 aimg = [img.hit ; img.fa ; -img.miss ; -img.cr];
 
-aimgm = squeeze(mean(aimg));
+% % Bootstrap takes a VERY VERY VERY long time:
+% am_ = squeeze(bootci(10,@nanmean,aimg));
+% am  = squeeze(mean(am_));
 
-imagesc(aimgm');
-set(gca,'YDir','normal');    
-set(gca,'YTick',1:50:270,'YTickLabel',round((-134.5:50:134.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
-set(gca,'XTick',1:100:480,'XTickLabel',round((-230.5:100:230.5)/(myscreen.screenHeight/myscreen.imageHeight/4)));
-title(name{ci});
+am = squeeze(mean(aimg));
+
+imagesc(stimulus.live.X(1,:),stimulus.live.Y(:,1)',flipud(am'));
+
 colormap('gray');
-caxis([-1 1]);
-axis equal
+colorbar
+set(gca,'Clim',[min(am(:)) max(am(:))]);
+
+% subplot(211)
+% imagesc(pm'); colorbar; axis equal
+% subplot(212)
+% imagesc(mm'); colorbar; axis equal
+
+set(gca,'YDir','normal');    
+title('(Hits + FA) - (Miss + CR)');
+
+x = rstimulus.gaussX - rstimulus.gaussFWHM/2;
+y = rstimulus.gaussY - rstimulus.gaussFWHM/2;
+d = rstimulus.gaussFWHM;
 rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function to init the stimulus
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function localInitStimulus()
-
-global stimulus
-
-for ci = 1:length(stimulus.gratingContrasts)
-    for si = 1:length(stimulus.gratingSizes)
-        sz = 1.5 * stimulus.gratingSizes(si);
-        % use total degs / num to compute size
-        grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz,sz,2,0) + 255/2;
-        gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
-        alphamask = repmat(grating,1,1,4);
-        alphamask(:,:,4) = gauss*255;
-
-        stimulus.live.grating(ci,si)  = mglCreateTexture(alphamask); % high contrast
-    end
-end
+%%
 % 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % sets the gamma table so that we can have
