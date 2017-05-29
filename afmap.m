@@ -345,7 +345,7 @@ mglFlush
 myscreen.flushMode = 1;
 
 % save stimulus
-frames = stimulus.frames;
+frames = stimulus.frames; %#ok<NASGU>
 save(stimulus.replayFile,'frames');
 
 % if we got here, we are at the end of the experiment
@@ -504,10 +504,10 @@ if stimulus.replay
     disp(sprintf('Displaying trial %i',stimulus.curTrial));
     
     frame = mglFrameGrab;
-    if ~isfield(stimulus.live,'frames')
-        stimulus.frames = [];
+    if ~isfield(stimulus,'frames')
+        stimulus.frames = zeros(stimulus.gridCount,myscreen.screenWidth,myscreen.screenHeight);
     end
-    stimulus.frames(end+1,:,:,:) = frame;
+    stimulus.frames(stimulus.curTrial,:,:,:) = frame(:,:,1);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
