@@ -5,9 +5,19 @@
 %         by: justin gardner
 %       date: 09/07/06
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
-%    purpose: example program to show how to use the task structure
+%    purpose: Generates a stimulus for the motionEnergyModel
 %
-function myscreen = motionEnergyModelMakeStimulus(screenName)
+%             stimulus = motionEnergyModelMakeStimulus;
+%
+%             % display stimulus
+%             figure;clf;colormap(gray);
+%             for iFrame = 1:size(stimulus,3)
+%               clf
+%               imagesc(stimulus(:,:,iFrame));
+%               drawnow
+%             end
+%
+function stimulus = motionEnergyModelMakeStimulus(screenName)
 
 % check arguments
 if ~any(nargin == [0 1])
@@ -15,7 +25,11 @@ if ~any(nargin == [0 1])
   return
 end
 
-mglSetParam('offscreenContext',1);
+% use off screen context - which will display to a memory
+% buffer so that we can just mglFrameGrab to get the images
+%mglSetParam('useCGL',0);
+%mglSetParam('offscreenContext',1);
+
 % initalize the screen
 if nargin >= 1
   myscreen = initScreen(screenName);
@@ -23,29 +37,22 @@ else
   myscreen = initScreen;
 end
 
-% set the first task to be the fixation staircase task
-[task{1} myscreen] = fixStairInitTask(myscreen);
+% task just has dots
+task{1}.waitForBacktick = 0;
+task{1}.seglen = 10;
+task{1}.numBlocks = 1;
+task{1}.parameter.dir = 0;
+task{1}.parameter.coherence = 0;
 
-% set our task to have two phases. 
-% one starts out with dots moving for incohrently for 10 seconds
-task{2}{1}.waitForBacktick = 1;
-task{2}{1}.seglen = 10;
-task{2}{1}.numBlocks = 1;
-task{2}{1}.parameter.dir = 0;
-task{2}{1}.parameter.coherence = 0;
+% number of frames to compute for
+myscreen.nFrames = 200;
+myscreen.iFrame = 1;
 
-% the second phase has 2 second bursts of directions, followed by 
-% a top-up period of the same direction
-task{2}{2}.segmin = [2 6];
-task{2}{2}.segmax = [2 10];
-task{2}{2}.parameter.dir = 0:60:360;
-task{2}{2}.parameter.coherence = 1;
-task{2}{2}.random = 1;
+% precompute data arrray for computing stimulus
+myscreen.stimulus = nan(mglGetParam('screenWidth'),mglGetParam('screenHeight'),myscreen.nFrames);
 
 % initialize our task
-for phaseNum = 1:length(task{2})
-  [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback);
-end
+[task{1} myscreen] = initTask(task{1},myscreen,@startSegmentCallback,@updateScreenCallback);
 
 % init the stimulus
 global stimulus;
@@ -53,19 +60,12 @@ myscreen = initStimulus('stimulus',myscreen);
 stimulus = initDots(stimulus,myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% run the eye calibration
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 phaseNum = 1;
-while (phaseNum <= length(task{2})) && ~myscreen.userHitEsc
+while myscreen.iFrame <= myscreen.nFrames
   % update the dots
-  [task{2} myscreen phaseNum] = updateTask(task{2},myscreen,phaseNum);
-  % update the fixation task
-  [task{1} myscreen] = updateTask(task{1},myscreen,1);
+  [task myscreen phaseNum] = updateTask(task,myscreen,phaseNum);
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -73,6 +73,9 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 clear global stimulus;
+mglSetParam('offscreenContext',0);
+
+stimulus = myscreen.stimulus;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
@@ -93,9 +96,15 @@ stimulus.dots.dir = task.thistrial.dir;
 function [task myscreen] = updateScreenCallback(task, myscreen)
 
 global stimulus
-mglClearScreen;
+mglClearScreen(0.5);
 stimulus = updateDots(stimulus,myscreen);
-keyboard
+
+% grab the frame, and average over color channels
+thisFrame = mglFrameGrab;
+myscreen.stimulus(:,:,myscreen.iFrame) = mean(thisFrame,3);
+
+% update frame counter
+myscreen.iFrame = myscreen.iFrame + 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dot stimulus
