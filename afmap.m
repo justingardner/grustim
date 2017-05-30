@@ -47,106 +47,140 @@ scan = 0;
 plots = 0;
 noeye = 0;
 debug = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0'});
+replay = 0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
+stimulus.replay = replay;
 clear localizer invisible scan noeye task test2
 
 if stimulus.scan
     warning('Not setup for scanning');
 end
 
-%% Stimulus parameters
-
-stimulus.stimX = 25; % max ecc in any direction
-stimulus.stimY = 13;
-stimulus.stimR = 2; % deg between each stimulus
-
-if mod(stimulus.stimX,stimulus.stimR)==1 || mod(stimulus.stimY,stimulus.stimR)==1
-    warning('Your stimulus size is not correctly setup');
-end
-
-stimulus.stimx = -stimulus.stimX:stimulus.stimR:stimulus.stimX;
-stimulus.stimy = -stimulus.stimY:stimulus.stimR:stimulus.stimY;
-
-stimulus.probeOn = .002;
-stimulus.live.probeOnGrid = zeros(length(stimulus.stimx),length(stimulus.stimy));
-% stimulus.probeMaxLag = 30;
-stimulus.probeUp = 4;
-stimulus.probeDown = 12;
-
-stimulus.gridCount = 1;
-stimulus.grid.on = zeros(5000,length(stimulus.stimx),length(stimulus.stimy));
-stimulus.grid.con = stimulus.grid.on;
-stimulus.grid.sz = stimulus.grid.on;
-
-stimulus.live.grid = zeros(length(stimulus.stimx),length(stimulus.stimy));
-stimulus.live.gridCon = zeros(length(stimulus.stimx),length(stimulus.stimy));
-stimulus.live.gridSize = zeros(length(stimulus.stimx),length(stimulus.stimy));
-stimulus.live.gridPhase = zeros(length(stimulus.stimx),length(stimulus.stimy));
-
-stimulus.gratingContrasts = [0.1 1.0 1.0];
-stimulus.live.gridCons = zeros(1,length(stimulus.gratingContrasts)-1);
-stimulus.gratingSizes = [0.5 1 2];
-stimulus.live.gridSizes = zeros(1,length(stimulus.gratingSizes));
-
-stimulus.live.rotations = zeros(length(stimulus.stimx),length(stimulus.stimy));
-
-stimulus.live.attend = 0;
-
-stimulus.blanks.rotTR = 20; % every 20 TRs (10s) rotate through blanks
-stimulus.blanks.names = {'None','NW','NE','SE','SW','None','All'};
-stimulus.blanks.xmin = [-inf 0 0 -inf 0 -inf];
-stimulus.blanks.xmax = [0 inf inf 0 0 inf];
-stimulus.blanks.ymin = [0 0 -inf -inf 0 -inf];
-stimulus.blanks.ymax = [inf inf 0 0 0 inf];
-stimulus.live.cBlank = 0;
-stimulus.live.rotation = 1;
-stimulus.live.blankTime = stimulus.blanks.rotTR;
-stimulus.live.numBlanks = length(stimulus.blanks.ymax);
-
-%% Open Old Stimfile
-stimulus.counter = 1;
-
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
-    % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/afmap/%s/1*mat',mglGetSID));
-
-    if length(files) >= 1
-        fname = files(end).name;
-        
-        s = load(sprintf('~/data/afmap/%s/%s',mglGetSID,fname));
-        % copy staircases and run numbers
-        stimulus.counter = s.stimulus.counter + 1;
-        stimulus.staircase = s.stimulus.staircase;
-        stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
-        clear s;
-        disp(sprintf('(afmap) Data file: %s loaded.',fname));
+%% Replay mode
+if any(replay>0)
+    if isstr(replay)
+        % a file was called for, load it
+        loaded = load(replay);
+        stimulus =  loaded.stimulus;
+        stimulus.replayFile = strcat(replay(1:(strfind(replay,'.mat')-1)),'_replay.mat');
+        stimulus.replay = true;
+    else
+        % do an entire subject
+        disp('Replay mode initiated');
+        folder = input('What folder would you like to replay? [Folder]: ');
+        files = dir(fullfile(folder,'*.mat'));
+        for fi = 1:length(files)
+            if isempty(strfind(files(fi).name,'replay'))
+                % skip
+                afmap(sprintf('replay=%s/%s',folder,files(fi).name));
+            end
+        end
     end
 end
-disp(sprintf('(afmap) This is run #%i',stimulus.counter));
+
+%% Stimulus parameters
+if ~stimulus.replay
+    stimulus.stimX = 25; % max ecc in any direction
+    stimulus.stimY = 13;
+    stimulus.stimR = 2; % deg between each stimulus
+
+    if mod(stimulus.stimX,stimulus.stimR)==1 || mod(stimulus.stimY,stimulus.stimR)==1
+        warning('Your stimulus size is not correctly setup');
+    end
+
+    stimulus.stimx = -stimulus.stimX:stimulus.stimR:stimulus.stimX;
+    stimulus.stimy = -stimulus.stimY:stimulus.stimR:stimulus.stimY;
+
+    stimulus.probeOn = .002;
+    stimulus.live.probeOnGrid = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    % stimulus.probeMaxLag = 30;
+    stimulus.probeUp = 4;
+    stimulus.probeDown = 12;
+
+    stimulus.gridCount = 1;
+    stimulus.grid.on = zeros(5000,length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.grid.con = stimulus.grid.on;
+    stimulus.grid.sz = stimulus.grid.on;
+
+    stimulus.live.grid = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.gridCon = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.gridSize = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.gridPhase = zeros(length(stimulus.stimx),length(stimulus.stimy));
+
+    stimulus.gratingContrasts = [0.1 1.0 1.0];
+    stimulus.live.gridCons = zeros(1,length(stimulus.gratingContrasts)-1);
+    stimulus.gratingSizes = [0.5 1 2];
+    stimulus.live.gridSizes = zeros(1,length(stimulus.gratingSizes));
+
+    stimulus.live.rotations = zeros(length(stimulus.stimx),length(stimulus.stimy));
+
+    stimulus.live.attend = 0;
+
+    stimulus.blanks.rotTR = 20; % every 20 TRs (10s) rotate through blanks
+    stimulus.blanks.names = {'None','NW','NE','SE','SW','None','All'};
+    stimulus.blanks.xmin = [-inf 0 0 -inf 0 -inf];
+    stimulus.blanks.xmax = [0 inf inf 0 0 inf];
+    stimulus.blanks.ymin = [0 0 -inf -inf 0 -inf];
+    stimulus.blanks.ymax = [inf inf 0 0 0 inf];
+    stimulus.live.cBlank = 0;
+    stimulus.live.rotation = 1;
+    stimulus.live.blankTime = stimulus.blanks.rotTR;
+    stimulus.live.numBlanks = length(stimulus.blanks.ymax);
+end
+
+%% Open Old Stimfile
+if ~stimulus.replay
+    stimulus.counter = 1;
+
+    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
+        % Directory exists, check for a stimefile
+        files = dir(sprintf('~/data/afmap/%s/1*mat',mglGetSID));
+
+        if length(files) >= 1
+            fname = files(end).name;
+
+            s = load(sprintf('~/data/afmap/%s/%s',mglGetSID,fname));
+            % copy staircases and run numbers
+            stimulus.counter = s.stimulus.counter + 1;
+            stimulus.staircase = s.stimulus.staircase;
+            stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
+            clear s;
+            disp(sprintf('(afmap) Data file: %s loaded.',fname));
+        end
+    end
+    disp(sprintf('(afmap) This is run #%i',stimulus.counter));
+end
 
 %% Setup attention
-
-stimulus.attendX = [0 5 5];
-stimulus.attendY = [0 5 -5];
-stimulus.live.aX = stimulus.attendX(stimulus.live.attend+1);
-stimulus.live.aY = stimulus.attendY(stimulus.live.attend+1);
+if ~stimulus.replay
+    stimulus.attendX = [0 5 5];
+    stimulus.attendY = [0 5 -5];
+    stimulus.live.aX = stimulus.attendX(stimulus.live.attend+1);
+    stimulus.live.aY = stimulus.attendY(stimulus.live.attend+1);
+end
 
 %% Setup Screen
-myscreen = initScreen('VPixx');
+if stimulus.replay
+    myscreen = initScreen('replayScreen');
+else
+    myscreen = initScreen('VPixx');
+end
 
 % set background to grey
 myscreen.background = 0.5;
 
 %% Staircase
-if ~isfield(stimulus,'staircase')
-    disp('(afmap) WARNING: New staircase');
-    initStair();
-else
-    resetStair();
+if ~stimulus.replay
+    if ~isfield(stimulus,'staircase')
+        disp('(afmap) WARNING: New staircase');
+        initStair();
+    else
+        resetStair();
+    end
 end
 
 %% Plot and return
@@ -157,13 +191,15 @@ end
 
 %% Initialize Stimulus
 
-myscreen.stimulusNames{1} = 'stimulus';
+if ~stimulus.replay
+    myscreen.stimulusNames{1} = 'stimulus';
 
-if ~isfield(stimulus.live,'grating')
-    localInitStimulus();
+    if ~isfield(stimulus.live,'grating')
+        localInitStimulus();
+    end
+
+    stimulus.responseKeys = [1 2]; % left right
 end
-    
-stimulus.responseKeys = [1 2]; % left right
 
 %% Colors
 stimulus.colors.white = [1 1 1]; stimulus.colors.red = [1 0 0];
@@ -186,26 +222,32 @@ stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
 %% Setup Probe Task
 
 task{1}{1} = struct;
-task{1}{1}.waitForBacktick = 1;
 % task waits for fixation on first segment
-if stimulus.scan
-    task{1}{1}.seglen = 0.450;
+if stimulus.replay
+    task{1}{1}.waitForBacktick = 0;
+    task{1}{1}.seglen = 0.050;
 else
-    task{1}{1}.seglen = 0.500;
+    task{1}{1}.waitForBacktick = 1;
+    if stimulus.scan
+        task{1}{1}.seglen = 0.450;
+    else
+        task{1}{1}.seglen = 0.500;
+    end
 end
 
 stimulus.seg.stim = 1;
 
-if stimulus.scan
-    task{1}{1}.synchToVol = 1;
-end
 task{1}{1}.getResponse = 0;
 
-task{1}{1}.numTrials = Inf;
+if stimulus.replay
+    task{1}{1}.numTrials = stimulus.gridCount;
+else
+    task{1}{1}.numTrials = Inf;
+end
 
 task{1}{1}.random = 0;
 
-if stimulus.scan
+if ~stimulus.replay && stimulus.scan
     task{1}{1}.synchToVol = 1;
 end
 
@@ -215,38 +257,41 @@ task{1}{1}.randVars.calculated.probesOn = nan;
 
 stimulus.curTrial = 0;
 
-global fixStimulus
+if ~stimulus.replay
+    global fixStimulus %#ok<TLEV>
 
-fixStimulus.diskSize = 0.75;
-fixStimulus.fixWidth = 0.75;
-fixStimulus.fixLineWidth = 1;
-[task{2}, myscreen] = fixStairInitTask(myscreen);
-% task{2}{1} = struct;
-% task{2}{1}.waitForBacktick = 0;
-% % task waits for fixation on first segment
-% task{2}{1}.segmin = [0.500 1 0.200 1];
-% task{2}{1}.segmax = [2.500 1 0.200 1];
-% 
-% stimulus.seg.ITI = 1;
-% stimulus.seg.delay1 = 2;
-% stimulus.seg.stim = 3;
-% stimulus.seg.resp = 4;
-% 
-% task{2}{1}.synchToVol = [0 0 0 0];
-% task{2}{1}.getResponse = [0 0 0 1];
-% 
-% task{2}{1}.numTrials = Inf;
-% 
-% task{2}{1}.parameter.rotation = [-1 1];
-% 
-% task{2}{1}.random = 1;
-% 
-% if stimulus.scan
-%     task{2}{1}.synchToVol = 1;
-% end
-% 
-% task{2}{1}.randVars.calculated.resp = nan;
-% task{2}{1}.randVars.calculated.correct = nan;
+    fixStimulus.diskSize = 0.75;
+    fixStimulus.fixWidth = 0.75;
+    fixStimulus.fixLineWidth = 1;
+    [task{2}, myscreen] = fixStairInitTask(myscreen);
+    
+    % task{2}{1} = struct;
+    % task{2}{1}.waitForBacktick = 0;
+    % % task waits for fixation on first segment
+    % task{2}{1}.segmin = [0.500 1 0.200 1];
+    % task{2}{1}.segmax = [2.500 1 0.200 1];
+    % 
+    % stimulus.seg.ITI = 1;
+    % stimulus.seg.delay1 = 2;
+    % stimulus.seg.stim = 3;
+    % stimulus.seg.resp = 4;
+    % 
+    % task{2}{1}.synchToVol = [0 0 0 0];
+    % task{2}{1}.getResponse = [0 0 0 1];
+    % 
+    % task{2}{1}.numTrials = Inf;
+    % 
+    % task{2}{1}.parameter.rotation = [-1 1];
+    % 
+    % task{2}{1}.random = 1;
+    % 
+    % if stimulus.scan
+    %     task{2}{1}.synchToVol = 1;
+    % end
+    % 
+    % task{2}{1}.randVars.calculated.resp = nan;
+    % task{2}{1}.randVars.calculated.correct = nan;
+end
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -259,25 +304,34 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
+if ~stimulus.replay
+    myscreen = eyeCalibDisp(myscreen);
 
-% let the user know
-disp(sprintf('(afmap) Starting run number: %i.',stimulus.counter));
+    % let the user know
+    disp(sprintf('(afmap) Starting run number: %i.',stimulus.counter));
+end
 
 %% Main Task Loop
 
 % setGammaTable(1);
-mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
-
-mglFlush
-mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
+if stimulus.replay
+    mglClearScreen(0);
+    mglFlush;
+    mglClearScreen(0);
+else
+    mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
+    mglFlush
+    mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
+end
 
 phaseNum = 1;
 % Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % update the task
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
-    [task{2}, myscreen, phaseNum] = updateTask(task{2},myscreen,phaseNum);
+    if length(task)>1
+        [task{2}, myscreen, phaseNum] = updateTask(task{2},myscreen,phaseNum);
+    end
     % flip screen
     myscreen = tickScreen(myscreen,task);
 end
@@ -290,14 +344,20 @@ mglTextDraw('Please wait',[0 0]);
 mglFlush
 myscreen.flushMode = 1;
 
+% save stimulus
+frames = stimulus.frames; %#ok<NASGU>
+save(stimulus.replayFile,'frames');
+
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-stimulus.grid.on = stimulus.grid.on(1:(stimulus.gridCount-1),:,:);
-stimulus.grid.con = stimulus.grid.con(1:(stimulus.gridCount-1),:,:);
-stimulus.grid.sz = stimulus.grid.sz(1:(stimulus.gridCount-1),:,:);
+if ~stimulus.replay
+    stimulus.grid.on = stimulus.grid.on(1:(stimulus.gridCount-1),:,:);
+    stimulus.grid.con = stimulus.grid.con(1:(stimulus.gridCount-1),:,:);
+    stimulus.grid.sz = stimulus.grid.sz(1:(stimulus.gridCount-1),:,:);
+end
 
-if stimulus.plots
+if ~stimulus.replay && stimulus.plots
     disp('(afmap) Displaying plots');
     dispInfo(stimulus);
 end
@@ -316,91 +376,106 @@ function [task, myscreen] = startTrialCallback1(task,myscreen)
 %%
 global stimulus
 
-% Deal with blanks
-stimulus.live.blankTime = stimulus.live.blankTime - 1;
-if stimulus.live.blankTime == 0
-    stimulus.live.blankTime = stimulus.blanks.rotTR;
-    stimulus.live.cBlank = stimulus.live.cBlank + 1;
-    if stimulus.live.cBlank > stimulus.live.numBlanks
-        stimulus.live.cBlank = 0;
-        stimulus.live.rotation = stimulus.live.rotation + 1;
-        disp(sprintf('Rotation %i starting',stimulus.live.rotation));
+if ~stimulus.replay
+    % Deal with blanks
+    stimulus.live.blankTime = stimulus.live.blankTime - 1;
+    if stimulus.live.blankTime == 0
+        stimulus.live.blankTime = stimulus.blanks.rotTR;
+        stimulus.live.cBlank = stimulus.live.cBlank + 1;
+        if stimulus.live.cBlank > stimulus.live.numBlanks
+            stimulus.live.cBlank = 0;
+            stimulus.live.rotation = stimulus.live.rotation + 1;
+            disp(sprintf('Rotation %i starting',stimulus.live.rotation));
+        end
     end
-end
 
-if stimulus.live.rotation > 6
-    disp(sprintf('All rotations complete'));
-    return
-end
+    if stimulus.live.rotation > 6
+        disp(sprintf('All rotations complete'));
+        return
+    end
 
-% Design the state space
-for x = 1:length(stimulus.stimx)
-    for y = 1:length(stimulus.stimy)
-        % increment
-        if stimulus.live.grid(x,y) > 1
-            stimulus.live.grid(x,y) = stimulus.live.grid(x,y)-1;
-            stimulus.live.gridPhase(x,y) = ~stimulus.live.gridPhase(x,y);
-        elseif stimulus.live.grid(x,y) == 1
-            % shut down grid location
-            stimulus.live.grid(x,y) = 0;
-            stimulus.live.gridCon(x,y) = 0;
-            stimulus.live.gridSize(x,y) = 0;
-            stimulus.live.rotations(x,y) = 0;
-            stimulus.live.probeOnGrid(x,y) = 0;
-        else
-            xp = stimulus.stimx(x); yp = stimulus.stimy(y);
-            if (stimulus.live.cBlank>0)
-                nocheck = (xp<stimulus.blanks.xmax(stimulus.live.cBlank) && xp > stimulus.blanks.xmin(stimulus.live.cBlank)) && (yp<stimulus.blanks.ymax(stimulus.live.cBlank) && yp>stimulus.blanks.ymin(stimulus.live.cBlank));
+    % Design the state space
+    for x = 1:length(stimulus.stimx)
+        for y = 1:length(stimulus.stimy)
+            % increment
+            if stimulus.live.grid(x,y) > 1
+                stimulus.live.grid(x,y) = stimulus.live.grid(x,y)-1;
+                stimulus.live.gridPhase(x,y) = ~stimulus.live.gridPhase(x,y);
+            elseif stimulus.live.grid(x,y) == 1
+                % shut down grid location
+                stimulus.live.grid(x,y) = 0;
+                stimulus.live.gridCon(x,y) = 0;
+                stimulus.live.gridSize(x,y) = 0;
+                stimulus.live.rotations(x,y) = 0;
+                stimulus.live.probeOnGrid(x,y) = 0;
             else
-                nocheck = false;
-            end
-            % if nocheck is true we skip this position (i.e. don't turn on in
-            % blank locations)
-            
-            if ~nocheck
-                probeOn = stimulus.live.probeOnGrid(x,y);
-                stimulus.live.probeOnGrid(x,y) = min(1,stimulus.live.probeOnGrid(x,y)+stimulus.probeOn);
-                if rand < probeOn
-                    % turn on grid location
-                    stimulus.live.grid(x,y) = stimulus.probeDown + stimulus.probeUp;
-                    % pick attributes
-                    conOpts = osum(stimulus.live.gridCons);
-                    conOpts = cumsum(conOpts)/sum(conOpts);
-                    r = rand;
-                    conChoice = find(r<conOpts,1);
-                    stimulus.live.gridCons(conChoice) = stimulus.live.gridCons(conChoice) + 1;
-                    stimulus.live.gridCon(x,y) = conChoice;
-
-                    sizeOpts = osum(stimulus.live.gridSizes);
-                    sizeOpts = cumsum(sizeOpts)/sum(sizeOpts);
-                    r = rand;
-                    sizeChoice = find(r<sizeOpts,1);
-                    stimulus.live.gridSizes(sizeChoice) = stimulus.live.gridSizes(sizeChoice) + 1;
-                    stimulus.live.gridSize(x,y) = sizeChoice;
-
-                    stimulus.live.rotations(x,y) = rand*2*pi;
-                    
-                    stimulus.live.gridPhase(x,y) = ~stimulus.live.gridPhase(x,y);
+                xp = stimulus.stimx(x); yp = stimulus.stimy(y);
+                if (stimulus.live.cBlank>0)
+                    nocheck = (xp<stimulus.blanks.xmax(stimulus.live.cBlank) && xp > stimulus.blanks.xmin(stimulus.live.cBlank)) && (yp<stimulus.blanks.ymax(stimulus.live.cBlank) && yp>stimulus.blanks.ymin(stimulus.live.cBlank));
+                else
+                    nocheck = false;
                 end
-            else
-                
+                % if nocheck is true we skip this position (i.e. don't turn on in
+                % blank locations)
+
+                if ~nocheck
+                    probeOn = stimulus.live.probeOnGrid(x,y);
+                    stimulus.live.probeOnGrid(x,y) = min(1,stimulus.live.probeOnGrid(x,y)+stimulus.probeOn);
+                    if rand < probeOn
+                        % turn on grid location
+                        stimulus.live.grid(x,y) = stimulus.probeDown + stimulus.probeUp;
+                        % pick attributes
+                        conOpts = osum(stimulus.live.gridCons);
+                        conOpts = cumsum(conOpts)/sum(conOpts);
+                        r = rand;
+                        conChoice = find(r<conOpts,1);
+                        stimulus.live.gridCons(conChoice) = stimulus.live.gridCons(conChoice) + 1;
+                        stimulus.live.gridCon(x,y) = conChoice;
+
+                        sizeOpts = osum(stimulus.live.gridSizes);
+                        sizeOpts = cumsum(sizeOpts)/sum(sizeOpts);
+                        r = rand;
+                        sizeChoice = find(r<sizeOpts,1);
+                        stimulus.live.gridSizes(sizeChoice) = stimulus.live.gridSizes(sizeChoice) + 1;
+                        stimulus.live.gridSize(x,y) = sizeChoice;
+
+                        stimulus.live.rotations(x,y) = rand*2*pi;
+
+                        stimulus.live.gridPhase(x,y) = rand<0.5;
+                    end
+                else
+
+                end
             end
         end
     end
+
+    stimulus.grid.on(stimulus.gridCount,:,:) = stimulus.live.grid;
+    stimulus.grid.con(stimulus.gridCount,:,:) = stimulus.live.gridCon;
+    stimulus.grid.sz(stimulus.gridCount,:,:) = stimulus.live.gridSize;
+    stimulus.grid.ph(stimulus.gridCount,:,:) = stimulus.live.gridPhase;
+    stimulus.gridCount = stimulus.gridCount + 1;
+
+    task.thistrial.probesOn = sum(stimulus.live.grid(:)>stimulus.probeDown);
+
+
+    disp(sprintf('(afmap) Probes: %i, current blank: %s',task.thistrial.probesOn,stimulus.blanks.names{stimulus.live.cBlank+1}));
+    % REFRESH THE SCREEN
+else
+    stimulus.curTrial = stimulus.curTrial + 1;
+    
+    stimulus.live.grid = squeeze(stimulus.grid.on(stimulus.curTrial,:,:));
+    stimulus.live.gridCon = squeeze(stimulus.grid.con(stimulus.curTrial,:,:));
+    stimulus.live.gridSize = squeeze(stimulus.grid.sz(stimulus.curTrial,:,:));
+    stimulus.live.gridPhase = repmat(1,size(stimulus.live.grid));
 end
 
-stimulus.grid.on(stimulus.gridCount,:,:) = stimulus.live.grid;
-stimulus.grid.con(stimulus.gridCount,:,:) = stimulus.live.gridCon;
-stimulus.grid.sz(stimulus.gridCount,:,:) = stimulus.live.gridSize;
-stimulus.gridCount = stimulus.gridCount + 1;
-
-task.thistrial.probesOn = sum(stimulus.live.grid(:)>stimulus.probeDown);
-    
-
-disp(sprintf('(afmap) Probes: %i, current blank: %s',task.thistrial.probesOn,stimulus.blanks.names{stimulus.live.cBlank+1}));
-% REFRESH THE SCREEN
-
-mglClearScreen();
+if stimulus.replay
+    mglClearScreen(0);
+    myscreen.flushMode = 0;
+else
+    mglClearScreen();
+end
 
 % draw gratings for probe task
 
@@ -413,10 +488,28 @@ for xi = 1:length(stimulus.stimx)
             sz = stimulus.live.gridSize(xi,yi);
             ph = stimulus.live.gridPhase(xi,yi)+1;
             
-            mglBltTexture(stimulus.grating(con,sz,ph),[x y],0,0,stimulus.live.rotations(xi,yi)*180/pi);
+            if stimulus.replay
+                % just draw a circle
+                % /2 because the FWHM defines a diameter of 1/2/3 degree
+                mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
+            else
+                mglBltTexture(stimulus.grating(con,sz,ph),[x y],0,0,stimulus.live.rotations(xi,yi)*180/pi);
+            end
         end
     end
 end
+
+if stimulus.replay
+    mglFlush
+    disp(sprintf('Displaying trial %i',stimulus.curTrial));
+    
+    frame = mglFrameGrab;
+    if ~isfield(stimulus,'frames')
+        stimulus.frames = zeros(stimulus.gridCount,myscreen.screenWidth,myscreen.screenHeight);
+    end
+    stimulus.frames(stimulus.curTrial,:,:,:) = frame(:,:,1);
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
