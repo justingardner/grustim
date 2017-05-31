@@ -24,8 +24,10 @@ function [ myscreen ] = posjdg( varargin )
 %      To run in scanner
 %         posjdg('scan=1') --> default 'scan=0'
 %
-%      To generate plots
+%      To generate plots after running the experiment
 %         posjdg('plots=1') --> default 'plots=0'
+%      To generate plots without running the experiment
+%         posjdg('plots=2')
 
 global stimulus
 
@@ -176,15 +178,16 @@ switch stimulus.att
         % Task trial parameters
         task{1}{1}.parameter.target = stimulus.prior;
     case 2 %Exo
-        task{1}{1}.segmin = [inf 0.000 0.100 0.200 0.800]; % Fixate, delay, cue, stim, response
-        task{1}{1}.segmax = [inf 1.000 0.100 0.200 0.800];
+        task{1}{1}.segmin = [inf 0.000 0.050 0.050 0.200 0.800]; % Fixate, delay, cue, delay, stim, response
+        task{1}{1}.segmax = [inf 1.000 0.050 0.050 0.200 0.800];
 
         stimulus.seg = {};
         stimulus.seg{1}.ITI1 = 1;
         stimulus.seg{1}.delay = 2;
         stimulus.seg{1}.cue = 3;
-        stimulus.seg{1}.stim = 4;
-        stimulus.seg{1}.resp = 5;
+        stimulus.seg{1}.delay2 = 4;
+        stimulus.seg{1}.stim = 5;
+        stimulus.seg{1}.resp = 6;
 
     case 3 %Sacc
 
@@ -263,14 +266,15 @@ switch stimulus.att
         task{1}{2}.parameter.target = stimulus.prior; % prior center
 
     case 2
-        task{1}{2}.segmin = [inf 0.100 0.200 0.500 5.000]; %fixate, cue, stim, delay, response
-        task{1}{2}.segmax = [inf 0.100 0.200 0.500 5.000];
+        task{1}{2}.segmin = [inf 0.050 0.050 0.200 0.500 5.000]; %fixate, cue, delay1, stim, delay, response
+        task{1}{2}.segmax = [inf 0.050 0.050 0.200 0.500 5.000];
 
         stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
         stimulus.seg{2}.cue = 2;
-        stimulus.seg{2}.stim = 3;
-        stimulus.seg{2}.delay = 4;
-        stimulus.seg{2}.resp = 5;
+        stimulus.seg{2}.delay1 = 3;
+        stimulus.seg{2}.stim = 4;
+        stimulus.seg{2}.delay2 = 5;
+        stimulus.seg{2}.resp = 6;
 
     otherwise
         disp('Invalid attention condition. Quitting...');
@@ -400,10 +404,8 @@ task.thistrial.detected = 0;
 task.thistrial.visible = 1;
 
 if (~isempty(task.lasttrial)) && (task.lasttrial.detected~=1) && ~task.lasttrial.dead && task.lasttrial.visible==1
-    stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
-    if(task.lasttrial.detected == 0) % only print this during phase 1
-        disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
-    end
+    stimulus.staircase = doStaircase('update',stimulus.staircase,0);
+    disp(sprintf('Subject did not see %01.2f%% contrast. Staircase to increase contrast.',task.lasttrial.contrast*100));
 elseif (~isempty(task.lasttrial)) && task.lasttrial.visible==0
     disp('No stimulus displayed on last trial.');
 end
@@ -489,12 +491,10 @@ for i = 1:2
         x = task.thistrial.ecc * cos(task.thistrial.angle+task.thistrial.target);
         y = task.thistrial.ecc * sin(task.thistrial.angle+task.thistrial.target);
         mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
-    elseif stimulus.live.cue && i == 1
+    elseif stimulus.live.cue
         x = task.thistrial.ecc * cos(task.thistrial.target);
         y = task.thistrial.ecc * sin(task.thistrial.target);
         mglPolygon([x-.15, x-.15, x+.15, x+.15], [y-.15, y+.15, y+.15, y-.15], stimulus.colors.white);
-        mglFlush();
-        mglClearScreen(0.5);
     end
     
     % resp is updated in screenUpdate
@@ -802,7 +802,7 @@ low = [0 0.075 0.081 0.09 inf];
     axis square
 
     set(gca,'XTick',0:.5:1,'XTickLabel',round((0:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
-
+     
     drawPublishAxis;
     % h = figure;
     % hist(data(:,5)-data(:,6));
@@ -834,7 +834,7 @@ alphamask = repmat(grating,1,1,4);
 alphamask(:,:,4) = gauss*255;
 
 % we'll adjust the gamma table to control contrast
-stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
+stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast        
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sets the gamma table so that we can have
