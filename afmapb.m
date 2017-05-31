@@ -502,6 +502,7 @@ files = dir(fullfile(sprintf('~/data/afmapb/%s/17*stim*.mat',mglGetSID)));
 out = doStaircase('threshold',rstimulus.staircase','type=weibull','dispFig=0');
 threshold = out.threshold;
 
+%%
 wn = zeros(10000,240,135);
 count = 1; data = zeros(10000,13);
 
@@ -521,7 +522,7 @@ for fi = 1:length(files)
             e.randVars.miss' e.randVars.cr' e.randVars.dead'];
 
         for ti = 1:e.nTrials
-            timg = squeeze(mean(stimulus.wn.img(stimulus.wn.trials{ti},:,:)));
+            timg = squeeze(stimulus.wn.img(stimulus.wn.trials{ti},:,:));
             wn(count+(ti-1),:,:) = timg;
              %imagesc(timg);colormap('gray');
              %pause(.01);
@@ -591,7 +592,8 @@ aimg = [img.hit ; img.fa ; -img.miss ; -img.cr];
 % am_ = squeeze(bootci(10,@nanmean,aimg));
 % am  = squeeze(mean(am_));
 
-am = squeeze(std(aimg));
+am = squeeze(mean(aimg));
+as = squeeze(std(aimg));
 
 imagesc(stimulus.live.X(1,:),stimulus.live.Y(:,1)',flipud(am'));
 
