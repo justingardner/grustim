@@ -420,13 +420,13 @@ switch stimulus.att
     case 1 %Endo
         task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the prior
     case 2 %Exo
-        task.thistrial.angle = rand*2*pi; % stim angle is random
+        task.thistrial.angle = rand*2*pi-pi; % stim angle is random
         task.thistrial.target = rand*2*pi; % cue angle is random
         if task.thistrial.thisphase == 1 && ~stimulus.test2
             task.thistrial.visible = (rand > 0.5);
         end
     case 3 %Sacc
-        task.thistrial.angle = rand*2*pi;
+        task.thistrial.angle = rand*2*pi-pi;
         task.thistrial.target = rand*2*pi;
     otherwise
         disp('Invalid attention condition. Quitting...');
@@ -764,49 +764,47 @@ h = figure; hold on
 
 low = [0 0.075 0.081 0.09 inf];
 
-%for i = 1:4
-    %subplot(4,1,i); hold on
-    % data(:,6) = data(:,6)-data(:,5);
+% remove no-response trials
+data_ = data(~isnan(data(:,6)),:);
+if rstimulus.att==2
+    data_(data_(:,5)>pi,5) = data_(data_(:,5)>pi,5)-2*pi;
+end
 
-    % remove no-response trials
-    data_ = data(~isnan(data(:,6)),:);
-    %data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
-    % find the trials where stimulus is - relative to the prior
-    flip = data_(:,5)<0; flip = flip*1;
-    flip(flip==1) = -1; flip(flip==0) = 1;
-    % flip all the stimulus-target to be in the positive space
-    data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
-    Y = data_(:,6);
-    X = [ones(size(Y)) data_(:,5)];
-    b = X\Y;
-    c = [X Y];
+% find the trials where stimulus is - relative to the prior
+flip = data_(:,5)<0; flip = flip*1;
+flip(flip==1) = -1; flip(flip==0) = 1;
+% flip all the stimulus-target to be in the positive space
+data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
 
-    bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
+if rstimulus.att==2
+    data_(data_(:,6)<-(pi/2),:) = abs(data_(data_(:,6)<-(pi/2),:));
+end
+Y = data_(:,6);
+X = [ones(size(Y)) data_(:,5)];
+b = X\Y;
+c = [X Y];
 
-    % [p,s] = polyfit(data_(:,5),data_(:,6),1);
+bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
 
+% [p,s] = polyfit(data_(:,5),data_(:,6),1);
+plot(data_(:,5),data_(:,6),'*');
+% plot constant line
+plot([0 pi],[0 pi],'--r');
+% plot fit
+x = 0:pi;
+plot(x,b(1)+b(2)*x,'--k');
+% compute SD of residuals? 
+% todo
+xlabel('Stimulus - Target (deg)');
+ylabel('Resp - Target (deg)');
+title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-    plot(data_(:,5),data_(:,6),'*');
-    % plot constant line
-    plot([-1 1],[-1 1],'--r');
-    % plot fit
-    x = -1:1;
-    plot(x,b(1)+b(2)*x,'--k');
-    % compute SD of residuals? 
-    % todo
-    xlabel('Stimulus - Target (deg)');
-    ylabel('Resp - Target (deg)');
-    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
+% axis([0 1 -1 1]);
+axis square
 
-    axis([0 1 -1 1]);
-    axis square
+set(gca,'XTick',0:.5:pi,'XTickLabel',round((0:.5:pi)*180/pi,2),'YTick',-1:.5:pi,'YTickLabel',round((-1:.5:pi)*180/pi,2));
 
-    set(gca,'XTick',0:.5:1,'XTickLabel',round((0:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
-     
-    drawPublishAxis;
-    % h = figure;
-    % hist(data(:,5)-data(:,6));
-%end
+drawPublishAxis;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
