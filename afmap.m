@@ -82,6 +82,31 @@ if any(replay>0)
     end
 end
 
+%% Open Old Stimfile
+if ~stimulus.replay
+    stimulus.counter = 1;
+
+    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
+        % Directory exists, check for a stimefile
+        files = dir(sprintf('~/data/afmap/%s/1*mat',mglGetSID));
+
+        if length(files) >= 1
+            fname = files(end).name;
+
+            s = load(sprintf('~/data/afmap/%s/%s',mglGetSID,fname));
+            % copy staircases and run numbers
+            stimulus.counter = s.stimulus.counter + 1;
+            stimulus.build = s.stimulus.build;
+            stimulus.builds = s.stimulus.builds;
+            stimulus.staircase = s.stimulus.staircase;
+            stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
+            clear s;
+            disp(sprintf('(afmap) Data file: %s loaded.',fname));
+        end
+    end
+    disp(sprintf('(afmap) This is run #%i',stimulus.counter));
+end
+
 %% Stimulus parameters
 if ~stimulus.replay
     stimulus.stimX = 25; % max ecc in any direction
@@ -104,8 +129,8 @@ if ~stimulus.replay
     stimulus.probeOn = 2;
     % how long a probe stays up for (in TR, 4 = 2.0s)
     stimulus.probeUp = 4; % this must be EVEN!!
-    % how long a probe is guaranteed to stay down (in TR, 8 = 4.0s)
-    stimulus.probeDown = 8;
+    % how long a probe is guaranteed to stay down (in TR, 12 = 6.0s)
+    stimulus.probeDown = 12;
 
     % stimulus.live will hold what actually gets displayed on the screen
     stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
@@ -114,7 +139,7 @@ if ~stimulus.replay
     stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
 
     % gratingContrasts and gratingsizes control the possible sizes 
-    stimulus.gratingContrasts = [0.1 1.0 1.0];
+    stimulus.gratingContrasts = [0.1 1.0];
     stimulus.gratingSizes = [0.5 1 2];
 
     % when we are doing the attention task
@@ -136,8 +161,8 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
     
     stimulus.build.curBuild = 0; % will be incremented later
     
-    stimulus.build.uniques = 1; % how many unique patterns to generate
-    stimulus.build.rotate = 1; % how many patterns to rotate through (set to 4 or 5 for 2x repeat runs)
+    stimulus.build.uniques = 5; % how many unique patterns to generate
+    stimulus.build.rotate = 3; % how many patterns to rotate through (set to 4 or 5 for 2x repeat runs)
         
     stimulus.build.cycles = 6;
     stimulus.build.cycleLength = 120;
@@ -268,16 +293,17 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
             disppercent(x/length(stimulus.stimx));
         end
         disppercent(inf/length(stimulus.stimx));
-        keyboard
         % test code
-        figure
-        colormap('gray');
-        caxis([0 1]);
-        build.con = build.con>0;
-        for i = 1:720
-            imagesc(squeeze(build.con(i,:,:)));
-            pause(.01);
-        end
+% %         keyboard
+% %         figure
+% %         colormap('gray');
+% %         caxis([0 1]);
+% % %         build.con = build.con>0;
+% %         tb = build.con/max(build.con(:));
+% %         for i = 1:720
+% %             imagesc(squeeze(tb(i,:,:)));
+% %             pause(.01);
+% %         end
         % test code end
         disp(sprintf('(afmap) Pre-build of build %i has finished, saving.',bi));
         stimulus.builds{bi} = build;
@@ -307,29 +333,6 @@ if ~stimulus.replay
     stimulus.grid.ph = stimulus.builds{stimulus.build.curBuild}.ph;
     stimulus.grid.theta = stimulus.builds{stimulus.build.curBuild}.theta;
     disp(sprintf('(afmap) Build %i loaded from pre-build',stimulus.build.curBuild));
-end
-
-%% Open Old Stimfile
-if ~stimulus.replay
-    stimulus.counter = 1;
-
-    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
-        % Directory exists, check for a stimefile
-        files = dir(sprintf('~/data/afmap/%s/1*mat',mglGetSID));
-
-        if length(files) >= 1
-            fname = files(end).name;
-
-            s = load(sprintf('~/data/afmap/%s/%s',mglGetSID,fname));
-            % copy staircases and run numbers
-            stimulus.counter = s.stimulus.counter + 1;
-            stimulus.staircase = s.stimulus.staircase;
-            stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
-            clear s;
-            disp(sprintf('(afmap) Data file: %s loaded.',fname));
-        end
-    end
-    disp(sprintf('(afmap) This is run #%i',stimulus.counter));
 end
 
 %% Setup attention
@@ -402,10 +405,10 @@ task{1}{1} = struct;
 % task waits for fixation on first segment
 if stimulus.replay
     task{1}{1}.waitForBacktick = 0;
-    task{1}{1}.seglen = 0.050;
+    task{1}{1}.seglen = repmat(0.050,1,120);
 else
     task{1}{1}.waitForBacktick = 1;
-    task{1}{1}.seglen = 0.500;
+    task{1}{1}.seglen = repmat(0.500,1,120);
 end
 
 stimulus.seg.stim = 1;
@@ -421,7 +424,8 @@ end
 task{1}{1}.random = 0;
 
 if ~stimulus.replay && stimulus.scan
-    task{1}{1}.synchToVol = 1;
+    task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.seglen));
+    task{1}{1}.synchToVol(end) = 1;
 end
 
 task{1}{1}.randVars.calculated.probesOn = nan;
@@ -436,6 +440,8 @@ if ~stimulus.replay
     fixStimulus.diskSize = 0.75;
     fixStimulus.fixWidth = 0.75;
     fixStimulus.fixLineWidth = 1;
+    fixStimulus.stimTime = 0.35;
+    fixStimulus.interTime = 1.4;
     [task{2}, myscreen] = fixStairInitTask(myscreen);
     
     % task{2}{1} = struct;
@@ -527,10 +533,10 @@ if stimulus.replay
 
     pRFstim.t = 1:size(stimulus.frames,3);
     
-    if size(stimulus.frames,3)~=840
+    if size(stimulus.frames,3)~=720
         warning('Number of frames does not match the expected length (840)--padding end with blank screen');
         input('Press [enter] to confirm: ');
-        stimulus.frames(:,:,end:840) = 0;
+        stimulus.frames(:,:,end:720) = 0;
     end
     
     pRFstim.im = stimulus.frames;
@@ -541,12 +547,6 @@ end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
-
-if ~stimulus.replay
-    stimulus.grid.on = stimulus.grid.on(1:(stimulus.gridCount-1),:,:);
-    stimulus.grid.con = stimulus.grid.con(1:(stimulus.gridCount-1),:,:);
-    stimulus.grid.sz = stimulus.grid.sz(1:(stimulus.gridCount-1),:,:);
-end
 
 if ~stimulus.replay && stimulus.plots
     disp('(afmap) Displaying plots');
@@ -560,71 +560,51 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = startSegmentCallback1(task,myscreen)
-% pass
-
-
-function [task, myscreen] = startTrialCallback1(task,myscreen)
 %%
 global stimulus
 
-if ~stimulus.replay
-    % Deal with blanks
+stimulus.curTrial = stimulus.curTrial + 1;
 
-    stimulus.live.grid = squeeze(stimulus.grid.on(stimulus.curTrial,task.thistrial.thisseg,:,:));
-    stimulus.live.gridCon = squeeze(stimulus.grid.con(stimulus.curTrial,task.thistrial.thisseg,:,:));
-    stimulus.live.gridSize = squeeze(stimulus.grid.sz(stimulus.curTrial,task.thistrial.thisseg,:,:));
-    stimulus.live.gridPhase = squeeze(stimulus.grid.ph(stimulus.curTrial,task.thistrial.thisseg,:,:));
-    
-%     stimulus.gridCount = stimulus.gridCount + 1;
-
-    task.thistrial.probesOn = sum(stimulus.live.grid(:)>stimulus.probeDown);
-
-
-    disp(sprintf('(afmap) Probes: %i, current blank: %s',task.thistrial.probesOn,stimulus.blanks.names{stimulus.live.cBlank+1}));
-    % REFRESH THE SCREEN
-else
-    stimulus.curTrial = stimulus.curTrial + 1;
-    
-    stimulus.live.grid = squeeze(stimulus.grid.on(stimulus.curTrial,:,:));
-    stimulus.live.gridCon = squeeze(stimulus.grid.con(stimulus.curTrial,:,:));
-    stimulus.live.gridSize = squeeze(stimulus.grid.sz(stimulus.curTrial,:,:));
-    stimulus.live.gridPhase = repmat(1,size(stimulus.live.grid));
-end
+stimulus.live.con = squeeze(stimulus.grid.con(stimulus.curTrial,:,:));
+stimulus.live.sz = squeeze(stimulus.grid.sz(stimulus.curTrial,:,:));
+stimulus.live.ph = squeeze(stimulus.grid.ph(stimulus.curTrial,:,:));
+stimulus.live.theta = squeeze(stimulus.grid.theta(stimulus.curTrial,:,:));
+stimulus.grid.t(stimulus.curTrial) = mglGetSecs;
 
 if stimulus.replay
     mglClearScreen(0);
-    myscreen.flushMode = 0;
+    myscreen.flushMode = 1;
 else
     mglClearScreen();
+    myscreen.flushMode = 1;
 end
 
 % draw gratings for probe task
 
 for xi = 1:length(stimulus.stimx)
     for yi = 1:length(stimulus.stimy)
-        if stimulus.live.grid(xi,yi) > stimulus.probeDown
+        if stimulus.live.con(xi,yi)>0
             x = stimulus.stimx(xi);
             y = stimulus.stimy(yi);
-            con = stimulus.live.gridCon(xi,yi);
-            sz = stimulus.live.gridSize(xi,yi);
-            ph = stimulus.live.gridPhase(xi,yi)+1;
-            
+            con = stimulus.live.con(xi,yi);
+            sz = stimulus.live.sz(xi,yi);
+            ph = stimulus.live.ph(xi,yi);
+            theta = stimulus.live.theta(xi,yi);
+
             if stimulus.replay
                 % just draw a circle
                 % /2 because the FWHM defines a diameter of 1/2/3 degree
                 mglBltTexture(stimulus.gaussian(con,sz,ph),[x y],0,0,0);
-%                 mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
+    %                 mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
             else
-                mglBltTexture(stimulus.grating(con,sz,ph),[x y],0,0,stimulus.live.rotations(xi,yi)*180/pi);
+                mglBltTexture(stimulus.grating(con,sz,ph),[x y],0,0,theta*180/pi);
             end
         end
     end
 end
 
 if stimulus.replay
-    mglFlush
-    disp(sprintf('Displaying trial %i',stimulus.curTrial));
-    
+    mglFlush % the screen will blank after the frame, but whatever
     frame = mglFrameGrab;
     if ~isfield(stimulus,'frames')
         stimulus.frames = zeros(myscreen.screenWidth,myscreen.screenHeight,stimulus.gridCount);
@@ -632,13 +612,22 @@ if stimulus.replay
     stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
 end
 
+% disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
+disppercent(stimulus.curTrial/120,'(afmap) Running: ');
+
+function [task, myscreen] = startTrialCallback1(task,myscreen)
+global stimulus
+
+disp(sprintf('(afmap) Starting cycle %01.0f',(stimulus.curTrial/120)+1));
+disppercent(-1/120,'(afmap) Running: ');
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = screenUpdateCallback1(task, myscreen)
 %%
-global stimulus
+% global stimulus
 
 
 
