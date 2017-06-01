@@ -74,11 +74,11 @@ if any(replay>0)
         folder = input('What folder would you like to replay? [Folder]: ');
         files = dir(fullfile(folder,'*.mat'));
         for fi = 1:length(files)
-            if isempty(strfind(files(fi).name,'replay'))
-                % skip
+            if isempty(strfind(files(fi).name,'replay')) && isempty(strfind(files(fi).name,'original'))
                 afmap(sprintf('replay=%s/%s',folder,files(fi).name));
             end
         end
+        return;
     end
 end
 
@@ -88,48 +88,225 @@ if ~stimulus.replay
     stimulus.stimY = 13;
     stimulus.stimR = 2; % deg between each stimulus
 
-    if mod(stimulus.stimX,stimulus.stimR)==1 || mod(stimulus.stimY,stimulus.stimR)==1
+    if mod(stimulus.stimX,stimulus.stimR)==0 || mod(stimulus.stimY,stimulus.stimR)==0
         warning('Your stimulus size is not correctly setup');
     end
 
     stimulus.stimx = -stimulus.stimX:stimulus.stimR:stimulus.stimX;
     stimulus.stimy = -stimulus.stimY:stimulus.stimR:stimulus.stimY;
+    
+    if any(stimulus.stimx==0) || any(stimulus.stimy==0)
+        warning('Your stimulus overlaps the fixation cross and the attention task!! You totally fd up!');
+    end
 
-    stimulus.probeOn = .002;
-    stimulus.live.probeOnGrid = zeros(length(stimulus.stimx),length(stimulus.stimy));
-    % stimulus.probeMaxLag = 30;
-    stimulus.probeUp = 4;
-    stimulus.probeDown = 12;
+    % how many times each probe location turns on per contrast and size
+    % condition
+    stimulus.probeOn = 2;
+    % how long a probe stays up for (in TR, 4 = 2.0s)
+    stimulus.probeUp = 4; % this must be EVEN!!
+    % how long a probe is guaranteed to stay down (in TR, 8 = 4.0s)
+    stimulus.probeDown = 8;
 
-    stimulus.gridCount = 1;
-    stimulus.grid.on = zeros(5000,length(stimulus.stimx),length(stimulus.stimy));
-    stimulus.grid.con = stimulus.grid.on;
-    stimulus.grid.sz = stimulus.grid.on;
+    % stimulus.live will hold what actually gets displayed on the screen
+    stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.sz = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.ph = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
 
-    stimulus.live.grid = zeros(length(stimulus.stimx),length(stimulus.stimy));
-    stimulus.live.gridCon = zeros(length(stimulus.stimx),length(stimulus.stimy));
-    stimulus.live.gridSize = zeros(length(stimulus.stimx),length(stimulus.stimy));
-    stimulus.live.gridPhase = zeros(length(stimulus.stimx),length(stimulus.stimy));
-
+    % gratingContrasts and gratingsizes control the possible sizes 
     stimulus.gratingContrasts = [0.1 1.0 1.0];
-    stimulus.live.gridCons = zeros(1,length(stimulus.gratingContrasts)-1);
     stimulus.gratingSizes = [0.5 1 2];
-    stimulus.live.gridSizes = zeros(1,length(stimulus.gratingSizes));
 
-    stimulus.live.rotations = zeros(length(stimulus.stimx),length(stimulus.stimy));
-
+    % when we are doing the attention task
     stimulus.live.attend = 0;
 
-    stimulus.blanks.rotTR = 20; % every 20 TRs (10s) rotate through blanks
-    stimulus.blanks.names = {'None','NW','NE','SE','SW','None','All'};
-    stimulus.blanks.xmin = [-inf 0 0 -inf 0 -inf];
-    stimulus.blanks.xmax = [0 inf inf 0 0 inf];
-    stimulus.blanks.ymin = [0 0 -inf -inf 0 -inf];
-    stimulus.blanks.ymax = [inf inf 0 0 0 inf];
-    stimulus.live.cBlank = 0;
-    stimulus.live.rotation = 1;
-    stimulus.live.blankTime = stimulus.blanks.rotTR;
-    stimulus.live.numBlanks = length(stimulus.blanks.ymax);
+    % blank options
+    stimulus.blanks.none.range = [0 0 0 0];
+    stimulus.blanks.all.range = [-inf inf -inf inf];
+    stimulus.blanks.NW.range = [-inf 0 0 inf];
+    stimulus.blanks.NE.range = [0 inf 0 inf];
+    stimulus.blanks.SE.range = [0 inf -inf 0];
+    stimulus.blanks.SW.range = [-inf 0 -inf 0];
+    stimulus.blanks.opts = {'NW','NE','SE','SW'};
+end
+
+%% Build stimulus
+if ~stimulus.replay && ~isfield(stimulus,'build')
+    stimulus.build = struct;
+    
+    stimulus.build.curBuild = 0; % will be incremented later
+    
+    stimulus.build.uniques = 1; % how many unique patterns to generate
+    stimulus.build.rotate = 1; % how many patterns to rotate through (set to 4 or 5 for 2x repeat runs)
+        
+    stimulus.build.cycles = 6;
+    stimulus.build.cycleLength = 120;
+    stimulus.build.availableTRs = stimulus.build.cycles*stimulus.build.cycleLength; % how long the task should run for
+    
+    stimulus.build.conditions = length(stimulus.gratingContrasts)*length(stimulus.gratingSizes);
+    stimulus.build.conditionsRep = stimulus.build.conditions * stimulus.probeOn; % total # of displays per location
+    
+    if stimulus.build.conditionsRep*(stimulus.probeUp+stimulus.probeDown) > (stimulus.build.availableTRs*2/3) % ~1/3 of the time the screen will be blank
+        warning('The code has insufficient TRs available for the stimulus program you requested');
+        keyboard
+    end
+    
+    for bi = 1:stimulus.build.uniques
+        build = struct; % initialize
+        
+        build.con = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
+        build.sz = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
+        build.ph = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
+        build.theta = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
+        
+        % build the blackout positions for this run
+        % each cycle goes ALL, {NW/NE/SE/SW}, NONE in 10 s increments (60 s
+        % total)
+        % get the rotations for each blackout and put them in place
+        blackout = cell(stimulus.build.cycles,6);
+        for c = 1:stimulus.build.cycles
+            order = randperm(4);
+            blackout{c,1} = 'none';
+            for r = 1:4
+                blackout{c,r+1} = stimulus.blanks.opts{order(r)};
+            end
+            blackout{c,6} = 'all';
+        end
+        build.blackout = blackout;
+        
+        % now compute the X/Y ranges that are subject to the blackout
+        bminx = zeros(stimulus.build.cycles,6);
+        bmaxx = zeros(stimulus.build.cycles,6);
+        bminy = zeros(stimulus.build.cycles,6);
+        bmaxy = zeros(stimulus.build.cycles,6);
+        for c = 1:stimulus.build.cycles
+            for d = 1:6
+                bminx(c,d) = stimulus.blanks.(blackout{c,d}).range(1);
+                bmaxx(c,d) = stimulus.blanks.(blackout{c,d}).range(2);
+                bminy(c,d) = stimulus.blanks.(blackout{c,d}).range(3);
+                bmaxy(c,d) = stimulus.blanks.(blackout{c,d}).range(4);
+            end
+        end
+        
+        disppercent(-1/length(stimulus.stimx));
+        for x = 1:length(stimulus.stimx)
+            for y = 1:length(stimulus.stimy)
+                
+                % determine which cycles will get which of the conditions
+                % on which of their repeats
+                %    1     2       3       4
+                %  cycle  con     size    repeat
+                redo = true;
+                while redo
+                    conditionTiming = zeros(stimulus.build.conditionsRep,4);
+                    count = 1;
+                    for i = 1:length(stimulus.gratingContrasts)
+                        for j = 1:length(stimulus.gratingSizes)
+                            for k = 1:stimulus.probeOn
+                                conditionTiming(count,:) = [randi(stimulus.build.cycles) i j k];
+                                count = count + 1;
+                            end
+                        end
+                    end
+                    redo = false;
+                    for c = 1:stimulus.build.cycles
+                        cycleCount = sum(conditionTiming(:,1)==c);
+                        if (cycleCount==0) || (cycleCount >= (2 / stimulus.build.cycles * size(conditionTiming,1)))
+                            % if we accidentally generated a set of cycles
+                            % where there is a poor distribution of probes,
+                            % we just repeat it and do it again. 
+                            redo = true;
+                        end
+                    end
+                end
+                
+                % pre-compute the blackout positions
+                sx = stimulus.stimx(x);
+                sy = stimulus.stimy(y);
+                bpos = logical((sx>bminx).*(sx<bmaxx).*(sy>bminy).*(sy<bmaxy));
+                for c = 1:stimulus.build.cycles
+                    % get all the indexes
+                    cStart = (c-1) * stimulus.build.cycleLength + 1;
+                    cEnd = c * stimulus.build.cycleLength;
+                    indexes = cStart:cEnd;
+                    % get the blackout indexes for this cycle
+                    for d = 1:6
+                        if bpos(c,d)
+                            % blackout
+                            rmindexes = cStart-1 + (((d-1)*20+1):(d*20));
+                            indexes = setdiff(indexes,rmindexes);
+                        end
+                    end
+                    
+                    % for each cycle, build a stimulus display timeseries,
+                    % this means picking the actual timing of the various
+                    % events within the time block
+                    events = conditionTiming(conditionTiming(:,1)==c,:);
+                    eventTimes = randsample(indexes,size(events,1));
+                    attempts = 0;
+                    while any(diff(eventTimes)<(stimulus.probeUp+stimulus.probeDown))
+                        attempts = attempts + 1;
+                        eventTimes = randsample(indexes,size(events,1));
+%                         if attempts>10000
+%                             disp(sprintf('(afmap) Attempted %i times to create a functional cycle and failed--stimulus properties are fd up',attempts));
+%                             keyboard
+%                         end
+                    end
+                    if attempts>100000
+                        warning(sprintf('It took a whole lot of attempts: %i, to build that cycle',attempts));
+                    end
+                    for ei = 1:size(events,1)
+                        eidxs = eventTimes(ei):(eventTimes(ei)+stimulus.probeUp-1);
+                        build.con(eidxs,x,y) = events(ei,2);
+                        build.sz(eidxs,x,y) = events(ei,3);
+                        build.ph(eidxs,x,y) = repmat([1 2],1,length(eidxs)/2);
+                        build.theta(eidxs,x,y) = rand*2*pi;
+                    end
+                    
+                end
+            end
+            disppercent(x/length(stimulus.stimx));
+        end
+        disppercent(inf/length(stimulus.stimx));
+        keyboard
+        % test code
+        figure
+        colormap('gray');
+        caxis([0 1]);
+        build.con = build.con>0;
+        for i = 1:720
+            imagesc(squeeze(build.con(i,:,:)));
+            pause(.01);
+        end
+        % test code end
+        disp(sprintf('(afmap) Pre-build of build %i has finished, saving.',bi));
+        stimulus.builds{bi} = build;
+    end
+    disp(sprintf('(afmap) Pre-build complete. Created %i unique builds which will rotate every %i runs.',stimulus.build.uniques,stimulus.build.rotate));
+end
+
+%% Get the current build number
+
+if ~stimulus.replay
+    stimulus.build.curBuild = stimulus.build.curBuild + 1;
+    if stimulus.build.curBuild > stimulus.build.rotate
+        stimulus.build.curBuild = 1;
+    end
+    disp(sprintf('(afmap) Build %i selected',stimulus.build.curBuild));
+end
+
+%% Load the current build
+if ~stimulus.replay
+    % stimulus.grid is used to track the grid for this run -- we will
+    % update this every time the screen changes and save the time it
+    % occurred
+    stimulus.grid.buildNumber = stimulus.build.curBuild;
+    stimulus.grid.t = zeros(1,stimulus.build.availableTRs);
+    stimulus.grid.con = stimulus.builds{stimulus.build.curBuild}.con;
+    stimulus.grid.sz = stimulus.builds{stimulus.build.curBuild}.sz;
+    stimulus.grid.ph = stimulus.builds{stimulus.build.curBuild}.ph;
+    stimulus.grid.theta = stimulus.builds{stimulus.build.curBuild}.theta;
+    disp(sprintf('(afmap) Build %i loaded from pre-build',stimulus.build.curBuild));
 end
 
 %% Open Old Stimfile
@@ -228,11 +405,7 @@ if stimulus.replay
     task{1}{1}.seglen = 0.050;
 else
     task{1}{1}.waitForBacktick = 1;
-    if stimulus.scan
-        task{1}{1}.seglen = 0.450;
-    else
-        task{1}{1}.seglen = 0.500;
-    end
+    task{1}{1}.seglen = 0.500;
 end
 
 stimulus.seg.stim = 1;
@@ -240,9 +413,9 @@ stimulus.seg.stim = 1;
 task{1}{1}.getResponse = 0;
 
 if stimulus.replay
-    task{1}{1}.numTrials = stimulus.gridCount;
+    task{1}{1}.numTrials = size(stimulus.grid.con,1);
 else
-    task{1}{1}.numTrials = Inf;
+    task{1}{1}.numTrials = stimulus.build.cycles;
 end
 
 task{1}{1}.random = 0;
@@ -345,8 +518,26 @@ mglFlush
 myscreen.flushMode = 1;
 
 % save stimulus
-frames = stimulus.frames; %#ok<NASGU>
-save(stimulus.replayFile,'frames');
+if stimulus.replay
+    s = load(replay);
+
+    screenWidth = myscreen.screenWidth; screenHeight = myscreen.screenHeight;
+    imageWidth = myscreen.imageWidth; imageHeight = myscreen.imageHeight;
+    [pRFstim.x, pRFstim.y] = ndgrid(-imageWidth/2:imageWidth/(screenWidth-1):imageWidth/2, -imageHeight/2:imageHeight/(screenHeight-1):imageHeight/2);
+
+    pRFstim.t = 1:size(stimulus.frames,3);
+    
+    if size(stimulus.frames,3)~=840
+        warning('Number of frames does not match the expected length (840)--padding end with blank screen');
+        input('Press [enter] to confirm: ');
+        stimulus.frames(:,:,end:840) = 0;
+    end
+    
+    pRFstim.im = stimulus.frames;
+    
+    s.pRFStimImage = pRFstim;
+    save(replay,'-struct','s');
+end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
@@ -378,83 +569,13 @@ global stimulus
 
 if ~stimulus.replay
     % Deal with blanks
-    stimulus.live.blankTime = stimulus.live.blankTime - 1;
-    if stimulus.live.blankTime == 0
-        stimulus.live.blankTime = stimulus.blanks.rotTR;
-        stimulus.live.cBlank = stimulus.live.cBlank + 1;
-        if stimulus.live.cBlank > stimulus.live.numBlanks
-            stimulus.live.cBlank = 0;
-            stimulus.live.rotation = stimulus.live.rotation + 1;
-            disp(sprintf('Rotation %i starting',stimulus.live.rotation));
-        end
-    end
 
-    if stimulus.live.rotation > 6
-        disp(sprintf('All rotations complete'));
-        return
-    end
-
-    % Design the state space
-    for x = 1:length(stimulus.stimx)
-        for y = 1:length(stimulus.stimy)
-            % increment
-            if stimulus.live.grid(x,y) > 1
-                stimulus.live.grid(x,y) = stimulus.live.grid(x,y)-1;
-                stimulus.live.gridPhase(x,y) = ~stimulus.live.gridPhase(x,y);
-            elseif stimulus.live.grid(x,y) == 1
-                % shut down grid location
-                stimulus.live.grid(x,y) = 0;
-                stimulus.live.gridCon(x,y) = 0;
-                stimulus.live.gridSize(x,y) = 0;
-                stimulus.live.rotations(x,y) = 0;
-                stimulus.live.probeOnGrid(x,y) = 0;
-            else
-                xp = stimulus.stimx(x); yp = stimulus.stimy(y);
-                if (stimulus.live.cBlank>0)
-                    nocheck = (xp<stimulus.blanks.xmax(stimulus.live.cBlank) && xp > stimulus.blanks.xmin(stimulus.live.cBlank)) && (yp<stimulus.blanks.ymax(stimulus.live.cBlank) && yp>stimulus.blanks.ymin(stimulus.live.cBlank));
-                else
-                    nocheck = false;
-                end
-                % if nocheck is true we skip this position (i.e. don't turn on in
-                % blank locations)
-
-                if ~nocheck
-                    probeOn = stimulus.live.probeOnGrid(x,y);
-                    stimulus.live.probeOnGrid(x,y) = min(1,stimulus.live.probeOnGrid(x,y)+stimulus.probeOn);
-                    if rand < probeOn
-                        % turn on grid location
-                        stimulus.live.grid(x,y) = stimulus.probeDown + stimulus.probeUp;
-                        % pick attributes
-                        conOpts = osum(stimulus.live.gridCons);
-                        conOpts = cumsum(conOpts)/sum(conOpts);
-                        r = rand;
-                        conChoice = find(r<conOpts,1);
-                        stimulus.live.gridCons(conChoice) = stimulus.live.gridCons(conChoice) + 1;
-                        stimulus.live.gridCon(x,y) = conChoice;
-
-                        sizeOpts = osum(stimulus.live.gridSizes);
-                        sizeOpts = cumsum(sizeOpts)/sum(sizeOpts);
-                        r = rand;
-                        sizeChoice = find(r<sizeOpts,1);
-                        stimulus.live.gridSizes(sizeChoice) = stimulus.live.gridSizes(sizeChoice) + 1;
-                        stimulus.live.gridSize(x,y) = sizeChoice;
-
-                        stimulus.live.rotations(x,y) = rand*2*pi;
-
-                        stimulus.live.gridPhase(x,y) = rand<0.5;
-                    end
-                else
-
-                end
-            end
-        end
-    end
-
-    stimulus.grid.on(stimulus.gridCount,:,:) = stimulus.live.grid;
-    stimulus.grid.con(stimulus.gridCount,:,:) = stimulus.live.gridCon;
-    stimulus.grid.sz(stimulus.gridCount,:,:) = stimulus.live.gridSize;
-    stimulus.grid.ph(stimulus.gridCount,:,:) = stimulus.live.gridPhase;
-    stimulus.gridCount = stimulus.gridCount + 1;
+    stimulus.live.grid = squeeze(stimulus.grid.on(stimulus.curTrial,task.thistrial.thisseg,:,:));
+    stimulus.live.gridCon = squeeze(stimulus.grid.con(stimulus.curTrial,task.thistrial.thisseg,:,:));
+    stimulus.live.gridSize = squeeze(stimulus.grid.sz(stimulus.curTrial,task.thistrial.thisseg,:,:));
+    stimulus.live.gridPhase = squeeze(stimulus.grid.ph(stimulus.curTrial,task.thistrial.thisseg,:,:));
+    
+%     stimulus.gridCount = stimulus.gridCount + 1;
 
     task.thistrial.probesOn = sum(stimulus.live.grid(:)>stimulus.probeDown);
 
@@ -491,7 +612,8 @@ for xi = 1:length(stimulus.stimx)
             if stimulus.replay
                 % just draw a circle
                 % /2 because the FWHM defines a diameter of 1/2/3 degree
-                mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
+                mglBltTexture(stimulus.gaussian(con,sz,ph),[x y],0,0,0);
+%                 mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
             else
                 mglBltTexture(stimulus.grating(con,sz,ph),[x y],0,0,stimulus.live.rotations(xi,yi)*180/pi);
             end
@@ -505,9 +627,9 @@ if stimulus.replay
     
     frame = mglFrameGrab;
     if ~isfield(stimulus,'frames')
-        stimulus.frames = zeros(stimulus.gridCount,myscreen.screenWidth,myscreen.screenHeight);
+        stimulus.frames = zeros(myscreen.screenWidth,myscreen.screenHeight,stimulus.gridCount);
     end
-    stimulus.frames(stimulus.curTrial,:,:,:) = frame(:,:,1);
+    stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -724,8 +846,14 @@ for ci = 1:length(stimulus.gratingContrasts)
             gauss = mglMakeGaussian(sz,sz,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2);
             alphamask = repmat(grating,1,1,4);
             alphamask(:,:,4) = gauss*255;
-
+            
+            % make the grating
             stimulus.grating(ci,si,phase)  = mglCreateTexture(alphamask); % high contrast
+            % make a gaussian (for when we display, make sure to use the
+            % actual contrast for this setting or we'll fuck up later)
+            gData = stimulus.gratingContrasts(ci)*255*ones(size(grating,1),size(grating,2),4);
+            gData(:,:,4) = gauss*255;
+            stimulus.gaussian(ci,si,phase) = mglCreateTexture(gData);
         end
     end
 end
