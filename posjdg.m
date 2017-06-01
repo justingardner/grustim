@@ -24,8 +24,10 @@ function [ myscreen ] = posjdg( varargin )
 %      To run in scanner
 %         posjdg('scan=1') --> default 'scan=0'
 %
-%      To generate plots
+%      To generate plots after running the experiment
 %         posjdg('plots=1') --> default 'plots=0'
+%      To generate plots without running the experiment
+%         posjdg('plots=2')
 
 global stimulus
 
@@ -176,15 +178,16 @@ switch stimulus.att
         % Task trial parameters
         task{1}{1}.parameter.target = stimulus.prior;
     case 2 %Exo
-        task{1}{1}.segmin = [inf 0.000 0.100 0.200 0.800]; % Fixate, delay, cue, stim, response
-        task{1}{1}.segmax = [inf 1.000 0.100 0.200 0.800];
+        task{1}{1}.segmin = [inf 0.000 0.050 0.050 0.200 0.800]; % Fixate, delay, cue, delay, stim, response
+        task{1}{1}.segmax = [inf 1.000 0.050 0.050 0.200 0.800];
 
         stimulus.seg = {};
         stimulus.seg{1}.ITI1 = 1;
         stimulus.seg{1}.delay = 2;
         stimulus.seg{1}.cue = 3;
-        stimulus.seg{1}.stim = 4;
-        stimulus.seg{1}.resp = 5;
+        stimulus.seg{1}.delay2 = 4;
+        stimulus.seg{1}.stim = 5;
+        stimulus.seg{1}.resp = 6;
 
     case 3 %Sacc
 
@@ -263,14 +266,15 @@ switch stimulus.att
         task{1}{2}.parameter.target = stimulus.prior; % prior center
 
     case 2
-        task{1}{2}.segmin = [inf 0.100 0.200 0.500 5.000]; %fixate, cue, stim, delay, response
-        task{1}{2}.segmax = [inf 0.100 0.200 0.500 5.000];
+        task{1}{2}.segmin = [inf 0.050 0.050 0.200 0.500 5.000]; %fixate, cue, delay1, stim, delay, response
+        task{1}{2}.segmax = [inf 0.050 0.050 0.200 0.500 5.000];
 
         stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
         stimulus.seg{2}.cue = 2;
-        stimulus.seg{2}.stim = 3;
-        stimulus.seg{2}.delay = 4;
-        stimulus.seg{2}.resp = 5;
+        stimulus.seg{2}.delay1 = 3;
+        stimulus.seg{2}.stim = 4;
+        stimulus.seg{2}.delay2 = 5;
+        stimulus.seg{2}.resp = 6;
 
     otherwise
         disp('Invalid attention condition. Quitting...');
@@ -400,10 +404,8 @@ task.thistrial.detected = 0;
 task.thistrial.visible = 1;
 
 if (~isempty(task.lasttrial)) && (task.lasttrial.detected~=1) && ~task.lasttrial.dead && task.lasttrial.visible==1
-    stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
-    if(task.lasttrial.detected == 0) % only print this during phase 1
-        disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
-    end
+    stimulus.staircase = doStaircase('update',stimulus.staircase,0);
+    disp(sprintf('Subject did not see %01.2f%% contrast. Staircase to increase contrast.',task.lasttrial.contrast*100));
 elseif (~isempty(task.lasttrial)) && task.lasttrial.visible==0
     disp('No stimulus displayed on last trial.');
 end
@@ -418,13 +420,13 @@ switch stimulus.att
     case 1 %Endo
         task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the prior
     case 2 %Exo
-        task.thistrial.angle = rand*2*pi; % stim angle is random
+        task.thistrial.angle = rand*2*pi-pi; % stim angle is random
         task.thistrial.target = rand*2*pi; % cue angle is random
         if task.thistrial.thisphase == 1 && ~stimulus.test2
             task.thistrial.visible = (rand > 0.5);
         end
     case 3 %Sacc
-        task.thistrial.angle = rand*2*pi;
+        task.thistrial.angle = rand*2*pi-pi;
         task.thistrial.target = rand*2*pi;
     otherwise
         disp('Invalid attention condition. Quitting...');
@@ -489,12 +491,10 @@ for i = 1:2
         x = task.thistrial.ecc * cos(task.thistrial.angle+task.thistrial.target);
         y = task.thistrial.ecc * sin(task.thistrial.angle+task.thistrial.target);
         mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
-    elseif stimulus.live.cue && i == 1
+    elseif stimulus.live.cue
         x = task.thistrial.ecc * cos(task.thistrial.target);
         y = task.thistrial.ecc * sin(task.thistrial.target);
         mglPolygon([x-.15, x-.15, x+.15, x+.15], [y-.15, y+.15, y+.15, y-.15], stimulus.colors.white);
-        mglFlush();
-        mglClearScreen(0.5);
     end
     
     % resp is updated in screenUpdate
@@ -764,49 +764,47 @@ h = figure; hold on
 
 low = [0 0.075 0.081 0.09 inf];
 
-%for i = 1:4
-    %subplot(4,1,i); hold on
-    % data(:,6) = data(:,6)-data(:,5);
+% remove no-response trials
+data_ = data(~isnan(data(:,6)),:);
+if rstimulus.att==2
+    data_(data_(:,5)>pi,5) = data_(data_(:,5)>pi,5)-2*pi;
+end
 
-    % remove no-response trials
-    data_ = data(~isnan(data(:,6)),:);
-    %data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
-    % find the trials where stimulus is - relative to the prior
-    flip = data_(:,5)<0; flip = flip*1;
-    flip(flip==1) = -1; flip(flip==0) = 1;
-    % flip all the stimulus-target to be in the positive space
-    data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
-    Y = data_(:,6);
-    X = [ones(size(Y)) data_(:,5)];
-    b = X\Y;
-    c = [X Y];
+% find the trials where stimulus is - relative to the prior
+flip = data_(:,5)<0; flip = flip*1;
+flip(flip==1) = -1; flip(flip==0) = 1;
+% flip all the stimulus-target to be in the positive space
+data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
 
-    bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
+if rstimulus.att==2
+    data_(data_(:,6)<-(pi/2),:) = abs(data_(data_(:,6)<-(pi/2),:));
+end
+Y = data_(:,6);
+X = [ones(size(Y)) data_(:,5)];
+b = X\Y;
+c = [X Y];
 
-    % [p,s] = polyfit(data_(:,5),data_(:,6),1);
+bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
 
+% [p,s] = polyfit(data_(:,5),data_(:,6),1);
+plot(data_(:,5),data_(:,6),'*');
+% plot constant line
+plot([0 pi],[0 pi],'--r');
+% plot fit
+x = 0:pi;
+plot(x,b(1)+b(2)*x,'--k');
+% compute SD of residuals? 
+% todo
+xlabel('Stimulus - Target (deg)');
+ylabel('Resp - Target (deg)');
+title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-    plot(data_(:,5),data_(:,6),'*');
-    % plot constant line
-    plot([-1 1],[-1 1],'--r');
-    % plot fit
-    x = -1:1;
-    plot(x,b(1)+b(2)*x,'--k');
-    % compute SD of residuals? 
-    % todo
-    xlabel('Stimulus - Target (deg)');
-    ylabel('Resp - Target (deg)');
-    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
+% axis([0 1 -1 1]);
+axis square
 
-    axis([0 1 -1 1]);
-    axis square
+set(gca,'XTick',0:.5:pi,'XTickLabel',round((0:.5:pi)*180/pi,2),'YTick',-1:.5:pi,'YTickLabel',round((-1:.5:pi)*180/pi,2));
 
-    set(gca,'XTick',0:.5:1,'XTickLabel',round((0:.5:1)*180/pi,2),'YTick',-1:.5:1,'YTickLabel',round((-1:.5:1)*180/pi,2));
-
-    drawPublishAxis;
-    % h = figure;
-    % hist(data(:,5)-data(:,6));
-%end
+drawPublishAxis;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -834,7 +832,7 @@ alphamask = repmat(grating,1,1,4);
 alphamask(:,:,4) = gauss*255;
 
 % we'll adjust the gamma table to control contrast
-stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
+stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast        
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sets the gamma table so that we can have
