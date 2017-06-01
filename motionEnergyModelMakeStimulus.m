@@ -7,45 +7,36 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: Generates a stimulus for the motionEnergyModel
 %
-%             stimulus = motionEnergyModelMakeStimulus;
+%             [s msc] = motionEnergyModelMakeStimulus;
 %
 %             % display stimulus
-%             figure;clf;colormap(gray);
-%             for iFrame = 1:size(stimulus,3)
-%               clf
-%               imagesc(stimulus(:,:,iFrame));
-%               drawnow
-%             end
+%             mlrVol(s);
 %
-function stimulus = motionEnergyModelMakeStimulus(screenName)
+%             % compute motionEnergy filter response
+%             motionEnergyModel(s,'myscreen',msc);
+%
+function [stimulus myscreen] = motionEnergyModelMakeStimulus(varargin)
 
-% check arguments
-if ~any(nargin == [0 1])
-  help testExperiment
-  return
-end
+% parse args
+getArgs(varargin,{'screenName',[],'coherence=1','direction=0','speed=5','stimulusLength=1'});
 
 % use off screen context - which will display to a memory
 % buffer so that we can just mglFrameGrab to get the images
-%mglSetParam('useCGL',0);
-%mglSetParam('offscreenContext',1);
+mglSetParam('useCGL',0);
+mglSetParam('offscreenContext',1);
 
 % initalize the screen
-if nargin >= 1
-  myscreen = initScreen(screenName);
-else
-  myscreen = initScreen;
-end
+myscreen = initScreen(screenName);
 
 % task just has dots
 task{1}.waitForBacktick = 0;
-task{1}.seglen = 10;
+task{1}.seglen = inf;
 task{1}.numBlocks = 1;
-task{1}.parameter.dir = 0;
-task{1}.parameter.coherence = 0;
+task{1}.parameter.dir = direction;
+task{1}.parameter.coherence = coherence;
 
 % number of frames to compute for
-myscreen.nFrames = 200;
+myscreen.nFrames = stimulusLength*myscreen.framesPerSecond;
 myscreen.iFrame = 1;
 
 % precompute data arrray for computing stimulus
@@ -56,6 +47,7 @@ myscreen.stimulus = nan(mglGetParam('screenWidth'),mglGetParam('screenHeight'),m
 
 % init the stimulus
 global stimulus;
+stimulus.dots.speed = speed;
 myscreen = initStimulus('stimulus',myscreen);
 stimulus = initDots(stimulus,myscreen);
 
@@ -96,7 +88,7 @@ stimulus.dots.dir = task.thistrial.dir;
 function [task myscreen] = updateScreenCallback(task, myscreen)
 
 global stimulus
-mglClearScreen(0.5);
+mglClearScreen;
 stimulus = updateDots(stimulus,myscreen);
 
 % grab the frame, and average over color channels
@@ -112,7 +104,7 @@ myscreen.iFrame = myscreen.iFrame + 1;
 function stimulus = initDots(stimulus,myscreen)
 
 % convert the passed in parameters to real units
-if ~isfield(stimulus,'dots') || ~isfield(stimulus.dots,'rmax'), stimulus.dots.rmax = 15;,end
+if ~isfield(stimulus,'dots') || ~isfield(stimulus.dots,'rmax'), stimulus.dots.rmax = myscreen.imageWidth;,end
 if ~isfield(stimulus.dots,'xcenter'), stimulus.dots.xcenter = 0;,end
 if ~isfield(stimulus.dots,'ycenter'), stimulus.dots.ycenter = 0;,end
 if ~isfield(stimulus.dots,'dotsize'), stimulus.dots.dotsize = 3;,end
