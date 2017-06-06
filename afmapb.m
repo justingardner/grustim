@@ -502,6 +502,7 @@ files = dir(fullfile(sprintf('~/data/afmapb/%s/17*stim*.mat',mglGetSID)));
 out = doStaircase('threshold',rstimulus.staircase','type=weibull','dispFig=0');
 threshold = out.threshold;
 
+%%
 wn = zeros(10000,240,135);
 count = 1; data = zeros(10000,13);
 
@@ -521,7 +522,7 @@ for fi = 1:length(files)
             e.randVars.miss' e.randVars.cr' e.randVars.dead'];
 
         for ti = 1:e.nTrials
-            timg = squeeze(mean(stimulus.wn.img(stimulus.wn.trials{ti},:,:)));
+            timg = squeeze(stimulus.wn.img(stimulus.wn.trials{ti},:,:));
             wn(count+(ti-1),:,:) = timg;
              %imagesc(timg);colormap('gray');
              %pause(.01);
@@ -570,31 +571,35 @@ d = 1;
 
 % set a threshold offset (how much +/- the threshold we are willing to
 % allow data to come from)
-t_var = 0.5;
+t_var = inf;
 t_idxs = (data(:,7)>(threshold-threshold*t_var)) .* (data(:,7)<(threshold+threshold*t_var));
 disp(sprintf('Using %i of %i when accounting from threshold variability',sum(t_idxs),size(t_idxs,1)));
 img = struct;
 name = {'hit','miss','fa','cr'};
 idx = [9 10 11 12];
-h = figure;
+h = figure; hold on
 for ci = 1:4
-    img.(name{ci}) = squeeze(wn(logical(t_idxs .* data(:,idx(ci))),:,:));
-    img.(name{ci}) = img.(name{ci})/255-0.5;
+    temp = squeeze(wn(logical(t_idxs .* data(:,idx(ci))),:,:));
+    temp = temp/255;
+    temp = temp - 0.5;
+%     temp = reshape(squeeze(std(temp)),1,240,135);
+    img.(name{ci}) = temp;
 end
 aimg = [img.hit ; img.fa ; -img.miss ; -img.cr];
+% aimg = [img.fa ; - img.miss];
 
 % % Bootstrap takes a VERY VERY VERY long time:
 % am_ = squeeze(bootci(10,@nanmean,aimg));
 % am  = squeeze(mean(am_));
 
 am = squeeze(mean(aimg));
+as = squeeze(std(aimg));
 
 imagesc(stimulus.live.X(1,:),stimulus.live.Y(:,1)',flipud(am'));
 
 colormap('gray');
 colorbar
 set(gca,'Clim',[min(am(:)) max(am(:))]);
-
 % subplot(211)
 % imagesc(pm'); colorbar; axis equal
 % subplot(212)
@@ -607,6 +612,13 @@ x = rstimulus.gaussX - rstimulus.gaussFWHM/2;
 y = rstimulus.gaussY - rstimulus.gaussFWHM/2;
 d = rstimulus.gaussFWHM;
 rectangle('Position',[x y d d],'Curvature',[1 1],'EdgeColor','w');
+
+plot([-1 1],[0 0],'-w');
+plot([0 0],[-1 1],'-w');
+
+axis equal
+
+drawPublishAxis
 
 %%
 % 
