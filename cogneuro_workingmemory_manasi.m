@@ -70,7 +70,7 @@ stimulus.colors.mrmin = stimulus.colors.nReserved;
 
 %% Stimulus (oriented gratings) properties
 stimulus.angleOpts = [30 120];
-stimulus.shift = 9;
+stimulus.shift = 15;
 
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
@@ -129,7 +129,7 @@ stimulus.seg.ITI = 6;
 % Trial timing (see above for what each column corresponds to)
 task{1}{1}.segmin = [0.500 1.000 0.200 nan 2.000 2.500];
 task{1}{1}.segmax = [0.500 1.000 0.200 nan 2.000 9.500]; % 6.5 s average 
-task{1}{1}.segdur{4} = [8 16];
+task{1}{1}.segdur{4} = [2 4];
 
 % When scanning we synchronize the stimulus to the scanner
 task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));

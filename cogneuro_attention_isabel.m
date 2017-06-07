@@ -127,8 +127,8 @@ stimulus.seg.resp = 5;
 stimulus.seg.ITI = 6;
 
 % Trial timing (see above for what each column corresponds to)
-task{1}{1}.segmin = [0.500 0.500 1.000 4.000 1.500 2.500];
-task{1}{1}.segmax = [0.500 0.500 1.000 4.000 1.500 9.500]; % 6.5 s average 
+task{1}{1}.segmin = [0.500 0.500 1.000 2.000 1.500 2.500];
+task{1}{1}.segmax = [0.500 0.500 1.000 2.000 1.500 9.500]; % 6.5 s average 
 
 % When scanning we synchronize the stimulus to the scanner
 task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
