@@ -252,7 +252,7 @@ task.thistrial.cueSide = ceil(rand*2); %1 for left, 2 for right.
 task.thistrial.cuePresent = (rand > 0.5);
 
 task.thistrial.standardDist = 3;
-task.thistrial.otherDist = 5; %varies with staircase
+task.thistrial.otherDist = 1 + 4*rand; % Randomly selected from 1 to 5
 
 if rand < 0.5
     task.thistrial.leftDist = task.thistrial.otherDist;
