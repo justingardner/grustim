@@ -357,6 +357,8 @@ disp(sprintf('(unlearn) %s:%s trial (%i), %s. Angle 1: %3.0f Angle 2: %3.0f Patt
 stimulus.live.eyeCount = 0;
 stimulus.dead = 0;
 
+stimulus.live.gotResponse=0;
+
 function task = buildData(task)
 
 global stimulus
@@ -552,7 +554,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
 if stimulus.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
-    jumpSegment(task,inf); stimulus.dead=0;
+    task = jumpSegment(task,inf); stimulus.dead=0;
 end
 
 if stimulus.dead
@@ -636,7 +638,7 @@ matchText = {'Non-match','Match'};
 fixColors = {stimulus.colors.red,stimulus.colors.green};
     
 if any(task.thistrial.whichButton == stimulus.responseKeys)
-    if task.thistrial.gotResponse == 0
+    if stimulus.live.gotResponse == 0
         task.thistrial.correct = task.thistrial.whichButton == stimulus.responseKeys(task.thistrial.match+1);
         if ~task.thistrial.impossible && ~isfield(stimulus,'outThreshold')
             stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
@@ -652,8 +654,9 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
             mglFlush
         end
     else
-        disp(sprintf('(unlearn) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
+        disp(sprintf('(unlearn) Subject responded multiple times: %i',stimulus.live.gotResponse+1));
     end
+    stimulus.live.gotResponse = stimulus.live.gotResponse + 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -739,14 +742,17 @@ for fi = 1:length(files)
     
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
-    run = stimulus.counter;
-        
-    data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-        e.parameter.impossible' e.parameter.match' e.parameter.angle1' ...
-        e.randVars.angle2' e.parameter.pattern1' e.randVars.pattern2' ...
-        e.response' e.randVars.correct'];
     
-    count = count+e.nTrials;
+    if e.nTrials>1
+        run = stimulus.counter;
+
+        data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+            e.parameter.impossible' e.parameter.match' e.parameter.angle1' ...
+            e.randVars.angle2' e.parameter.pattern1' e.randVars.pattern2' ...
+            e.response' e.randVars.correct'];
+
+        count = count+e.nTrials;
+    end
 end
 
 data = data(1:(count-1),:);

@@ -1,37 +1,45 @@
-function [ myscreen ] = posjdg( varargin )
+function [ myscreen ] = posjdg_Endo( varargin )
+%POSITIONJUDGMENTS 
 %
-% POSITION JUDGMENTS 
-%    Position judgment task with three attentional conditions. 
-%
-%    Usage: posjdg(varargin)
-%    Authors: Dan Birman, Akshay Jagadeesh
-%    Date: 05/10/2017
-%
-%    Parameters:
-%
-%      To run the endogenous attention experiment
-%         posjdg('att=1') --> default
-%
-%      To run the exogenous attention experiment
-%         posjdg('att=2')
-%     
-%      To run without eyetracking
-%         posjdg('noeye=1') --> default 'noeye=0'
-%   
-%      To run without powerwheel
-%         posjdg('powerwheel=0') --> default 'powerwheel=1'
-%
-%      To run in scanner
-%         posjdg('scan=1') --> default 'scan=0'
-%
-%      To generate plots after running the experiment
-%         posjdg('plots=1') --> default 'plots=0'
-%      To generate plots without running the experiment
-%         posjdg('plots=2')
+% Position judgment task with three attentional conditions. 
 
 global stimulus
 
 stimulus = struct;
+
+%% Stimulus parameters 
+
+% new prior for each run
+stimulus.prior = rand*2*pi;
+while (abs(mod(stimulus.prior,pi/2)<0.15))
+    stimulus.prior = rand*2*pi;
+end
+disp(sprintf('Prior chosen to be %02.0f, dist was: %02.2f',stimulus.prior*180/pi,abs(mod(stimulus.prior,pi/2))));
+stimulus.sd = pi/8;
+stimulus.ecc = 6;
+stimulus.live.contrastPercs = 0.9;
+
+
+%% Open Old Stimfile
+stimulus.counter = 1;
+
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/posjdg_Endo/%s',mglGetSID))
+    % Directory exists, check for a stimefile
+    files = dir(sprintf('~/data/posjdg_Endo/%s/1*mat',mglGetSID));
+
+    if length(files) >= 1
+        fname = files(end).name;
+        
+        s = load(sprintf('~/data/posjdg_Endo/%s/%s',mglGetSID,fname));
+        % copy staircases and run numbers
+        stimulus.counter = s.stimulus.counter + 1;
+        stimulus.staircase = s.stimulus.staircase;
+        clear s;
+        disp(sprintf('(posjdg) Data file: %s loaded.',fname));
+    end
+end
+disp(sprintf('(posjdg) This is run #%i',stimulus.counter));
+
 
 %% Initialize Variables
 
@@ -43,10 +51,8 @@ debug = 0;
 noimp = 0;
 training = 0;
 powerwheel = 0;
-test2 = 0;
-att = 1;
-getArgs(varargin,{'att=1', 'scan=0','plots=0','noeye=0','debug=0','training=0','powerwheel=1','test2=0'});
-stimulus.att = att;
+test2 =0 ;
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','training=0','powerwheel=1','test2=0'});
 stimulus.scan = scan;
 stimulus.powerwheel = powerwheel;
 stimulus.plots = plots;
@@ -61,46 +67,13 @@ if stimulus.scan
     warning('Not setup for scanning');
 end
 
-%% Stimulus parameters 
-
-% new prior for each run
-if stimulus.att == 1
-    stimulus.condition = 'Endo';
-    stimulus.prior = rand*2*pi;
-    while (abs(mod(stimulus.prior,pi/2)<0.15))
-      stimulus.prior = rand*2*pi;
-    end
-    disp(sprintf('Prior chosen to be %02.0f, dist was: %02.2f',stimulus.prior*180/pi,abs(mod(stimulus.prior,pi/2))));
-elseif stimulus.att == 2
-    stimulus.condition = 'Exo';
-elseif stimulus.att == 3
-    stimulus.condition = 'Sacc';
-end
-stimulus.sd = pi/8;
-stimulus.ecc = 6;
-
-%% Open Old Stimfile
-stimulus.counter = 1;
-
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/posjdg_%s/%s',stimulus.condition,mglGetSID))
-    % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/posjdg_%s/%s/1*mat',stimulus.condition,mglGetSID));
-
-    if length(files) >= 1
-        fname = files(end).name;
-        
-        s = load(sprintf('~/data/posjdg_%s/%s/%s',stimulus.condition,mglGetSID,fname));
-        % copy staircases and run numbers
-        stimulus.counter = s.stimulus.counter + 1;
-        stimulus.staircase = s.stimulus.staircase;
-        clear s;
-        disp(sprintf('(posjdg) Data file: %s loaded.',fname));
-    end
-end
-disp(sprintf('(posjdg) This is run #%i',stimulus.counter));
-
 %% Setup Screen
-myscreen = initScreen('VPixx');
+
+% if stimulus.scan
+%     myscreen = initScreen('fMRIprojFlex');
+% else
+    myscreen = initScreen('VPixx');
+% end
 
 % set background to grey
 myscreen.background = 0.5;
@@ -127,14 +100,14 @@ end
 
 %% Initialize Stimulus
 
-myscreen = initStimulus('stimulus',myscreen);
+myscreen.stimulusNames{1} = 'stimulus';
 
 localInitStimulus();
     
 if stimulus.powerwheel
-    stimulus.responseKeys = 5; % no-detection key (when powerwheel is in use)
+    stimulus.responseKeys = 5; % detection key (when powerwheel not in use)
 else
-    stimulus.responseKeys = [5 1 2 3]; % 
+    stimulus.responseKeys = [1 2 3]; % 
 end
 
 %% Colors
@@ -163,46 +136,16 @@ stimulus.curTrial(1) = 0;
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
-switch stimulus.att
-    case 1 %Endo
-        % task waits for fixation on first segment
-        task{1}{1}.segmin = [inf 0.000 .200 0.800];
-        task{1}{1}.segmax = [inf 1.000 .200 0.800];
+% task waits for fixation on first segment
+task{1}{1}.segmin = [inf 0.000 .200 0.800];
+task{1}{1}.segmax = [inf 1.000 .200 0.800];
 
-        stimulus.seg = {};
-        stimulus.seg{1}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
-        stimulus.seg{1}.delay = 2;
-        stimulus.seg{1}.stim = 3;
-        stimulus.seg{1}.resp = 4;
+stimulus.seg = {};
 
-        % Task trial parameters
-        task{1}{1}.parameter.target = stimulus.prior;
-    case 2 %Exo
-        task{1}{1}.segmin = [inf 0.000 0.050 0.050 0.200 0.800]; % Fixate, delay, cue, delay, stim, response
-        task{1}{1}.segmax = [inf 1.000 0.050 0.050 0.200 0.800];
-
-        stimulus.seg = {};
-        stimulus.seg{1}.ITI1 = 1;
-        stimulus.seg{1}.delay = 2;
-        stimulus.seg{1}.cue = 3;
-        stimulus.seg{1}.delay2 = 4;
-        stimulus.seg{1}.stim = 5;
-        stimulus.seg{1}.resp = 6;
-
-    case 3 %Sacc
-
-        task{1}{1}.segmin = [inf 0.000 0.100 0.200 1.000];
-        task{1}{1}.segmax = [inf 1.000 0.100 2.000 1.000];
-
-        stimulus.seg{1}.ITI1 = 1;
-        stimulus.seg{1}.delay = 2;
-        stimulus.seg{1}.stim = 3; % stimulus appears and stays on
-        stimulus.seg{1}.delay2 = 4; % variable length delay
-        stimulus.seg{1}.saccade = 5; % Fixation cross turns off, subj saccades to stim.
-    otherwise
-        disp('Invalid attention condition. Quitting...');
-        return
-end
+stimulus.seg{1}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
+stimulus.seg{1}.delay = 2;
+stimulus.seg{1}.stim = 3;
+stimulus.seg{1}.resp = 4;
 
 if stimulus.noeye==1
     task{1}{1}.segmin(1) = 0.5;
@@ -216,22 +159,20 @@ if stimulus.powerwheel
 else
     task{1}{1}.getResponse(stimulus.seg{1}.resp)=1;
 end
-if stimulus.counter<=1
+if stimulus.counter==1
     task{1}{1}.numTrials = 65;
 else
-    task{1}{1}.numTrials = 15;
+    task{1}{1}.numTrials = 25;
 end
 task{1}{1}.random = 1;
+task{1}{1}.parameter.ecc = stimulus.ecc; % eccentricity of display
+task{1}{1}.parameter.target = stimulus.prior; % prior center
+task{1}{1}.parameter.priorSTD = stimulus.sd; % radians
 
 if stimulus.scan
     task{1}{1}.synchToVol(stimulus.seg.ITI) = 1;
 end
 
-% Task trial parameters
-task{1}{1}.parameter.ecc = stimulus.ecc;
-task{1}{1}.parameter.priorSTD = stimulus.sd;
-
-% Task variables to be calculated later
 task{1}{1}.randVars.calculated.startRespAngle = nan;
 task{1}{1}.randVars.calculated.respAngle = nan;
 task{1}{1}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
@@ -239,12 +180,6 @@ task{1}{1}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{1}.randVars.calculated.contrast = nan; % contrast of the grating
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{1}.randVars.calculated.dead = 0;
-task{1}{1}.randVars.calculated.visible = 1;
-if stimulus.att==2
-    task{1}{1}.randVars.calculated.target = nan; 
-elseif stimulus.att==3
-    task{1}{1}.randVars.calculated.perisaccInt = nan;
-end
 
 %%%%%%%%%%%%% PHASE TWO %%%%%%%%%%%%%%%%%
 %%%%% POSITION JUDGMENT + RESPONSE %%%%%%
@@ -254,49 +189,33 @@ stimulus.curTrial(2) = 0;
 task{1}{2} = struct;
 task{1}{2}.waitForBacktick = 1;
 
-switch stimulus.att
-    case 1 %Endo
-        % task waits for fixation on first segment
-        task{1}{2}.segmin = [inf .200 0.500 5.000];
-        task{1}{2}.segmax = [inf .200 0.500 5.000];
-
-        stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
-        stimulus.seg{2}.stim = 2;
-        stimulus.seg{2}.delay = 3;
-        stimulus.seg{2}.resp = 4;
-
-        task{1}{2}.parameter.target = stimulus.prior; % prior center
-
-    case 2
-        task{1}{2}.segmin = [inf 0.050 0.050 0.200 0.500 5.000]; %fixate, cue, delay1, stim, delay, response
-        task{1}{2}.segmax = [inf 0.050 0.050 0.200 0.500 5.000];
-
-        stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
-        stimulus.seg{2}.cue = 2;
-        stimulus.seg{2}.delay1 = 3;
-        stimulus.seg{2}.stim = 4;
-        stimulus.seg{2}.delay2 = 5;
-        stimulus.seg{2}.resp = 6;
-
-    otherwise
-        disp('Invalid attention condition. Quitting...');
-end
+% task waits for fixation on first segment
+task{1}{2}.segmin = [inf .200 0.500 5.000];
+task{1}{2}.segmax = [inf .200 0.500 5.000];
 
 if stimulus.noeye==1
     task{1}{2}.segmin(1) = 0.5;
     task{1}{2}.segmax(1) = 0.5;
 end
 
+stimulus.seg{2}.ITI1 = 1; % waits for user input (button press + held) and eye fixation (within 2 degrees)
+stimulus.seg{2}.stim = 2;
+stimulus.seg{2}.delay = 3;
+stimulus.seg{2}.resp = 4;
+
 task{1}{2}.synchToVol = zeros(size(task{1}{2}.segmin));
 task{1}{2}.getResponse = zeros(size(task{1}{2}.segmin));
 if stimulus.powerwheel
     task{1}{2}.getResponse(stimulus.seg{2}.resp)=3;
 else
-    task{1}{2}.getResponse(stimulus.seg{2}.resp)=3;
+    task{1}{2}.getResponse(stimulus.seg{2}.resp)=1;
 end
-
 task{1}{2}.numTrials = 100;
 task{1}{2}.random = 1;
+task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
+task{1}{2}.parameter.target = stimulus.prior; % prior center
+task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
+task{1}{2}.parameter.contrastOpt = 1:length(stimulus.live.contrastPercs); % 60/70/80/90 % correct
 
 if stimulus.scan
     task{1}{2}.synchToVol(stimulus.seg.ITI) = 1;
@@ -304,23 +223,14 @@ end
 
 %% Tracking
 
-% Task trial parameters
-task{1}{2}.parameter.ecc = stimulus.ecc; % eccentricity of display
-task{1}{2}.parameter.priorSTD = stimulus.sd; % radians
-
-% Task variables to be calculated later 
+% these are variables that we want to track for later analysis.
 task{1}{2}.randVars.calculated.startRespAngle = nan;
 task{1}{2}.randVars.calculated.respAngle = nan;
 task{1}{2}.randVars.calculated.angle = nan; % angle at which displayed, depends on attention mode
 task{1}{2}.randVars.calculated.rotation = nan; % rotation of the grating
 task{1}{2}.randVars.calculated.contrast = nan; % contrast of the grating
-task{1}{2}.randVars.calculated.detected = nan; % did they see the grating
-task{1}{2}.randVars.calculated.dead = nan; % did the trial get canceled
-task{1}{2}.randVars.calculated.visible = nan; % were they shown a grating
-
-if stimulus.att==2
-    task{1}{2}.randVars.calculated.target = nan;
-end
+task{1}{2}.randVars.calculated.detected = 0; % did they see the grating
+task{1}{2}.randVars.calculated.dead = 0; % did the trial get canceled
 
 %% Testing 2
 if stimulus.test2
@@ -371,14 +281,6 @@ myscreen.flushMode = 1;
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-% Move files from posjdg folder to either posjdg_Exo or posjdg_Endo
-%
-if ~isdir(sprintf('~/data/posjdg_%s/%s',stimulus.condition,mglGetSID))
-    disp('No stim directory found, so creating directory now.');
-    mkdir(sprintf('~/data/posjdg_%s/%s',stimulus.condition,mglGetSID))
-end
-movefile(sprintf('~/data/posjdg/%s/*',mglGetSID), sprintf('~/data/posjdg_%s/%s/', stimulus.condition, mglGetSID));
-
 if stimulus.plots
     disp('(posjdg) Displaying plots');
     dispInfo(stimulus);
@@ -393,55 +295,52 @@ end
 function [task, myscreen] = startTrialCallback(task,myscreen)
 %%
 if ~isempty(task.lasttrial)
-    if task.lasttrial.thisphase == 1
-        disp(sprintf('Last trial, target: %02.0f, stim: %02.0f',task.lasttrial.target*180/pi,task.lasttrial.angle*180/pi));
-    elseif task.lasttrial.thisphase == 2
-        disp(sprintf('Last trial, target: %02.0f, stim: %02.0f, resp: %02.0f',task.lasttrial.target*180/pi,task.lasttrial.angle*180/pi,task.lasttrial.respAngle*180/pi));
-    end
+    disp(sprintf('Last trial, target: %02.0f, stim: %02.0f, resp: %02.0f',task.lasttrial.target*180/pi,task.lasttrial.angle*180/pi,task.lasttrial.respAngle*180/pi));
 end
 global stimulus
 
-task.thistrial.dead = 0;
-task.thistrial.detected = 0;
-task.thistrial.visible = 1;
+if (~isempty(task.lasttrial)) && (task.thistrial.thisphase==1) && (task.lasttrial.detected==0) && ~task.lasttrial.dead
+    stimulus.staircase = doStaircase('update',stimulus.staircase,task.lasttrial.detected);
+    disp(sprintf('Subject did not see %01.2f%% contrast',task.lasttrial.contrast*100));
+end
 
-if (~isempty(task.lasttrial)) && (task.lasttrial.detected~=1) && ~task.lasttrial.dead && task.lasttrial.visible==1
-    stimulus.staircase = doStaircase('update',stimulus.staircase,0);
-    disp(sprintf('Subject did not see %01.2f%% contrast. Staircase to increase contrast.',task.lasttrial.contrast*100));
-elseif (~isempty(task.lasttrial)) && task.lasttrial.visible==0
-    disp('No stimulus displayed on last trial.');
+% Compute staircase
+if stimulus.curTrial(task.thistrial.thisphase)==0 && (task.thistrial.thisphase==2) || (stimulus.test2)
+    % compute stimulus.live.contrast options
+    out = doStaircase('threshold',stimulus.staircase,'type=weibull');
+    x = 0:.001:1;
+    y = weibull(x,out.fit.fitparams);
+    for yi = 1:length(stimulus.live.contrastPercs)
+        val = x(find(y>=stimulus.live.contrastPercs(yi),1));
+        if ~isempty(val)
+            stimulus.live.contrastOpts(yi) = val;
+        else
+            stimulus.live.contrastOpts(yi) = 0;
+        end
+    end
 end
 
 stimulus.live.gotResponse = 0;
+
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % compute missing variables
+task.thistrial.angle = randn*task.thistrial.priorSTD;
+    
 task.thistrial.rotation = rand*2*pi;
 task.thistrial.startRespAngle = rand*2*pi;
-switch stimulus.att
-    case 1 %Endo
-        task.thistrial.angle = randn*task.thistrial.priorSTD; %normally distributed around the prior
-    case 2 %Exo
-        task.thistrial.angle = rand*2*pi-pi; % stim angle is random
-        task.thistrial.target = rand*2*pi; % cue angle is random
-        if task.thistrial.thisphase == 1 && ~stimulus.test2
-            task.thistrial.visible = (rand > 0.5);
-        end
-    case 3 %Sacc
-        task.thistrial.angle = rand*2*pi-pi;
-        task.thistrial.target = rand*2*pi;
-    otherwise
-        disp('Invalid attention condition. Quitting...');
+
+% contrast from staircase
+if task.thistrial.thisphase==1
+    [task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+else
+    task.thistrial.contrast = stimulus.live.contrastOpts(task.thistrial.contrastOpt);
 end
 
-% contrast from staircase in both phases
-[task.thistrial.contrast, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
-
-% Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 
-disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %02.02f%%',...
+disp(sprintf('(posjdg) Trial (%i): angle: %02.0f, rotation: %02.0f, contrast: %02.0f%%',...
     task.trialnum,(task.thistrial.angle+task.thistrial.target)*180/pi,task.thistrial.rotation*180/pi,task.thistrial.contrast*100));
     
 stimulus.live.eyeCount = 0;
@@ -465,17 +364,14 @@ if any(task.thistrial.thisseg==[stimulus.seg{task.thistrial.thisphase}.ITI1])
     stimulus.live.lastTrigger = -1;
 end
 
-stimulus.live.eyeDead = 0;
+stimulus.live.eyeDead =0 ;
 stimulus.live.resp = 0;
 stimulus.live.fixColor = stimulus.colors.white;
 stimulus.live.fix = 1;
 stimulus.live.stim = 0;
-stimulus.live.cue = 0;
 
 if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim
-    if task.thistrial.visible == 1
-        stimulus.live.stim = 1;
-    end
+    stimulus.live.stim = 1;
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     stimulus.live.resp = 1;
     stimulus.live.angle = task.thistrial.startRespAngle;
@@ -483,8 +379,6 @@ elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     mInfo = mglGetMouse(myscreen.screenNumber);
     stimulus.live.trackingAngle = -mInfo.x/90;
     convertRespXY(task);
-elseif stimulus.att == 2 && task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue
-    stimulus.live.cue = 1;
 end
 
 for i = 1:2
@@ -493,15 +387,13 @@ for i = 1:2
         x = task.thistrial.ecc * cos(task.thistrial.angle+task.thistrial.target);
         y = task.thistrial.ecc * sin(task.thistrial.angle+task.thistrial.target);
         mglBltTexture(stimulus.live.grating,[x y],0,0,task.thistrial.rotation*180/pi);
-    elseif stimulus.live.cue
-        x = task.thistrial.ecc * cos(task.thistrial.target);
-        y = task.thistrial.ecc * sin(task.thistrial.target);
-        mglPolygon([x-.15, x-.15, x+.15, x+.15], [y-.15, y+.15, y+.15, y-.15], stimulus.colors.white);
     end
     
     % resp is updated in screenUpdate
     
     if stimulus.live.fix
+    %      cover
+%         mglFillOval(0,0,[1 1],0.5);
         upFix(stimulus);
     end
 
@@ -560,7 +452,7 @@ if (task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp) && stim
     end
     stimulus.live.trackingAngle = curPos;
     convertRespXY(task);
-elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp % powerwheel==0
+elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
     keys = find(mglGetKeys);
     if any(keys==19)
         stimulus.live.angle = stimulus.live.angle+0.01;
@@ -620,18 +512,15 @@ global stimulus
 
 if task.thistrial.dead, return; end
     
-if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1)) && isempty(task.thistrial.mouseButton)
+if isfield(task.thistrial,'whichButton') && (task.thistrial.whichButton==stimulus.responseKeys(1))
     % subject didn't see anything
     task = jumpSegment(task,inf);
-    task.thistrial.detected = -1; %-1 means they reported not seeing anything
-    disp(sprintf('Subject reported not seeing %02.02f%% contrast stimulus', task.thistrial.contrast*100));
-    return
 end
 
 if stimulus.powerwheel
     validResponse = task.thistrial.mouseButton == 1;
 else
-    validResponse = task.thistrial.whichButton == stimulus.responseKeys(4);
+    validResponse = any(task.thistrial.whichButton == stimulus.responseKeys);
 end
 
 if validResponse
@@ -645,8 +534,8 @@ if validResponse
         elseif ((task.thistrial.thisphase==2) || stimulus.test2)
             % they saw it
 %             if stimulus.live.anyAngleAdj == true
-            task.thistrial.detected = 1;
-            stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
+%                 task.thistrial.detected = 1;
+%                 stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.detected);
 %             end
             % they are actually reporting locations
             task.thistrial.respAngle = stimulus.live.angle;
@@ -670,7 +559,7 @@ global stimulus
 
 stimulus.staircase = doStaircase('init','upDown',...
             'initialThreshold',0.25,...
-            'initialStepsize',0.25/3,...
+            'initialStepsize',0.025,...
             'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
             'nTrials=40','maxStepsize=0.2','minStepsize=0.0001');
         
@@ -714,7 +603,6 @@ end
 function dispInfo(rstimulus)
 %%
 
-doStaircase('threshold',rstimulus.staircase,'dispFig=1','type=weibull');
 % ctask = task; cscreen = myscreen; % save this incase we need them
 
 % compute % correct for valid and invalid trials, display learning over
@@ -722,7 +610,7 @@ doStaircase('threshold',rstimulus.staircase,'dispFig=1','type=weibull');
 % exp = getTaskParameters(task,myscreen);
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/posjdg_%s/%s/17*stim*.mat',rstimulus.condition,mglGetSID)));
+files = dir(fullfile(sprintf('~/data/posjdg_Endo/%s/17*stim*.mat',mglGetSID)));
 
 % load the files and pull out the data (long form)
 %  rrun # counter #    local trial     real trial   angle     respAngle    
@@ -734,7 +622,7 @@ files = dir(fullfile(sprintf('~/data/posjdg_%s/%s/17*stim*.mat',rstimulus.condit
 count = 1; data = zeros(10000,13);
 
 for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/posjdg_%s/%s/%s',rstimulus.condition,mglGetSID,files(fi).name)));
+    load(fullfile(sprintf('~/data/posjdg_Endo/%s/%s',mglGetSID,files(fi).name)));
     
     e = getTaskParameters(myscreen,task);
     if e{1}(1).nTrials>1
@@ -742,17 +630,10 @@ for fi = 1:length(files)
     
         run = stimulus.counter;
 
-        if stimulus.att==2
-            data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-                e.randVars.angle' e.randVars.respAngle' e.randVars.target' ...
-                e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-                e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
-        else
-            data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-                e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
-                e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-                e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
-        end
+        data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
+            e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
+            e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
+            e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
 
         count = count+e.nTrials;
     end
@@ -764,49 +645,49 @@ if any(data(:,6)>pi), data(data(:,6)>pi,6) = data(data(:,6)>pi,6)-2*pi; end
 %% Compute angle-target and respAngle-target plot
 h = figure; hold on
 
-low = [0 0.075 0.081 0.09 inf];
+% low = [0 0.075 0.081 0.09 inf];
 
-% remove no-response trials
-data_ = data(~isnan(data(:,6)),:);
-if rstimulus.att==2
-    data_(data_(:,5)>pi,5) = data_(data_(:,5)>pi,5)-2*pi;
-end
+    % data(:,6) = data(:,6)-data(:,5);
 
-% find the trials where stimulus is - relative to the prior
-flip = data_(:,5)<0; flip = flip*1;
-flip(flip==1) = -1; flip(flip==0) = 1;
-% flip all the stimulus-target to be in the positive space
-data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
+    % remove no-response trials
+    data_ = data(~isnan(data(:,6)),:);
+%     data_ = data_(logical((data_(:,9)>low(i)).*(data_(:,9)<low(i+1))),:);
+    % find the trials where stimulus is - relative to the prior
+    flip = data_(:,5)<0; flip = flip*1;
+    flip(flip==1) = -1; flip(flip==0) = 1;
+    % flip all the stimulus-target to be in the positive space
+    data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
+    Y = data_(:,6);
+    X = [ones(size(Y)) data_(:,5)];
+    b = X\Y;
+    c = [X Y];
 
-if rstimulus.att==2
-    data_(data_(:,6)<-(pi/2),:) = abs(data_(data_(:,6)<-(pi/2),:));
-end
-Y = data_(:,6);
-X = [ones(size(Y)) data_(:,5)];
-b = X\Y;
-c = [X Y];
+    bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
 
-bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
+    % [p,s] = polyfit(data_(:,5),data_(:,6),1);
 
-% [p,s] = polyfit(data_(:,5),data_(:,6),1);
-plot(data_(:,5),data_(:,6),'*');
-% plot constant line
-plot([0 pi],[0 pi],'--r');
-% plot fit
-x = 0:pi;
-plot(x,b(1)+b(2)*x,'--k');
-% compute SD of residuals? 
-% todo
-xlabel('Stimulus - Target (deg)');
-ylabel('Resp - Target (deg)');
-title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-% axis([0 1 -1 1]);
-axis square
+    plot(data_(:,5),data_(:,6),'*');
+    % plot constant line
+    plot([-1 1],[-1 1],'--r');
+    % plot fit
+    x = -1:1;
+    plot(x,b(1)+b(2)*x,'--k');
+    % compute SD of residuals? 
+    % todo
+    xlabel('Stimulus - Target (deg)');
+    ylabel('Resp - Target (deg)');
+    title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f]',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
 
-set(gca,'XTick',0:.5:pi,'XTickLabel',round((0:.5:pi)*180/pi,2),'YTick',-1:.5:pi,'YTickLabel',round((-1:.5:pi)*180/pi,2));
+    axis([0 1 -0.3 1]);
+    axis square
 
-drawPublishAxis;
+    set(gca,'XTick',0:.5:1,'XTickLabel',round((0:.5:1)*180/pi,2),'YTick',0:.5:1,'YTickLabel',round((0:.5:1)*180/pi,2));
+
+    drawPublishAxis;
+    % h = figure;
+    % hist(data(:,5)-data(:,6));
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -834,7 +715,7 @@ alphamask = repmat(grating,1,1,4);
 alphamask(:,:,4) = gauss*255;
 
 % we'll adjust the gamma table to control contrast
-stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast        
+stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % sets the gamma table so that we can have
