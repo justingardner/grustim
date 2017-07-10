@@ -7,30 +7,69 @@
 %    purpose: Create and update a data structure for random dots
 %             that can be used to display different kinds of dot
 %             movement, coherence and contrast
+%             
+%             On init, you can set the following properties
+%             xCenter: x center in degrees of dots patch
+%             yCenter: y center in degrees of dots patch
+%             width: width in degrees
+%             speed: speed of dots
+%             dir: direction of dots (in degrees for linear)
+%             coherence: coherence of dots (from 0 to 1)
+%             type: type of dots. linear (default) is 2D linear
+%                   motion. opticFlow is an optic flow field (note 
+%                   that direction for opticFlow goes from -1 to 1 (in to out)
+%             dotSize: size in pixels of dots
+%             density: dots per deg^2
+%             contrast: contrast of dots
+%             framesPerSecond: This defaults to 60, but should be set
+%               if you want the speeds to be correct
+%             mask: set to 1 for a circular mask
+%             drawType: Can be plot or mgl (for drawing in a figure or 
+%                using mgl to draw
+%
+%            Note that after init, you should not change the
+%            structure parameters yourself (as their may be 
+%            some calculated fields that need to also be changed)
+%            Instead, use the callbacks to change the stimulus
+%
+%            dots = dots.setSpeed(dots, speed) - speeds is in deg/s
+%            dots = dots.dir(dots, dir) - dir is in deg or -1 - 1 for flow
+%            dots = dots.setContrast(dots,contrast) - contrast is 0 - 1
+%            dots = dots.setCenter(dots,x,y) - sets the x,y center in deg
+%
+%            To draw the dots, you update (which changes their position and
+%            needs to be called at framesPerSecond) and draw
+%  
+%            dots = dots.update(dots);
+%            dots = dots.draw(dots);
+%
 % e.g.
 %
-% % init the dots
-% dots = dotsInit;
+% % init the dots (using plot to draw them - typically, mgl is default)
+% dots = dotsInit('drawType=plot');
 %
 % % set direction, speed and contrast
-% dots = feval(dots.setSpeed,dots,4);
-% dots = feval(dots.setDir,dots,45);
-% dots = feval(dots.setContrast,dots,0.5);
+% dots = dots.setSpeed(dots,4);
+% dots = dots.setDir(dots,45);
+% dots = dots.setContrast(dots,0.5);
 %
-% % update the dots
-% dots = feval(dots.update,dots);
+% % dispplay 50 frames
+% for i = 1:50
+%   % update the dots
+%   dots = dots.update(dots);
 %
-% % draw the dots
-% dots = feval(dots.draw,dots);
+%   % draw the dots
+%   dots = dots.draw(dots);
+% end
+%
+%
 function dots = dotsInit(varargin)
 
 % parse arguments
 contrast = 1;type='linear';dir = 1;
-getArgs(varargin,{'xCenter=0','yCenter=0','width=5','height=[]','speed=1','dir=1','coherence=1','type=linear','dotSize=4','density=5','contrast=1','framesPerSecond=60','mask=0','drawType=plot'});
+getArgs(varargin,{'xCenter=0','yCenter=0','width=5','height=[]','speed=1','dir=1','coherence=1','type=linear','dotSize=4','density=5','contrast=1','framesPerSecond=60','mask=1','drawType=mgl'});
 
 % set parameters of dots
-dots.xCenter = xCenter;
-dots.yCenter = yCenter;
 dots.width = width;
 if ~isempty(height)
   % set the height
@@ -45,10 +84,19 @@ dots.coherence = coherence;
 dots.type = lower(type);
 dots.dotSize = dotSize;
 dots.density = density;
-dots.mask = mask;
 dots.contrast = contrast;
 dots.framesPerSecond = framesPerSecond;
+dots.setCenter = @setCenter;
+dots = dots.setCenter(dots,xCenter,yCenter);
 
+% mask
+dots.mask = mask;
+if dots.mask
+  dots.applyMask = @applyMask;
+else
+  dots.applyMask = @noMask;
+end
+  
 % dot type specific functions
 if strcmp(dots.type,'linear')
   dots.setSpeed = @setSpeedLinear;
@@ -79,11 +127,24 @@ end
 
 % set color of each dot
 dots.blackOrWhite  = 2*(rand(1,dots.n) > 0.5)-1;
+dots.black = dots.blackOrWhite == -1;
+dots.white = dots.blackOrWhite == 1;
 
-% set contrast function
+% set contrast
 dots.setContrast = @setContrast;
+dots = dots.setContrast(dots,dots.contrast);
 
-% FIX, FIX, handle mask
+% update them once (to make sure all fields get filled in)
+dots = dots.update(dots);
+
+%%%%%%%%%%%%%%%%%%%
+%    setCenter    %
+%%%%%%%%%%%%%%%%%%%
+function dots = setCenter(dots,xCenter,yCenter)
+
+% set x,y center of dots
+dots.xCenter = xCenter;
+dots.yCenter = yCenter;
 
 %%%%%%%%%%%%%%%%%%%%%
 %    setContrast    %
@@ -92,36 +153,67 @@ function dots = setContrast(dots,contrast)
 
 % set the contrast
 dots.contrast = contrast;
-% set the color valuees
-dots.c = repmat(0.5+dots.blackOrWhite(:)*(contrast/2),1,3);
+dots.blackColor = repmat(0.5-dots.contrast/2,1,3);
+dots.whiteColor = repmat(0.5+dots.contrast/2,1,3);
 
 %%%%%%%%%%%%%%%%%%%%%
 %    mglDotsDraw    %
 %%%%%%%%%%%%%%%%%%%%%
 function dots = mglDotsDraw(dots)
 
+% get dots passed through mask
+[blackX blackY whiteX whiteY] = dots.applyMask(dots);
+
+% draw black dots
+mglPoints2(blackX+dots.xCenter,blackY+dots.yCenter,dots.dotSize,dots.blackColor);
+% draw white dots
+mglPoints2(whiteX+dots.xCenter,whiteY+dots.yCenter,dots.dotSize,dots.whiteColor);
+
+%%%%%%%%%%%%%%%%
+%    noMask    %
+%%%%%%%%%%%%%%%%
+function [blackX blackY whiteX whiteY] = noMask(dots)
+
+blackX = dots.x(dots.black);
+blackY = dots.y(dots.black);
+whiteX = dots.x(dots.white);
+whiteY = dots.y(dots.white);
+
+%%%%%%%%%%%%%%%%%%%
+%    applyMask    %
+%%%%%%%%%%%%%%%%%%%
+function [blackX blackY whiteX whiteY] = applyMask(dots)
+
+goodDots = (dots.x.^2 + dots.y.^2) <= (dots.width/2)^2;
+blackX = dots.x(dots.black & goodDots);
+blackY = dots.y(dots.black & goodDots);
+whiteX = dots.x(dots.white & goodDots);
+whiteY = dots.y(dots.white & goodDots);
+
 %%%%%%%%%%%%%%%%%%%%%%
 %    plotDotsDraw    %
 %%%%%%%%%%%%%%%%%%%%%%
 function dots = plotDotsDraw(dots)
 
-if dots.mask
-  goodDots = find(sqrt(dots.x.^2 + dots.y.^2) <= dots.width/2);
-  x = dots.x(goodDots);
-  y = dots.y(goodDots);
-  blackOrWhite = dots.blackOrWhite(goodDots);
-else
-  x = dots.x;
-  y = dots.y;
-  blackOrWhite = dots.blackOrWhite;
-end
+% get dots passed through mask
+[blackX blackY whiteX whiteY] = dots.applyMask(dots);
 
+% clear figure
 cla;
+% set background to gray
 set(gca,'Color',[0.5 0.5 0.5]);
-plot(x(blackOrWhite==1),y(blackOrWhite==1),'.','Color',repmat(0.5+dots.contrast/2,1,3));hold on
-plot(x(blackOrWhite==-1),y(blackOrWhite==-1),'.','Color',repmat(0.5-dots.contrast/2,1,3));
 
+% draw black dots
+plot(blackX,blackY,'.','Color',dots.blackColor);hold on
+
+% draw white dots
+plot(whiteX,whiteY,'.','Color',dots.whiteColor);
+
+% set axis
 axis([dots.xCenter-dots.width/2 dots.xCenter+dots.width/2 dots.yCenter-dots.height/2 dots.yCenter+dots.height/2]);
+axis square
+
+% and draw
 drawnow;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
