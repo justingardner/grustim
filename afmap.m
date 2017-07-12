@@ -1,4 +1,10 @@
 function [ myscreen ] = afmap( varargin )
+%
+% TODO
+% * fix rotation order
+% * fix fixation cross task (way too hard at 5,5)
+%
+%
 %ATTENTIONFIELDMAPPING 
 %
 %   Map the attention field in the scanner. This function works by having a
@@ -48,13 +54,14 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-attend = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1'});
+attend = 0; run = 0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1','run=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
 stimulus.replay = replay;
+stimulus.overrideRun = run;
 stimulus.attend = attend; % controls attention location: 0 = fixation, 1 = 5,5, 2 = 5,-5
 clear localizer invisible scan noeye task test2 attend
 
@@ -87,6 +94,7 @@ end
 %% Open Old Stimfile
 if ~stimulus.replay
     stimulus.counter = 1;
+    stimulus.curRun = 1;
 
     if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
         % Directory exists, check for a stimefile
@@ -98,6 +106,7 @@ if ~stimulus.replay
             s = load(sprintf('~/data/afmap/%s/%s',mglGetSID,fname));
             % copy staircases and run numbers
             stimulus.counter = s.stimulus.counter + 1;
+            stimulus.curRun = s.stimulus.curRun + 1;
             stimulus.build = s.stimulus.build;
             stimulus.builds = s.stimulus.builds;
             stimulus.attention = s.stimulus.attention;
@@ -107,7 +116,19 @@ if ~stimulus.replay
             disp(sprintf('(afmap) Data file: %s loaded.',fname));
         end
     end
-    disp(sprintf('(afmap) This is run #%i',stimulus.counter));
+end
+
+%% Override run
+if ~stimulus.replay && stimulus.overrideRun>0
+    stimulus.curRun = stimulus.overrideRun;
+end
+
+%% Display run info
+if ~stimulus.replay
+    disp('*************************');
+    disp(sprintf('(afmap) This is scan #%i',stimulus.counter));
+    disp(sprintf('(afmap) This is run #%i',stimulus.curRun));
+    disp('*************************');
 end
 
 %% Stimulus parameters
@@ -323,21 +344,38 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
     disp(sprintf('(afmap) Pre-build complete. Created %i unique builds which will rotate every %i runs.',stimulus.build.uniques,stimulus.build.rotate));
 end
 
-%% Get the current build number
+%% Build the order
+if ~stimulus.replay && ~isfield(stimulus,'order')
+    stimulus.order = struct;
+    
+    stimulus.orderBaseAtt = [1 1 1 2 2 2 3 3 3];
+    stimulus.orderBaseBui = [1 2 3 1 2 3 1 2 3];
+    stimulus.order.curOrder = [];
+end
 
+%% Get the current build number
 if ~stimulus.replay
-    stimulus.build.curBuild = stimulus.build.curBuild + 1;
-    if stimulus.build.curBuild > stimulus.build.rotate
-        stimulus.build.curBuild = 1;
-        stimulus.attention.curAttend = stimulus.attention.curAttend + 1;
-        if stimulus.attention.curAttend > stimulus.attention.rotate
-            stimulus.attention.curAttend = 1;
-        end
+    % need to set: stimulus.build.curBuild and stimulus.attention.curAttend
+    
+    if stimulus.curRun > length(stimulus.order.curOrder)
+        nOrder = randperm(9);
+        stimulus.order.curOrder = [stimulus.order.curOrder nOrder];
     end
+    
+    orderIdx = stimulus.order.curOrder(stimulus.curRun);
+    stimulus.build.curBuild = stimulus.orderBaseBui(orderIdx);
+    stimulus.attention.curAttend = stimulus.orderBaseAtt(orderIdx);
+    
     stimulus.attention.curAttendX = stimulus.attention.attendX(stimulus.attention.curAttend);
     stimulus.attention.curAttendY = stimulus.attention.attendY(stimulus.attention.curAttend);
+end
+
+%% Display build info
+if ~stimulus.replay
+    disp('******************************');
     disp(sprintf('(afmap) Build %i selected',stimulus.build.curBuild));
     disp(sprintf('(afmap) Attending X: %i Y: %i selected',stimulus.attention.curAttendX,stimulus.attention.curAttendY));
+    disp('******************************');
 end
 
 %% Load the current build
