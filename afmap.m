@@ -463,7 +463,7 @@ if ~stimulus.replay
     fixStimulus.interTime = 1.4;
     fixStimulus.stairUsePest = 1;
     fixStimulus.pos = [stimulus.attention.curAttendX stimulus.attention.curAttendY];
-    [task{2}, myscreen] = fixStairInitTask(myscreen);
+    [task{2}, myscreen] = gruFixStairInitTask(myscreen);
     
     % task{2}{1} = struct;
     % task{2}{1}.waitForBacktick = 0;
