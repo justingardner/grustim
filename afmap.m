@@ -7,7 +7,7 @@ function [ myscreen ] = afmap( varargin )
 %   flashes of rotating gratings throughout the visual field at low or high
 %   contrast.
 %
-%   The probe stimuli have three sizes 1x1 deg, 2x2 deg, or 4x4 deg, to
+%   The probe stimuli have three sizes 0.5x0.5, 1x1 or 2x2 deg, to
 %   help estimate different RF sizes and are placed at 2 degree
 %   increments. The probability of a probe stimulus turning on is 2.5% per
 %   TR and the dead time is five seconds. Using poisson processes in this
@@ -48,13 +48,15 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0'});
+attend = 0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
 stimulus.replay = replay;
-clear localizer invisible scan noeye task test2
+stimulus.attend = attend; % controls attention location: 0 = fixation, 1 = 5,5, 2 = 5,-5
+clear localizer invisible scan noeye task test2 attend
 
 if stimulus.scan
     warning('Not setup for scanning');
@@ -98,6 +100,7 @@ if ~stimulus.replay
             stimulus.counter = s.stimulus.counter + 1;
             stimulus.build = s.stimulus.build;
             stimulus.builds = s.stimulus.builds;
+            stimulus.attention = s.stimulus.attention;
             stimulus.staircase = s.stimulus.staircase;
             stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
             clear s;
@@ -155,13 +158,22 @@ if ~stimulus.replay
     stimulus.blanks.opts = {'NW','NE','SE','SW'};
 end
 
+%% Attention stimulus
+if ~stimulus.replay && ~isfield(stimulus,'attention') 
+    stimulus.attention = struct;
+    stimulus.attention.attendX = [0 5 5];
+    stimulus.attention.attendY = [0 5 -5];
+    stimulus.attention.rotate = length(stimulus.attention.attendX);
+    stimulus.attention.curAttend = 1;
+end
+
 %% Build stimulus
 if ~stimulus.replay && ~isfield(stimulus,'build')
     stimulus.build = struct;
     
     stimulus.build.curBuild = 0; % will be incremented later
     
-    stimulus.build.uniques = 5; % how many unique patterns to generate
+    stimulus.build.uniques = 4; % how many unique patterns to generate
     stimulus.build.rotate = 3; % how many patterns to rotate through (set to 4 or 5 for 2x repeat runs)
         
     stimulus.build.cycles = 6;
@@ -317,8 +329,15 @@ if ~stimulus.replay
     stimulus.build.curBuild = stimulus.build.curBuild + 1;
     if stimulus.build.curBuild > stimulus.build.rotate
         stimulus.build.curBuild = 1;
+        stimulus.attention.curAttend = stimulus.attention.curAttend + 1;
+        if stimulus.attention.curAttend > stimulus.attention.rotate
+            stimulus.attention.curAttend = 1;
+        end
     end
+    stimulus.attention.curAttendX = stimulus.attention.attendX(stimulus.attention.curAttend);
+    stimulus.attention.curAttendY = stimulus.attention.attendY(stimulus.attention.curAttend);
     disp(sprintf('(afmap) Build %i selected',stimulus.build.curBuild));
+    disp(sprintf('(afmap) Attending X: %i Y: %i selected',stimulus.attention.curAttendX,stimulus.attention.curAttendY));
 end
 
 %% Load the current build
@@ -442,6 +461,8 @@ if ~stimulus.replay
     fixStimulus.fixLineWidth = 1;
     fixStimulus.stimTime = 0.35;
     fixStimulus.interTime = 1.4;
+    fixStimulus.stairUsePest = 1;
+    fixStimulus.pos = [stimulus.attention.curAttendX stimulus.attention.curAttendY];
     [task{2}, myscreen] = fixStairInitTask(myscreen);
     
     % task{2}{1} = struct;
@@ -499,8 +520,14 @@ if stimulus.replay
     mglClearScreen(0);
 else
     mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
+    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+        mglFixationCross(1,1,stimulus.colors.black);
+    end
     mglFlush
     mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
+    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+        mglFixationCross(1,1,stimulus.colors.black);
+    end
 end
 
 phaseNum = 1;
@@ -627,8 +654,11 @@ disppercent(-1/120,'(afmap) Running: ');
 
 function [task, myscreen] = screenUpdateCallback1(task, myscreen)
 %%
-% global stimulus
+global stimulus
 
+if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+    mglFixationCross(1,1,stimulus.colors.black);
+end
 
 
 function [task, myscreen] = startTrialCallback2(task,myscreen)
@@ -696,9 +726,6 @@ end
 
 function upFix(stimulus)
 %%
-% for this experiment use a circle to indicate where participants can
-% fixate inside of (rather than a cross which might arbitrarily enforce
-% poisitioning
 % mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
 mglFixationCross(1,1,stimulus.live.fixColor);
 
