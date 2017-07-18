@@ -541,7 +541,7 @@ stimulus.curTrial = 0;
 if ~stimulus.replay
     global fixStimulus %#ok<TLEV>
 
-    fixStimulus.diskSize `= 0.75;
+    fixStimulus.diskSize = 0.75;
     fixStimulus.fixWidth = 1;
     fixStimulus.fixLineWidth = 3;
     fixStimulus.stimTime = 0.35;
