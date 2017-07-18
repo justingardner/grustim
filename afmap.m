@@ -110,7 +110,8 @@ if ~stimulus.replay
             stimulus.build = s.stimulus.build;
             stimulus.builds = s.stimulus.builds;
             stimulus.attention = s.stimulus.attention;
-            stimulus.staircase = s.stimulus.staircase;
+            stimulus.staircases = s.stimulus.staircases;
+            stimulus.order = s.stimulus.order;
             stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
             clear s;
             disp(sprintf('(afmap) Data file: %s loaded.',fname));
@@ -182,8 +183,18 @@ end
 %% Attention stimulus
 if ~stimulus.replay && ~isfield(stimulus,'attention') 
     stimulus.attention = struct;
-    stimulus.attention.attendX = [0 5 5];
-    stimulus.attention.attendY = [0 5 -5];
+    stimulus.attention.attendX = [0 4 4];
+    stimulus.attention.attendY = [0 4 -4];
+    for ai = 1:length(stimulus.attention.attendX)
+        if any(stimulus.attention.attendX(ai)==stimulus.stimx)
+            warning('Stimulus and attention task are overlapping on the x-axis');
+        end
+    end
+    for ai = 1:length(stimulus.attention.attendY)
+        if any(stimulus.attention.attendY(ai)==stimulus.stimy)
+            warning('Stimulus and attention task are overlapping on the y-axis');
+        end
+    end
     stimulus.attention.rotate = length(stimulus.attention.attendX);
     stimulus.attention.curAttend = 1;
 end
@@ -194,7 +205,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
     
     stimulus.build.curBuild = 0; % will be incremented later
     
-    stimulus.build.uniques = 4; % how many unique patterns to generate
+    stimulus.build.uniques = 3; % how many unique patterns to generate
     stimulus.build.rotate = 3; % how many patterns to rotate through (set to 4 or 5 for 2x repeat runs)
         
     stimulus.build.cycles = 6;
@@ -208,6 +219,8 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
         warning('The code has insufficient TRs available for the stimulus program you requested');
         keyboard
     end
+    
+    disp(sprintf('Building %i unique probe sequences. Each sequence consists of %i cycles of %i TRs each.',stimulus.build.uniques,stimulus.build.cycles,stimulus.build.cycleLength));
     
     for bi = 1:stimulus.build.uniques
         build = struct; % initialize
@@ -338,7 +351,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
 % %             pause(.01);
 % %         end
         % test code end
-        disp(sprintf('(afmap) Pre-build of build %i has finished, saving.',bi));
+        disp(sprintf('(afmap) Pre-build of build %i has finished (will be saved with stimfile).',bi));
         stimulus.builds{bi} = build;
     end
     disp(sprintf('(afmap) Pre-build complete. Created %i unique builds which will rotate every %i runs.',stimulus.build.uniques,stimulus.build.rotate));
@@ -348,9 +361,24 @@ end
 if ~stimulus.replay && ~isfield(stimulus,'order')
     stimulus.order = struct;
     
-    stimulus.orderBaseAtt = [1 1 1 2 2 2 3 3 3];
-    stimulus.orderBaseBui = [1 2 3 1 2 3 1 2 3];
+    stimulus.order.BaseAtt = zeros(1,stimulus.build.rotate*stimulus.attention.rotate);
+    for ai = 1:stimulus.attention.rotate
+        stimulus.order.BaseAtt((ai-1)*stimulus.build.rotate+1:ai*stimulus.build.rotate) = ai*ones(1,stimulus.build.rotate);
+    end
+    stimulus.order.BaseBui = repmat(1:stimulus.build.rotate,1,stimulus.attention.rotate);
+    stimulus.order.n = length(stimulus.order.BaseAtt);
     stimulus.order.curOrder = [];
+    stimulus.order.doneMat = zeros(stimulus.attention.rotate,stimulus.build.rotate);
+end
+
+%% Staircase
+if ~stimulus.replay
+    if ~isfield(stimulus,'staircases')
+        disp('(afmap) WARNING: New staircase');
+        initStair();
+    else
+        resetStair();
+    end
 end
 
 %% Get the current build number
@@ -358,16 +386,44 @@ if ~stimulus.replay
     % need to set: stimulus.build.curBuild and stimulus.attention.curAttend
     
     if stimulus.curRun > length(stimulus.order.curOrder)
-        nOrder = randperm(9);
+        nOrder = randperm(stimulus.order.n);
         stimulus.order.curOrder = [stimulus.order.curOrder nOrder];
     end
     
     orderIdx = stimulus.order.curOrder(stimulus.curRun);
-    stimulus.build.curBuild = stimulus.orderBaseBui(orderIdx);
-    stimulus.attention.curAttend = stimulus.orderBaseAtt(orderIdx);
+    stimulus.build.curBuild = stimulus.order.BaseBui(orderIdx);
+    stimulus.attention.curAttend = stimulus.order.BaseAtt(orderIdx);
     
     stimulus.attention.curAttendX = stimulus.attention.attendX(stimulus.attention.curAttend);
     stimulus.attention.curAttendY = stimulus.attention.attendY(stimulus.attention.curAttend);
+    
+    stimulus.staircase = stimulus.staircases{stimulus.attention.curAttend};
+end
+
+%% Display completion information
+if ~stimulus.replay
+
+    strs = {};
+    initStrs = {'Build\t','#\t'};
+    for bi = 1:stimulus.build.rotate
+        if bi==1
+            strs{end+1} = sprintf('\t');
+        elseif bi>(length(initStrs)+1)
+            strs{end+1} = sprintf('\t');
+        else
+            strs{end+1} = sprintf(initStrs{bi-1});
+        end
+        for ai = 1:stimulus.attention.rotate
+            strs{end} = sprintf('%s%i\t',strs{end},stimulus.order.doneMat(ai,bi));
+        end
+    end
+    disp('******************************');
+    disp(sprintf('\tAttention condition'));
+%     disp(aconds);
+    for bi = 1:stimulus.build.rotate
+        disp(sprintf('%s',strs{bi}));
+    end
+    disp('******************************');
 end
 
 %% Display build info
@@ -410,15 +466,6 @@ end
 % set background to grey
 myscreen.background = 0.5;
 
-%% Staircase
-if ~stimulus.replay
-    if ~isfield(stimulus,'staircase')
-        disp('(afmap) WARNING: New staircase');
-        initStair();
-    else
-        resetStair();
-    end
-end
 
 %% Plot and return
 if stimulus.plots==2
@@ -494,12 +541,14 @@ stimulus.curTrial = 0;
 if ~stimulus.replay
     global fixStimulus %#ok<TLEV>
 
-    fixStimulus.diskSize = 0.75;
-    fixStimulus.fixWidth = 0.75;
-    fixStimulus.fixLineWidth = 1;
+    fixStimulus.diskSize `= 0.75;
+    fixStimulus.fixWidth = 1;
+    fixStimulus.fixLineWidth = 3;
     fixStimulus.stimTime = 0.35;
     fixStimulus.interTime = 1.4;
     fixStimulus.stairUsePest = 1;
+    fixStimulus.responseTime = 2;
+    fixStimulus.staircase = stimulus.staircase;
     fixStimulus.pos = [stimulus.attention.curAttendX stimulus.attention.curAttendY];
     [task{2}, myscreen] = gruFixStairInitTask(myscreen);
     
@@ -559,12 +608,12 @@ if stimulus.replay
 else
     mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
     if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
-        mglFixationCross(1,1,stimulus.colors.black);
+        mglFixationCross(1,3,stimulus.colors.black);
     end
     mglFlush
     mglClearScreen(0.5); %mglFixationCross(1,1,stimulus.colors.white);
     if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
-        mglFixationCross(1,1,stimulus.colors.black);
+        mglFixationCross(1,3,stimulus.colors.black);
     end
 end
 
@@ -610,6 +659,15 @@ if stimulus.replay
     save(replay,'-struct','s');
 end
 
+% save info
+if ~stimulus.replay
+    % save which run we just finished
+    stimulus.order.doneMat(stimulus.attention.curAttend,stimulus.build.curBuild) = stimulus.order.doneMat(stimulus.attention.curAttend,stimulus.build.curBuild)+1;
+    % save staircase
+    stimulus.staircase = fixStimulus.staircase;
+    stimulus.staircases{stimulus.attention.curAttend} = stimulus.staircase;
+end
+
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -638,13 +696,55 @@ stimulus.grid.t(stimulus.curTrial) = mglGetSecs;
 
 if stimulus.replay
     mglClearScreen(0);
+    drawGratings();
     myscreen.flushMode = 1;
 else
     mglClearScreen();
-    myscreen.flushMode = 1;
+    drawGratings();
+    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+        mglFixationCross(1,3,stimulus.colors.black);
+    end
+    drawFix(myscreen);
+    mglFlush;
+    mglClearScreen();
+    drawGratings();
+    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+        mglFixationCross(1,3,stimulus.colors.black);
+    end
+    drawFix(myscreen);
 end
 
 % draw gratings for probe task
+
+
+if stimulus.replay
+    mglFlush % the screen will blank after the frame, but whatever
+    frame = mglFrameGrab;
+    if ~isfield(stimulus,'frames')
+        stimulus.frames = zeros(myscreen.screenWidth,myscreen.screenHeight,stimulus.gridCount);
+    end
+    stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
+end
+
+% disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
+disppercent(stimulus.curTrial/120,'(afmap) Running: ');
+
+function drawFix(myscreen)
+
+global fixStimulus;
+
+if fixStimulus.trainingMode,mglClearScreen;end
+
+if ~isempty(fixStimulus.displayText)
+  mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
+end
+mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+
+mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
+
+function drawGratings
+
+global stimulus
 
 for xi = 1:length(stimulus.stimx)
     for yi = 1:length(stimulus.stimy)
@@ -668,18 +768,6 @@ for xi = 1:length(stimulus.stimx)
     end
 end
 
-if stimulus.replay
-    mglFlush % the screen will blank after the frame, but whatever
-    frame = mglFrameGrab;
-    if ~isfield(stimulus,'frames')
-        stimulus.frames = zeros(myscreen.screenWidth,myscreen.screenHeight,stimulus.gridCount);
-    end
-    stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
-end
-
-% disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
-disppercent(stimulus.curTrial/120,'(afmap) Running: ');
-
 function [task, myscreen] = startTrialCallback1(task,myscreen)
 global stimulus
 
@@ -692,11 +780,8 @@ disppercent(-1/120,'(afmap) Running: ');
 
 function [task, myscreen] = screenUpdateCallback1(task, myscreen)
 %%
-global stimulus
+% global stimulus
 
-if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
-    mglFixationCross(1,1,stimulus.colors.black);
-end
 
 
 function [task, myscreen] = startTrialCallback2(task,myscreen)
@@ -801,25 +886,31 @@ end
 function initStair()
 global stimulus
 
-stimulus.staircase = doStaircase('init','upDown',...
-            'initialThreshold',0.15,...
-            'initialStepsize',0.03,...
-            'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
-            'nTrials=80','maxStepsize=0.2','minStepsize=0.0001');
-        
+for ai = 1:stimulus.attention.rotate
+    stimulus.staircases{ai} = doStaircase('init','upDown',...
+                'initialThreshold',0.40,...
+                'initialStepsize',0.03,...
+                'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
+                'nTrials=80','maxStepsize=0.2','minStepsize=0.0001');
+end
+
 function resetStair()
 
 global stimulus
 
-if doStaircase('stop',stimulus.staircase)
-    disp('(afmap) Staircase is being reset');
-    stimulus.staircase(end+1) = doStaircase('init',stimulus.staircase(end));
-    if stimulus.staircase(end).s.threshold>0.3
-        disp('(afmap) Bad staircase threshold: setting to 0.3');
-        stimulus.staircase(end).s.threshold=0.3;
-    elseif stimulus.staircase(end).s.threshold<0
-        disp('(afmap) Bad staircase threshold: setting to 0.05');
-        stimulus.staircase(end).s.threshold=0.05;
+for ai = 1:stimulus.attention.rotate
+    s = stimulus.staircases{ai};
+    if doStaircase('stop',s)
+        disp('(afmap) Staircase is being reset');
+        s(end+1) = doStaircase('init',s(end));
+        if s(end).s.threshold>1
+            disp('(afmap) Bad staircase threshold: setting to 1');
+            s(end).s.threshold=1;
+        elseif s(end).s.threshold<0
+            disp('(afmap) Bad staircase threshold: setting to 0.05');
+            s(end).s.threshold=0.05;
+        end
+        stimulus.staircases{ai} = s;
     end
 end
 
