@@ -12,8 +12,8 @@ mglEatKeys('12`');
 global stimulus
  
 % get arguments
-width = 32; visual = 0; auditory = 0; bimodal = 0; plots = 1;
-getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','plots=1'},'verbose=1');
+width = 32; visual = 0; auditory = 0; bimodal = 0; plots = 0;
+getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','plots=0'},'verbose=1');
 
 if sum([visual,auditory,bimodal]) > 1
     warning('(alaisburr) More than one task type detected.');
