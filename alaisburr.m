@@ -12,8 +12,8 @@ mglEatKeys('12`');
 global stimulus
  
 % get arguments
-width = 4; visual = 0; auditory = 0; bimodal = 0; plots = 1;
-getArgs(varargin,{'width=4','visual=0','auditory=0','bimodal=0','plots=1'},'verbose=1');
+width = 32; visual = 0; auditory = 0; bimodal = 0; plots = 1;
+getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','plots=1'},'verbose=1');
 
 if sum([visual,auditory,bimodal]) > 1
     warning('(alaisburr) More than one task type detected.');
@@ -106,13 +106,13 @@ if task.thistrial.thisseg == 1
     task.thistrial.jitter = rand - 0.5; %random jittering between -0.5 and 0.5 deg
     % horizontal position of first, second stim
     if ~task.thistrial.posDiff
-        task.thistrial.xpos = [jitter, jitter];
+        task.thistrial.xpos = [task.thistrial.jitter, task.thistrial.jitter];
     else
         if task.thistrial.centerWhich == 1
-            task.thistrial.xpos = [jitter, task.thistrial.posDiff + jitter];
+            task.thistrial.xpos = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
             task.thistrial.centerint = 1;
         elseif task.thistrial.centerWhich == 2
-            task.thistrial.xpos = [task.thistrial.posDiff + jitter, jitter];
+            task.thistrial.xpos = [task.thistrial.posDiff + task.thistrial.jitter, task.thistrial.jitter];
             task.thistrial.centerint = 2;
         end
     end
@@ -174,13 +174,13 @@ if ~task.thistrial.gotResponse
         % correct
         task.thistrial.correct = 1;
         % feeback
-        stimulus.fixColor = [0 1 0];
+%         stimulus.fixColor = [0 1 0];
         disp(sprintf('(alaisburr) Trial %i: %0.4f resp %i correct', ...
             task.trialnum, task.thistrial.posDiff, task.thistrial.whichButton))
     else
         % incorrect
         task.thistrial.correct = 0;
-        stimulus.fixColor = [1 0 0];
+%         stimulus.fixColor = [1 0 0];
         disp(sprintf('(alaisburr) Trial %i: %0.4f resp %i incorrect', ...
             task.trialnum, task.thistrial.posDiff, task.thistrial.whichButton))
     end
@@ -229,6 +229,7 @@ function s = createITD(stimulus,theta)
 r = 0.09;
 % speed of sound at 23 deg celcius (m/s)
 c = 345;
+fs = 8192;
 % for low frequency sound
 td = (theta + sin(theta)) * r / c;
 td_a = 0:1/fs:abs(td);
