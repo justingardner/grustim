@@ -42,8 +42,8 @@ stimulus.interval = [2 4];
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
-screenParams = mglGetScreenParams{1};
-stimulus.displayDistance = screenParams.displayDistance;
+screenParams = mglGetScreenParams;
+stimulus.displayDistance = screenParams{1}.displayDistance;
 
 % initalize the screen
 myscreen.background = 0;  %black
