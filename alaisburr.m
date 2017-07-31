@@ -42,6 +42,9 @@ stimulus.interval = [2 4];
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
+screenParams = mglGetScreenParams{1};
+stimulus.displayDistance = screenParams.displayDistance;
+
 % initalize the screen
 myscreen.background = 0;  %black
 myscreen = initScreen(myscreen);
@@ -227,18 +230,21 @@ function s = createITD(stimulus,theta)
 
 %%% interaural time difference
 % radius of head in meter (assuming spherical)
-r = 0.09;
-% speed of sound at 23 deg celcius (m/s)
-c = 345;
+r = 0.0875;
+% speed of sound at room temperature (m/s)
+c = 346;
 fs = 8192;
+% distance from monitor
+d = stimulus.displayDistance;
 % for low frequency sound
-td = (2*sind(theta)) * r / c;
+% td = (2*sind(theta)) * r / c;
+td = (sqrt(((d+r)*tand(theta)-r).^2 + (d+r)^2) - sqrt(((d+r)*tand(theta)+r).^2 + (d+r)^2))./c;
 td_a = 0:1/fs:abs(td);
 clear waveform  s
-if td > 0
+if td < 0
     waveform(1,:) = [stimulus.wav, zeros(1,length(td_a))];
     waveform(2,:) = [zeros(1,length(td_a)), stimulus.wav];
-elseif td < 0
+elseif td > 0
     waveform(2,:) = [stimulus.wav, zeros(1,length(td_a))];
     waveform(1,:) = [zeros(1,length(td_a)), stimulus.wav];
 else
