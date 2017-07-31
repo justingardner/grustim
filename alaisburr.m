@@ -12,8 +12,8 @@ mglEatKeys('12`');
 global stimulus
  
 % get arguments
-width = 32; visual = 0; auditory = 0; bimodal = 0; plots = 0;
-getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','plots=0'},'verbose=1');
+width = 32; visual = 0; auditory = 0; bimodal = 0; disp = 0;
+getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=0'},'verbose=1');
 
 if sum([visual,auditory,bimodal]) > 1
     warning('(alaisburr) More than one task type detected.');
@@ -29,7 +29,7 @@ elseif auditory
 else
     stimulus.task = 3;
 end
-stimulus.plots = plots;
+stimulus.disp = disp;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
 stimulus.stimDur = .015; % 15ms
@@ -92,7 +92,7 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if stimulus.plots
+if stimulus.disp
 dispPsychometric(task{1}{1});
 end
  
@@ -111,11 +111,12 @@ if task.thistrial.thisseg == 1
         if task.thistrial.centerWhich == 1
             task.thistrial.xpos = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
             task.thistrial.centerint = 1;
-        elseif task.thistrial.centerWhich == 2
-            task.thistrial.xpos = [task.thistrial.posDiff + task.thistrial.jitter, task.thistrial.jitter];
+        else
+            task.thistrial.xpos = [task.thistrial.jitter - task.thistrial.posDiff, task.thistrial.jitter];
             task.thistrial.centerint = 2;
         end
     end
+
     task.thistrial.diff = task.thistrial.posDiff;
     
     if stimulus.task ~= 1 %auditory or bimodal condition
@@ -155,7 +156,7 @@ end
 
 %draw fixation cross
 if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
-    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor*.75);
+    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor*.5);
 else
     mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 end
@@ -174,13 +175,13 @@ if ~task.thistrial.gotResponse
         % correct
         task.thistrial.correct = 1;
         % feeback
-%         stimulus.fixColor = [0 1 0];
+        stimulus.fixColor = [0 1 0];
         disp(sprintf('(alaisburr) Trial %i: %0.4f resp %i correct', ...
             task.trialnum, task.thistrial.posDiff, task.thistrial.whichButton))
     else
         % incorrect
         task.thistrial.correct = 0;
-%         stimulus.fixColor = [1 0 0];
+        stimulus.fixColor = [1 0 0];
         disp(sprintf('(alaisburr) Trial %i: %0.4f resp %i incorrect', ...
             task.trialnum, task.thistrial.posDiff, task.thistrial.whichButton))
     end
@@ -258,7 +259,7 @@ n = zeros(1,length(posDiff)); k = zeros(1,length(posDiff));
 for i = 1:length(posDiff)
     resp{i} = task.randVars.resp(task.randVars.diff == posDiff(i));
     n(i) = sum(resp{i} == 1 | resp{i}==2);
-    k = sum(resp{i} == 2);
+    k(i) = sum(resp{i} == 2);
 end
 percent = k./n;
 
