@@ -232,13 +232,13 @@ r = 0.09;
 c = 345;
 fs = 8192;
 % for low frequency sound
-td = (theta + sin(theta)) * r / c;
+td = (2*sind(theta)) * r / c;
 td_a = 0:1/fs:abs(td);
 clear waveform  s
-if td < 0
+if td > 0
     waveform(1,:) = [stimulus.wav, zeros(1,length(td_a))];
     waveform(2,:) = [zeros(1,length(td_a)), stimulus.wav];
-elseif td > 0
+elseif td < 0
     waveform(2,:) = [stimulus.wav, zeros(1,length(td_a))];
     waveform(1,:) = [zeros(1,length(td_a)), stimulus.wav];
 else
