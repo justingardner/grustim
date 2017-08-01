@@ -241,7 +241,7 @@ d = stimulus.displayDistance;
 % for low frequency sound
 % td = (2*sind(theta)) * r / c;
 % left - right
-td = (sqrt(((d+r)*tand(theta)-r).^2 + d^2) - sqrt(((d+r)*tand(theta)+r).^2 + d^2))./c;
+td = (sqrt((d*tand(theta)-r).^2 + (d+r)^2) - sqrt((d*tand(theta)+r).^2 + (d+r)^2))./c;
 td_a = 0:1/fs:abs(td);
 clear waveform s
 if td > 0
