@@ -35,6 +35,7 @@ stimulus.width = width;
 stimulus.stimDur = .015; % 15ms
 stimulus.gaussainDur = .015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
+stimulus.samplesPerSecond = 1000000;
 stimulus.ISI = .500; % 500ms
 stimulus.contrast = .1; % 10% contrast
 stimulus.interval = [2 4];
@@ -43,7 +44,7 @@ stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
 screenParams = mglGetScreenParams;
-stimulus.displayDistance = screenParams{1}.displayDistance;
+stimulus.displayDistance = screenParams{1}.displayDistance*.01;
 
 % initalize the screen
 myscreen.background = 0;  %black
@@ -214,13 +215,14 @@ stimulus.tex = mglCreateTexture(gaussian);
 
 function stimulus = initClick(stimulus,myscreen)
 % sampling frequency (samples per sec)
-duration = 0.0015; % 1.5ms
-fs = 8192-1;
+duration = stimulus.clickDur;
+fs = stimulus.samplesPerSecond-1;
 t = 0:1/fs:duration;
 % frequency of signal in hz
-hz = 440;
-amplitude = 0.5;
-stimulus.wav = amplitude * sin(2*pi*hz*t);
+% hz = 440;
+% amplitude = 0.5;
+% stimulus.wav = amplitude * sin(2*pi*hz*t);
+stimulus.wav = 0.125 * randn(1,length(t));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to update the stimulus
@@ -233,15 +235,15 @@ function s = createITD(stimulus,theta)
 r = 0.0875;
 % speed of sound at room temperature (m/s)
 c = 346;
-fs = 8192-1;
+fs = stimulus.samplesPerSecond - 1;
 % distance from monitor
 d = stimulus.displayDistance;
 % for low frequency sound
 % td = (2*sind(theta)) * r / c;
 % left - right
-td = (sqrt(((d+r)*tand(theta)-r).^2 + (d+r)^2) - sqrt(((d+r)*tand(theta)+r).^2 + (d+r)^2))./c;
+td = (sqrt(((d+r)*tand(theta)-r).^2 + d^2) - sqrt(((d+r)*tand(theta)+r).^2 + d^2))./c;
 td_a = 0:1/fs:abs(td);
-clear waveform  s
+clear waveform s
 if td > 0
     waveform(1,:) = [stimulus.wav, zeros(1,length(td_a))];
     waveform(2,:) = [zeros(1,length(td_a)), stimulus.wav];
@@ -254,7 +256,6 @@ else
 end
 
 s = mglInstallSound(waveform);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
