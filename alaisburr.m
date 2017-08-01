@@ -215,8 +215,8 @@ stimulus.tex = mglCreateTexture(gaussian);
 function stimulus = initClick(stimulus,myscreen)
 % sampling frequency (samples per sec)
 duration = 0.0015; % 1.5ms
-fs = 8192;
-t = 0:2*pi/fs:2*pi*duration;
+fs = 8192-1;
+t = 0:1/fs:duration;
 % frequency of signal in hz
 hz = 440;
 amplitude = 0.5;
@@ -233,18 +233,19 @@ function s = createITD(stimulus,theta)
 r = 0.0875;
 % speed of sound at room temperature (m/s)
 c = 346;
-fs = 8192;
+fs = 8192-1;
 % distance from monitor
 d = stimulus.displayDistance;
 % for low frequency sound
 % td = (2*sind(theta)) * r / c;
+% left - right
 td = (sqrt(((d+r)*tand(theta)-r).^2 + (d+r)^2) - sqrt(((d+r)*tand(theta)+r).^2 + (d+r)^2))./c;
 td_a = 0:1/fs:abs(td);
 clear waveform  s
-if td < 0
+if td > 0
     waveform(1,:) = [stimulus.wav, zeros(1,length(td_a))];
     waveform(2,:) = [zeros(1,length(td_a)), stimulus.wav];
-elseif td > 0
+elseif td < 0
     waveform(2,:) = [stimulus.wav, zeros(1,length(td_a))];
     waveform(1,:) = [zeros(1,length(td_a)), stimulus.wav];
 else
