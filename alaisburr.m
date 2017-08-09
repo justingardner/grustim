@@ -222,7 +222,7 @@ t = 0:1/fs:duration;
 % hz = 440;
 % amplitude = 0.5;
 % stimulus.wav = amplitude * sin(2*pi*hz*t);
-stimulus.wav = 0.125 * randn(1,length(t));
+stimulus.wav = 0.25 * randn(1,length(t));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to update the stimulus
@@ -255,7 +255,7 @@ else
     waveform(2,:) = stimulus.wav;
 end
 
-s = mglInstallSound(waveform);
+s = mglInstallSound(waveform, stimulus.samplesPerSecond);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
