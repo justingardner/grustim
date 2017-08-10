@@ -228,7 +228,7 @@ fc = 2000; % cutoff frequency
 % [b,a] = butter(5, fc/(stimulus.samplesPerSecond/2));
 b = [9.59619536611278e-12,4.79809768305639e-11,9.59619536611278e-11,9.59619536611278e-11,4.79809768305639e-11,9.59619536611278e-12];
 a = [1,-4.95933444853327,9.83816341127334,-9.75847320197047,4.83979404409856,-0.960149804561081];
-wav = 0.25 * randn(1,length(t));
+wav = randn(1,length(t));
 wavFiltered = filter(b,a,wav);
 stimulus.wav = wavFiltered;
 
