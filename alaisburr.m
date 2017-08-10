@@ -222,7 +222,13 @@ t = 0:1/fs:duration;
 % hz = 440;
 % amplitude = 0.5;
 % stimulus.wav = amplitude * sin(2*pi*hz*t);
-stimulus.wav = 0.25 * randn(1,length(t));
+
+fc = 2000; % cutoff frequency
+% 5th order Butterworth filter
+[b,a] = butter(5, fc/(stimulus.samplesPerSecond/2));
+wav = 0.25 * randn(1,length(t));
+wavFiltered = filter(b,a,wav);
+stimulus.wav = wavFiltered;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to update the stimulus
