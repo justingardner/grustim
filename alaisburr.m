@@ -35,7 +35,7 @@ stimulus.width = width;
 stimulus.stimDur = .015; % 15ms
 stimulus.gaussainDur = .015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
-stimulus.samplesPerSecond = 1000000;
+stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
 stimulus.contrast = .1; % 10% contrast
 stimulus.interval = [2 4];
@@ -62,7 +62,7 @@ task{1}{1}.numBlocks = 8;
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-15 -10 -5 -2.5 -1.25 0 1.25 2.5 5 10 15]; 
+task{1}{1}.parameter.posDiff = [-15,15];%[-15 -10 -5 -2.5 -1.25 0 1.25 2.5 5 10 15]; 
 
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
@@ -223,46 +223,98 @@ t = 0:1/fs:duration;
 % amplitude = 0.5;
 % stimulus.wav = amplitude * sin(2*pi*hz*t);
 
-fc = 2000; % cutoff frequency
-% 5th order Butterworth filter
-% [b,a] = butter(5, fc/(stimulus.samplesPerSecond/2));
-b = [9.59619536611278e-12,4.79809768305639e-11,9.59619536611278e-11,9.59619536611278e-11,4.79809768305639e-11,9.59619536611278e-12];
-a = [1,-4.95933444853327,9.83816341127334,-9.75847320197047,4.83979404409856,-0.960149804561081];
-wav = randn(1,length(t));
-wavFiltered = filter(b,a,wav);
-stimulus.wav = wavFiltered;
+wav = 0.5 * randn(1,length(t));
+stimulus.wav = wav;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to update the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function s = createITD(stimulus,theta)
 % theta: angle to sound source (-90 to left and +90 to right)
-
-%%% interaural time difference
-% radius of head in meter (assuming spherical)
-r = 0.0875;
-% speed of sound at room temperature (m/s)
-c = 346;
-fs = stimulus.samplesPerSecond - 1;
-% distance from monitor
-d = stimulus.displayDistance;
-% for low frequency sound
-% td = (2*sind(theta)) * r / c;
-% left - right
-td = (sqrt((d*tand(theta)-r).^2 + (d+r)^2) - sqrt((d*tand(theta)+r).^2 + (d+r)^2))./c;
-td_a = 0:1/fs:abs(td);
-clear waveform s
-if td > 0
-    waveform(1,:) = [stimulus.wav, zeros(1,length(td_a))];
-    waveform(2,:) = [zeros(1,length(td_a)), stimulus.wav];
-elseif td < 0
-    waveform(2,:) = [stimulus.wav, zeros(1,length(td_a))];
-    waveform(1,:) = [zeros(1,length(td_a)), stimulus.wav];
+% %%% interaural time difference
+% % radius of head in meter (assuming spherical)
+% r = 0.0875;
+% % speed of sound at room temperature (m/s)
+% c = 346;
+% fs = stimulus.samplesPerSecond - 1;
+% % distance from monitor
+% d = stimulus.displayDistance;
+% % for low frequency sound
+% % td = (2*sind(theta)) * r / c;
+% % left - right
+% td = (sqrt((d*tand(theta)-r).^2 + (d+r)^2) - sqrt((d*tand(theta)+r).^2 + (d+r)^2))./c;
+% td_a = 0:1/fs:abs(td);
+% clear waveform s
+% if td > 0
+%     waveform(1,:) = [stimulus.wav, zeros(1,length(td_a))];
+%     waveform(2,:) = [zeros(1,length(td_a)), stimulus.wav];
+% elseif td < 0
+%     waveform(2,:) = [stimulus.wav, zeros(1,length(td_a))];
+%     waveform(1,:) = [zeros(1,length(td_a)), stimulus.wav];
+% else
+%     waveform(1,:) = stimulus.wav;
+%     waveform(2,:) = stimulus.wav;
+% end
+len = length(stimulus.wav);
+% load impulse response
+elev = 0;
+if mod(theta, 5) == 0
+    if theta >= 0
+        temp = readhrtf(elev,theta,'L');
+        IR_L = temp(1,:);
+        IR_R = temp(2,:);
+    else
+        temp = readhrtf(elev,-theta,'L');
+        IR_L = temp(2,:);
+        IR_R = temp(1,:);
+    end
+    % fft
+    yl = fft(IR_L, len);
+    yr = fft(IR_R, len);
 else
-    waveform(1,:) = stimulus.wav;
-    waveform(2,:) = stimulus.wav;
+    if theta >= 0
+        temp{1} = readhrtf(elev, floor(theta/5) * 5, 'L');
+        temp{2} = readhrtf(elev, ceil(theta/5) * 5, 'L');
+        for i = 1:2
+            IR_L{i} = temp{i}(1,:);
+            IR_R{i} = temp{i}(2,:);
+        end
+    else
+        theta = -theta;
+        temp{1} = readhrtf(elev, floor(theta/5) * 5, 'L');
+        temp{2} = readhrtf(elev, ceil(theta/5) * 5, 'L');
+        for i = 1:2
+            IR_L{i} = temp{i}(2,:);
+            IR_R{i} = temp{i}(1,:);
+        end
+    end
+    for i = 1:2
+        YL{i} = fft(IR_L{i},len);
+        YR{i} = fft(IR_R{i},len);
+    end
+    
+    yl = ((ceil(theta/5)*5 - theta)/5 * YL{1}) + ((theta - floor(theta/5)*5)/5 * YL{2});
+    yr = ((ceil(theta/5)*5 - theta)/5 * YR{1}) + ((theta - floor(theta/5)*5)/5 * YR{2});
+end
+yw = fft(stimulus.wav,len);
+if size(yw,1) ~= size(yl,1);
+    yl = yl';
+    yr = yr';
 end
 
+leftFunc = yw .* yl;
+rightFunc = yw .* yr;
+
+leftwav = ifft(leftFunc, len);
+rightwav = ifft(rightFunc,len);
+clear waveform
+if size(leftwav,1) > size(leftwav,2)
+    waveform(1,:) = leftwav';
+    waveform(2,:) = rightwav';
+else
+    waveform(1,:) = leftwav;
+    waveform(2,:) = rightwav;
+end
 s = mglInstallSound(waveform, stimulus.samplesPerSecond);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
