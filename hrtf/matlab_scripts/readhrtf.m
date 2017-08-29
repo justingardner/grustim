@@ -22,7 +22,7 @@ if (length(getenv('MACHTYPE')) == 0)
 	root = 'Pokey:hrtf';
 	dir_ch = ':';
 else
-	root = '/proj/hrtf';
+	root = '/grustim/hrtf';
 	dir_ch = '/';
 end
 %
