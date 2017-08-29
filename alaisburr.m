@@ -62,7 +62,7 @@ task{1}{1}.numBlocks = 8;
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-15,15];%[-15 -10 -5 -2.5 -1.25 0 1.25 2.5 5 10 15]; 
+task{1}{1}.parameter.posDiff = [-15 -10 -5 -2.5 -1.25 0 1.25 2.5 5 10 15]; 
 
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
