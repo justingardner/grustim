@@ -62,7 +62,10 @@ stimulus.noeye = noeye;
 stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
-stimulus.attend = attend; % controls attention location: 0 = fixation, 1 = 5,5, 2 = 5,-5
+stimulus.attend = attend; % controls whether attention mode runs
+if ~stimulus.attend
+    warning('*****ATTENTION MODE IS DISABLED*****');
+end
 clear localizer invisible scan noeye task test2 attend
 
 if stimulus.scan
@@ -113,6 +116,9 @@ if ~stimulus.replay
             stimulus.staircases = s.stimulus.staircases;
             stimulus.order = s.stimulus.order;
             stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
+            if s.stimulus.attend ~= stimulus.attend
+                error('Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
+            end
             clear s;
             disp(sprintf('(afmap) Data file: %s loaded.',fname));
         end
@@ -195,7 +201,11 @@ if ~stimulus.replay && ~isfield(stimulus,'attention')
             warning('Stimulus and attention task are overlapping on the y-axis');
         end
     end
-    stimulus.attention.rotate = length(stimulus.attention.attendX);
+    if stimulus.attend
+        stimulus.attention.rotate = length(stimulus.attention.attendX);
+    else
+        stimulus.attention.rotate = 1;
+    end
     stimulus.attention.curAttend = 1;
 end
 
@@ -392,6 +402,7 @@ if ~stimulus.replay
     
     orderIdx = stimulus.order.curOrder(stimulus.curRun);
     stimulus.build.curBuild = stimulus.order.BaseBui(orderIdx);
+    
     stimulus.attention.curAttend = stimulus.order.BaseAtt(orderIdx);
     
     stimulus.attention.curAttendX = stimulus.attention.attendX(stimulus.attention.curAttend);
@@ -417,13 +428,15 @@ if ~stimulus.replay
             strs{end} = sprintf('%s%i\t',strs{end},stimulus.order.doneMat(ai,bi));
         end
     end
-    disp('******************************');
-    disp(sprintf('\tAttention condition'));
-%     disp(aconds);
-    for bi = 1:stimulus.build.rotate
-        disp(sprintf('%s',strs{bi}));
+    if stimulus.attention
+        disp('******************************');
+        disp(sprintf('\tAttention condition'));
+    %     disp(aconds);
+        for bi = 1:stimulus.build.rotate
+            disp(sprintf('%s',strs{bi}));
+        end
+        disp('******************************');
     end
-    disp('******************************');
 end
 
 %% Display build info
