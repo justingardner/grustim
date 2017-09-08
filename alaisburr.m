@@ -42,7 +42,7 @@ stimulus.interval = [2 4];
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
-stimulus.colors.reservedColors = [0 0 0; 1 1 1; 1 0 0; 0 1 0];
+stimulus.colors.reservedColors = [0 0 0; 1 1 1;0.5 0.5 0.5; 1 0 0;0.5 0 0; 0 1 0; 0 0.5 0 ];
 
 screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
@@ -161,7 +161,7 @@ end
 
 %draw fixation cross
 if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
-    mglFixationCross(stimulus.fixWidth,1.5,stimulus.colors.gray);%stimulus.fixColor*.5);
+    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor + stimulus.colors.reservedColor(2));
 else
     mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 end
@@ -244,12 +244,12 @@ contrastIndex = getContrastIndex(stimulus.contrast,1);
 % range of indexes available to us. The 1st texture is black the nth texture is full
 % contrast for the current gamma setting
 gaussian = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.width/8,stimulus.width/8);
-iContrast = contrastIndex-1;
+iContrast = contrastIndex-2;
 % for iContrast = 0:stimulus.colors.nDisplayContrasts
   % disppercent(iContrast/stimulus.colors.nDisplayContrasts);
   % if myscreen.userHitEsc,mglClose;keyboard,end
   % make the grating
-  thisGaussian = round(iContrast*gaussian);
+  thisGaussian = round(iContrast*gaussian + stimulus.colors.minGaussianIndex);
   % create the texture
   % stimulus.tex(iContrast+1) = mglCreateTexture(thisGaussian);
   stimulus.tex = mglCreateTexture(thisGaussian);
@@ -258,9 +258,8 @@ iContrast = contrastIndex-1;
 % get the color value for black (i.e. reserved color)
 stimulus.colors.black = stimulus.colors.reservedColor(1);
 stimulus.colors.white = stimulus.colors.reservedColor(2);
-stimulus.colors.red = stimulus.colors.reservedColor(3);
-stimulus.colors.green = stimulus.colors.reservedColor(4);
-stimulus.colors.gray = stimulus.colors.midGaussianIndex/maxIndex;
+stimulus.colors.red = stimulus.colors.reservedColor(4);
+stimulus.colors.green = stimulus.colors.reservedColor(6);
 % % compute the guassian
 % gauss = mglMakeGaussian(stimulus.width,stimulus.width, stimulus.width/8,stimulus.width/8);
 
@@ -275,7 +274,6 @@ stimulus.colors.gray = stimulus.colors.midGaussianIndex/maxIndex;
 
  %stim centers
 % [stimulus.x, stimulus.y] = pol2cart(0*pi/180,stimulus.eccentricity);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    getContrastIndex    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
