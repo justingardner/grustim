@@ -42,7 +42,7 @@ stimulus.interval = [2 4];
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
-stimulus.colors.reservedColors = [0 0 0; 1 1 1;0.5 0.5 0.5; 1 0 0;0.5 0 0; 0 1 0; 0 0.5 0 ];
+stimulus.colors.reservedColors = [0 0 0; 1 1 1;0.5 0.5 0.5; 0.5 0 0; 1 0 0; 0 0.5 0; 0 1 0];
 
 screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
@@ -221,16 +221,16 @@ stimulus.colors.nReservedColors = size(stimulus.colors.reservedColors,1);
 % number of colors possible for gratings, make sure that we 
 % have an odd number
 stimulus.colors.nGaussianColors = maxIndex+1-stimulus.colors.nReservedColors;
-if iseven(stimulus.colors.nGaussianColors)
-  stimulus.colors.nGaussianColors = stimulus.colors.nGaussianColors-1;
-end
+% if iseven(stimulus.colors.nGaussianColors)
+%   stimulus.colors.nGaussianColors = stimulus.colors.nGaussianColors-1;
+% end
 
 % min,mid,max index of gaussian colors
 stimulus.colors.minGaussianIndex = maxIndex+1 - stimulus.colors.nGaussianColors;
 stimulus.colors.midGaussianIndex = stimulus.colors.minGaussianIndex + floor(stimulus.colors.nGaussianColors/2);
 stimulus.colors.maxGaussianIndex = maxIndex;
 % number of contrasts we can display (not including 0 contrast)
-stimulus.colors.nDisplayContrasts = floor(stimulus.colors.nGaussianColors);
+stimulus.colors.nDisplayContrasts = floor(stimulus.colors.nGaussianColors-1);
 
 % set the reserved colors - this gives a convenient value between 0 and 1 to use the reserved colors with
 for i = 1:stimulus.colors.nReservedColors
@@ -244,7 +244,7 @@ contrastIndex = getContrastIndex(stimulus.contrast,1);
 % range of indexes available to us. The 1st texture is black the nth texture is full
 % contrast for the current gamma setting
 gaussian = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.width/8,stimulus.width/8);
-iContrast = contrastIndex-2;
+iContrast = contrastIndex-1;
 % for iContrast = 0:stimulus.colors.nDisplayContrasts
   % disppercent(iContrast/stimulus.colors.nDisplayContrasts);
   % if myscreen.userHitEsc,mglClose;keyboard,end
@@ -255,8 +255,10 @@ iContrast = contrastIndex-2;
   stimulus.tex = mglCreateTexture(thisGaussian);
 % end
 % disppercent(inf);
-% get the color value for black (i.e. reserved color)
-stimulus.colors.black = stimulus.colors.reservedColor(1);
+
+% get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
+stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
+% get the color values (i.e. reserved color)
 stimulus.colors.white = stimulus.colors.reservedColor(2);
 stimulus.colors.red = stimulus.colors.reservedColor(4);
 stimulus.colors.green = stimulus.colors.reservedColor(6);
