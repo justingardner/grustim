@@ -428,7 +428,7 @@ if ~stimulus.replay
             strs{end} = sprintf('%s%i\t',strs{end},stimulus.order.doneMat(ai,bi));
         end
     end
-    if stimulus.attention
+    if stimulus.attend
         disp('******************************');
         disp(sprintf('\tAttention condition'));
     %     disp(aconds);
