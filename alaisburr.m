@@ -15,13 +15,13 @@ global stimulus
 width = 32; visual = 0; auditory = 0; bimodal = 0; disp = 0;
 getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=0'},'verbose=1');
 
-% if sum([visual,auditory,bimodal]) > 1
-%     warning('(alaisburr) More than one task type detected.');
-%     return
-% elseif sum([visual,auditory,bimodal]) == 0
-%     warning('(alaisburr) Task type unspecified. Running visual task...')
-%     return
-% end
+if sum([visual,auditory,bimodal]) > 1
+    warning('(alaisburr) More than one task type detected.');
+    return
+elseif sum([visual,auditory,bimodal]) == 0
+    warning('(alaisburr) Task type unspecified. Running visual task...')
+    return
+end
 if visual
     stimulus.task = 1;
 elseif auditory
@@ -37,7 +37,7 @@ stimulus.gaussainDur = .015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
-stimulus.contrast = .1; % 10% contrast
+stimulus.contrast = .05; % 10% contrast
 stimulus.interval = [2 4];
 % fixation cross
 stimulus.fixWidth = 1;
@@ -135,7 +135,7 @@ if task.thistrial.thisseg == 1
             task.thistrial.xposA = task.thistrial.xposV;
             task.thistrial.centerint = 1;
         else
-            task.thistrial.xpos = [task.thistrial.jitter - task.thistrial.posDiff, task.thistrial.jitter];
+            task.thistrial.xposV = [task.thistrial.jitter - task.thistrial.posDiff, task.thistrial.jitter];
             task.thistrial.xposA = task.thistrial.xposV;
             task.thistrial.centerint = 2;
         end
