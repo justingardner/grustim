@@ -15,13 +15,13 @@ global stimulus
 width = 32; visual = 0; auditory = 0; bimodal = 0; disp = 0;
 getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=0'},'verbose=1');
 
-if sum([visual,auditory,bimodal]) > 1
-    warning('(alaisburr) More than one task type detected.');
-    return
-elseif sum([visual,auditory,bimodal]) == 0
-    warning('(alaisburr) Task type unspecified. Running visual task...')
-    return
-end
+% if sum([visual,auditory,bimodal]) > 1
+%     warning('(alaisburr) More than one task type detected.');
+%     return
+% elseif sum([visual,auditory,bimodal]) == 0
+%     warning('(alaisburr) Task type unspecified. Running visual task...')
+%     return
+% end
 if visual
     stimulus.task = 1;
 elseif auditory
@@ -59,17 +59,22 @@ task{1}{1}.waitForBacktick = 1;
 task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
-task{1}{1}.numBlocks = 8;
+if stimulus.task ~= 3
+  task{1}{1}.numBlocks = 5;
+else
+  task{1}{1}.numBlocks = 1;
+end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
 task{1}{1}.parameter.posDiff = [-20 -15 -10 -5 -2.5 -1.25 0 1.25 2.5 5 10 15 20]; 
+task{1}{1}.parameter.displacement = [-5 -2.5 0 2.5 5];
 
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.diff = nan;
 task{1}{1}.randVars.calculated.rt = nan;
-task{1}{1}.randVars.calculated.centerInt = nan;
+task{1}{1}.randVars.calculated.centerint = nan;
  
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -110,23 +115,38 @@ if task.thistrial.thisseg == 1
     stimulus.fixColor = stimulus.colors.white;%[1 1 1];
     task.thistrial.jitter = rand - 0.5; %random jittering between -0.5 and 0.5 deg
     % horizontal position of first, second stim
-    if ~task.thistrial.posDiff
-        task.thistrial.xpos = [task.thistrial.jitter, task.thistrial.jitter];
-    else
+    if stimulus.task == 3
         if task.thistrial.centerWhich == 1
-            task.thistrial.xpos = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
+            task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter + task.thistrial.displacement];
+            task.thistrial.xposA = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter - task.thistrial.displacement];
+            task.thistrial.centerint = 1;
+        else
+            task.thistrial.xposV = [task.thistrial.jitter - task.thistrial.posDiff + task.thistrial.displacement, task.thistrial.jitter];
+            task.thistrial.xposA = [task.thistrial.jitter - task.thistrial.posDiff - task.thistrial.displacement, task.thistrial.jitter];
+            task.thistrial.centerint = 2;
+        end
+    else
+      if ~task.thistrial.posDiff
+        task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.jitter];
+        task.thistrial.xposA = [task.thistrial.jitter, task.thistrial.jitter];
+      else
+        if task.thistrial.centerWhich == 1
+            task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
+            task.thistrial.xposA = task.thistrial.xposV;
             task.thistrial.centerint = 1;
         else
             task.thistrial.xpos = [task.thistrial.jitter - task.thistrial.posDiff, task.thistrial.jitter];
+            task.thistrial.xposA = task.thistrial.xposV;
             task.thistrial.centerint = 2;
         end
+      end
     end
 
     task.thistrial.diff = task.thistrial.posDiff;
     
     if stimulus.task ~= 1 %auditory or bimodal condition
         for int = 1:2
-            stimulus.sound(int) = createITD(stimulus,task.thistrial.xpos(int));
+            stimulus.sound(int) = createITD(stimulus,task.thistrial.xposA(int));
         end
     end
 
@@ -146,9 +166,9 @@ mglClearScreen(stimulus.colors.black);
 
 if stimulus.task ~= 2 %visual or bimodal condition
     if task.thistrial.thisseg == stimulus.interval(1)
-        mglBltTexture(stimulus.tex, [task.thistrial.xpos(1), 0]);
+        mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 0]);
     elseif task.thistrial.thisseg == stimulus.interval(2)
-        mglBltTexture(stimulus.tex, [task.thistrial.xpos(2), 0]);
+        mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 0]);
     end
 end
 if stimulus.task ~= 1 %auditory or bimodal condition
@@ -192,6 +212,7 @@ if ~task.thistrial.gotResponse
     end
         
     task.thistrial.resp = task.thistrial.whichButton;
+    task.thistrial.rt = task.thistrial.reactionTime;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
