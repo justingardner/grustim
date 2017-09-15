@@ -68,13 +68,17 @@ end
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
 task{1}{1}.parameter.posDiff = [-20 -15 -10 -5 -2.5 -1.25 0 1.25 2.5 5 10 15 20]; 
-task{1}{1}.parameter.displacement = [-5 -2.5 0 2.5 5];
+if stimulus.task == 3
+  task{1}{1}.parameter.displacement = [-5 -2.5 0 2.5 5];
+end
 
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.diff = nan;
 task{1}{1}.randVars.calculated.rt = nan;
-task{1}{1}.randVars.calculated.centerint = nan;
+task{1}{1}.randVars.calculated.centerInt = nan;
+task{1}{1}.randVars.calculated.displ = nan;
+
  
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -119,12 +123,13 @@ if task.thistrial.thisseg == 1
         if task.thistrial.centerWhich == 1
             task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter + task.thistrial.displacement];
             task.thistrial.xposA = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter - task.thistrial.displacement];
-            task.thistrial.centerint = 1;
+            task.thistrial.centerInt = 1;
         else
-            task.thistrial.xposV = [task.thistrial.jitter - task.thistrial.posDiff + task.thistrial.displacement, task.thistrial.jitter];
-            task.thistrial.xposA = [task.thistrial.jitter - task.thistrial.posDiff - task.thistrial.displacement, task.thistrial.jitter];
-            task.thistrial.centerint = 2;
+            task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.posDiff + task.thistrial.displacement, task.thistrial.jitter];
+            task.thistrial.xposA = [task.thistrial.jitter + task.thistrial.posDiff - task.thistrial.displacement, task.thistrial.jitter];
+            task.thistrial.centerInt = 2;
         end
+        task.thistrial.displ = task.thistrial.displacement;
     else
       if ~task.thistrial.posDiff
         task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.jitter];
@@ -133,11 +138,11 @@ if task.thistrial.thisseg == 1
         if task.thistrial.centerWhich == 1
             task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
             task.thistrial.xposA = task.thistrial.xposV;
-            task.thistrial.centerint = 1;
+            task.thistrial.centerInt = 1;
         else
-            task.thistrial.xposV = [task.thistrial.jitter - task.thistrial.posDiff, task.thistrial.jitter];
+            task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.posDiff, task.thistrial.jitter];
             task.thistrial.xposA = task.thistrial.xposV;
-            task.thistrial.centerint = 2;
+            task.thistrial.centerInt = 2;
         end
       end
     end
@@ -195,20 +200,22 @@ global stimulus
 if ~task.thistrial.gotResponse
     % which one seemed more to the LEFT
     % centerWhich (1/2) first or second one more eccentric
-    if (task.thistrial.posDiff > 0 && task.thistrial.whichButton == 1) || ...
-            (task.thistrial.posDiff < 0 && task.thistrial.whichButton == 2)
+    if (task.thistrial.centerWhich == 1 && ((task.thistrial.posDiff > 0 && task.thistrial.whichButton == 1) || ...
+      (task.thistrial.posDiff < 0 && task.thistrial.whichButton == 2))) || ...
+    (task.thistrial.centerWhich == 2 && ((task.thistrial.posDiff > 0 && task.thistrial.whichButton == 2) || ...
+      (task.thistrial.posDiff < 0 && task.thistrial.whichButton == 1)))
         % correct
         task.thistrial.correct = 1;
         % feeback
         stimulus.fixColor = stimulus.colors.green;%[0 1 0];
-        disp(sprintf('(alaisburr) Trial %i: %0.4f resp %i correct', ...
-            task.trialnum, task.thistrial.posDiff, task.thistrial.whichButton))
+        disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i correct', ...
+            task.trialnum, task.thistrial.posDiff, task.thistrial.centerWhich, task.thistrial.whichButton))
     else
         % incorrect
         task.thistrial.correct = 0;
         stimulus.fixColor = stimulus.colors.red;%[1 0 0];
-        disp(sprintf('(alaisburr) Trial %i: %0.4f resp %i incorrect', ...
-            task.trialnum, task.thistrial.posDiff, task.thistrial.whichButton))
+        disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i incorrect', ...
+            task.trialnum, task.thistrial.posDiff, task.thistrial.centerWhich, task.thistrial.whichButton))
     end
         
     task.thistrial.resp = task.thistrial.whichButton;
@@ -493,8 +500,30 @@ n = zeros(1,length(posDiff)); k = zeros(1,length(posDiff));
 % percent interval 2 (probe "Left")
 for i = 1:length(posDiff)
     resp{i} = task.randVars.resp(task.randVars.diff == posDiff(i));
+    whichInt{i} = task.randVars.centerInt(task.randVars.diff == posDiff(i));
+    for j = 1:length(resp{i})
+      switch whichInt{i}(j)
+        case 1
+          if resp{i}(j) == 2
+            % If probe seen Left
+            isLeft{i}(j) = 1;
+          elseif resp{i}(j) == 1
+            % probe seen Right
+            isLeft{i}(j) = 0;
+          end
+        case 2
+          if resp{i}(j) == 1
+            % probe seen Left
+            isLeft{i}(j) = 1;
+          elseif resp{i}(j) == 2
+            % probe seen Right
+            isLeft{i}(j) = 0;
+          end
+        end
+     end
     n(i) = sum(resp{i} == 1 | resp{i}==2);
-    k(i) = sum(resp{i} == 2);
+    % k(i) = sum(resp{i} == 2);
+    k(i) = sum(isLeft{i} == 1);
 end
 percent = k./n;
 
