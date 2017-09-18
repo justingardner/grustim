@@ -4,15 +4,27 @@ clear global stimulus
 mglEatKeys('12`');
 global stimulus
 
-% stimulus.disp = disp;
+% get arguments
+high = 0; low = 0;
+getArgs(varargin,{'high=0','low=0'},'verbose=1');
+
+if high
+	stimulus.tone.hz = 1700;
+	stimulus.tone.duration = .01;
+elseif low
+	stimulus.tone.hz = 200;
+	stimulus.tone.duration = .08;
+else
+    return
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.disk.diameter = 2;
 stimulus.disk.duration = 1/60;% .025;%1/60; % one(or two) frame 
 stimulus.disk.contrast = .5;
 
 stimulus.tone.samplesPerSecond = 44100;
-stimulus.tone.hz = 1700;
-stimulus.tone.duration = .01;
+% stimulus.tone.hz = 1700;
+% stimulus.tone.duration = .01;
 
 stimulus.standardOnset1 = 0.06; % 60ms
 stimulus.midPoint= 0.46; % MIDPOINT ONSET 60ms + 400ms
@@ -58,8 +70,7 @@ task{1}{1}.randVars.calculated.probeDelay = nan;
 task{1}{1}.randVars.calculated.noise = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.condNum = nan;
-% task{1}{1}.randVars.calculated.offset = nan;
-
+task{1}{1}.randVars.calculated.hz = nan;
  
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -120,6 +131,7 @@ if task.thistrial.thisseg == 1
 
 	if ~strcmp(char(task.thistrial.condition), 'vision')
 		stimulus = initClick(stimulus,task);
+		task.thistrial.hz = stimulus.thisHz;
 	end
 
 elseif task.thistrial.thisseg == 3
@@ -293,7 +305,9 @@ end
 function stimulus = initClick(stimulus,task);
 fs = stimulus.tone.samplesPerSecond - 1;
 t = 0 : 1/fs : stimulus.tone.duration;
-wav = sin(2*pi*stimulus.tone.hz*t);
+stimulus.thisHz = stimulus.tone.hz + (stimulus.tone.hz/10)*randn;
+
+wav = sin(2*pi*stimulus.thisHz*t);
 if isodd(length(t))
 	mu = t((1+length(t))/2);
 else
