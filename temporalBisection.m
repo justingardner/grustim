@@ -20,7 +20,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.disk.diameter = 2;
 stimulus.disk.duration = 1/60;% .025;%1/60; % one(or two) frame 
-stimulus.disk.contrast = .5;
+stimulus.disk.contrast = .25;
 
 stimulus.tone.samplesPerSecond = 44100;
 % stimulus.tone.hz = 1700;
