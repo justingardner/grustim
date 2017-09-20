@@ -42,7 +42,7 @@ stimulus.fixColor = [1 1 1];
 stimulus.trialDur = 0.8 + 0.24 + 0.1;
 
 stimulus.initDelay = 0.025;
-stimulus.initDelaySd = 0.040;
+stimulus.initDelaySd = 0.0025;
 
 % initalize the screen
 myscreen = initScreen;
@@ -136,8 +136,12 @@ if task.thistrial.thisseg == 1
 
 elseif task.thistrial.thisseg == 3
 	stimulus.t0 = mglGetSecs;
-else
-	stimulus.fixColor = [1 1 1] * 0.2;
+
+elseif task.thistrial.thisseg == 5
+	stimulus.fixColor = [1 1 1]*0.3;
+
+elseif task.thistrial.thisseg == 4
+	stimulus.fixColor = [1 1 0];%[1 1 1] * 0.2;
 
 end
 
@@ -270,19 +274,19 @@ if ~task.thistrial.gotResponse
 		(task.thistrial.probeDelay > 0 && task.thistrial.whichButton == 2)  % closer to the third 
 		% correct
 		task.thistrial.correct = 1;
-		if any(task.thistrial.condNum == [1 2 3])	
-		% feedback
-		stimulus.fixColor = [0 1 0];
-		end
+		% if any(task.thistrial.condNum == [1 2 3])	
+		% % feedback
+		% stimulus.fixColor = [0 1 0];
+		% end
 
 	else
 		% incorrect
 		task.thistrial.correct = 0;
-		if any(task.thistrial.condNum == [1 2 3])
-		stimulus.fixColor = [1 0 0];
-		end
+		% if any(task.thistrial.condNum == [1 2 3])
+		% stimulus.fixColor = [1 0 0];
+		% end
 	end
-
+	stimulus.fixColor = [0 0 1];
 	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct);
 	 
 	task.thistrial.resp = task.thistrial.whichButton;
@@ -297,7 +301,7 @@ function stimulus = initStair(stimulus)
 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
 for cond = 1:5
 	stimulus.stair{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initDelay, 'initialThresholdSd', stimulus.initDelaySd, ...
-		'dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
+		'pThreshold', 0.75,'gamma=0','dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -379,17 +383,18 @@ for cond = 1:5
   thisResp = task.randVars.resp(thisTrials);
   isLate = (thisResp == 2);
 
-  for b = 1:8
+  binCenter = -0.175:.05:0.175;
+  for b = 1:length(binCenter)
     switch b
       case 1
         binnedTrial{b} = find(thisDelay<= -0.15); % -200 ~ -150 ms
-      case 8
+      case length(binCenter)
         binnedTrial{b} = find(thisDelay > 0.15);
       otherwise
         binnedTrial{b} = find((thisDelay > -0.15 + 0.05*(b-2)) & (thisDelay <= -0.15 + 0.05*(b-1)));
     end
   end
-  binCenter = -0.175:.05:0.175;
+  
   nTotalBin = cellfun(@(x) length(x), binnedTrial);
   binnedTrial(nTotalBin==0) = [];
   binCenter(nTotalBin==0) = [];

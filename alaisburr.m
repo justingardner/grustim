@@ -37,7 +37,7 @@ stimulus.gaussainDur = .015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
-stimulus.contrast = .05; % 10% contrast
+stimulus.contrast = .01; 
 stimulus.interval = [2 4];
 % fixation cross
 stimulus.fixWidth = 1;
@@ -78,7 +78,6 @@ task{1}{1}.randVars.calculated.diff = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.centerInt = nan;
 task{1}{1}.randVars.calculated.displ = nan;
-
  
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -106,7 +105,7 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if stimulus.disp
+if stimulus.disp && stimulus.endflag
 dispPsychometric(task{1}{1});
 end
  
@@ -131,10 +130,7 @@ if task.thistrial.thisseg == 1
         end
         task.thistrial.displ = task.thistrial.displacement;
     else
-      if ~task.thistrial.posDiff
-        task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.jitter];
-        task.thistrial.xposA = [task.thistrial.jitter, task.thistrial.jitter];
-      else
+
         if task.thistrial.centerWhich == 1
             task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
             task.thistrial.xposA = task.thistrial.xposV;
@@ -144,9 +140,8 @@ if task.thistrial.thisseg == 1
             task.thistrial.xposA = task.thistrial.xposV;
             task.thistrial.centerInt = 2;
         end
-      end
-    end
 
+    end
     task.thistrial.diff = task.thistrial.posDiff;
     
     if stimulus.task ~= 1 %auditory or bimodal condition
@@ -271,7 +266,7 @@ contrastIndex = getContrastIndex(stimulus.contrast,1);
 % make all the 1D gaussians. We compute all possible contrast values given the
 % range of indexes available to us. The 1st texture is black the nth texture is full
 % contrast for the current gamma setting
-gaussian = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.width/8,stimulus.width/8);
+gaussian = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.width/7,stimulus.width/7);
 iContrast = contrastIndex-1;
 % for iContrast = 0:stimulus.colors.nDisplayContrasts
   % disppercent(iContrast/stimulus.colors.nDisplayContrasts);
