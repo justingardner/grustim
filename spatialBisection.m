@@ -5,28 +5,35 @@ mglEatKeys('12`');
 global stimulus
 
 % get arguments
-high = 0; low = 0; tenbit = 1;
-getArgs(varargin,{'high=0','low=0','tenbit=1'},'verbose=1');
+high = 0; low = 0; med = 0; tenbit = 1;
+getArgs(varargin,{'high=0','low=0','med=0','tenbit=1'},'verbose=1');
 
 if high
-	stimulus.gaussian.contrast = .25;
+    stimulus.gaussian.diameter = 4;
+% 	stimulus.gaussian.contrast = .25;
 elseif low
-	stimulus.gaussian.contrast = .05;
+    stimulus.gaussian.diameter = 64;
+% 	stimulus.gaussian.contrast = .05;
+elseif med
+    stimulus.gaussian.diameter = 32;
 else
     return
 end
+stimulus.high = high;
+stimulus.low = low;
+stimulus.med = med;
 stimulus.tenbit = tenbit;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-stimulus.gaussian.diameter = 14;
+% stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
-stimulus.gaussian.duration = .025;% .025;%1/60; % one(or two) frame 
-% stimulus.gaussian.contrast = .25;
+stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
+stimulus.gaussian.contrast = .01;
 
 stimulus.colors.reservedColors = [1 1 1; 1 1 0; 0 0 1; 0.4 0.4 0.4; 0 1 0;1 0 0];
 
 stimulus.tone.samplesPerSecond = 44100;
 stimulus.tone.hz = 750;
-stimulus.tone.duration = .0025;
+stimulus.tone.duration = .0015;
 
 % stimulus.pos1 = -7.5;
 % stimulus.pos3 = stimulus.pos1+30;
@@ -37,8 +44,8 @@ stimulus.delta=1;
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
-stimulus.initOffset = 0.5;
-stimulus.initOffsetSd = 0.05;
+stimulus.initOffset = 1;
+stimulus.initOffsetSd = 3;
 
 % initalize the screen
 myscreen = initScreen;
@@ -48,8 +55,8 @@ mglClearScreen(0);
 % set up task
 %%%%%%%%%%%%%%%%%%%%% 
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [1 0.5 0.025 0.475 0.025 0.475 0.025 1.5 1];
-task{1}{1}.segmax = [1 0.5 0.025 0.475 0.025 0.475 0.025 1.5 1];
+task{1}{1}.segmin = [1 0.5 0.015 0.485 0.015 0.485 0.015 1.5 1];
+task{1}{1}.segmax = [1 0.5 0.015 0.485 0.015 0.485 0.015 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
 
 % parameters & randomization
@@ -69,10 +76,7 @@ task{1}{1}.randVars.calculated.noise = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.condNum = nan;
 task{1}{1}.randVars.calculated.pos1 = nan;
-task{1}{1}.randVars.calculated.jitter = nan;
 % task{1}{1}.randVars.calculated.hz = nan;
-
-% task{1}{1}.randVars.calculated.hemi = nan;
  
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -123,6 +127,9 @@ if task.thistrial.thisseg == 1
     
 	% get Test Value
 	[testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
+	if testValue > 10.5
+		testValue = 10.5;
+	end
 	task.thistrial.noise = 1.5 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
 	while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
 		task.thistrial.noise = 1.5 * randn(1);
@@ -134,32 +141,23 @@ if task.thistrial.thisseg == 1
     end
 		
 	task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
-    task.thistrial.jitter = rand - 0.5;
  	switch char(task.thistrial.condition)
 		case 'vision'
-			task.thistrial.xposV = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3]+task.thistrial.jitter;
+			task.thistrial.xposV = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3];
 			task.thistrial.xposA = [nan nan nan];
 		case 'auditory'
 			task.thistrial.xposV = [nan nan nan];
-			task.thistrial.xposA = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3]+task.thistrial.jitter;
+			task.thistrial.xposA = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3];
 		case 'noOffset'
-			task.thistrial.xposV = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3]+task.thistrial.jitter;
-			task.thistrial.xposA = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3]+task.thistrial.jitter;
+			task.thistrial.xposV = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3];
+			task.thistrial.xposA = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3];
 		case 'posOffset' % 1st/3rd tone shifted LEFTward & disc shifted RIGHTward
-			task.thistrial.xposV = [stimulus.pos1+stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3+stimulus.delta]+task.thistrial.jitter;
-			task.thistrial.xposA = [stimulus.pos1-stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3-stimulus.delta]+task.thistrial.jitter;
+			task.thistrial.xposV = [stimulus.pos1+stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3+stimulus.delta];
+			task.thistrial.xposA = [stimulus.pos1-stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3-stimulus.delta];
 		case 'negOffset' % 1st/3rd tone shifted LEFTward & disc shifted RIGHTward
-			task.thistrial.xposV = [stimulus.pos1-stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3-stimulus.delta]+task.thistrial.jitter;
-			task.thistrial.xposA = [stimulus.pos1+stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3+stimulus.delta]+task.thistrial.jitter;
+			task.thistrial.xposV = [stimulus.pos1-stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3-stimulus.delta];
+			task.thistrial.xposA = [stimulus.pos1+stimulus.delta stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3+stimulus.delta];
 	end
-
-% 	if task.thistrial.hemifield == 1
-% 		task.thistrial.xposV = -task.thistrial.xposV;
-% 		task.thistrial.xposA = -task.thistrial.xposA;
-% 		task.thistrial.hemi = 1;
-% 	else
-% 		task.thistrial.hemi = 2;
-% 	end
 
 	if task.thistrial.condNum ~= 1 % if not vision condition
 		% stimulus = initClick(stimulus,task);
@@ -216,6 +214,8 @@ if ~task.thistrial.gotResponse
 		% feedback
 		stimulus.fixColor = stimulus.colors.green;
 		end
+		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i correct', ...
+            task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 
 	else
 		% incorrect
@@ -223,9 +223,12 @@ if ~task.thistrial.gotResponse
 		if any(task.thistrial.condNum == [1 2 3])
 		stimulus.fixColor = stimulus.colors.red;
 		end
+		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i incorrect', ...
+            task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 	end
 % 	stimulus.fixColor = stimulus.colors.blue;
-	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct);
+	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
+		abs(task.thistrial.probeOffset));
 	 
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
@@ -239,7 +242,7 @@ function stimulus = initStair(stimulus)
 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
 for cond = 1:5
 	stimulus.stair{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initOffset, 'initialThresholdSd', stimulus.initOffsetSd, ...
-		'pThreshold', 0.75,'gamma=0','dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
+		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

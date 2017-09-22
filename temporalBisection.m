@@ -42,7 +42,7 @@ stimulus.fixColor = [1 1 1];
 stimulus.trialDur = 0.8 + 0.24 + 0.1;
 
 stimulus.initDelay = 0.025;
-stimulus.initDelaySd = 0.0025;
+stimulus.initDelaySd = 0.01;
 
 % initalize the screen
 myscreen = initScreen;
@@ -117,8 +117,12 @@ if task.thistrial.thisseg == 1
 
 	% get Test Value
 	[testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
+	if testValue > 0.04 - stimulus.tone.duration
+		testValue = 0.04 - stimulus.tone.duration;
+	end
 	task.thistrial.noise = 0.080 * randn(1); % random number from a gaussian distribution with a std of 80ms
-	while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.lateOnset1 ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.earlyOnset3)
+	while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.lateOnset1+stimulus.tone.duration) ||...
+	 (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.earlyOnset3-stimulus.tone.duration)
 		task.thistrial.noise = 0.080 * randn(1);
 	end
 	if task.thistrial.closeTo == 1
@@ -278,6 +282,8 @@ if ~task.thistrial.gotResponse
 		% % feedback
 		% stimulus.fixColor = [0 1 0];
 		% end
+		disp(sprintf('(temporalBisection) %i:%s delay %0.3f resp %i correct', ...
+            task.trialnum, char(task.thistrial.condition), task.thistrial.probeDelay, task.thistrial.whichButton))
 
 	else
 		% incorrect
@@ -285,9 +291,13 @@ if ~task.thistrial.gotResponse
 		% if any(task.thistrial.condNum == [1 2 3])
 		% stimulus.fixColor = [1 0 0];
 		% end
+		disp(sprintf('(temporalBisection) %i:%s delay %0.3f resp %i incorrect', ...
+            task.trialnum, char(task.thistrial.condition), task.thistrial.probeDelay, task.thistrial.whichButton))
+
 	end
 	stimulus.fixColor = [0 0 1];
-	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct);
+	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
+		abs(task.thistrial.probeDelay));
 	 
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
@@ -301,7 +311,7 @@ function stimulus = initStair(stimulus)
 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
 for cond = 1:5
 	stimulus.stair{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initDelay, 'initialThresholdSd', stimulus.initDelaySd, ...
-		'pThreshold', 0.75,'gamma=0','dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
+		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
