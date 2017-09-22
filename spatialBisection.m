@@ -559,15 +559,15 @@ for cond = 1:5
   thisResp = task.randVars.resp(thisTrials);
   isThird = (thisResp == 2);
 
-	binCenter = -13.5:3:13.5;
+	binCenter = -10:2:10;
   for b = 1:length(binCenter)
     switch b
       case 1
-        binnedTrial{b} = find(thisOffset<= -12); % -200 ~ -150 ms
+        binnedTrial{b} = find(thisOffset<= -9); % -200 ~ -150 ms
       case length(binCenter)
-        binnedTrial{b} = find(thisOffset > 12);
+        binnedTrial{b} = find(thisOffset > 9);
       otherwise
-        binnedTrial{b} = find((thisOffset > -12 +3*(b-2)) & (thisOffset <= -12 + 3*(b-1)));
+        binnedTrial{b} = find((thisOffset > -9 +2*(b-2)) & (thisOffset <= -9 + 2*(b-1)));
     end
   end
   % binCenter = -12.5:1:12.5;%-0.175:.05:0.175;
