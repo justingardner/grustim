@@ -11,9 +11,11 @@ getArgs(varargin,{'high=0','low=0'},'verbose=1');
 if high
 	stimulus.tone.hz = 1700;
 	stimulus.tone.duration = .01;
+	stimulus.tone.amplitude = 0.6;
 elseif low
 	stimulus.tone.hz = 200;
 	stimulus.tone.duration = .08;
+	stimulus.tone.amplitude = 0.2;
 else
     return
 end
@@ -45,6 +47,7 @@ stimulus.initDelay = 0.025;
 stimulus.initDelaySd = 0.01;
 
 % initalize the screen
+myscreen.background = 0;
 myscreen = initScreen;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%
@@ -321,7 +324,7 @@ fs = stimulus.tone.samplesPerSecond - 1;
 t = 0 : 1/fs : stimulus.tone.duration;
 stimulus.thisHz = stimulus.tone.hz + (stimulus.tone.hz/10)*randn;
 
-wav = sin(2*pi*stimulus.thisHz*t);
+wav = stimulus.tone.amplitude*sin(2*pi*stimulus.thisHz*t);
 if isodd(length(t))
 	mu = t((1+length(t))/2);
 else
@@ -393,15 +396,15 @@ for cond = 1:5
   thisResp = task.randVars.resp(thisTrials);
   isLate = (thisResp == 2);
 
-  binCenter = -0.175:.05:0.175;
+  binCenter = -0.175:.05:0.175; space = max(diff(binCenter));
   for b = 1:length(binCenter)
     switch b
       case 1
-        binnedTrial{b} = find(thisDelay<= -0.15); % -200 ~ -150 ms
+        binnedTrial{b} = find(thisDelay<= min(binCenter)+space/2); % -200 ~ -150 ms
       case length(binCenter)
-        binnedTrial{b} = find(thisDelay > 0.15);
+        binnedTrial{b} = find(thisDelay > max(binCenter)-space/2);
       otherwise
-        binnedTrial{b} = find((thisDelay > -0.15 + 0.05*(b-2)) & (thisDelay <= -0.15 + 0.05*(b-1)));
+        binnedTrial{b} = find((thisDelay > min(binCenter) + space*(b-2)) & (thisDelay <= min(binCenter) + space*(b-1)));
     end
   end
   
@@ -441,5 +444,5 @@ for cond = 1:5
 
 end
 
-figure(bi); mylegend({'No offset','Pos offset','Neg offset'}, {{getcolor(3),getsymbol(3)},{ getcolor(4),getsymbol(4)},{ getcolor(5),getsymbol(5)}});
-figure(uni); mylegend({'vision','auditory'},{{getcolor(1), getsymbol(1)},{getcolor(2), getsymbol(2)}});
+figure(bi); mylegend({'No offset','Pos offset','Neg offset'}, {{getcolor(3)},{ getcolor(4)},{ getcolor(5)}});
+figure(uni); mylegend({'vision','auditory'},{{getcolor(1)},{getcolor(2)}});

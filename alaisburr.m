@@ -48,7 +48,7 @@ screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
 
 % initalize the screen
-% myscreen.background = 0;  %black
+myscreen.background = 0;  %black
 myscreen = initScreen;
 
 %%%%%%%%%%%%%%%%%%%%%

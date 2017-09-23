@@ -32,31 +32,32 @@ stimulus.gaussian.contrast = .01;
 stimulus.colors.reservedColors = [1 1 1; 1 1 0; 0 0 1; 0.4 0.4 0.4; 0 1 0;1 0 0];
 
 stimulus.tone.samplesPerSecond = 44100;
-stimulus.tone.hz = 750;
+% stimulus.tone.hz = 750;
 stimulus.tone.duration = .0015;
 
 % stimulus.pos1 = -7.5;
 % stimulus.pos3 = stimulus.pos1+30;
 % stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2; %7.5 deg from center
-stimulus.delta=1;
+stimulus.delta=1.5;
 
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
 stimulus.initOffset = 1;
-stimulus.initOffsetSd = 3;
+stimulus.initOffsetSd = 2;
 
 % initalize the screen
+myscreen.background = 0;
 myscreen = initScreen;
-mglClearScreen(0);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%
 % set up task
 %%%%%%%%%%%%%%%%%%%%% 
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [1 0.5 0.015 0.485 0.015 0.485 0.015 1.5 1];
-task{1}{1}.segmax = [1 0.5 0.015 0.485 0.015 0.485 0.015 1.5 1];
+stimDur = stimulus.gaussian.duration;
+task{1}{1}.segmin = [1 0.5 stimDur 0.5-stimDur stimDur 0.5-stimDur stimDur 1.5 1];
+task{1}{1}.segmax = task{1}{1}.segmin;
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
 
 % parameters & randomization
@@ -130,9 +131,9 @@ if task.thistrial.thisseg == 1
 	if testValue > 10.5
 		testValue = 10.5;
 	end
-	task.thistrial.noise = 1.5 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
+	task.thistrial.noise = 2 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
 	while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
-		task.thistrial.noise = 1.5 * randn(1);
+		task.thistrial.noise = 2 * randn(1);
 	end
 	if task.thistrial.closeTo == 1
 		sign = -1;
@@ -210,23 +211,23 @@ if ~task.thistrial.gotResponse
 		(task.thistrial.probeOffset > 0 && task.thistrial.whichButton == 2)  % closer to the third 
 		% correct
 		task.thistrial.correct = 1;
-		if any(task.thistrial.condNum == [1 2 3])	
-		% feedback
-		stimulus.fixColor = stimulus.colors.green;
-		end
+		% if any(task.thistrial.condNum == [1 2 3])	
+		% % feedback
+		% stimulus.fixColor = stimulus.colors.green;
+		% end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i correct', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 
 	else
 		% incorrect
 		task.thistrial.correct = 0;
-		if any(task.thistrial.condNum == [1 2 3])
-		stimulus.fixColor = stimulus.colors.red;
-		end
+		% if any(task.thistrial.condNum == [1 2 3])
+		% stimulus.fixColor = stimulus.colors.red;
+		% end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i incorrect', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 	end
-% 	stimulus.fixColor = stimulus.colors.blue;
+	stimulus.fixColor = stimulus.colors.blue;
 	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
 		abs(task.thistrial.probeOffset));
 	 
@@ -559,15 +560,15 @@ for cond = 1:5
   thisResp = task.randVars.resp(thisTrials);
   isThird = (thisResp == 2);
 
-	binCenter = -10:2:10;
+	binCenter = -10:2:10;  space = max(diff(binCenter));
   for b = 1:length(binCenter)
     switch b
       case 1
-        binnedTrial{b} = find(thisOffset<= -9); % -200 ~ -150 ms
+        binnedTrial{b} = find(thisOffset<= min(binCenter)+space/2); % -200 ~ -150 ms
       case length(binCenter)
-        binnedTrial{b} = find(thisOffset > 9);
+        binnedTrial{b} = find(thisOffset > max(binCenter)-space/2);
       otherwise
-        binnedTrial{b} = find((thisOffset > -9 +2*(b-2)) & (thisOffset <= -9 + 2*(b-1)));
+        binnedTrial{b} = find((thisOffset > min(binCenter) + space*(b-2)) & (thisOffset <= min(binCenter) + space*(b-1)));
     end
   end
   % binCenter = -12.5:1:12.5;%-0.175:.05:0.175;
@@ -607,5 +608,5 @@ for cond = 1:5
 
 end
 
-figure(bi); mylegend({'No offset','Pos offset','Neg offset'}, {{getcolor(3),getsymbol(3)},{ getcolor(4),getsymbol(4)},{ getcolor(5),getsymbol(5)}});
-figure(uni); mylegend({'vision','auditory'},{{getcolor(1), getsymbol(1)},{getcolor(2), getsymbol(2)}});
+figure(bi); mylegend({'No offset','Pos offset','Neg offset'}, {{getcolor(3)},{ getcolor(4)},{ getcolor(5)}});
+figure(uni); mylegend({'vision','auditory'},{{getcolor(1)},{getcolor(2)}});
