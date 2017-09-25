@@ -45,7 +45,7 @@ stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
 stimulus.initOffset = 1;
-stimulus.initOffsetSd = 2;
+stimulus.initOffsetSd = 1.5;
 
 % initalize the screen
 myscreen.background = 0;
@@ -131,9 +131,9 @@ if task.thistrial.thisseg == 1
 	if testValue > 10.5
 		testValue = 10.5;
 	end
-	task.thistrial.noise = 2 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
+	task.thistrial.noise = 2.5 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
 	while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
-		task.thistrial.noise = 2 * randn(1);
+		task.thistrial.noise = 2.5 * randn(1);
 	end
 	if task.thistrial.closeTo == 1
 		sign = -1;
@@ -451,7 +451,7 @@ a = [1	-4.07876493416512	6.72527084144657	-5.59474636818042	2.34559680959441	-0.
 b = [3.82287493728255e-05	0.000191143746864127	0.000382287493728255	0.000382287493728255	0.000191143746864127	3.82287493728255e-05];
 wav = 0.25 * randn(1,length(t));
 wavFiltered = filter(b,a,wav);
-stimulus.wav = wavFiltered;
+stimulus.wav = wavFiltered * 1.2;
 
 % stimulus.wav = wav;
 
