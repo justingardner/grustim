@@ -12,10 +12,10 @@ if high
     stimulus.gaussian.diameter = 4;
 % 	stimulus.gaussian.contrast = .25;
 elseif low
-    stimulus.gaussian.diameter = 64;
+    stimulus.gaussian.diameter = 96;
 % 	stimulus.gaussian.contrast = .05;
 elseif med
-    stimulus.gaussian.diameter = 32;
+    stimulus.gaussian.diameter = 64;
 else
     return
 end
@@ -27,7 +27,7 @@ stimulus.tenbit = tenbit;
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
-stimulus.gaussian.contrast = .01;
+stimulus.gaussian.contrast = .2;
 
 stimulus.colors.reservedColors = [1 1 1; 1 1 0; 0 0 1; 0.4 0.4 0.4; 0 1 0;1 0 0];
 
@@ -63,7 +63,7 @@ task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
 % parameters & randomization
 task{1}{1}.randVars.uniform.closeTo = [1 3];
 % task{1}{1}.randVars.uniform.hemifield = [2];
-task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
+task{1}{1}.parameter.condition = {'vision','auditory'};%{'vision','auditory','noOffset','posOffset','negOffset'};
 
 % task{1}{1}.parameter.delay = [-0.1 0 0.1];
 
@@ -121,9 +121,9 @@ if task.thistrial.thisseg == 1
 	stimulus.fixColor = stimulus.colors.white;
 	task.thistrial.condNum = find(strcmp(char(task.thistrial.condition),{'vision','auditory','noOffset','posOffset','negOffset'}));
     
-    task.thistrial.pos1 = -15 + 2*randn(1);
+    task.thistrial.pos1 = -17.5 + 1*randn(1);
     stimulus.pos1 = task.thistrial.pos1;
-    stimulus.pos3 = stimulus.pos1+30;
+    stimulus.pos3 = stimulus.pos1+35;
     stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
     
 	% get Test Value
@@ -442,18 +442,18 @@ function stimulus = initClick(stimulus,myscreen)
 fs = stimulus.tone.samplesPerSecond-1;
 t = 0:1/fs:stimulus.tone.duration;
 
-% wav = 0.5 * randn(1,length(t));
+wav = 0.5 * randn(1,length(t));
 
-fc = 2000; % cutoff frequency
-% 5th order Butterworth filter
-% [b,a] = butter(5, fc/(stimulus.tone.samplesPerSecond/2));
-a = [1	-4.07876493416512	6.72527084144657	-5.59474636818042	2.34559680959441	-0.396133028715511];
-b = [3.82287493728255e-05	0.000191143746864127	0.000382287493728255	0.000382287493728255	0.000191143746864127	3.82287493728255e-05];
-wav = 0.25 * randn(1,length(t));
-wavFiltered = filter(b,a,wav);
-stimulus.wav = wavFiltered * 1.2;
+% fc = 2000; % cutoff frequency
+% % 5th order Butterworth filter
+% % [b,a] = butter(5, fc/(stimulus.tone.samplesPerSecond/2));
+% a = [1	-4.07876493416512	6.72527084144657	-5.59474636818042	2.34559680959441	-0.396133028715511];
+% b = [3.82287493728255e-05	0.000191143746864127	0.000382287493728255	0.000382287493728255	0.000191143746864127	3.82287493728255e-05];
+% wav = randn(1,length(t));
+% wavFiltered = filter(b,a,wav);
+% stimulus.wav = wavFiltered;
 
-% stimulus.wav = wav;
+stimulus.wav = wav;
 
 % stimulus.thisHz = stimulus.tone.hz + (stimulus.tone.hz/10)*randn;
 
