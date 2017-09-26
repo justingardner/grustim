@@ -121,7 +121,7 @@ if task.thistrial.thisseg == 1
 	stimulus.fixColor = stimulus.colors.white;
 	task.thistrial.condNum = find(strcmp(char(task.thistrial.condition),{'vision','auditory','noOffset','posOffset','negOffset'}));
     
-    task.thistrial.pos1 = -17.5 + 1*randn(1);
+    task.thistrial.pos1 = -17.5 + 1.5*randn(1);
     stimulus.pos1 = task.thistrial.pos1;
     stimulus.pos3 = stimulus.pos1+35;
     stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
