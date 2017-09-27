@@ -27,7 +27,7 @@ stimulus.tenbit = tenbit;
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
-stimulus.gaussian.contrast = .2;
+stimulus.gaussian.contrast = .01;
 
 stimulus.colors.reservedColors = [1 1 1; 1 1 0; 0 0 1; 0.4 0.4 0.4; 0 1 0;1 0 0];
 
@@ -63,7 +63,7 @@ task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
 % parameters & randomization
 task{1}{1}.randVars.uniform.closeTo = [1 3];
 % task{1}{1}.randVars.uniform.hemifield = [2];
-task{1}{1}.parameter.condition = {'vision','auditory'};%{'vision','auditory','noOffset','posOffset','negOffset'};
+task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
 
 % task{1}{1}.parameter.delay = [-0.1 0 0.1];
 
