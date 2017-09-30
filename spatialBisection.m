@@ -10,10 +10,8 @@ getArgs(varargin,{'high=0','low=0','med=0','tenbit=1'},'verbose=1');
 
 if high
     stimulus.gaussian.diameter = 4;
-% 	stimulus.gaussian.contrast = .25;
 elseif low
-    stimulus.gaussian.diameter = 96;
-% 	stimulus.gaussian.contrast = .05;
+    stimulus.gaussian.diameter = 128;
 elseif med
     stimulus.gaussian.diameter = 64;
 else
@@ -27,8 +25,11 @@ stimulus.tenbit = tenbit;
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
-stimulus.gaussian.contrast = .01;
-
+if stimulus.tenbit
+stimulus.gaussian.contrast = .0025;
+else
+    stimulus.gaussian.contrast = .1;
+end
 stimulus.colors.reservedColors = [1 1 1; 1 1 0; 0 0 1; 0.4 0.4 0.4; 0 1 0;1 0 0];
 
 stimulus.tone.samplesPerSecond = 44100;
@@ -121,7 +122,7 @@ if task.thistrial.thisseg == 1
 	stimulus.fixColor = stimulus.colors.white;
 	task.thistrial.condNum = find(strcmp(char(task.thistrial.condition),{'vision','auditory','noOffset','posOffset','negOffset'}));
     
-    task.thistrial.pos1 = -17.5 + 1.5*randn(1);
+    task.thistrial.pos1 = -17.5 + 2*randn(1);
     stimulus.pos1 = task.thistrial.pos1;
     stimulus.pos3 = stimulus.pos1+35;
     stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
