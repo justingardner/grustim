@@ -54,8 +54,8 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-attend = 0; run = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1','run=0'});
+attend = 0; run = 0; build = 0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1','run=0','build=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -63,10 +63,11 @@ stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
 stimulus.attend = attend; % controls whether attention mode runs
+stimulus.buildOverride = build;
 if ~stimulus.attend
     warning('*****ATTENTION MODE IS DISABLED*****');
 end
-clear localizer invisible scan noeye task test2 attend
+clear localizer invisible scan noeye task test2 attend build
 
 if stimulus.scan
     warning('Not setup for scanning');
@@ -77,7 +78,10 @@ if any(replay>0)
     if isstr(replay)
         % a file was called for, load it
         loaded = load(replay);
-        stimulus =  loaded.stimulus;
+        stimulus = loaded.stimulus;
+        % get the task parameters so that you can sync the replay correctly
+        disp('GET TASK PARAMETERS');
+        keyboard;
         stimulus.replayFile = strcat(replay(1:(strfind(replay,'.mat')-1)),'_replay.mat');
         stimulus.replay = true;
     else
@@ -403,6 +407,10 @@ if ~stimulus.replay
     orderIdx = stimulus.order.curOrder(stimulus.curRun);
     stimulus.build.curBuild = stimulus.order.BaseBui(orderIdx);
     
+    if stimulus.buildOverride
+        stimulus.build.curBuild = stimulus.buildOverride;
+    end
+    
     stimulus.attention.curAttend = stimulus.order.BaseAtt(orderIdx);
     
     stimulus.attention.curAttendX = stimulus.attention.attendX(stimulus.attention.curAttend);
@@ -526,6 +534,9 @@ if stimulus.replay
 else
     task{1}{1}.waitForBacktick = 1;
     task{1}{1}.seglen = repmat(0.500,1,120);
+    if stimulus.scan
+        task{1}{1}.seglen(end) = 0.050; % make the last segment short so that it will synchtovol and hopefully align the runs
+    end
 end
 
 stimulus.seg.stim = 1;
