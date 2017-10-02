@@ -69,19 +69,26 @@ if ~stimulus.attend
 end
 clear localizer invisible scan noeye task test2 attend build
 
-if stimulus.scan
-    warning('Not setup for scanning');
-end
-
 %% Replay mode
 if any(replay>0)
-    if isstr(replay)
+    if ischar(replay)
         % a file was called for, load it
         loaded = load(replay);
         stimulus = loaded.stimulus;
+        % check that this is actually an afmap file
+        if isempty(strfind(loaded.task{1}{1}.taskFilename,'afmap'))
+            disp(sprintf('File %s is not an afmap run.',replay));
+            return
+        end
         % get the task parameters so that you can sync the replay correctly
         disp('GET TASK PARAMETERS');
-        keyboard;
+        e = getTaskParameters(loaded.myscreen,loaded.task);
+        e1 = e{1};
+        % pull out the trial volumes
+        stimulus.tVolumes = e{1}.trialVolume;
+        disp('Stimulus volumes were found at:');
+        disp(stimulus.tVolumes);
+        
         stimulus.replayFile = strcat(replay(1:(strfind(replay,'.mat')-1)),'_replay.mat');
         stimulus.replay = true;
     else
@@ -455,6 +462,49 @@ if ~stimulus.replay
     disp('******************************');
 end
 
+%% If tVolumes are not % 120 = 1, then we need to adjust the build
+if stimulus.replay
+    m120 = mod(stimulus.tVolumes,120);
+    
+    if any(m120>1)
+        disp('WARNING: Volume timing failed. Build output must be adjusted to contain additional blanks.');
+        
+        % get the indexes for each build (i.e. 1:120, 121:240, etc)
+        def = [1:120:720];
+        bIndexes = zeros(6,120); nIndexes = zeros(6,120);
+        for bi = 1:length(def)
+            bIndexes(bi,:) = def(bi):(def(bi)+119);
+            nIndexes(bi,:) = stimulus.tVolumes(bi):(stimulus.tVolumes(bi)+119);
+        end
+        
+        % save orig
+        stimulus.grid.preTRfix = stimulus.grid;
+        
+        nMax = max(nIndexes(:));
+        
+        orig_sz = size(stimulus.grid.con);
+        
+        ncon = zeros(nMax,orig_sz(2),orig_sz(3));
+        nsz = ncon;
+        nph = ncon;
+        ntheta = ncon;
+        for bi = 1:size(bIndexes,1)
+            disp(sprintf('Build %i needs to be offset by %i from %i to %i',bi,m120(bi),def(bi),stimulus.tVolumes(bi)));
+            
+            ncon(nIndexes(bi,:),:,:) = stimulus.grid.con(bIndexes(bi,:),:,:);
+            nsz(nIndexes(bi,:),:,:) = stimulus.grid.sz(bIndexes(bi,:),:,:);
+            nph(nIndexes(bi,:),:,:) = stimulus.grid.ph(bIndexes(bi,:),:,:);
+            ntheta(nIndexes(bi,:),:,:) = stimulus.grid.theta(bIndexes(bi,:),:,:);
+        end
+        
+        % replace
+        stimulus.grid.con = ncon(1:orig_sz(1),:,:);
+        stimulus.grid.sz = nsz(1:orig_sz(1),:,:);
+        stimulus.grid.ph = nph(1:orig_sz(1),:,:);
+        stimulus.grid.theta = ntheta(1:orig_sz(1),:,:);
+    end
+end
+
 %% Load the current build
 if ~stimulus.replay
     % stimulus.grid is used to track the grid for this run -- we will
@@ -504,6 +554,8 @@ if ~stimulus.replay
     end
 
     stimulus.responseKeys = [1 2]; % left right
+else
+    localInitStimulus();
 end
 
 %% Colors
@@ -543,11 +595,7 @@ stimulus.seg.stim = 1;
 
 task{1}{1}.getResponse = 0;
 
-if stimulus.replay
-    task{1}{1}.numTrials = size(stimulus.grid.con,1);
-else
-    task{1}{1}.numTrials = stimulus.build.cycles;
-end
+task{1}{1}.numTrials = stimulus.build.cycles;
 
 task{1}{1}.random = 0;
 
@@ -672,7 +720,7 @@ if stimulus.replay
     pRFstim.t = 1:size(stimulus.frames,3);
     
     if size(stimulus.frames,3)~=720
-        warning('Number of frames does not match the expected length (840)--padding end with blank screen');
+        warning('Number of frames does not match the expected length (720)--padding end with blank screen');
         input('Press [enter] to confirm: ');
         stimulus.frames(:,:,end:720) = 0;
     end
@@ -702,6 +750,13 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
+
+function [task, myscreen] = startTrialCallback1(task,myscreen)
+global stimulus
+
+disp(sprintf('(afmap) Starting cycle %01.0f',(stimulus.curTrial/120)+1));
+% disppercent(-1/120,'(afmap) Running: ');
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -719,6 +774,9 @@ stimulus.live.theta = squeeze(stimulus.grid.theta(stimulus.curTrial,:,:));
 stimulus.grid.t(stimulus.curTrial) = mglGetSecs;
 
 if stimulus.replay
+    mglClearScreen(0);
+    drawGratings();
+    mglFlush
     mglClearScreen(0);
     drawGratings();
     myscreen.flushMode = 1;
@@ -745,13 +803,13 @@ if stimulus.replay
     mglFlush % the screen will blank after the frame, but whatever
     frame = mglFrameGrab;
     if ~isfield(stimulus,'frames')
-        stimulus.frames = zeros(myscreen.screenWidth,myscreen.screenHeight,stimulus.gridCount);
+        stimulus.frames = zeros(myscreen.screenWidth,myscreen.screenHeight,stimulus.build.availableTRs);
     end
     stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
 end
 
 % disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
-disppercent(stimulus.curTrial/120,'(afmap) Running: ');
+% disppercent(stimulus.curTrial/120,'(afmap) Running: ');
 
 function drawFix(myscreen)
 
@@ -791,12 +849,6 @@ for xi = 1:length(stimulus.stimx)
         end
     end
 end
-
-function [task, myscreen] = startTrialCallback1(task,myscreen)
-global stimulus
-
-disp(sprintf('(afmap) Starting cycle %01.0f',(stimulus.curTrial/120)+1));
-disppercent(-1/120,'(afmap) Running: ');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
