@@ -153,18 +153,9 @@ end
 if ~stimulus.replay
     stimulus.stimX = 25; % max ecc in any direction
     stimulus.stimY = 13;
-    stimulus.stimR = 2; % deg between each stimulus
-
-    if mod(stimulus.stimX,stimulus.stimR)==0 || mod(stimulus.stimY,stimulus.stimR)==0
-        warning('Your stimulus size is not correctly setup');
-    end
-
-    stimulus.stimx = -stimulus.stimX:stimulus.stimR:stimulus.stimX;
-    stimulus.stimy = -stimulus.stimY:stimulus.stimR:stimulus.stimY;
-    
-    if any(stimulus.stimx==0) || any(stimulus.stimy==0)
-        warning('Your stimulus overlaps the fixation cross and the attention task!! You totally fd up!');
-    end
+    stimulus.thetaMin = 0;
+    stimulus.thetaMax = 2*pi;
+    stimulus.minEcc = 1;
 
     % how many times each probe location turns on per contrast and size
     % condition
@@ -175,14 +166,17 @@ if ~stimulus.replay
     stimulus.probeDown = 12;
 
     % stimulus.live will hold what actually gets displayed on the screen
-    stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
-    stimulus.live.sz = zeros(length(stimulus.stimx),length(stimulus.stimy));
-    stimulus.live.ph = zeros(length(stimulus.stimx),length(stimulus.stimy));
-    stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
+% %     stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
+% %     stimulus.live.sz = zeros(length(stimulus.stimx),length(stimulus.stimy));
+% %     stimulus.live.ph = zeros(length(stimulus.stimx),length(stimulus.stimy));
+% %     stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
 
     % gratingContrasts and gratingsizes control the possible sizes 
     stimulus.gratingContrasts = [0.1 1.0];
-    stimulus.gratingSizes = [0.5 1 2];
+    stimulus.gratingEccs = logspace(0,log10(25),5);
+    % the ratios are approximately the sigma / ecc ratio for V1, V4, and
+    % higher regions (MT/LO/VO/TO)
+    stimulus.gratingRatios = [.15 .5 1.3];
 
     % when we are doing the attention task
     stimulus.live.attend = 0;
@@ -202,16 +196,7 @@ if ~stimulus.replay && ~isfield(stimulus,'attention')
     stimulus.attention = struct;
     stimulus.attention.attendX = [0 4 4];
     stimulus.attention.attendY = [0 4 -4];
-    for ai = 1:length(stimulus.attention.attendX)
-        if any(stimulus.attention.attendX(ai)==stimulus.stimx)
-            warning('Stimulus and attention task are overlapping on the x-axis');
-        end
-    end
-    for ai = 1:length(stimulus.attention.attendY)
-        if any(stimulus.attention.attendY(ai)==stimulus.stimy)
-            warning('Stimulus and attention task are overlapping on the y-axis');
-        end
-    end
+
     if stimulus.attend
         stimulus.attention.rotate = length(stimulus.attention.attendX);
     else
@@ -221,6 +206,7 @@ if ~stimulus.replay && ~isfield(stimulus,'attention')
 end
 
 %% Build stimulus
+localInitStimulus();
 if ~stimulus.replay && ~isfield(stimulus,'build')
     stimulus.build = struct;
     
@@ -233,7 +219,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
     stimulus.build.cycleLength = 120;
     stimulus.build.availableTRs = stimulus.build.cycles*stimulus.build.cycleLength; % how long the task should run for
     
-    stimulus.build.conditions = length(stimulus.gratingContrasts)*length(stimulus.gratingSizes);
+    stimulus.build.conditions = length(stimulus.gratingContrasts)*length(stimulus.gratingRatios);
     stimulus.build.conditionsRep = stimulus.build.conditions * stimulus.probeOn; % total # of displays per location
     
     if stimulus.build.conditionsRep*(stimulus.probeUp+stimulus.probeDown) > (stimulus.build.availableTRs*2/3) % ~1/3 of the time the screen will be blank
@@ -1055,29 +1041,34 @@ files = dir(fullfile(sprintf('~/data/afmap/%s/17*stim*.mat',mglGetSID)));
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function localInitStimulus()
-
+%%
 global stimulus
 
 for ci = 1:length(stimulus.gratingContrasts)
-    for si = 1:length(stimulus.gratingSizes)
-        sz = 4 * stimulus.gratingSizes(si); % make it twice as a big, so that the FWHM can be equal to the size
-        % use total degs / num to compute size
-        for phase = 1:2
-            grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz,sz,4/stimulus.gratingSizes(si),0,(phase-1)*180) + 255/2;
-            gauss = mglMakeGaussian(sz,sz,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2);
-            alphamask = repmat(grating,1,1,4);
-            alphamask(:,:,4) = gauss*255;
-            
-            % make the grating
-            stimulus.grating(ci,si,phase)  = mglCreateTexture(alphamask); % high contrast
-            % make a gaussian (for when we display, make sure to use the
-            % actual contrast for this setting or we'll fuck up later)
-            gData = stimulus.gratingContrasts(ci)*255*ones(size(grating,1),size(grating,2),4);
-            gData(:,:,4) = gauss*255;
-            stimulus.gaussian(ci,si,phase) = mglCreateTexture(gData);
+    for si = 1:length(stimulus.gratingEccs)
+        for ri = 1:length(stimulus.gratingRatios)
+            sz = stimulus.gratingRatios(ri) * stimulus.gratingEccs(si);
+            % use total degs / num to compute size
+            for phase = 1:2
+                grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz*2,sz*2,4/sz,0,(phase-1)*180) + 255/2;
+                gauss = mglMakeGaussian(sz*2,sz*2,sz,sz);
+                alphamask = repmat(grating,1,1,4);
+                alphamask(:,:,4) = gauss*255;
+
+                % make the grating
+                stimulus.grating(ci,si,ri,phase) = mglCreateTexture(alphamask); % high contrast
+                % make a gaussian (for when we display, make sure to use the
+                % actual contrast for this setting or we'll fuck up later)
+                gData = stimulus.gratingContrasts(ci)*255*ones(size(grating,1),size(grating,2),4);
+                gData(:,:,4) = gauss*255;
+                stimulus.gaussian(ci,si,ri,phase) = mglCreateTexture(gData);
+            end
         end
     end
 end
+
+%% testing
+stop = 1;
 % 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % sets the gamma table so that we can have
