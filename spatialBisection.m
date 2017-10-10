@@ -13,7 +13,7 @@ if high
 elseif low
     stimulus.gaussian.diameter = 208;
 elseif med
-    stimulus.gaussian.diameter = 64;
+    stimulus.gaussian.diameter = 32;
 else
     return
 end
@@ -40,7 +40,7 @@ stimulus.tone.duration = .0015;
 % stimulus.pos1 = -7.5;
 % stimulus.pos3 = stimulus.pos1+30;
 % stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2; %7.5 deg from center
-stimulus.delta=3.5;
+stimulus.delta=2.5;
 
 % fixation cross
 stimulus.fixWidth = 1;
@@ -573,7 +573,7 @@ for cond = 1:5
   thisResp = task.randVars.resp(thisTrials);
   isThird = (thisResp == 2);
 
-	binCenter = -10:2:10;  space = max(diff(binCenter));
+	binCenter = -14.5:1:14.5; space = max(diff(binCenter));
   for b = 1:length(binCenter)
     switch b
       case 1
