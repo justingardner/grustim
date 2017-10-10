@@ -174,8 +174,8 @@ if ~stimulus.replay
     % gratingContrasts and gratingsizes control the possible sizes 
     stimulus.gratingContrasts = [0.1 1.0];
     % design eccs
-    stimulus.designEccs = logspace(0,log10(6),7);
-    stimulus.drawEccs = logspace(0,log10(25),7);
+    stimulus.designEccs = logspace(0,log10(6),8);
+    stimulus.drawEccs = logspace(0,log10(28),8);
     % the ratios are approximately the sigma / ecc ratio for V1, V4, and
     % higher regions (MT/LO/VO/TO)
     stimulus.gratingRatios = [.15 .27 0.5];
@@ -265,18 +265,30 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
             end
         end
         
-        mult = 6;
+        mult = 3;
         onScreenNum = [36 27 27 27 27 0]*mult;
         
         % polar angles where eccentricity was measured
-        mesAngles =  [-15 0 15 30 45 60 75 90];
+        mesAngles =  [-90 -60 -45 -30 -15 0 15 30 45 60 75 90];
         % eccentricity measured at the above angles
-        mesEcc = ([38 35 30 26 24 22 21 21]-1)*1;
+        mesEcc = ([15 17 20 28 38 35 30 26 24 22 21 21]-1)*1;
 
         % linear interpolate (in radial coordinates) to make smoother
-        angles = -15:90; angles = angles * (pi/2)/90;
+        angles = -90:90;
         ecc = interp1(mesAngles,mesEcc,angles,'linear');
+        angles = angles * pi/180;
+        
+        angles = [angles pi-angles];
+        ecc = [ecc ecc];
+        
+        angles = mod(angles,2*pi);
 
+%         figure; hold on
+%         for i = 1:length(angles)
+%             x = ecc(i) * cos(angles(i));
+%             y = ecc(i) * sin(angles(i));
+%             plot(x,y,'*');
+%         end
         
         disppercent(-1/stimulus.build.availableTRs);
         
@@ -307,10 +319,15 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
                 
                 % for ecc, flip across and then round to get maxEcc values
                 t2 = t;
-                t2(t2>pi/2) = pi-t2(t2>pi/2);
+%                 t2 = mod(t2,2*pi);
+                
+                eccMax = zeros(size(t2));
+                
                 for ti = 1:length(t2)
-                    eccMax(ti) = ecc(find(angles>t2(ti),1));
+                    [~,mini] = min(abs(angles-t2(ti)));
+                    eccMax(ti) = ecc(mini);
                 end
+                
                 necc = stimulus.minEcc + rand(size(eccMax)).*(eccMax-stimulus.minEcc);
                 
                 con = randi(2,1,turnOn);
