@@ -10,10 +10,13 @@ getArgs(varargin,{'high=0','low=0','med=0','tenbit=1','practice=0'},'verbose=1')
 
 if high
     stimulus.gaussian.diameter = 4;
+    stimulus.gaussian.contrast = 0.005;
 elseif low
     stimulus.gaussian.diameter = 208;
+    stimulus.gaussian.contrast = 0.0025;
 elseif med
     stimulus.gaussian.diameter = 32;
+    stimulus.gaussian.contrast = 0.0025;
 else
     return
 end
@@ -26,9 +29,7 @@ stimulus.practice = practice;
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
-if stimulus.tenbit
-	stimulus.gaussian.contrast = .005;
-else
+if ~stimulus.tenbit
     stimulus.gaussian.contrast = .1;
 end
 stimulus.colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
