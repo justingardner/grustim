@@ -849,7 +849,7 @@ for si = 1:length(live)
     if stimulus.replay
         % just draw a circle
         % /2 because the FWHM defines a diameter of 1/2/3 degree
-        mglBltTexture(stimulus.gaussian(con,sz,ph),[x y],0,0,0);
+        mglBltTexture(stimulus.gaussian(con,eccIdx,sz,ph),[x y],0,0,0);
     %                 mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
     else
         % organized: contrast, ecc, size, ph
@@ -1091,6 +1091,14 @@ for ci = 1:length(stimulus.gratingContrasts)
 end
 
 %% testing
+
+% mglClearScreen;
+% for si = 1:7
+%     for ri = 1:3
+%         mglBltTexture(stimulus.gaussian(2,si,ri,1),[randn*10 randn*10]);
+%     end
+% end
+% mglFlush
 
 %%
 % 
