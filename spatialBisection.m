@@ -5,15 +5,15 @@ mglEatKeys('12`');
 global stimulus
 
 % get arguments
-high = 0; low = 0; med = 0; tenbit = 1;
-getArgs(varargin,{'high=0','low=0','med=0','tenbit=1'},'verbose=1');
+high = 0; low = 0; med = 0; tenbit = 1; practice = 0;
+getArgs(varargin,{'high=0','low=0','med=0','tenbit=1','practice=0'},'verbose=1');
 
 if high
     stimulus.gaussian.diameter = 4;
 elseif low
-    stimulus.gaussian.diameter = 128;
+    stimulus.gaussian.diameter = 208;
 elseif med
-    stimulus.gaussian.diameter = 64;
+    stimulus.gaussian.diameter = 32;
 else
     return
 end
@@ -21,16 +21,17 @@ stimulus.high = high;
 stimulus.low = low;
 stimulus.med = med;
 stimulus.tenbit = tenbit;
+stimulus.practice = practice;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
 if stimulus.tenbit
-stimulus.gaussian.contrast = .0025;
+	stimulus.gaussian.contrast = .005;
 else
     stimulus.gaussian.contrast = .1;
 end
-stimulus.colors.reservedColors = [1 1 1; 1 1 0; 0 0 1; 0.4 0.4 0.4; 0 1 0;1 0 0];
+stimulus.colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 
 stimulus.tone.samplesPerSecond = 44100;
 % stimulus.tone.hz = 750;
@@ -39,7 +40,7 @@ stimulus.tone.duration = .0015;
 % stimulus.pos1 = -7.5;
 % stimulus.pos3 = stimulus.pos1+30;
 % stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2; %7.5 deg from center
-stimulus.delta=1.5;
+stimulus.delta=2.5;
 
 % fixation cross
 stimulus.fixWidth = 1;
@@ -49,7 +50,6 @@ stimulus.initOffset = 1;
 stimulus.initOffsetSd = 1.5;
 
 % initalize the screen
-myscreen.background = 0;
 myscreen = initScreen;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%
@@ -63,12 +63,14 @@ task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
 
 % parameters & randomization
 task{1}{1}.randVars.uniform.closeTo = [1 3];
-% task{1}{1}.randVars.uniform.hemifield = [2];
-task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
+if ~stimulus.practice
+	task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
+	task{1}{1}.numTrials = 25*length(task{1}{1}.parameter.condition);
+else
+	task{1}{1}.parameter.condition = {'vision','auditory','noOffset'};
+	task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
+end
 
-% task{1}{1}.parameter.delay = [-0.1 0 0.1];
-
-task{1}{1}.numTrials = 30*length(task{1}{1}.parameter.condition);
 task{1}{1}.random = 1;
 
 task{1}{1}.randVars.calculated.resp = nan;
@@ -94,6 +96,13 @@ stimulus = initStair(stimulus);
 % to initialize the stimulus for your experiment.
 stimulus = initGaussian(stimulus,myscreen);
 stimulus = initClick(stimulus,task);
+
+mglWaitSecs(1);
+mglClearScreen(stimulus.colors.black);
+mglTextSet([],32,stimulus.colors.white);
+mglTextDraw('Press ` key to start when you are ready',[0 0]);
+mglFlush;
+mglWaitSecs(1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
@@ -169,11 +178,11 @@ if task.thistrial.thisseg == 1
         % task.thistrial.hz = stimulus.thisHz;
     end
 
-elseif task.thistrial.thisseg == 9
-	stimulus.fixColor = stimulus.colors.darkgrey;
+% elseif task.thistrial.thisseg == 9
+% 	stimulus.fixColor = stimulus.colors.darkgrey;
 
 elseif task.thistrial.thisseg == 8
-	stimulus.fixColor = stimulus.colors.yellow;
+	stimulus.fixColor = stimulus.colors.darkgrey;
 
 end
 
@@ -214,8 +223,9 @@ if ~task.thistrial.gotResponse
 		task.thistrial.correct = 1;
 		% if any(task.thistrial.condNum == [1 2 3])	
 		% % feedback
-		% stimulus.fixColor = stimulus.colors.green;
-		% end
+		if stimulus.practice
+			stimulus.fixColor = stimulus.colors.green;
+		end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i correct', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 
@@ -223,12 +233,15 @@ if ~task.thistrial.gotResponse
 		% incorrect
 		task.thistrial.correct = 0;
 		% if any(task.thistrial.condNum == [1 2 3])
-		% stimulus.fixColor = stimulus.colors.red;
-		% end
+		if stimulus.practice
+			stimulus.fixColor = stimulus.colors.red;
+		end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i incorrect', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 	end
-	stimulus.fixColor = stimulus.colors.blue;
+	if ~stimulus.practice
+		stimulus.fixColor = stimulus.colors.cyan;
+	end
 	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
 		abs(task.thistrial.probeOffset));
 	 
@@ -318,11 +331,11 @@ iContrast = contrastIndex-1;
 stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
 % get the color values (i.e. reserved color)
 stimulus.colors.white = stimulus.colors.reservedColor(1);
-stimulus.colors.yellow = stimulus.colors.reservedColor(2);
-stimulus.colors.blue = stimulus.colors.reservedColor(3);
-stimulus.colors.darkgrey = stimulus.colors.reservedColor(4);
-stimulus.colors.green = stimulus.colors.reservedColor(5);
-stimulus.colors.red = stimulus.colors.reservedColor(6);
+stimulus.colors.darkgrey = stimulus.colors.reservedColor(2);
+stimulus.colors.green = stimulus.colors.reservedColor(3);
+stimulus.colors.red = stimulus.colors.reservedColor(4);
+stimulus.colors.cyan = stimulus.colors.reservedColor(5);
+
 % % compute the guassian
 % gauss = mglMakeGaussian(stimulus.width,stimulus.width, stimulus.width/8,stimulus.width/8);
 
@@ -347,11 +360,10 @@ else
 stimulus.colors.black = 0;
 % get the color values (i.e. reserved color)
 stimulus.colors.white = 1;
-stimulus.colors.yellow = [1 1 0];
-stimulus.colors.blue = [0 0 1];
-stimulus.colors.darkgrey = 0.4;
+stimulus.colors.darkgrey = 0.3;
 stimulus.colors.green = [0 1 0];
 stimulus.colors.red = [1 0 0];
+stimulus.colors.cyan = [0 1 1];
 
 end   
 	
@@ -561,7 +573,7 @@ for cond = 1:5
   thisResp = task.randVars.resp(thisTrials);
   isThird = (thisResp == 2);
 
-	binCenter = -10:2:10;  space = max(diff(binCenter));
+	binCenter = -14.5:1:14.5; space = max(diff(binCenter));
   for b = 1:length(binCenter)
     switch b
       case 1
