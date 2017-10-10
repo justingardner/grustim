@@ -174,7 +174,7 @@ if ~stimulus.replay
     % gratingContrasts and gratingsizes control the possible sizes 
     stimulus.gratingContrasts = [0.1 1.0];
     % design eccs
-    stimulus.designEccs = logspace(0,log10(3),7);
+    stimulus.designEccs = logspace(0,log10(6),7);
     stimulus.drawEccs = logspace(0,log10(25),7);
     % the ratios are approximately the sigma / ecc ratio for V1, V4, and
     % higher regions (MT/LO/VO/TO)
@@ -265,7 +265,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
             end
         end
         
-        mult = 5;
+        mult = 6;
         onScreenNum = [36 27 27 27 27 0]*mult;
         
         % polar angles where eccentricity was measured
@@ -280,7 +280,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
         
         disppercent(-1/stimulus.build.availableTRs);
         
-        availableIdxs = ones(stimulus.build.availableTRs,stimulus.maxOnScreen*mult);
+        availableIdxs = ones(stimulus.build.availableTRs,ceil(stimulus.maxOnScreen*mult/3));
         
         for cycle = 1:stimulus.build.cycles
             for innerCycle = 1:6
@@ -1073,7 +1073,7 @@ for ci = 1:length(stimulus.gratingContrasts)
             sz = stimulus.gratingRatios(ri) * stimulus.designEccs(si);
             % use total degs / num to compute size
             for phase = 1:2
-                grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz*4,sz*4,3/sz,0,(phase-1)*180) + 255/2;
+                grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz*4,sz*4,2/sz,0,(phase-1)*180) + 255/2;
                 gauss = mglMakeGaussian(sz*4,sz*4,sz/fwhm_sd,sz/fwhm_sd);
                 alphamask = repmat(grating,1,1,4);
                 alphamask(:,:,4) = gauss*255;
