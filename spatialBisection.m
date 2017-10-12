@@ -173,7 +173,7 @@ if task.thistrial.thisseg == 1
 
 	if task.thistrial.condNum ~= 1 % if not vision condition
 		% stimulus = initClick(stimulus,task);
-        for int = 2:3
+        for int = 1:3
             stimulus.sound(int) = createITD(stimulus,task.thistrial.xposA(int));
         end
         % task.thistrial.hz = stimulus.thisHz;
@@ -458,16 +458,16 @@ t = 0:1/fs:stimulus.tone.duration;
 
 wav = 0.5 * randn(1,length(t));
 
-% fc = 2000; % cutoff frequency
-% % 5th order Butterworth filter
-% % [b,a] = butter(5, fc/(stimulus.tone.samplesPerSecond/2));
-% a = [1	-4.07876493416512	6.72527084144657	-5.59474636818042	2.34559680959441	-0.396133028715511];
-% b = [3.82287493728255e-05	0.000191143746864127	0.000382287493728255	0.000382287493728255	0.000191143746864127	3.82287493728255e-05];
-% wav = randn(1,length(t));
-% wavFiltered = filter(b,a,wav);
-% stimulus.wav = wavFiltered;
+fc = 2000; % cutoff frequency
+% 5th order Butterworth filter
+% [b,a] = butter(5, fc/(stimulus.tone.samplesPerSecond/2));
+a = [1	-4.07876493416512	6.72527084144657	-5.59474636818042	2.34559680959441	-0.396133028715511];
+b = [3.82287493728255e-05	0.000191143746864127	0.000382287493728255	0.000382287493728255	0.000191143746864127	3.82287493728255e-05];
+wav = randn(1,length(t));
+wavFiltered = filter(b,a,wav);
+stimulus.wav = wavFiltered;
 
-stimulus.wav = wav;
+% stimulus.wav = wav;
 
 % stimulus.thisHz = stimulus.tone.hz + (stimulus.tone.hz/10)*randn;
 
@@ -555,6 +555,7 @@ else
     waveform(2,:) = rightwav;
 end
 s = mglInstallSound(waveform, stimulus.tone.samplesPerSecond);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
