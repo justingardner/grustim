@@ -37,7 +37,7 @@ stimulus.gaussainDur = .015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
-stimulus.contrast = .01; 
+stimulus.contrast = .0025;%.01; 
 stimulus.interval = [2 4];
 % fixation cross
 stimulus.fixWidth = 1;
@@ -392,8 +392,19 @@ t = 0:1/fs:duration;
 % amplitude = 0.5;
 % stimulus.wav = amplitude * sin(2*pi*hz*t);
 
+% wav = 0.5 * randn(1,length(t));
+% stimulus.wav = wav;
+
 wav = 0.5 * randn(1,length(t));
-stimulus.wav = wav;
+
+fc = 2000; % cutoff frequency
+% 5th order Butterworth filter
+% [b,a] = butter(5, fc/(stimulus.tone.samplesPerSecond/2));
+a = [1  -4.07876493416512 6.72527084144657  -5.59474636818042 2.34559680959441  -0.396133028715511];
+b = [3.82287493728255e-05 0.000191143746864127  0.000382287493728255  0.000382287493728255  0.000191143746864127  3.82287493728255e-05];
+wav = randn(1,length(t));
+wavFiltered = filter(b,a,wav);
+stimulus.wav = wavFiltered;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to update the stimulus
