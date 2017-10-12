@@ -5,8 +5,8 @@ mglEatKeys('12`');
 global stimulus
 
 % get arguments
-high = 0; low = 0; med = 0; tenbit = 1; practice = 0;
-getArgs(varargin,{'high=0','low=0','med=0','tenbit=1','practice=0'},'verbose=1');
+high = 0; low = 0; med = 0; tenbit = 1; practice = 0; auditoryPrac = 0;
+getArgs(varargin,{'high=0','low=0','med=0','tenbit=1','practice=0','auditoryPrac=0'},'verbose=1');
 
 if high
     stimulus.gaussian.diameter = 4;
@@ -17,21 +17,27 @@ elseif low
 elseif med
     stimulus.gaussian.diameter = 32;
     stimulus.gaussian.contrast = 0.0025;
-else
-    return
+else 
+    if auditoryPrac
+        tenbit =0;
+        stimulus.gaussian.diameter = nan;
+    else
+        return
+    end
 end
 stimulus.high = high;
 stimulus.low = low;
 stimulus.med = med;
 stimulus.tenbit = tenbit;
 stimulus.practice = practice;
+stimulus.auditoryPrac = auditoryPrac;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
-if ~stimulus.tenbit
-    stimulus.gaussian.contrast = .1;
-end
+    if ~stimulus.tenbit
+        stimulus.gaussian.contrast = .1;
+    end
 stimulus.colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 
 stimulus.tone.samplesPerSecond = 44100;
@@ -63,13 +69,22 @@ task{1}{1}.segmax = task{1}{1}.segmin;
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
 
 % parameters & randomization
-task{1}{1}.randVars.uniform.closeTo = [1 3];
-if ~stimulus.practice
-	task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
-	task{1}{1}.numTrials = 25*length(task{1}{1}.parameter.condition);
+if stimulus.practice
+    task{1}{1}.parameter.condition = {'vision','auditory','noOffset'};
+    task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
+    task{1}{1}.randVars.uniform.closeTo = [1 3];
+elseif stimulus.auditoryPrac
+    task{1}{1}.numTrials = 30;
+    task{1}{1}.parameter.condition = {'auditory'};
+    task{1}{1}.parameter.offset = [7.5 10];
+    task{1}{1}.parameter.closeTo = [1 3];
+    figure;
+    xlabel('trial'); ylabel('correct'); 
+    xaxis([0 30]); yaxis([-1 2]);
 else
-	task{1}{1}.parameter.condition = {'vision','auditory','noOffset'};
-	task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
+    task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
+	task{1}{1}.numTrials = 25*length(task{1}{1}.parameter.condition);
+    task{1}{1}.randVars.uniform.closeTo = [1 3];
 end
 
 task{1}{1}.random = 1;
@@ -91,9 +106,10 @@ end
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
 
+if ~stimulus.auditoryPrac
 % init the staircase
 stimulus = initStair(stimulus);
-
+end
 % to initialize the stimulus for your experiment.
 stimulus = initGaussian(stimulus,myscreen);
 stimulus = initClick(stimulus,task);
@@ -122,7 +138,6 @@ myscreen = endTask(myscreen,task);
 
 % if stimulus.disp
 dispPsychometric(task{1}{1});
-% end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -137,15 +152,20 @@ if task.thistrial.thisseg == 1
     stimulus.pos3 = stimulus.pos1+35;
     stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
     
-	% get Test Value
-	[testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
-	if testValue > 10.5
-		testValue = 10.5;
-	end
-	task.thistrial.noise = 2.5 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
-	while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
-		task.thistrial.noise = 2.5 * randn(1);
-	end
+    if ~stimulus.auditoryPrac
+        % get Test Value
+        [testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
+        if testValue > 10.5
+            testValue = 10.5;
+        end
+        task.thistrial.noise = 2.5 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
+        while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
+            task.thistrial.noise = 2.5 * randn(1);
+        end
+    else
+        testValue = task.thistrial.offset;
+        task.thistrial.noise = 0;
+    end
 	if task.thistrial.closeTo == 1
 		sign = -1;
 	else
@@ -224,7 +244,7 @@ if ~task.thistrial.gotResponse
 		task.thistrial.correct = 1;
 		% if any(task.thistrial.condNum == [1 2 3])	
 		% % feedback
-		if stimulus.practice
+		if stimulus.practice || stimulus.auditoryPrac
 			stimulus.fixColor = stimulus.colors.green;
 		end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i correct', ...
@@ -234,18 +254,21 @@ if ~task.thistrial.gotResponse
 		% incorrect
 		task.thistrial.correct = 0;
 		% if any(task.thistrial.condNum == [1 2 3])
-		if stimulus.practice
+		if stimulus.practice || stimulus.auditoryPrac
 			stimulus.fixColor = stimulus.colors.red;
 		end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i incorrect', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 	end
-	if ~stimulus.practice
+	if ~stimulus.practice && ~stimulus.auditoryPrac
 		stimulus.fixColor = stimulus.colors.cyan;
-	end
-	stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
-		abs(task.thistrial.probeOffset));
-	 
+    end
+    if ~stimulus.auditoryPrac
+        stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
+            abs(task.thistrial.probeOffset));
+    else
+        dispPerformance(task);
+    end
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
 
@@ -447,7 +470,6 @@ mglSetGammaTable(gammaTable);
 % remember what the current maximum contrast is that we can display
 stimulus.currentMaxContrast = maxContrast;
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Sound
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -625,3 +647,16 @@ end
 
 figure(bi); mylegend({'No offset','Pos offset','Neg offset'}, {{getcolor(3)},{ getcolor(4)},{ getcolor(5)}});
 figure(uni); mylegend({'vision','auditory'},{{getcolor(1)},{getcolor(2)}});
+
+
+function dispPerformance(task)
+hold on;
+if task.thistrial.correct
+plot(task.trialnum, task.thistrial.correct, 'go', 'markerFaceColor',[0 1 0]);
+else
+    plot(task.trialnum, task.thistrial.correct, 'ro', 'markerFaceColor',[1 0 0]);
+end
+drawnow;
+if any(task.trialnum == [10 20 30])
+    disp(sprintf('(spatialBisection) Percent Correct of Last 10 Trials: %0.2f%', sum(task.randVars.correct(task.trialnum-9:task.trialnum))/task.trialnum*100));
+end
