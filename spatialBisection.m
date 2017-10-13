@@ -53,8 +53,14 @@ stimulus.delta=2.5;
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
-stimulus.initOffset = 1;
-stimulus.initOffsetSd = 1.5;
+stimulus.initOffset = 2;
+stimulus.initOffsetSd = 2.5;
+if stimulus.auditoryPrac
+    stimulus.initialThreshold = 10;
+    stimulus.initialStepsize = 2.5;
+    stimulus.minThreshold = 0;
+    stimulus.maxThreshold = 15;
+end
 
 % initalize the screen
 myscreen = initScreen;
@@ -74,9 +80,9 @@ if stimulus.practice
     task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
     task{1}{1}.randVars.uniform.closeTo = [1 3];
 elseif stimulus.auditoryPrac
-    task{1}{1}.numTrials = 30;
+%     task{1}{1}.numTrials = 30;
     task{1}{1}.parameter.condition = {'auditory'};
-    task{1}{1}.parameter.offset = [7.5 10];
+%     task{1}{1}.parameter.offset = [7.5 10];
     task{1}{1}.parameter.closeTo = [1 3];
     figure;
     xlabel('trial'); ylabel('correct'); 
@@ -106,10 +112,8 @@ end
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
 
-if ~stimulus.auditoryPrac
 % init the staircase
 stimulus = initStair(stimulus);
-end
 % to initialize the stimulus for your experiment.
 stimulus = initGaussian(stimulus,myscreen);
 stimulus = initClick(stimulus,task);
@@ -163,7 +167,8 @@ if task.thistrial.thisseg == 1
             task.thistrial.noise = 2.5 * randn(1);
         end
     else
-        testValue = task.thistrial.offset;
+        [testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
+%         testValue = task.thistrial.offset;
         task.thistrial.noise = 0;
     end
 	if task.thistrial.closeTo == 1
@@ -267,7 +272,7 @@ if ~task.thistrial.gotResponse
         stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
             abs(task.thistrial.probeOffset));
     else
-        dispPerformance(task);
+        stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     end
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
@@ -278,12 +283,20 @@ end
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStair(stimulus)
+if ~stimulus.auditoryPrac
 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
 for cond = 1:5
 	stimulus.stair{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initOffset, 'initialThresholdSd', stimulus.initOffsetSd, ...
 		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
 end
 
+else
+    stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2',...
+        'initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize, ...
+    'minStepsize=0.75','maxStepsize=2.5','minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,...
+     'stepRule=pest','dispFig=1');
+   
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
@@ -648,15 +661,15 @@ end
 figure(bi); mylegend({'No offset','Pos offset','Neg offset'}, {{getcolor(3)},{ getcolor(4)},{ getcolor(5)}});
 figure(uni); mylegend({'vision','auditory'},{{getcolor(1)},{getcolor(2)}});
 
-
-function dispPerformance(task)
-hold on;
-if task.thistrial.correct
-plot(task.trialnum, task.thistrial.correct, 'go', 'markerFaceColor',[0 1 0]);
-else
-    plot(task.trialnum, task.thistrial.correct, 'ro', 'markerFaceColor',[1 0 0]);
-end
-drawnow;
-if any(task.trialnum == [10 20 30])
-    disp(sprintf('(spatialBisection) Percent Correct of Last 10 Trials: %0.2f%', sum(task.randVars.correct(task.trialnum-9:task.trialnum))/task.trialnum*100));
-end
+% 
+% function dispPerformance(task)
+% hold on;
+% if task.thistrial.correct
+% plot(task.trialnum, task.thistrial.correct, 'go', 'markerFaceColor',[0 1 0]);
+% else
+%     plot(task.trialnum, task.thistrial.correct, 'ro', 'markerFaceColor',[1 0 0]);
+% end
+% drawnow;
+% if any(task.trialnum == [10 20 30])
+%     disp(sprintf('(spatialBisection) Percent Correct of Last 10 Trials: %0.2f%', sum(task.randVars.correct(task.trialnum-9:task.trialnum))/task.trialnum*100));
+% end
