@@ -5,8 +5,8 @@ mglEatKeys('12`');
 global stimulus
 
 % get arguments
-high = 0; low = 0; med = 0; tenbit = 1; practice = 0; auditoryPrac = 0;
-getArgs(varargin,{'high=0','low=0','med=0','tenbit=1','practice=0','auditoryPrac=0'},'verbose=1');
+high = 0; low = 0; med = 0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0;
+getArgs(varargin,{'high=0','low=0','med=0','tenbit=1','practice=0','auditoryTrain=0','visualTrain=0'},'verbose=1');
 
 if high
     stimulus.gaussian.diameter = 4;
@@ -18,7 +18,7 @@ elseif med
     stimulus.gaussian.diameter = 32;
     stimulus.gaussian.contrast = 0.0025;
 else 
-    if auditoryPrac
+    if auditoryTrain
         tenbit =0;
         stimulus.gaussian.diameter = nan;
     else
@@ -30,7 +30,8 @@ stimulus.low = low;
 stimulus.med = med;
 stimulus.tenbit = tenbit;
 stimulus.practice = practice;
-stimulus.auditoryPrac = auditoryPrac;
+stimulus.auditoryTrain = auditoryTrain;
+stimulus.visualTrain = visualTrain;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
@@ -55,11 +56,13 @@ stimulus.fixColor = [1 1 1];
 
 stimulus.initOffset = 2;
 stimulus.initOffsetSd = 2.5;
-if stimulus.auditoryPrac
+if stimulus.auditoryTrain || stimulus.visualTrain
     stimulus.initialThreshold = 10;
     stimulus.initialStepsize = 2.5;
     stimulus.minThreshold = 0;
     stimulus.maxThreshold = 15;
+    stimulus.minStepsize = 0.5;
+    stimulus.maxStepsize = 2.5;
 end
 
 % initalize the screen
@@ -79,14 +82,17 @@ if stimulus.practice
     task{1}{1}.parameter.condition = {'vision','auditory','noOffset'};
     task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
     task{1}{1}.randVars.uniform.closeTo = [1 3];
-elseif stimulus.auditoryPrac
+elseif stimulus.auditoryTrain
 %     task{1}{1}.numTrials = 30;
     task{1}{1}.parameter.condition = {'auditory'};
 %     task{1}{1}.parameter.offset = [7.5 10];
     task{1}{1}.parameter.closeTo = [1 3];
-    figure;
-    xlabel('trial'); ylabel('correct'); 
-    xaxis([0 30]); yaxis([-1 2]);
+    % figure;
+    % xlabel('trial'); ylabel('correct'); 
+    % xaxis([0 30]); yaxis([-1 2]);
+elseif stimulus.visualTrain
+	task{1}{1}.parameter.condition = {'vision'};
+    task{1}{1}.parameter.closeTo = [1 3];
 else
     task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
 	task{1}{1}.numTrials = 25*length(task{1}{1}.parameter.condition);
@@ -141,7 +147,7 @@ end
 myscreen = endTask(myscreen,task);
 
 % if stimulus.disp
-dispPsychometric(task{1}{1});
+dispPsychometric(task{1}{1},stimulus);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -156,7 +162,12 @@ if task.thistrial.thisseg == 1
     stimulus.pos3 = stimulus.pos1+35;
     stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
     
-    if ~stimulus.auditoryPrac
+    if stimulus.auditoryTrain || stimulus.visualTrain
+    	[testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
+%         testValue = task.thistrial.offset;
+        task.thistrial.noise = 0;
+
+    else
         % get Test Value
         [testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
         if testValue > 10.5
@@ -166,11 +177,8 @@ if task.thistrial.thisseg == 1
         while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
             task.thistrial.noise = 2.5 * randn(1);
         end
-    else
-        [testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
-%         testValue = task.thistrial.offset;
-        task.thistrial.noise = 0;
     end
+
 	if task.thistrial.closeTo == 1
 		sign = -1;
 	else
@@ -249,7 +257,7 @@ if ~task.thistrial.gotResponse
 		task.thistrial.correct = 1;
 		% if any(task.thistrial.condNum == [1 2 3])	
 		% % feedback
-		if stimulus.practice || stimulus.auditoryPrac
+		if stimulus.practice || stimulus.auditoryTrain || stimulus.visualTrain
 			stimulus.fixColor = stimulus.colors.green;
 		end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i correct', ...
@@ -259,16 +267,16 @@ if ~task.thistrial.gotResponse
 		% incorrect
 		task.thistrial.correct = 0;
 		% if any(task.thistrial.condNum == [1 2 3])
-		if stimulus.practice || stimulus.auditoryPrac
+		if stimulus.practice || stimulus.auditoryTrain || stimulus.visualTrain
 			stimulus.fixColor = stimulus.colors.red;
 		end
 		disp(sprintf('(spatialBisection) %i:%s offset %0.3f resp %i incorrect', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset, task.thistrial.whichButton))
 	end
-	if ~stimulus.practice && ~stimulus.auditoryPrac
+	if ~(stimulus.practice || stimulus.auditoryTrain || stimulus.visualTrain)
 		stimulus.fixColor = stimulus.colors.cyan;
     end
-    if ~stimulus.auditoryPrac
+    if ~(stimulus.auditoryTrain||stimulus.visualTrain)
         stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
             abs(task.thistrial.probeOffset));
     else
@@ -283,18 +291,18 @@ end
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStair(stimulus)
-if ~stimulus.auditoryPrac
+if stimulus.auditoryTrain || stimulus.visualTrain
+	 stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2',...
+        'initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize, ...
+    'minStepsize',stimulus.minStepsize,'maxStepsize',stimulus.maxStepsize,'minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,...
+     'stepRule=pest','dispFig=1');
+else
+
 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
 for cond = 1:5
 	stimulus.stair{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initOffset, 'initialThresholdSd', stimulus.initOffsetSd, ...
 		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
 end
-
-else
-    stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2',...
-        'initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize, ...
-    'minStepsize=0.75','maxStepsize=2.5','minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,...
-     'stepRule=pest','dispFig=1');
    
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -595,16 +603,24 @@ s = mglInstallSound(waveform, stimulus.tone.samplesPerSecond);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dispPsychometric(task)
-uni = figure; bi = figure;
+function dispPsychometric(task,stimulus)
+uni = figure; 
+if ~(stimulus.auditoryTrain || stimulus.visualTrain)
+bi = figure;
 condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
+nCon = 5;
+else
+	nCon = 2;
+	
+end
+
 % condition = {};
 % for b = 1:length(task.block)
 %   condition = [condition, task.block(b).parameter.condition];
 % end
 condition = task.randVars.condNum;
 
-for cond = 1:5
+for cond = 1:nCon
   thisTrials = find(condition == cond);%find(strcmp(condition, condNames{cond}));
   thisOffset = task.randVars.probeOffset(thisTrials);
   thisResp = task.randVars.resp(thisTrials);
@@ -658,7 +674,9 @@ for cond = 1:5
 
 end
 
+if ~(stimulus.auditoryTrain || stimulus.visualTrain)
 figure(bi); mylegend({'No offset','Pos offset','Neg offset'}, {{getcolor(3)},{ getcolor(4)},{ getcolor(5)}});
+end
 figure(uni); mylegend({'vision','auditory'},{{getcolor(1)},{getcolor(2)}});
 
 % 
