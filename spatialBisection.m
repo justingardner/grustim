@@ -42,8 +42,11 @@ stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame
 stimulus.colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 
 stimulus.tone.samplesPerSecond = 44100;
-% stimulus.tone.hz = 750;
 stimulus.tone.duration = .0015;
+
+stimulus.pos1 = -17.5;
+stimulus.pos3 = 17.5;
+stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
 
 % stimulus.pos1 = -7.5;
 % stimulus.pos3 = stimulus.pos1+30;
