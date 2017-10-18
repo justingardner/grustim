@@ -277,7 +277,15 @@ if ~task.thistrial.gotResponse
         stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
             abs(task.thistrial.probeOffset));
     else
+
+      if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
         stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
+      else
+        randomnumbers = [1 1 1 1 0];
+        thisrandom = randomnumbers(randi(5,1));
+        stimulus.stair = doStaircase('update', stimulus.stair, thisrandom);
+      end
+        
     end
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
