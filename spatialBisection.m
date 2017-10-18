@@ -170,9 +170,9 @@ if task.thistrial.thisseg == 1
         if testValue > 10.5
             testValue = 10.5;
         end
-        task.thistrial.noise = 2.5 * randn(1); % random number from a gaussian distribution with a std of 0.5 deg
+        task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
         while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
-            task.thistrial.noise = 2.5 * randn(1);
+            task.thistrial.noise = 4 * randn(1);
         end
     end
 
@@ -276,16 +276,16 @@ if ~task.thistrial.gotResponse
     if ~(stimulus.auditoryTrain||stimulus.visualTrain)
         stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
             abs(task.thistrial.probeOffset));
+        if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
+          stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
+        else
+          randomnumbers = [1 1 1 1 1 1 1 1 1 0];
+          thisrandom = randomnumbers(randi(10,1));
+           stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, thisrandom, ...
+            abs(task.thistrial.probeOffset));
+        end
     else
-
-      if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
         stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
-      else
-        randomnumbers = [1 1 1 1 0];
-        thisrandom = randomnumbers(randi(5,1));
-        stimulus.stair = doStaircase('update', stimulus.stair, thisrandom);
-      end
-        
     end
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
