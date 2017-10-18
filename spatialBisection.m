@@ -12,11 +12,11 @@ if high
     stimulus.gaussian.diameter = 4;
     stimulus.gaussian.contrast = 0.005;
 elseif low
-    stimulus.gaussian.diameter = 208;
-    stimulus.gaussian.contrast = 0.0025;
+    stimulus.gaussian.diameter = 240;
+    stimulus.gaussian.contrast = 0.002;
 elseif med
     stimulus.gaussian.diameter = 32;
-    stimulus.gaussian.contrast = 0.0025;
+    stimulus.gaussian.contrast = 0.002;
 else 
     if auditoryTrain
         tenbit =0;
@@ -64,8 +64,8 @@ if stimulus.auditoryTrain || stimulus.visualTrain
     stimulus.initialStepsize = 2.5;
     stimulus.minThreshold = 0;
     stimulus.maxThreshold = 15;
-    stimulus.minStepsize = 0.5;
-    stimulus.maxStepsize = 2.5;
+    stimulus.minStepsize = 0.75;
+    stimulus.maxStepsize = 5;
 end
 
 % initalize the screen
@@ -159,12 +159,6 @@ global stimulus
 if task.thistrial.thisseg == 1
 	stimulus.fixColor = stimulus.colors.white;
 	task.thistrial.condNum = find(strcmp(char(task.thistrial.condition),{'vision','auditory','noOffset','posOffset','negOffset'}));
-    
-    task.thistrial.pos1 = -17.5 + 2*randn(1);
-    stimulus.pos1 = task.thistrial.pos1;
-    stimulus.pos3 = stimulus.pos1+35;
-    stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
-    
     if stimulus.auditoryTrain || stimulus.visualTrain
     	[testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
 %         testValue = task.thistrial.offset;
