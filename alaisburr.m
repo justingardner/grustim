@@ -83,7 +83,7 @@ task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 1;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 6;
+  task{1}{1}.numBlocks = 5;
 else
   task{1}{1}.randVars.uniform.sign = [1,-1];
 end
