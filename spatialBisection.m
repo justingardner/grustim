@@ -274,13 +274,13 @@ if ~task.thistrial.gotResponse
 		stimulus.fixColor = stimulus.colors.cyan;
     end
     if ~(stimulus.auditoryTrain||stimulus.visualTrain)
-        stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
-            abs(task.thistrial.probeOffset));
+        
         if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
-          stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
+            stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
+            abs(task.thistrial.probeOffset));        
         else
           randomnumbers = [1 1 1 1 1 1 1 1 1 0];
-          thisrandom = randomnumbers(randi(10,1));
+          thisrandom = randomnumbers(randi(length(randomnumbers),1));
            stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, thisrandom, ...
             abs(task.thistrial.probeOffset));
         end

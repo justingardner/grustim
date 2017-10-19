@@ -45,7 +45,11 @@ stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
 stimulus.trialnum = 0;
 if stimulus.tenbit
-stimulus.contrast = .0025;%.01; 
+    if stimulus.width >= 64
+        stimulus.contrast = .002;%.01; 
+    else
+       stimulus.contrast = .005;
+    end
 else
   stimulus.contrast = 0.5;
 end
@@ -83,7 +87,7 @@ task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 1;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 6;
+  task{1}{1}.numBlocks = 5;
 else
   task{1}{1}.randVars.uniform.sign = [1,-1];
 end
@@ -217,9 +221,9 @@ mglClearScreen(stimulus.colors.black);
 mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 if stimulus.task ~= 2 %visual or bimodal condition
     if task.thistrial.thisseg == stimulus.interval(1)
-        mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 0]);
+        mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 1]);
     elseif task.thistrial.thisseg == stimulus.interval(2)
-        mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 0]);
+        mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 1]);
     end
 end
 if stimulus.task ~= 1 %auditory or bimodal condition
