@@ -12,24 +12,30 @@ mglEatKeys('12`');
 global stimulus
  
 % get arguments
-width = 32; visual = 0; auditory = 0; bimodal = 0; disp = 0;
-getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=0'},'verbose=1');
+width = 32; visual = 0; auditory = 0; bimodal = 0; auditoryTrain=0; visualTrain=0; tenbit = 1; disp = 1;
+getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=1'},'verbose=1');
 
-if sum([visual,auditory,bimodal]) > 1
-    warning('(alaisburr) More than one task type detected.');
-    return
-elseif sum([visual,auditory,bimodal]) == 0
-    warning('(alaisburr) Task type unspecified. Running visual task...')
-    return
-end
-if visual
+% if sum([visual,auditory,bimodal]) > 1
+%     warning('(alaisburr) More than one task type detected.');
+%     return
+% elseif sum([visual,auditory,bimodal]) == 0
+%     warning('(alaisburr) Task type unspecified. Running visual task...')
+%     return
+% end
+if visual || visualTrain
     stimulus.task = 1;
-elseif auditory
+elseif auditory || auditoryTrain
     stimulus.task = 2;
 else
     stimulus.task = 3;
 end
 stimulus.disp = disp;
+stimulus.visual=visual;
+stimulus.auditory=auditory;
+stimulus.bimodal=bimodal;
+stimulus.auditoryTrain = auditoryTrain;
+stimulus.visualTrain = visualTrain;
+stimulus.tenbit = tenbit;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
 stimulus.stimDur = .015; % 15ms
@@ -37,12 +43,27 @@ stimulus.gaussainDur = .015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
+stimulus.trialnum = 0;
+if stimulus.tenbit
 stimulus.contrast = .0025;%.01; 
+else
+  stimulus.contrast = 0.5;
+end
+
 stimulus.interval = [2 4];
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
-stimulus.colors.reservedColors = [0 0 0; 1 1 1;0.5 0.5 0.5; 0.5 0 0; 1 0 0; 0 0.5 0; 0 1 0];
+stimulus.colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
+
+if stimulus.auditoryTrain || stimulus.visualTrain
+    stimulus.initialThreshold = 10;
+    stimulus.initialStepsize = 2.5;
+    stimulus.minThreshold = 0;
+    stimulus.maxThreshold = 15;
+    stimulus.minStepsize = 0.75;
+    stimulus.maxStepsize = 5;
+end
 
 screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
@@ -59,15 +80,17 @@ task{1}{1}.waitForBacktick = 1;
 task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
-if stimulus.task ~= 3
-  task{1}{1}.numBlocks = 5;
-else
+if stimulus.bimodal
   task{1}{1}.numBlocks = 1;
+elseif stimulus.visual || stimulus.auditory
+  task{1}{1}.numBlocks = 6;
+else
+  task{1}{1}.randVars.uniform.sign = [1,-1];
 end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-20 -15 -10 -5 -2.5 -1.25 0 1.25 2.5 5 10 15 20]; 
+task{1}{1}.parameter.posDiff = [-15 -7.5 -2.5 -1.25 0 1.25 2.5 7.5 15]; 
 if stimulus.task == 3
   task{1}{1}.parameter.displacement = [-5 -2.5 0 2.5 5];
 end
@@ -90,6 +113,16 @@ myscreen = initStimulus('stimulus',myscreen);
 % to initialize the stimulus for your experiment.
 stimulus = initGaussian(stimulus,myscreen);
 stimulus = initClick(stimulus,myscreen);
+if stimulus.auditoryTrain || stimulus.visualTrain
+  stimulus = initStair(stimulus);
+end
+
+mglWaitSecs(1);
+mglClearScreen(stimulus.colors.black);
+mglTextSet([],32,stimulus.colors.white);
+mglTextDraw('Press ` key to start when you are ready',[0 0]);
+mglFlush;
+mglWaitSecs(1);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -105,8 +138,8 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if stimulus.disp && stimulus.endflag
-dispPsychometric(task{1}{1});
+if stimulus.disp
+dispPsychometric(task{1}{1},stimulus);
 end
  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,6 +151,21 @@ if task.thistrial.thisseg == 1
     stimulus.fixColor = stimulus.colors.white;%[1 1 1];
     task.thistrial.jitter = rand - 0.5; %random jittering between -0.5 and 0.5 deg
     % horizontal position of first, second stim
+  if stimulus.auditoryTrain || stimulus.visualTrain
+      [testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
+      task.thistrial.diff = testValue * task.thistrial.sign;
+
+      if task.thistrial.centerWhich == 1
+            task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.diff + task.thistrial.jitter];
+            task.thistrial.xposA = task.thistrial.xposV;
+            task.thistrial.centerInt = 1;
+      else
+            task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.diff, task.thistrial.jitter];
+            task.thistrial.xposA = task.thistrial.xposV;
+            task.thistrial.centerInt = 2;
+      end
+
+  else
     if stimulus.task == 3
         if task.thistrial.centerWhich == 1
             task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter + task.thistrial.displacement];
@@ -143,18 +191,21 @@ if task.thistrial.thisseg == 1
 
     end
     task.thistrial.diff = task.thistrial.posDiff;
+  end
     
     if stimulus.task ~= 1 %auditory or bimodal condition
         for int = 1:2
             stimulus.sound(int) = createITD(stimulus,task.thistrial.xposA(int));
         end
     end
-
+elseif task.thistrial.thisseg == 5
+  stimulus.fixColor = stimulus.colors.grey;
 end
 if task.thistrial.thisseg == 6
     if exist('task.thistrial.reactionTime', 'var')
         task.thistrial.rt = task.thistrial.reactionTime;
     end
+    stimulus.trialnum = stimulus.trialnum+1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -163,7 +214,7 @@ end
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(stimulus.colors.black);
-
+mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 if stimulus.task ~= 2 %visual or bimodal condition
     if task.thistrial.thisseg == stimulus.interval(1)
         mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 0]);
@@ -179,12 +230,12 @@ if stimulus.task ~= 1 %auditory or bimodal condition
     end
 end
 
-%draw fixation cross
-if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
-    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor + stimulus.colors.reservedColor(2));
-else
-    mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
-end
+% %draw fixation cross
+% if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
+%     mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor + stimulus.colors.reservedColor(2));
+% else
+%     mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    responseCallback    %
@@ -195,33 +246,52 @@ global stimulus
 if ~task.thistrial.gotResponse
     % which one seemed more to the LEFT
     % centerWhich (1/2) first or second one more eccentric
-    if (task.thistrial.centerWhich == 1 && ((task.thistrial.posDiff > 0 && task.thistrial.whichButton == 1) || ...
-      (task.thistrial.posDiff < 0 && task.thistrial.whichButton == 2))) || ...
-    (task.thistrial.centerWhich == 2 && ((task.thistrial.posDiff > 0 && task.thistrial.whichButton == 2) || ...
-      (task.thistrial.posDiff < 0 && task.thistrial.whichButton == 1)))
+    if (task.thistrial.centerWhich == 1 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 1) || ...
+      (task.thistrial.diff < 0 && task.thistrial.whichButton == 2))) || ...
+    (task.thistrial.centerWhich == 2 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 2) || ...
+      (task.thistrial.diff < 0 && task.thistrial.whichButton == 1)))
         % correct
         task.thistrial.correct = 1;
+        if stimulus.auditoryTrain || stimulus.visualTrain
         % feeback
         stimulus.fixColor = stimulus.colors.green;%[0 1 0];
+        end
         disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i correct', ...
-            task.trialnum, task.thistrial.posDiff, task.thistrial.centerWhich, task.thistrial.whichButton))
+            task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
     else
         % incorrect
         task.thistrial.correct = 0;
+        if stimulus.auditoryTrain || stimulus.visualTrain
         stimulus.fixColor = stimulus.colors.red;%[1 0 0];
+        end
         disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i incorrect', ...
-            task.trialnum, task.thistrial.posDiff, task.thistrial.centerWhich, task.thistrial.whichButton))
+            task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
     end
         
     task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
+
+    if ~(stimulus.auditoryTrain || stimulus.visualTrain)
+      stimulus.fixColor = stimulus.colors.cyan;
+    else
+      stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
+    end
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initStair(stimulus)
+
+   stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2',...
+        'initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize, ...
+    'minStepsize',stimulus.minStepsize,'maxStepsize',stimulus.maxStepsize,'minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,...
+     'stepRule=pest','dispFig=1');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initGaussian(stimulus,myscreen)
 global stimulus;
+if stimulus.tenbit
 % set maximum color index (for 24 bit color we have 8 bits per channel, so 255)
 maxIndex = 255;
 
@@ -281,10 +351,33 @@ iContrast = contrastIndex-1;
 
 % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
 stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
+[1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 % get the color values (i.e. reserved color)
-stimulus.colors.white = stimulus.colors.reservedColor(2);
+stimulus.colors.white = stimulus.colors.reservedColor(1);
 stimulus.colors.red = stimulus.colors.reservedColor(4);
-stimulus.colors.green = stimulus.colors.reservedColor(6);
+stimulus.colors.green = stimulus.colors.reservedColor(3);
+stimulus.colors.grey = stimulus.colors.reservedColor(2);
+stimulus.colors.cyan = stimulus.colors.reservedColor(5);
+
+else
+
+  gauss = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.width/7, stimulus.width/7);
+  gaussian = zeros(size(gauss,1), size(gauss,2), 4);
+  for i = 1:3
+      gaussian(:,:,i) = 255*ones(size(gauss,1), size(gauss,2));
+  end
+    gaussian(:,:,4) = 255*gauss*stimulus.contrast;
+    stimulus.tex = mglCreateTexture(gaussian);
+    % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
+stimulus.colors.black = 0;
+% get the color values (i.e. reserved color)
+stimulus.colors.white = 1;
+stimulus.colors.grey = 0.3;
+stimulus.colors.green = [0 1 0];
+stimulus.colors.red = [1 0 0];
+stimulus.colors.cyan = [0 1 1];
+end
+
 % % compute the guassian
 % gauss = mglMakeGaussian(stimulus.width,stimulus.width, stimulus.width/8,stimulus.width/8);
 
@@ -500,13 +593,22 @@ s = mglInstallSound(waveform, stimulus.samplesPerSecond);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % display psychometric functions
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dispPsychometric(task)
-posDiff = task.parameter.posDiff;
-n = zeros(1,length(posDiff)); k = zeros(1,length(posDiff));
-% percent interval 2 (probe "Left")
-for i = 1:length(posDiff)
-    resp{i} = task.randVars.resp(task.randVars.diff == posDiff(i));
-    whichInt{i} = task.randVars.centerInt(task.randVars.diff == posDiff(i));
+function dispPsychometric(task,stimulus)
+posDiff = task.randVars.diff;
+allresp = task.randVars.resp;
+ind = ~isnan(posDiff)&~isnan(allresp);
+posDiff =  posDiff(ind);
+allresp =  allresp(ind);
+testVal = unique(posDiff);
+
+if ~stimulus.bimodal
+
+n = zeros(1,length(testVal)); k = zeros(1,length(testVal));
+isLeft = cell(1); resp= cell(1); whichInt = cell(1);
+
+for i = 1:length(testVal)
+    resp{i} = allresp(posDiff == testVal(i));
+    whichInt{i} = task.randVars.centerInt(posDiff == testVal(i));
     for j = 1:length(resp{i})
       switch whichInt{i}(j)
         case 1
@@ -534,8 +636,60 @@ end
 percent = k./n;
 
 figure;
-h = plot(posDiff, percent, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 7);
+h = plot(testVal, percent, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 7);
 ylabel('Proportion of trials probe seen "left"');
 xlabel('Displacement of probe (degs)');
 axis([-20 20 0 1]); box off;
+
+else
+
+displ = task.randVars.displ;
+displ = displ(ind);
+testVal = unique(posDiff);
+displacement = unique(displ);
+whichint = task.randVars.centerInt;
+whichint = whichint(ind);
+isLeft = cell(1);
+figure;
+    brewer = brewermap(5, 'Set1');
+    for d = 1:length(displacement)
+      posdiffConflict{d} = posDiff(displ==displacement(d));
+      whichIntConflict{d} = whichint(displ==displacement(d));
+      respConflict{d} = allresp(displ==displacement(d));
+
+      for j = 1:length(respConflict{d})
+        switch whichIntConflict{d}(j)
+               case 1
+                if respConflict{d}(j) == 2
+                  isLeft{d}(j) = 1;
+                else
+                  isLeft{d}(j) = 0;
+                end
+               case 2
+                if respConflict{d}(j) == 1
+                  isLeft{d}(j) = 1;
+                else
+                  isLeft{d}(j) = 0;
+                end
+         end
+      end
+    nTotal{d} = arrayfun(@(x) sum(posdiffConflict{d}==x), testVal);
+    nLeft{d} = arrayfun(@(x) sum(posdiffConflict{d}==x & isLeft{d}==1), testVal); 
+    pLeft = nLeft{d}./nTotal{d};
+          hold on;
+      myerrorbar(testVal, pLeft, 'MarkerSize',6, 'Color', brewer(d,:), 'Symbol',getsymbol(d));
+
+        if d == length(displacement)
+        title(sprintf('bimodal: Width=%d \n', stimulus.width));
+        ylabel('Proportion probe "left"');
+        xlabel('Displacement of probe (degs)');
+        axis([-20 20 0 1]); box off;
+        
+        l = cellfun(@num2str, num2cell(displacement),'UniformOutput',0);
+        mylegend(l, {{getsymbol(1), brewer(1,:)},{getsymbol(2), brewer(2,:)},{getsymbol(3), brewer(3,:)},{getsymbol(4), brewer(4,:)},{getsymbol(5), brewer(5,:)}});
+
+        end
+    end
+
+end
 
