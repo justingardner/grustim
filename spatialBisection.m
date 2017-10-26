@@ -167,8 +167,14 @@ if task.thistrial.thisseg == 1
     else
         % get Test Value
         [testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
+        if ~stimulus.low
         if testValue > 10.5
             testValue = 10.5;
+        end
+        else
+            if testValue > 4
+                testValue = 4;
+            end
         end
         task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
         while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)

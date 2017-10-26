@@ -85,7 +85,7 @@ task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
-  task{1}{1}.numBlocks = 1;
+  task{1}{1}.numBlocks = 2;
 elseif stimulus.visual || stimulus.auditory
   task{1}{1}.numBlocks = 5;
 else
@@ -96,7 +96,7 @@ task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
 task{1}{1}.parameter.posDiff = [-15 -7.5 -2.5 -1.25 0 1.25 2.5 7.5 15]; 
 if stimulus.task == 3
-  task{1}{1}.parameter.displacement = [-5 -2.5 0 2.5 5];
+  task{1}{1}.parameter.displacement = [-5 0 5];
 end
 
 task{1}{1}.randVars.calculated.resp = nan;
