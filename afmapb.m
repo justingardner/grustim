@@ -22,11 +22,13 @@ scan = 0;
 plots = 0;
 noeye = 0;
 debug = 0;
-getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0'});
+pre = 0;
+getArgs(varargin,{'scan=0','plots=0','noeye=0','debug=0','pre=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
+stimulus.useStair = pre;
 clear localizer invisible scan noeye task test2
 
 if stimulus.scan
@@ -56,6 +58,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmapb/%s',mglGetSID))
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.staircase = s.stimulus.staircase;
+        stimulus.contrast = s.stimulus.contrast;
         clear s;
         disp(sprintf('(afmapb) Data file: %s loaded.',fname));
     end
@@ -69,28 +72,23 @@ myscreen.stimulusNames{1} = 'stimulus';
 % set background to grey
 myscreen.background = 0.5;
 
+%%
+if stimulus.counter==1
+    stimulus.useStair = 1;
+elseif stimulus.useStair
+    disp('Flag set to use staircase');
+end
 %% Staircase
-stimulus.useStair = true;
 if ~isfield(stimulus,'staircase')
     disp('(afmapb) WARNING: New staircase');
     disp('(afmapb) Staircase is running');
     initStair();
-elseif true %mod(stimulus.counter,5)==0
-    disp('(afmapb) Staircase is running');
-    resetStair();
+elseif ~isfield(stimulus,'contrast') && stimulus.useStair
+    out = doStaircase('threshold',stimulus.staircase);
+    stimulus.contrast = out.threshold;
+    disp(sprintf('Subject threshold was determined to be %2.2f%%',100*out.threshold));
 else
-%     stimulus.useStair = false;
-%     stimulus.out = doStaircase('threshold',stimulus.staircase,'type=weibull','dispFig=0');
-%     stimulus.contrast = stimulus.out.threshold;
-%     while false
-%         val = input(sprintf('Current value is %01.2f, [enter] or change: ',stimulus.contrast));
-%         if ~isempty(val)
-%             stimulus.contrast = val;
-%         else
-%             break;
-%         end
-%     end
-%     disp(sprintf('(afmapb) Contrast is fixed at %01.2f',stimulus.contrast));
+    disp(sprintf('Using subject contrast threshold of %2.2f%%',100*stimulus.contrast));
 end
 
 %% Plot and return
@@ -301,7 +299,17 @@ wn(4,:,:) = 255;
 if isfield(stimulus,'live') && isfield(stimulus.live,'wn')
     mglDeleteTexture(stimulus.live.tex);
 end
-stimulus.live.tex = mglCreateTexture(wn,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
+if stimulus.counter>1
+    stimulus.live.tex = mglCreateTexture(wn,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
+else
+    if task.thistrial.present
+        temp = 255/2+task.thistrial.contrast*stimulus.live.dist;
+    else
+        temp = uint8(repmat(255/2,size(stimulus.live.dist)));
+    end
+    temp(4,:,:) = 255;
+    stimulus.live.tex = mglCreateTexture(temp,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -421,7 +429,9 @@ if any(task.thistrial.whichButton==stimulus.responseKeys)
             end
         end
         
-        stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
+        if stimulus.useStair
+            stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
+        end
         
         stimulus.live.fixColor = colors(task.thistrial.correct+1,:);
         disp(sprintf('Subject responded %s: %s',stext{task.thistrial.whichButton},text{task.thistrial.correct+1}));
@@ -535,8 +545,13 @@ wn = wn(1:count,:,:);
 data = data(1:count,:);
 
 l = size(data,1);
-disp(sprintf('Found %01.2f%% hits %01.2f%% fa %01.2f%% miss %01.2f%% cr',sum(data(:,9))/l*100,sum(data(:,10))/l*100,sum(data(:,11))/l*100,sum(data(:,12))/l*100));
+phits = sum(data(:,9))/l*100;
+pfa = sum(data(:,10))/l*100;
+pmiss = sum(data(:,11))/l*100;
+pcr = sum(data(:,12))/l*100;
 
+disp(sprintf('Found %01.2f%% hits %01.2f%% fa %01.2f%% miss %01.2f%% cr',phits,pfa,pmiss,pcr));
+disp(sprintf('D-prime: %01.3f, criterion %01.3f',norminv(phits/100)-norminv(pfa/100),-0.5*(norminv(phits/100)+norminv(pfa/100))));
 %% test
 % for i = 1:size(wn,1)
 %     imagesc(squeeze(wn(i,:,:)));
