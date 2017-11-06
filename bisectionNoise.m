@@ -5,20 +5,20 @@ mglEatKeys('12`');
 global stimulus
 
 % get arguments
-high = 0; low = 0; med = 0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0;
-getArgs(varargin,{'high=0','low=0','med=0','tenbit=1','practice=0','auditoryTrain=0','visualTrain=0'},'verbose=1');
+high = 0; low = 0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0;
+getArgs(varargin,{'high=0','low=0','tenbit=1','practice=0','auditoryTrain=0','visualTrain=0'},'verbose=1');
 
 if high
-    stimulus.gaussian.diameter = 4;
-    stimulus.gaussian.contrast = 0.15;
+    stimulus.gaussian.diameter = 6;
+    stimulus.gaussian.contrast = 0.8;
     stimulus.noiseContrast = 0.2;
 elseif low
     stimulus.gaussian.diameter = 6;
-    stimulus.gaussian.contrast = 0.4;
+    stimulus.gaussian.contrast = 0.8;
     stimulus.noiseContrast = 0.5;
-elseif med
-    stimulus.gaussian.diameter = 32;
-    stimulus.gaussian.contrast = 0.15;
+% elseif med
+%     stimulus.gaussian.diameter = 32;
+%     stimulus.gaussian.contrast = 0.15;
 else 
     if auditoryTrain
         tenbit =0;
@@ -29,7 +29,7 @@ else
 end
 stimulus.high = high;
 stimulus.low = low;
-stimulus.med = med;
+% stimulus.med = med;
 stimulus.tenbit = tenbit;
 stimulus.practice = practice;
 stimulus.auditoryTrain = auditoryTrain;
@@ -47,7 +47,11 @@ stimulus.tone.samplesPerSecond = 44100;
 stimulus.tone.duration = .0015;
 
 screenParams = mglGetScreenParams;
+if length(screenParams) > 1
 stimulus.fps = screenParams{2}.framesPerSecond;
+else
+stimulus.fps = screenParams{1}.framesPerSecond;
+end
 stimulus.flickerRate = 2;
 stimulus.screenupdate = (stimulus.flickerRate/stimulus.fps);
 
@@ -533,7 +537,18 @@ widthPixels = widthPixels + mod(widthPixels+1,2);
 heightPixels = heightPixels + mod(heightPixels+1,2);
 
 if ~stimulus.tenbit
-stimulus.noisetex = mglCreateTexture(round(stimulus.noiseContrast*rand(widthPixels,heightPixels)*255));
+  noise = zeros(widthPixels,heightPixels,4);  
+  noise(:,:,4) =  round(ones(widthPixels,heightPixels) * 255 * stimulus.noiseContrast);
+  for j = 1:20
+      n = round(rand(widthPixels,heightPixels) * 255);
+      for i = 1:3
+          noise(:,:,i) = n;
+      end
+    stimulus.noisetex(j) = mglCreateTexture(noise);
+  end
+
+% stimulus.noisetex = mglCreateTexture(round(stimulus.noiseContrast*rand(widthPixels,heightPixels)*255));
+
 else
     
 contrastIndex = getContrastIndex(stimulus.noiseContrast,0);
@@ -548,6 +563,8 @@ end
   stimulus.noisetex(j) = mglCreateTexture(noise);
 end
 end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Sound
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
