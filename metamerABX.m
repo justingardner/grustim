@@ -88,10 +88,12 @@ stimulus.responseKeys = [1 2]; %
 
 % set colors
 stimulus.colors.white = [1 1 1];
+stimulus.colors.black = [0 0 0];
 stimulus.colors.red = [1 0 0];
 stimulus.colors.green = [0 1 0];
-stimulus.live.fixColor = stimulus.colors.red;
-stimulus.live.cueColor = stimulus.colors.green;
+stimulus.colors.blue = [0 0 1];
+stimulus.live.fixColor = stimulus.colors.blue;
+stimulus.live.cueColor = stimulus.colors.black;
 
 %% Setup Task
 
@@ -104,8 +106,8 @@ task{1}{1}.waitForBacktick = 1;
 
 if ~stimulus.att
   % task waits for fixation on first segment
-  task{1}{1}.segmin = [inf .200 .500 .200 1.000 .200 2.000];
-  task{1}{1}.segmax = [inf .200 .500 .200 1.000 .200 2.000];
+  task{1}{1}.segmin = [inf .200 .500 .200 1.00 .200 2.00 .200];
+  task{1}{1}.segmax = [inf .200 .500 .200 1.00 .200 2.00 .200];
 
   stimulus.seg = {};
   stimulus.seg{1}.fix = 1;
@@ -115,6 +117,7 @@ if ~stimulus.att
   stimulus.seg{1}.ISI2 = 5;
   stimulus.seg{1}.stim3 = 6;
   stimulus.seg{1}.resp = 7;
+  stimulus.seg{1}.feedback = 8;
 else
   task{1}{1}.segmin = [inf .200 .200 .500 .200 .200 1.00 .200 .200 2.00];
   task{1}{1}.segmax = [inf .200 .200 .500 .200 .200 1.00 .200 .200 2.00];
@@ -320,6 +323,7 @@ stimulus.live.stim1 = 0;
 stimulus.live.stim2 = 0;
 stimulus.live.stim3 = 0;
 stimulus.live.cue = 0;
+stimulus.live.feedback = 0;
 
 if task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim1
   stimulus.live.stim1 = 1;
@@ -329,7 +333,9 @@ elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.stim3
   stimulus.live.stim3 = 1;
 elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.resp
   stimulus.live.resp = 1;
+elseif task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.feedback
   stimulus.live.fix = 0;
+  stimulus.live.feedback = 1;
 elseif stimulus.att && any(task.thistrial.thisseg==stimulus.seg{task.thistrial.thisphase}.cue)
   stimulus.live.cue = 1;
 end
@@ -337,25 +343,30 @@ end
 for i = 1:2
   mglClearScreen(0.5);
   if stimulus.live.stim1 
-    mglBltTexture(stimulus.live.tex1,[0 0]);
+    mglBltTexture(stimulus.live.tex1,[0 0 26 26]);
   elseif stimulus.live.stim2
-    mglBltTexture(stimulus.live.tex2,[0 0]);
+    mglBltTexture(stimulus.live.tex2,[0 0 26 26]);
   elseif stimulus.live.stim3
-    mglBltTexture(stimulus.live.tex3, [0 0]);
+    mglBltTexture(stimulus.live.tex3, [0 0 26 26]);
   elseif stimulus.live.cue
     if ~task.thistrial.cuePeriphery, ecc = 0;
     else ecc = 3.5; end
     x = ecc * cos(task.thistrial.cueAngle);
     y = ecc * sin(task.thistrial.cueAngle);
     drawCue(x,y, stimulus);
+  elseif stimulus.live.resp
+    mglDeleteTexture(stimulus.live.tex1);
+    mglDeleteTexture(stimulus.live.tex2);
   end
   
   if stimulus.live.fix
     upFix(stimulus);
-  elseif stimulus.live.resp
-    mglDeleteTexture(stimulus.live.tex1);
-    mglDeleteTexture(stimulus.live.tex2);
-    mglBltTexture(stimulus.live.responseText, [0 0], 'left', 'top');
+  elseif stimulus.live.feedback
+    if task.thistrial.response == task.thistrial.correctResponse
+      upFix(stimulus, stimulus.colors.green);
+    else
+      upFix(stimulus, stimulus.colors.red);
+    end
   end
 
   mglFlush
@@ -443,7 +454,7 @@ if validResponse
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
   end
   stimulus.live.gotResponse=stimulus.live.gotResponse+1;
-  task = jumpSegment(task,inf);
+  task = jumpSegment(task);
 else
   disp(sprintf('Invalid response key. Subject pressed %d', task.thistrial.whichButton));
   task.thistrial.response = -1;
@@ -453,16 +464,22 @@ end
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function upFix(stimulus)
-% for this experiment use a circle to indicate fixation
+%%%
+% Draws a circle at center of the screen of color fixColor
+function upFix(stimulus, fixColor)
+if ieNotDefined('fixColor')
+  fixColor = stimulus.live.fixColor;
+end
+mglGluAnnulus(0,0,0,.2,fixColor);
 
-mglGluAnnulus(0,0,0,.2,stimulus.live.fixColor);
-%mglFixationCross(1,1,stimulus.live.fixColor);
 
-
+%%% 
+% Draws a circular cue at location x,y
 function drawCue(x,y, stimulus)
 mglGluAnnulus(x,y, 0.75, 0.8, stimulus.live.cueColor, 64);
 
+%%%
+% Turns image into a texture
 function tex = generateTextureFromImage(im)
 r = flipud(repmat(im, 1, 1, 3));
 r(:,:,4) = 255;
