@@ -23,7 +23,9 @@ noimp = 0;
 training = 0;
 test2 = 0;
 att = 0;
-getArgs(varargin,{'att=0', 'scan=0','plots=0','noeye=0','debug=0','training=0','test2=0'});
+mod = 0;
+getArgs(varargin,{'att=0', 'mod=0', 'scan=0','plots=0','noeye=0','debug=0','training=0','test2=0'});
+stimulus.mod = mod;
 stimulus.att = att;
 stimulus.scan = scan;
 stimulus.plots = plots;
@@ -244,12 +246,24 @@ switch task.thistrial.synthPair
     synth1 = 2; synth2 = 3;
 end
 % Load images according to synthpair and stimOrder
-if task.thistrial.stimOrder == 1
-  im1 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth1));
-  im2 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth2));
+if stimulus.mod
+  imDir = '~/proj/v2model/modified';
+  if task.thistrial.stimOrder == 1
+    im1 = imread(sprintf('%s/im%d_s%d_synth%d_m1.png', imDir, task.thistrial.image, task.thistrial.scaling, synth1));
+    im2 = imread(sprintf('%s/im%d_s%d_synth%d_m1.png', imDir, task.thistrial.image, task.thistrial.scaling, synth2));
+  else
+    im1 = imread(sprintf('%s/im%d_s%d_synth%d_m1.png', imDir, task.thistrial.image, task.thistrial.scaling, synth2));
+    im2 = imread(sprintf('%s/im%d_s%d_synth%d_m1.png', imDir, task.thistrial.image, task.thistrial.scaling, synth1));
+  end
 else
-  im1 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth2));
-  im2 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth1));
+  imDir = '~/proj/v2model/output';
+  if task.thistrial.stimOrder == 1
+    im1 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth1));
+    im2 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth2));
+  else
+    im1 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth2));
+    im2 = imread(sprintf('%s/im%d_s%d_synth%d.png', imDir, task.thistrial.image, task.thistrial.scaling, synth1));
+  end
 end
 % Use images to generate textures
 tex1 = generateTextureFromImage(im1);
