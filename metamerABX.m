@@ -24,8 +24,8 @@ training = 0;
 test2 = 0;
 att = 0;
 mod = 0;
-long = 0;
-getArgs(varargin,{'long=0', 'att=0', 'mod=0', 'scan=0','plots=0','noeye=0','debug=0','training=0','test2=0'});
+long = 1;
+getArgs(varargin,{'long=1', 'att=0', 'mod=0', 'scan=0','plots=0','noeye=0','debug=0','training=0','test2=0'});
 stimulus.mod = mod;
 stimulus.att = att;
 stimulus.scan = scan;
@@ -149,8 +149,8 @@ if stimulus.noeye==1
 end
 
 % Task trial parameters
-task{1}{1}.parameter.image = [2 3 5];
-task{1}{1}.parameter.scaling = [3 4 5 6 7];
+task{1}{1}.parameter.image = [0 2 3 5];
+task{1}{1}.parameter.scaling = [3 4 5 6 7 10];
 task{1}{1}.parameter.synthPair = [1 2 3]; % 1: (1,1); 2:(1,2); 3:(2,3)
 task{1}{1}.parameter.stimOrder = [1 2];
 task{1}{1}.parameter.correctResponse = [1 2];
@@ -158,7 +158,7 @@ task{1}{1}.parameter.correctResponse = [1 2];
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse(stimulus.seg{1}.resp)=1;
-task{1}{1}.numTrials = 180;
+task{1}{1}.numTrials = 288;
 task{1}{1}.random = 1;
 
 if stimulus.scan
@@ -171,6 +171,10 @@ end
 if stimulus.att
   task{1}{1}.randVars.calculated.cuePeriphery = 0; % is the cue central or in the periphery.
   task{1}{1}.randVars.calculated.cueAngle = nan;
+end
+if stimulus.mod
+  task{1}{1}.randVars.calculated.mod1 = nan;
+  task{1}{1}.randVars.calculated.mod2 = nan;
 end
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{1}.randVars.calculated.dead = 0;
@@ -258,6 +262,8 @@ switch task.thistrial.synthPair
 end
 % Load images according to synthpair and stimOrder
 if stimulus.mod
+  task.thistrial.mod1 = randi(2);
+  task.thistrial.mod2 = randi(2);
   imDir = '~/proj/v2model/modified';
   if task.thistrial.stimOrder == 1
     im1 = imread(sprintf('%s/im%d_s%d_synth%d_m1.png', imDir, task.thistrial.image, task.thistrial.scaling, synth1));
