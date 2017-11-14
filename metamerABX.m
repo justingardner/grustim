@@ -24,7 +24,8 @@ training = 0;
 test2 = 0;
 att = 0;
 mod = 0;
-getArgs(varargin,{'att=0', 'mod=0', 'scan=0','plots=0','noeye=0','debug=0','training=0','test2=0'});
+long = 0;
+getArgs(varargin,{'long=0', 'att=0', 'mod=0', 'scan=0','plots=0','noeye=0','debug=0','training=0','test2=0'});
 stimulus.mod = mod;
 stimulus.att = att;
 stimulus.scan = scan;
@@ -34,6 +35,7 @@ stimulus.noeye = noeye;
 stimulus.debug = debug;
 stimulus.noimp = noimp;
 stimulus.training = training;
+stimulus.long = long;
 clear localizer invisible scan noeye task test2
 
 if stimulus.scan
@@ -60,7 +62,7 @@ end
 disp(sprintf('(metamerABX) This is run #%i',stimulus.counter));
 
 %% Setup Screen
-myscreen = initScreen('VPixx');
+myscreen = initScreen('VPixx2');
 
 % set background to grey
 myscreen.background = 0.5;
@@ -104,10 +106,16 @@ stimulus.curTrial(1) = 0;
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
+if stimulus.long
+  st = 0.400;
+else
+  st = 0.200;
+end
+
 if ~stimulus.att
   % task waits for fixation on first segment
-  task{1}{1}.segmin = [inf .200 .500 .200 1.00 .200 2.00 .200];
-  task{1}{1}.segmax = [inf .200 .500 .200 1.00 .200 2.00 .200];
+  task{1}{1}.segmin = [inf st .500 st 1.00 st 2.00 .200];
+  task{1}{1}.segmax = [inf st .500 st 1.00 st 2.00 .200];
 
   stimulus.seg = {};
   stimulus.seg{1}.fix = 1;
