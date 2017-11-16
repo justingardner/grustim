@@ -524,7 +524,6 @@ end
 function dispInfo(rstimulus)
 %%
 
-doStaircase('threshold',rstimulus.staircase,'dispFig=1','type=weibull');
 % ctask = task; cscreen = myscreen; % save this incase we need them
 
 % compute % correct for valid and invalid trials, display learning over
@@ -532,7 +531,7 @@ doStaircase('threshold',rstimulus.staircase,'dispFig=1','type=weibull');
 % exp = getTaskParameters(task,myscreen);
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/metamerABX_%s/%s/17*stim*.mat',rstimulus.condition,mglGetSID)));
+files = dir(fullfile(sprintf('~/data/metamerABX/%s/17*stim*.mat',mglGetSID)));
 
 % load the files and pull out the data (long form)
 %  rrun # counter #    local trial     real trial   angle     respAngle    
@@ -541,82 +540,30 @@ files = dir(fullfile(sprintf('~/data/metamerABX_%s/%s/17*stim*.mat',rstimulus.co
 %     7            8                9           10          11      12
 %    rotation
 %       13
-count = 1; data = zeros(10000,13);
+count = 1; data = zeros(10000,6);
 
 for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/metamerABX_%s/%s/%s',rstimulus.condition,mglGetSID,files(fi).name)));
+    load(fullfile(sprintf('~/data/metamerABX/%s/%s',mglGetSID,files(fi).name)));
     
     e = getTaskParameters(myscreen,task);
-    if e{1}(1).nTrials>1
-        e = e{1}(2); % why?!
+    if e{1}.nTrials>1
     
         run = stimulus.counter;
-
-        if stimulus.att==2
-            data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-                e.randVars.angle' e.randVars.respAngle' e.randVars.target' ...
-                e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-                e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
-        else
-            data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-                e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
-                e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-                e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
-        end
-
-        count = count+e.nTrials;
+        corrects = e{1}.response == e{1}.parameter.correctResponse;
+        scaling = e{1}.parameter.scaling;
+        data(count, :) = [sum(corrects(scaling==3)), sum(corrects(scaling==4)), sum(corrects(scaling==5)), sum(corrects(scaling==6)), sum(corrects(scaling==7)), sum(corrects(scaling==10))] / 48;
     end
+    count = count + 1;
 end
 
 data = data(1:(count-1),:);
 
-if any(data(:,6)>pi), data(data(:,6)>pi,6) = data(data(:,6)>pi,6)-2*pi; end
-%% Compute angle-target and respAngle-target plot
-h = figure; hold on
-
-low = [0 0.075 0.081 0.09 inf];
-
-% remove no-response trials
-data_ = data(~isnan(data(:,6)),:);
-if rstimulus.att==2
-    data_(data_(:,5)>pi,5) = data_(data_(:,5)>pi,5)-2*pi;
-end
-
-% find the trials where stimulus is - relative to the prior
-flip = data_(:,5)<0; flip = flip*1;
-flip(flip==1) = -1; flip(flip==0) = 1;
-% flip all the stimulus-target to be in the positive space
-data_(:,5:6) = data_(:,5:6).* repmat(flip,1,2);
-
-if rstimulus.att==2
-    data_(data_(:,6)<-(pi/2),:) = abs(data_(data_(:,6)<-(pi/2),:));
-end
-Y = data_(:,6);
-X = [ones(size(Y)) data_(:,5)];
-b = X\Y;
-c = [X Y];
-
-bci = bootci(1000,@(x) x(:,1:2)\x(:,3),c);
-
-% [p,s] = polyfit(data_(:,5),data_(:,6),1);
-plot(data_(:,5),data_(:,6),'*');
-% plot constant line
-plot([0 pi],[0 pi],'--r');
-% plot fit
-x = 0:pi;
-plot(x,b(1)+b(2)*x,'--k');
-% compute SD of residuals? 
-% todo
-xlabel('Stimulus - Target (deg)');
-ylabel('Resp - Target (deg)');
-title(sprintf('Bias %01.2f [%01.2f %01.2f], slope %01.2f [%01.2f %01.2f], Steeper = resp away, shallower = resp toward',b(1),bci(1,1),bci(2,1),b(2),bci(1,2),bci(2,2)));
-
-% axis([0 1 -1 1]);
-axis square
-
-set(gca,'XTick',0:.5:pi,'XTickLabel',round((0:.5:pi)*180/pi,2),'YTick',-1:.5:pi,'YTickLabel',round((-1:.5:pi)*180/pi,2));
-
-drawPublishAxis;
+figure;
+plot([0.3 0.4 0.5 0.6 0.7 1.0], mean(data,1), '*-');
+title('Scaling vs Accuracy');
+xlabel('Scaling Constant');
+ylabel('Accuracy');
+keyboard
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
