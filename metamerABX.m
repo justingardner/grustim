@@ -38,6 +38,11 @@ stimulus.training = training;
 stimulus.long = long;
 clear localizer invisible scan noeye task test2
 
+
+if stimulus.plots
+    dispInfo(stimulus);
+end
+
 if stimulus.scan
   warning('Not setup for scanning');
 end
@@ -540,7 +545,9 @@ files = dir(fullfile(sprintf('~/data/metamerABX/%s/17*stim*.mat',mglGetSID)));
 %     7            8                9           10          11      12
 %    rotation
 %       13
-count = 1; data = zeros(10000,6);
+count = 1; data = zeros(10000, 5,6);
+
+ims = [0, 0, 2, 3, 5];
 
 for fi = 1:length(files)
     load(fullfile(sprintf('~/data/metamerABX/%s/%s',mglGetSID,files(fi).name)));
@@ -551,18 +558,32 @@ for fi = 1:length(files)
         run = stimulus.counter;
         corrects = e{1}.response == e{1}.parameter.correctResponse;
         scaling = e{1}.parameter.scaling;
-        data(count, :) = [sum(corrects(scaling==3)), sum(corrects(scaling==4)), sum(corrects(scaling==5)), sum(corrects(scaling==6)), sum(corrects(scaling==7)), sum(corrects(scaling==10))] / 48;
+        image = e{1}.parameter.image;
+        data(count,1, :) = [sum(corrects(scaling==3)), sum(corrects(scaling==4)), sum(corrects(scaling==5)), sum(corrects(scaling==6)), sum(corrects(scaling==7)), sum(corrects(scaling==10))]/48;
+        for imi = 2:5
+            data(count,imi, :) = [sum(corrects(scaling==3 & image == ims(imi))), sum(corrects(scaling==4 & image == ims(imi))), sum(corrects(scaling==5 & image == ims(imi))), sum(corrects(scaling==6 & image == ims(imi))), sum(corrects(scaling==7 & image == ims(imi))), sum(corrects(scaling==10 & image == ims(imi)))] / 12;
+        end
     end
     count = count + 1;
 end
 
-data = data(1:(count-1),:);
+data = data(1:(count-1),:,:);
 
+mglClose;
 figure;
-plot([0.3 0.4 0.5 0.6 0.7 1.0], mean(data,1), '*-');
+x = [0.3 0.4 0.5 0.6 0.7 1.0];
+y = squeeze(mean(data(:,1,:),1));
+plot(x, squeeze(mean(data(:,1,:),1)), '*-k', 'LineWidth', 4, 'MarkerSize', 5); hold on;
+plot(x, squeeze(mean(data(:,2,:),1)), '*-r', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+plot(x, squeeze(mean(data(:,3,:),1)), '*-g', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+plot(x, squeeze(mean(data(:,4,:),1)), '*-b', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+plot(x, squeeze(mean(data(:,5,:),1)), '*-m', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+errorbar(x,y, 1.96*squeeze(std(data(:,1,:),1))/sqrt(length(y)));
+legend('All', 'Fountain', 'Railroad', 'City', 'Waterfall');
 title('Scaling vs Accuracy');
 xlabel('Scaling Constant');
 ylabel('Accuracy');
+drawPublishAxis;
 keyboard
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
