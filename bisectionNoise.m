@@ -13,9 +13,9 @@ if high
     stimulus.gaussian.contrast = 0.05;
     stimulus.noiseContrast = 0.2;
 elseif low
-    stimulus.gaussian.diameter = 6;
+    stimulus.gaussian.diameter = 30;
     stimulus.gaussian.contrast = 0.05;
-    stimulus.noiseContrast = 0.5;
+    stimulus.noiseContrast = 0.6;
 % elseif med
 %     stimulus.gaussian.diameter = 32;
 %     stimulus.gaussian.contrast = 0.15;
@@ -61,7 +61,7 @@ stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
 stimulus.delta=2.5;
 
 % fixation cross
-stimulus.fixWidth = 1;
+stimulus.fixWidth = 0.5;
 stimulus.fixColor = [1 1 1];
 
 stimulus.initOffset = 2;
@@ -83,10 +83,10 @@ end
 still = round(stimulus.nRefresh/2);
 transpi = linspace(0,round(255*stimulus.noiseContrast),still);
 stimulus.transpi = transpi;
-stimulus.transpi(still+1:stimulus.nRefresh) = max(stimulus.transpi);
+stimulus.transpi(still+1:stimulus.nRefresh+1) = max(stimulus.transpi);
 transpd = linspace(round(255*stimulus.noiseContrast),0,still);
 stimulus.transpd = transpd;
-stimulus.transpd(still+1:stimulus.nRefresh) = min(stimulus.transpi);
+stimulus.transpd(still+1:stimulus.nRefresh+1) = min(stimulus.transpi);
 
 % initalize the screen
 myscreen = initScreen;
@@ -172,7 +172,7 @@ end
 myscreen = endTask(myscreen,task);
 
 % if stimulus.disp
-% dispPsychometric(task{1}{1},stimulus);
+dispPsychometric(task{1}{1},stimulus);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -261,32 +261,32 @@ mglClearScreen(stimulus.colors.black);
 if any(task.thistrial.thisseg == [3 5 7])
   switch char(task.thistrial.condition)
 	case 'vision'
-		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 5]);
-    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 50 50]);
-    mglFillOval(0,0,[1,1],stimulus.fixColor);
+		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
+    mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	case 'auditory'
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
-    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 50 50]);
-    mglFillOval(0,0,[1,1],stimulus.fixColor);
+    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
+    mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	otherwise
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
-		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 5]);
-    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 50 50]);
-    mglFillOval(0,0,[1,1],stimulus.fixColor);
+		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
+    mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
         
   end		
 
 elseif task.thistrial.thisseg == 9
   task.thistrial.r = task.thistrial.r + 1;
   [stimulus task] = updateNoise(stimulus,task,myscreen);
-  mglBltTexture(task.thistrial.thisNoiseTex,[0 0 50 50]);
-  mglBltTexture(task.thistrial.nextNoiseTex,[0 0 50 50]);
-  mglFillOval(0,0,[1,1],stimulus.fixColor);
+  mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
+  mglBltTexture(task.thistrial.nextNoiseTex,[0 0 60 60]);
+  mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
   task.thistrial.tr = task.thistrial.r;
 
 else
-   mglBltTexture(task.thistrial.thisNoiseTex,[0 0 50 50]);
-   mglFillOval(0,0,[1,1],stimulus.fixColor);
+   mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
+   mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -549,7 +549,7 @@ stimulus.currentMaxContrast = maxContrast;
 function stimulus = createNoise(stimulus,myscreen)
 xDeg2pix = mglGetParam('xDeviceToPixels');
 yDeg2pix = mglGetParam('yDeviceToPixels');
-width = 2.5; height = 2.5;
+width = 2.0; height = 2.0;
 % get size in pixels
 widthPixels = round(width*xDeg2pix);
 heightPixels = round(height*yDeg2pix);
