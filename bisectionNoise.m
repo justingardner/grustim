@@ -8,14 +8,20 @@ global stimulus
 high = 0; low = 0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0;
 getArgs(varargin,{'high=0','low=0','tenbit=1','practice=0','auditoryTrain=0','visualTrain=0'},'verbose=1');
 
+stimulus.gaussian.contrast = 0.05;
+stimulus.gaussian.diameterHighRel = 6;
+stimulus.gaussian.diameterLowRel = 36;
+stimulus.noiseHighRel = 0.2;
+stimulus.noiseLowRel = 0.6;
+
 if high
-    stimulus.gaussian.diameter = 6;
-    stimulus.gaussian.contrast = 0.05;
-    stimulus.noiseContrast = 0.2;
+    stimulus.gaussian.diameter = stimulus.gaussian.diameterHighRel;
+    % stimulus.gaussian.contrast = 0.05;
+    stimulus.noiseContrast = stimulus.noiseHighRel;
 elseif low
-    stimulus.gaussian.diameter = 30;
-    stimulus.gaussian.contrast = 0.05;
-    stimulus.noiseContrast = 0.6;
+    stimulus.gaussian.diameter = stimulus.gaussian.diameterLowRel;
+    % stimulus.gaussian.contrast = 0.05;
+    stimulus.noiseContrast = stimulus.noiseLowRel;
 % elseif med
 %     stimulus.gaussian.diameter = 32;
 %     stimulus.gaussian.contrast = 0.15;
@@ -24,9 +30,9 @@ else
         tenbit =0;
         stimulus.gaussian.diameter = nan;
         stimulus.gaussian.contrast = nan;
-      stimulus.noiseContrast = 0.2;
-    else
-        return
+      stimulus.noiseContrast = stimulus.noiseHighRel;
+    % else
+    %     return
     end
 end
 stimulus.high = high;
@@ -38,7 +44,7 @@ stimulus.auditoryTrain = auditoryTrain;
 stimulus.visualTrain = visualTrain;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
-stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
+% stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
     if ~stimulus.tenbit
         stimulus.gaussian.contrast = .1;
@@ -83,12 +89,24 @@ if ~isinteger(stimulus.nRefresh)
   stimulus.nRefresh = round(stimulus.nRefresh);
 end
 still = round(stimulus.nRefresh/2);
-transpi = linspace(0,round(255*stimulus.noiseContrast),still);
-stimulus.transpi = transpi;
-stimulus.transpi(still+1:stimulus.nRefresh+1) = max(stimulus.transpi);
-transpd = linspace(round(255*stimulus.noiseContrast),0,still);
-stimulus.transpd = transpd;
-stimulus.transpd(still+1:stimulus.nRefresh+1) = min(stimulus.transpi);
+
+transpi = linspace(0,round(255*stimulus.noiseHighRel),still);
+stimulus.transpi.highRel = transpi;
+stimulus.transpi.highRel(still+1:stimulus.nRefresh+1) = max(stimulus.transpi.highRel);
+
+transpi = linspace(0,round(255*stimulus.noiseLowRel),still);
+stimulus.transpi.lowRel = transpi;
+stimulus.transpi.lowRel(still+1:stimulus.nRefresh+1) = max(stimulus.transpi.lowRel);
+
+
+transpd = linspace(round(255*stimulus.noiseHighRel),0,still);
+stimulus.transpd.highRel = transpd;
+stimulus.transpd.highRel(still+1:stimulus.nRefresh+1) = min(stimulus.transpd.highRel);
+
+transpd = linspace(round(255*stimulus.noiseLowRel),0,still);
+stimulus.transpd.lowRel = transpd;
+stimulus.transpd.lowRel(still+1:stimulus.nRefresh+1) = min(stimulus.transpd.lowRel);
+
 
 % initalize the screen
 myscreen = initScreen;
@@ -119,9 +137,24 @@ elseif stimulus.visualTrain
 	task{1}{1}.parameter.condition = {'vision'};
     task{1}{1}.parameter.closeTo = [1 3];
 else
-    task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
-	task{1}{1}.numTrials = 20*length(task{1}{1}.parameter.condition);
-    task{1}{1}.randVars.uniform.closeTo = [1 3];
+
+nVisRel = 2;
+nCond = 5;
+nRepeat = 1;
+stimulus.nTrialTotal = nVisRel*nCond*nRepeat;
+visRel = [repmat(1,1,nCond*nRepeat), repmat(0,1,nCond*nRepeat)];
+condition = repmat({'vision','auditory','noOffset','posOffset','negOffset'},1,nVisRel*nRepeat);
+randSeq = randperm(nVisRel*nCond*nRepeat);
+
+task{1}{1}.numTrials = nVisRel*nCond*nRepeat;
+ %  task{1}{1}.parameter.visRel = [1,0]; % high, low
+ %    task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
+	% task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
+% using my own random sequence
+  task{1}{1}.randVars.visRel = visRel(randSeq);
+  task{1}{1}.randVars.condition = condition(randSeq);
+
+  task{1}{1}.randVars.uniform.closeTo = [1 3];
 end
 
 task{1}{1}.random = 1;
@@ -133,6 +166,9 @@ task{1}{1}.randVars.calculated.noise = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.condNum = nan;
 task{1}{1}.randVars.calculated.tr = nan;
+if stimulus.visualTrain || stimulus.auditoryTrain
+  task{1}{1}.randVars.calculated.visRel = nan;
+end
 
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -147,7 +183,7 @@ stimulus = initStair(stimulus);
 % to initialize the stimulus for your experiment.
 stimulus = initGaussian(stimulus,myscreen);
 stimulus = initClick(stimulus,task);
-stimulus = createNoise(stimulus,myscreen);
+% stimulus = createNoise(stimulus,myscreen);
 
 mglWaitSecs(1);
 mglClearScreen(stimulus.colors.black);
@@ -185,11 +221,16 @@ if task.thistrial.thisseg == 1
   task.thistrial.r = 0;
 	stimulus.fixColor = stimulus.colors.red;
 	task.thistrial.condNum = find(strcmp(char(task.thistrial.condition),{'vision','auditory','noOffset','posOffset','negOffset'}));
+
     if stimulus.auditoryTrain || stimulus.visualTrain
     	[testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
 %         testValue = task.thistrial.offset;
         task.thistrial.noise = 0;
-
+        if stimulus.visualTrain && stimulus.low
+          task.thistrial.visRel = 0;
+        else
+          task.thistrial.visRel = 1;
+        end
     else
         % get Test Value
         [testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
@@ -206,6 +247,18 @@ if task.thistrial.thisseg == 1
         while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
             task.thistrial.noise = 4 * randn(1);
         end
+
+    end
+
+
+    if task.thistrial.visRel == 1
+          task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
+          task.thistrial.thisTranspd = stimulus.transpd.highRel;
+          task.thistrial.thisTranspi = stimulus.transpi.highRel;
+    else
+          task.thistrial.thisCreateNoiseCon = stimulus.noiseLowRel;
+          task.thistrial.thisTranspd = stimulus.transpd.lowRel;
+          task.thistrial.thisTranspi = stimulus.transpi.lowRel;
     end
 
 	if task.thistrial.closeTo == 1
@@ -240,12 +293,28 @@ if task.thistrial.thisseg == 1
         end
   end
 
+  if task.trialnum == 1
+    stimulus = createNoise(stimulus,task,myscreen);
+  end
   task.thistrial.thisNoiseTex = stimulus.noisetex;
   task.thistrial.thisnoise = stimulus.noise;
 
 elseif task.thistrial.thisseg == 8
 	stimulus.fixColor = stimulus.colors.white;
-  stimulus = createNoise(stimulus);
+
+if ~(stimulus.auditoryTrain || stimulus.visualTrain)
+if task.trialnum < stimulus.nTrialTotal
+  if task.randVars.visRel(task.trialnum+1) == 1
+    task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
+    task.thistrial.thisTranspi = stimulus.transpi.highRel;
+  else
+    task.thistrial.thisCreateNoiseCon = stimulus.noiseLowRel;
+    task.thistrial.thisTranspi = stimulus.transpi.lowRel;
+  end
+end
+end
+
+  stimulus = createNoise(stimulus,task,myscreen);
   task.thistrial.nextNoiseTex = stimulus.noisetex;
   task.thistrial.nextnoise = stimulus.noise;
 
@@ -263,7 +332,11 @@ mglClearScreen(stimulus.colors.black);
 if any(task.thistrial.thisseg == [3 5 7])
   switch char(task.thistrial.condition)
 	case 'vision'
-		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+    if task.thistrial.visRel == 1
+		  mglBltTexture(stimulus.tex.highRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+    else
+      mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+    end
     mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
     mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	case 'auditory'
@@ -272,7 +345,11 @@ if any(task.thistrial.thisseg == [3 5 7])
     mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	otherwise
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
-		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+		if task.thistrial.visRel == 1
+      mglBltTexture(stimulus.tex.highRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+    else
+      mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+    end
     mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
     mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
         
@@ -412,16 +489,17 @@ for i = 1:stimulus.colors.nReservedColors
 end
 
 % setGammaTableForMaxContrast(stimulus.gaussian.contrast);
-maxCon = max([stimulus.gaussian.contrast, stimulus.noiseContrast]);
+maxCon = stimulus.noiseLowRel;%max([stimulus.gaussian.contrast, stimulus.noiseContrast]);
 setGammaTableForMaxContrast(maxCon);
 contrastIndex = getContrastIndex(stimulus.gaussian.contrast,1);
 
 % make all the 1D gaussians. We compute all possible contrast values given the
 % range of indexes available to us. The 1st texture is black the nth texture is full
 % contrast for the current gamma setting
-gaussian = mglMakeGaussian(stimulus.gaussian.diameter, stimulus.gaussian.diameter, stimulus.gaussian.sd,stimulus.gaussian.sd);
-iContrast = contrastIndex-1;
 
+% high Rel gaussian
+gaussian = mglMakeGaussian(stimulus.gaussian.diameterHighRel, stimulus.gaussian.diameterHighRel, stimulus.gaussian.diameterHighRel/7, stimulus.gaussian.diameterHighRel/7);
+iContrast = contrastIndex-1;
 thisGaussian = round(iContrast*gaussian + stimulus.colors.minGaussianIndex);
 % thisGaussian = zeros(size(gaussian,1), size(gaussian,2),4);
 % gauss10 = round(iContrast*gaussian + stimulus.colors.minGaussianIndex);
@@ -429,7 +507,14 @@ thisGaussian = round(iContrast*gaussian + stimulus.colors.minGaussianIndex);
 %     thisGaussian(:,:,i) = gauss10;
 % end
 % thisGaussian(:,:,4) =  round(gaussian * 255 * stimulus.gaussian.contrast);
-stimulus.tex = mglCreateTexture(thisGaussian);
+stimulus.tex.highRel = mglCreateTexture(thisGaussian);
+
+% low rel gaussian
+gaussian = mglMakeGaussian(stimulus.gaussian.diameterLowRel, stimulus.gaussian.diameterLowRel, stimulus.gaussian.diameterLowRel/7, stimulus.gaussian.diameterLowRel/7);
+thisGaussian = round(iContrast*gaussian + stimulus.colors.minGaussianIndex);
+stimulus.tex.lowRel = mglCreateTexture(thisGaussian);
+
+
 % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
 stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
 stimulus.colors.grey =  stimulus.colors.midGaussianIndex/maxIndex;
@@ -453,13 +538,23 @@ stimulus.colors.cyan = stimulus.colors.reservedColor(5);
 % stimulus.tex = mglCreateTexture(gaussian);
 
 else
-	gauss = mglMakeGaussian(stimulus.gaussian.diameter, stimulus.gaussian.diameter, stimulus.gaussian.sd,stimulus.gaussian.sd);
+  %high rel gauss
+	gauss = mglMakeGaussian(stimulus.gaussian.diameterHighRel, stimulus.gaussian.diameterHighRel, stimulus.gaussian.diameterHighRel/7, stimulus.gaussian.diameterHighRel/7);
 	gaussian = zeros(size(gauss,1), size(gauss,2), 4);
 	for i = 1:3
     	gaussian(:,:,i) = 255*ones(size(gauss,1), size(gauss,2));
 	end
     gaussian(:,:,4) = round(255*gauss*stimulus.gaussian.contrast);
-    stimulus.tex = mglCreateTexture(gaussian);
+    stimulus.tex.highRel = mglCreateTexture(gaussian);
+  %low rel gauss
+  gauss = mglMakeGaussian(stimulus.gaussian.diameterLowRel, stimulus.gaussian.diameterLowRel, stimulus.gaussian.diameterLowRel/7, stimulus.gaussian.diameterLowRel/7);
+  gaussian = zeros(size(gauss,1), size(gauss,2), 4);
+  for i = 1:3
+      gaussian(:,:,i) = 255*ones(size(gauss,1), size(gauss,2));
+  end
+    gaussian(:,:,4) = round(255*gauss*stimulus.gaussian.contrast);
+    stimulus.tex.lowRel = mglCreateTexture(gaussian);
+
     % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
 stimulus.colors.black = 0;
 % get the color values (i.e. reserved color)
@@ -550,7 +645,7 @@ mglSetGammaTable(gammaTable);
 % remember what the current maximum contrast is that we can display
 stimulus.currentMaxContrast = maxContrast;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = createNoise(stimulus,myscreen)
+function stimulus = createNoise(stimulus,task,myscreen)
 xDeg2pix = mglGetParam('xDeviceToPixels');
 yDeg2pix = mglGetParam('yDeviceToPixels');
 width = 2.0; height = 2.0;
@@ -562,7 +657,7 @@ heightPixels = heightPixels + mod(heightPixels+1,2);
 
 if ~stimulus.tenbit
   stimulus.noise = zeros(widthPixels,heightPixels,4);  
-  stimulus.noise(:,:,4) =  round(ones(widthPixels,heightPixels) * 255 * stimulus.noiseContrast);
+  stimulus.noise(:,:,4) =  round(ones(widthPixels,heightPixels) * 255 * task.thistrial.thisCreateNoiseCon);
   n = round(rand(widthPixels,heightPixels) * 255);
   for i = 1:3
     stimulus.noise(:,:,i) = n;
@@ -573,10 +668,10 @@ if ~stimulus.tenbit
 
 else
     
-contrastIndex = getContrastIndex(stimulus.noiseContrast,0);
+contrastIndex = getContrastIndex(task.thistrial.thisCreateNoiseCon,0);
 iContrast = contrastIndex-1;
 stimulus.noise = zeros(widthPixels,heightPixels,4);  
-stimulus.noise(:,:,4) =  round(ones(widthPixels,heightPixels) * 255 * stimulus.noiseContrast);
+stimulus.noise(:,:,4) =  round(ones(widthPixels,heightPixels) * 255 * task.thistrial.thisCreateNoiseCon);
 n = round(rand(widthPixels,heightPixels) * (255-stimulus.colors.minGaussianIndex) + stimulus.colors.minGaussianIndex);
   for i = 1:3
     stimulus.noise(:,:,i) = n;
@@ -586,8 +681,8 @@ n = round(rand(widthPixels,heightPixels) * (255-stimulus.colors.minGaussianIndex
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [stimulus task] = updateNoise(stimulus,task,myscreen)
-task.thistrial.thisnoise(:,:,4) = round(stimulus.transpd(task.thistrial.r));
-task.thistrial.nextnoise(:,:,4) = round(stimulus.transpi(task.thistrial.r));
+task.thistrial.thisnoise(:,:,4) = round(task.thistrial.thisTranspd(task.thistrial.r));
+task.thistrial.nextnoise(:,:,4) = round(task.thistrial.thisTranspi(task.thistrial.r));
 task.thistrial.thisNoiseTex = mglCreateTexture(task.thistrial.thisnoise,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
 task.thistrial.nextNoiseTex = mglCreateTexture(task.thistrial.nextnoise,[],0,{'GL_TEXTURE_MAG_FILTER','GL_NEAREST'});
 
