@@ -23,6 +23,8 @@ else
     if auditoryTrain
         tenbit =0;
         stimulus.gaussian.diameter = nan;
+        stimulus.gaussian.contrast = nan;
+      stimulus.noiseContrast = 0.2;
     else
         return
     end
@@ -118,7 +120,7 @@ elseif stimulus.visualTrain
     task{1}{1}.parameter.closeTo = [1 3];
 else
     task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
-	task{1}{1}.numTrials = 30*length(task{1}{1}.parameter.condition);
+	task{1}{1}.numTrials = 20*length(task{1}{1}.parameter.condition);
     task{1}{1}.randVars.uniform.closeTo = [1 3];
 end
 
