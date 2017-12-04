@@ -140,7 +140,7 @@ else
 
 nVisRel = 2;
 nCond = 5;
-nRepeat = 1;
+nRepeat = 10;
 stimulus.nTrialTotal = nVisRel*nCond*nRepeat;
 visRel = [repmat(1,1,nCond*nRepeat), repmat(0,1,nCond*nRepeat)];
 condition = repmat({'vision','auditory','noOffset','posOffset','negOffset'},1,nVisRel*nRepeat);
@@ -169,6 +169,7 @@ task{1}{1}.randVars.calculated.tr = nan;
 if stimulus.visualTrain || stimulus.auditoryTrain
   task{1}{1}.randVars.calculated.visRel = nan;
 end
+task{1}{1}.randVars.calculated.relNum = nan;
 
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -221,19 +222,37 @@ if task.thistrial.thisseg == 1
   task.thistrial.r = 0;
 	stimulus.fixColor = stimulus.colors.red;
 	task.thistrial.condNum = find(strcmp(char(task.thistrial.condition),{'vision','auditory','noOffset','posOffset','negOffset'}));
+  if (stimulus.visualTrain && stimulus.high) || stimulus.auditoryTrain
+    task.thistrial.visRel = 1;
+  elseif stimulus.visualTrain && stimulus.low
+    task.thistrial.visRel = 0;
+  end
+
+    if task.thistrial.visRel == 1
+          task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
+          task.thistrial.thisTranspd = stimulus.transpd.highRel;
+          task.thistrial.thisTranspi = stimulus.transpi.highRel;
+          task.thistrial.relNum = 1;
+    else
+          task.thistrial.thisCreateNoiseCon = stimulus.noiseLowRel;
+          task.thistrial.thisTranspd = stimulus.transpd.lowRel;
+          task.thistrial.thisTranspi = stimulus.transpi.lowRel;
+          task.thistrial.relNum = 2;
+    end
+
 
     if stimulus.auditoryTrain || stimulus.visualTrain
     	[testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
 %         testValue = task.thistrial.offset;
         task.thistrial.noise = 0;
-        if stimulus.visualTrain && stimulus.low
-          task.thistrial.visRel = 0;
-        else
-          task.thistrial.visRel = 1;
-        end
+        % if stimulus.visualTrain && stimulus.low
+        %   task.thistrial.visRel = 0;
+        % else
+        %   task.thistrial.visRel = 1;
+        % end
     else
         % get Test Value
-        [testValue, stimulus.stair{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.condNum});
+        [testValue, stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum});
         if ~stimulus.low
         if testValue > 10.5
             testValue = 10.5;
@@ -250,16 +269,6 @@ if task.thistrial.thisseg == 1
 
     end
 
-
-    if task.thistrial.visRel == 1
-          task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
-          task.thistrial.thisTranspd = stimulus.transpd.highRel;
-          task.thistrial.thisTranspi = stimulus.transpi.highRel;
-    else
-          task.thistrial.thisCreateNoiseCon = stimulus.noiseLowRel;
-          task.thistrial.thisTranspd = stimulus.transpd.lowRel;
-          task.thistrial.thisTranspi = stimulus.transpi.lowRel;
-    end
 
 	if task.thistrial.closeTo == 1
 		sign = -1;
@@ -406,12 +415,12 @@ if ~task.thistrial.gotResponse
     if ~(stimulus.auditoryTrain||stimulus.visualTrain)
         
         if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
-            stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, task.thistrial.correct, ...
+            stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, task.thistrial.correct, ...
             abs(task.thistrial.probeOffset));        
         else
           randomnumbers = [1 1 1 1 1 1 1 1 1 0];
           thisrandom = randomnumbers(randi(length(randomnumbers),1));
-           stimulus.stair{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.condNum}, thisrandom, ...
+           stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, thisrandom, ...
             abs(task.thistrial.probeOffset));
         end
     else
@@ -434,9 +443,12 @@ if stimulus.auditoryTrain || stimulus.visualTrain
 else
 
 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
+  relNames = {'high','low'};
+for rel = 1:2
 for cond = 1:5
-	stimulus.stair{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initOffset, 'initialThresholdSd', stimulus.initOffsetSd, ...
-		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=1','subplotNum',cond,'subplotName',condNames{cond});
+	stimulus.stair{rel}{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initOffset, 'initialThresholdSd', stimulus.initOffsetSd, ...
+		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=2','subplotNum',2*(cond-1)+rel,'subplotName',[relNames{rel},' ', condNames{cond}]);
+end
 end
    
 end
