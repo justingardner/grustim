@@ -283,6 +283,8 @@ elseif task.thistrial.thisseg == 9
   mglBltTexture(task.thistrial.nextNoiseTex,[0 0 60 60]);
   mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
   task.thistrial.tr = task.thistrial.r;
+  mglDeleteTexture(task.thistrial.nextNoiseTex);
+  mglDeleteTexture(task.thistrial.thisNoiseTex);
 
 else
    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
