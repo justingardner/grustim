@@ -570,21 +570,62 @@ end
 data = data(1:(count-1),:,:);
 
 mglClose;
+
+%% fit parameters
+respAcc = squeeze(mean(data(:,1,:),1))';
+x0 = [1, 0.5];
+options = optimset('Display','iter','PlotFcns',@optimplotfval);
+[x,fval,exitflag,output] = fminsearch(@(x) objectivefcn(x,respAcc), x0, options);
+
+scales = [0.3, 0.4, 0.5, 0.6, 0.7, 1.0];
+for si = 1:length(scales)
+  pc(si) = probCorrect(scales(si), x(1), x(2));
+end
+
 figure;
-x = [0.3 0.4 0.5 0.6 0.7 1.0];
+x1 = [0.3 0.4 0.5 0.6 0.7 1.0];
 y = squeeze(mean(data(:,1,:),1));
-plot(x, squeeze(mean(data(:,1,:),1)), '*-k', 'LineWidth', 4, 'MarkerSize', 5); hold on;
-plot(x, squeeze(mean(data(:,2,:),1)), '*-r', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
-plot(x, squeeze(mean(data(:,3,:),1)), '*-g', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
-plot(x, squeeze(mean(data(:,4,:),1)), '*-b', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
-plot(x, squeeze(mean(data(:,5,:),1)), '*-m', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
-errorbar(x,y, 1.96*squeeze(std(data(:,1,:),1))/sqrt(length(y)));
-legend('All', 'Fountain', 'Railroad', 'City', 'Waterfall');
-title('Scaling vs Accuracy');
-xlabel('Scaling Constant');
-ylabel('Accuracy');
-drawPublishAxis;
+plot(x1, squeeze(mean(data(:,1,:),1)), '*-k', 'LineWidth', 4, 'MarkerSize', 5); hold on;
+plot(x1, squeeze(mean(data(:,2,:),1)), '*-y', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+plot(x1, squeeze(mean(data(:,3,:),1)), '*-g', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+plot(x1, squeeze(mean(data(:,4,:),1)), '*-b', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+plot(x1, squeeze(mean(data(:,5,:),1)), '*-m', 'LineWidth', 0.5, 'MarkerSize',1); hold on;
+
+plot([0.3 0.4 0.5 0.6 0.7 1.0], pc, '*-r', 'LineWidth', 4, 'MarkerSize', 5); hold on;
+errorbar(x1,y, 1.96*squeeze(std(data(:,1,:),1))/sqrt(length(y)), 'k');
+
+legend('All', 'Fountain', 'Railroad', 'City', 'Waterfall', 'BestFit');
+title(sprintf('Scaling vs Accuracy - Gain: %g; Scaling: %g', x(1), x(2)), 'FontSize', 18);
+xlabel('Scaling Constant', 'FontSize', 14);
+ylabel('Accuracy', 'FontSize', 14);
+
 keyboard
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Helper functions for analysis
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function pc = probCorrect(s, a0, s0)
+pc = normcdf(d(s,a0,s0) / sqrt(2)) * normcdf(d(s,a0,s0) / 2) + normcdf(-d(s,a0,s0) / sqrt(2))*normcdf(-d(s,a0,s0) / 2);
+
+function dist = d(s, a0, s0)
+if s > s0
+  dist = a0 * (1 - (s0^2)/(s^2));
+else
+  dist = 0;
+end
+
+function f = objectivefcn(x, data)
+
+%data = [0.50 0.604166666666667 0.651041666666667 0.625 0.59375 0.723958333333333];
+%data = [.48 .51 .51 .6 .7 .8];
+
+a0 = x(1); s0 = x(2);
+scales = [0.3 0.4 0.5 0.6 0.7 1.0];
+for i = 1:6
+  probs(i) = probCorrect(scales(i), a0, s0);
+end
+f = sum((probs - data).^2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
