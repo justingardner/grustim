@@ -46,14 +46,14 @@ attend_categories = {'attend_person','attend_car'};
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/fbsear_pilot_%s/%s',stimulus.condition,mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/fbsear_pilot/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/fbsear_pilot_%s/%s/1*mat',stimulus.condition,mglGetSID));
+    files = dir(sprintf('~/data/fbsear_pilot/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         fname = files(end).name;
         
-        s = load(sprintf('~/data/fbsear_pilot_%s/%s/%s',stimulus.condition,mglGetSID,fname));
+        s = load(sprintf('~/data/fbsear_pilot/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.runs = s.stimulus.runs;
