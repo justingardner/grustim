@@ -19,24 +19,51 @@ function [ myscreen ] = fbsear_pilot( varargin )
 %
 %
 
-global stimulus
+global stimulus fixStimulus
 
-stimulus = struct;
+if ~isstruct(stimulus), stimulus = struct; end
+if ~isstruct(fixStimulus), fixStimulus = struct; end
+% clear stimulus
+
+% reset
+f = fields(stimulus);
+for fi = 1:length(f)
+    if ~strcmp(f{fi},'fbsdata')
+        stimulus = rmfield(stimulus,f{fi});
+    end
+end
+% clear fix stimulus
+% reset
+f = fields(fixStimulus);
+for fi = 1:length(f)
+    fixStimulus = rmfield(fixStimulus,f{fi});
+end
 
 %% Initialize Variables
 
 % add arguments later
 plots = 0;
 run = 0;
-getArgs(varargin,{'plots=0','run=0'});
+genTex = 0;
+getArgs(varargin,{'plots=0','run=0','genTex=0'});
 stimulus.plots = plots;
 stimulus.run = run;
+stimulus.generateTextures = genTex;
 
-clear plots run
+clear plots run genTex
 
 if stimulus.run==0
     disp('Please set a run number');
     return;
+end
+
+if ~stimulus.generateTextures && ~isfield(stimulus,'fbsdata')
+    disp('WARNING: You must generate textures');
+    return
+end
+
+if ~stimulus.generateTextures
+    disp('WARNING: If the screen was closed textures will not work');
 end
 
 %% Image categories
@@ -66,11 +93,16 @@ disp(sprintf('(fbsear_pilot) This is run #%i',stimulus.counter));
 %% Setup Screen
 myscreen = initScreen('VPixx');
 
+if ~isfield(myscreen,'genTexTrack')
+    myscreen.genTexTrack = rand*10000000;
+end
+
 % set background to grey
 myscreen.background = 0.5;
 
 %% Load images
-if ~isfield(stimulus,'fbsdata')
+
+if stimulus.generateTextures
     loadFBSearImages(categories,attend_categories);
 end
 
@@ -90,6 +122,8 @@ stimulus.responseKeys = [1 2]; %
 
 stimulus.colors.white = [1 1 1];
 stimulus.colors.black = [0 0 0];
+stimulus.colors.red = [1 0 0];
+stimulus.colors.green = [0 1 0];
 % initGammaTable(myscreen);
 % stimulus.colors.rmed = 127.5;
 % 
@@ -108,6 +142,7 @@ stimulus.colors.black = [0 0 0];
 %% Setup runs
 
 if ~isfield(stimulus,'runs')
+    disp('WARNING: Building new runs');
     stimulus.runs = struct;
     
     % build runs
@@ -118,14 +153,13 @@ if ~isfield(stimulus,'runs')
     attend = [0 1 2 0 0]; % 1 = attend person, 2 = attend car
     text = {'Fixate','Look for people','Look for cars','Fixate (contrast people)','Fixate (contrast cars)'};
     
-    % Pick 60 images for each of the three runs, then subset into sets of
-    % 20
+    % Pick 45 images for each of the three runs
     idx45 = zeros(length(categories),45);
     for ci = 1:length(categories)
         idx_opts = randperm(length(stimulus.fbsdata.imgs.(categories{ci})));
         idx45(ci,:) = idx_opts(1:45);
     end
-    % we now have the indexes for images from each set, copy out 20 for
+    % we now have the indexes for images from each set, copy out 15 for
     % each set
     img_idxs = zeros(length(categories),3,15);
     for ci = 1:length(categories)
@@ -133,6 +167,8 @@ if ~isfield(stimulus,'runs')
             img_idxs(ci,rep,:) = idx45(ci,(rep-1)*15+1:(rep*15));
         end
     end
+    
+    stimulus.runs.imageIndexes = img_idxs;
     
     % Build run data
     for run = 1:5
@@ -143,6 +179,9 @@ if ~isfield(stimulus,'runs')
             runData.useMask = maskOpts(run);
             runData.attend = attend(run);
             runData.text = text{run};
+            
+            runData.group = run;
+            runData.repeat = rep;
 
             % pull the textures for this run
             for ci = 1:length(categories)
@@ -156,9 +195,6 @@ if ~isfield(stimulus,'runs')
                     runData.stimulus{ci} = texs;
                 end
             end
-            
-            runData.stimOrder = randperm(80);
-
             stimulus.runs.runs{run,rep} = runData;
         end
     end
@@ -170,7 +206,7 @@ if ~isfield(stimulus,'runs')
         % for each rep round, 
         runOrder = runNums(randperm(length(runNums)));
         for run = 1:5
-            stimulus.runs.runData((reps-1)*5+run) = stimulus.runs.runs(run,reps);
+            stimulus.runs.runData((reps-1)*5+run) = stimulus.runs.runs(runOrder(run),reps);
         end
     end
     stimulus.runs.runOrder = runOrder;
@@ -202,16 +238,32 @@ task{1}{1}.parameter.trial = 1:15;
 task{1}{1}.parameter.category = 1:4;
 
 % Task variables to be calculated later
-task{1}{1}.randVars.calculated.image = nan;
-task{1}{1}.randVars.calculated.task = nan; %1/2/3/4/5 (Fixate/Person/Car/Fixate+ConPerson/Fixate+ConCar)
-task{1}{1}.randVars.calculated.conImage = nan;
-task{1}{1}.randVars.calculated.imageCount = nan; % 1/2/3 for which frame
+task{1}{1}.randVars.calculated.task = nan; %0/1/2
+task{1}{1}.randVars.calculated.group = nan;
+task{1}{1}.randVars.calculated.repeat = nan;
+task{1}{1}.randVars.calculated.taskPresent = nan;
+
+%% Add fixation task
+
+if stimulus.curRun.fixate
+    
+    if ~isfield(fixStimulus,'threshold') fixStimulus.threshold = 0.5; end
+    if ~isfield(fixStimulus,'stairStepSize') fixStimulus.stairStepSize = 0.05; end
+
+    [task{2}, myscreen] = fixStairInitTask(myscreen);
+else
+    % use the modified fixation task (same timing as normal fixation task,
+    % but it depends on the value in stimulus.live.correctButton for
+    % whether or not the trial is correct. 
+    [task{2}, myscreen] = fbsear_fixStairInitTask(myscreen);
+end
 
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
-    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
+    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);    
 end
+
 
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -222,17 +274,36 @@ myscreen = eyeCalibDisp(myscreen);
 % let the user know
 disp(sprintf('(fbsear_pilot) Starting run number: %i.',stimulus.counter));
 
+%% Live
+
+stimulus.live.correctButton = 2;
+stimulus.live.lastCorrect = -1;
+
 %% Main Task Loop
 
-mglClearScreen(0.5); mglFixationCross(1,1,stimulus.colors.white);
-mglFlush
-myscreen.flushMode = 1;
+for i = 1:2
+    mglClearScreen(0.5); 
+    mglTextSet([],32,stimulus.colors.white);
+    if ~stimulus.curRun.fixate
+        mglFixationCross(1,1,stimulus.colors.white);
+        if stimulus.curRun.attend==1
+            mglTextDraw('Look for people',[0 2]);
+        elseif stimulus.curRun.attend==2
+            mglTextDraw('Look for cars',[0 2]);
+        end
+    else
+        mglTextDraw('Fixate',[0 2]);
+    end
+    mglFlush
+end
+% myscreen.flushMode = 1;
 
 phaseNum = 1;
 % Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % update the task
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
+    [task{2}, myscreen] = updateTask(task{2},myscreen,1);
     % flip screen
     myscreen = tickScreen(myscreen,task);
 end
@@ -258,7 +329,24 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 %%
 global stimulus
 stimulus.live.fixColor = [0 0 0];
-    
+
+if stimulus.live.lastCorrect>-1
+    task.lasttrial.correct = stimulus.live.lastCorrect;
+    stimulus.live.lastCorrect = -1;
+end
+
+correctButtons = {[1 2 1 2] [2 1 1 2]};
+if stimulus.curRun.attend>0
+    flip = [1 0];
+    stimulus.live.correctButton= correctButtons{stimulus.curRun.attend}(task.thistrial.category);
+    task.thistrial.taskpresent = flip(stimulus.live.correctButton);
+end
+task.thistrial.task = stimulus.curRun.attend; %0/1/2 - fixate/people/cars
+task.thistrial.group = stimulus.curRun.group; % this is the ATTENTION group (1/2/3/4/5)
+task.thistrial.repeat = stimulus.curRun.repeat;
+
+disp(sprintf('Correct button: %i',stimulus.live.correctButton));
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -266,28 +354,21 @@ stimulus.live.fixColor = [0 0 0];
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 %%
 
-global stimulus
-
-
-if task.thistrial.thisseg == stimulus.seg.stim
-    % blt the current texture
-    mglClearScreen(0.5);
-    mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-    upFix(stimulus);
-    mglFlush
-    mglClearScreen(0.5);
-    mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-    upFix(stimulus);
-else
-    % don't do shit
-    mglClearScreen(0.5);
+% global stimulus
+% 
+% 
+%     mglFlush
+%     mglClearScreen(0.5);
 %     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-    upFix(stimulus);
-    mglFlush
-    mglClearScreen(0.5);
-%     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-    upFix(stimulus);
-end
+% 
+% else
+%     % don't do shit
+%     mglClearScreen(0.5);
+% %     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
+%     mglFlush
+%     mglClearScreen(0.5);
+% %     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
+% end
 
 
 
@@ -298,17 +379,20 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
-
-
-function upFix(stimulus)
-%%
-% for this experiment use a circle to indicate where participants can
-% fixate inside of (rather than a cross which might arbitrarily enforce
-% poisitioning
-
-mglGluDisk(0,0,[1 1],0.5,60);
-% mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
-mglFixationCross(1,1,stimulus.live.fixColor);
+mglClearScreen(0.5);
+if task.thistrial.thisseg == stimulus.seg.stim
+    % blt the current texture
+    mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
+end
+% function upFix(stimulus)
+% %%
+% % for this experiment use a circle to indicate where participants can
+% % fixate inside of (rather than a cross which might arbitrarily enforce
+% % poisitioning
+% 
+% mglGluDisk(0,0,[1 1],0.5,60);
+% % mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
+% mglFixationCross(1,1,stimulus.live.fixColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -316,7 +400,7 @@ mglFixationCross(1,1,stimulus.live.fixColor);
 %%
 function [task, myscreen] = getResponseCallback(task, myscreen)
 
-global stimulus
+% pass
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
