@@ -122,6 +122,7 @@ stimulus.responseKeys = [1 2]; %
 
 stimulus.colors.white = [1 1 1];
 stimulus.colors.black = [0 0 0];
+stimulus.colors.grey = [.7 .7 .7];
 stimulus.colors.red = [1 0 0];
 stimulus.colors.green = [0 1 0];
 % initGammaTable(myscreen);
@@ -228,7 +229,7 @@ stimulus.seg.iti = 2;
 
 task{1}{1}.synchToVol = [1 1];
 
-task{1}{1}.getResponse = [1 1];
+task{1}{1}.getResponse = [0 1];
 task{1}{1}.numTrials = 60; % 1096 volumes for scan
 
 task{1}{1}.random = 1;
@@ -355,24 +356,13 @@ disp(sprintf('Correct button: %i',stimulus.live.correctButton));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
-%%
-
-% global stimulus
-% 
-% 
-%     mglFlush
-%     mglClearScreen(0.5);
-%     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-% 
-% else
-%     % don't do shit
-%     mglClearScreen(0.5);
-% %     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-%     mglFlush
-%     mglClearScreen(0.5);
-% %     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-% end
-
+% pass
+global stimulus
+if task.thistrial.thisseg == stimulus.seg.stim
+    stimulus.live.fixColor = stimulus.colors.black;
+else
+    stimulus.live.fixColor = stimulus.colors.grey;
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -389,11 +379,9 @@ if task.thistrial.thisseg == stimulus.seg.stim
 end
 
 if ~stimulus.curRun.fixate
-    if stimulus.live.changeTime>0
-        if mglGetSecs > (stimulus.live.changeTime+1)
-            stimulus.live.fixColor = stimulus.colors.black;
-            stimulus.live.changeTime = -1;
-        end
+    if (stimulus.live.changeTime>0) && ( mglGetSecs > (stimulus.live.changeTime+1) )
+        stimulus.live.fixColor = stimulus.colors.black;
+        stimulus.live.changeTime = -1;
     end
     upFix(stimulus);
 end
@@ -403,10 +391,9 @@ function upFix(stimulus)
 % for this experiment use a circle to indicate where participants can
 % fixate inside of (rather than a cross which might arbitrarily enforce
 % poisitioning
-
 mglGluDisk(0,0,[1 1],0.5,60);
 % mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
-mglFixationCross(1,1,stimulus.live.fixColor);
+mglFixationCross(1,3,stimulus.live.fixColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -416,19 +403,23 @@ function [task, myscreen] = getResponseCallback(task, myscreen)
 
 global stimulus
 
+if ~any(task.thistrial.whichButton==stimulus.responseKeys)
+    return
+end
+
 if ~stimulus.curRun.fixate
-    response = find(task.thistrial.buttonState);
-    response = response(1);
 
     task.thistrial.gotResponse = task.thistrial.gotResponse + 1;
 
     if task.thistrial.gotResponse==1
-        if response==stimulus.live.correctButton
+        if task.thistrial.whichButton==stimulus.live.correctButton
             task.thistrial.correct = 1;
             stimulus.live.fixColor = stimulus.colors.green;
+            disp('Correct');
         else
             task.thistrial.correct = 0;
             stimulus.live.fixColor = stimulus.colors.red;
+            disp('Incorrect');
         end
         stimulus.live.changeTime = mglGetSecs;
     else
