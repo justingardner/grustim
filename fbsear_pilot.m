@@ -158,7 +158,19 @@ stimulus.colors.green = [0 1 0];
 %% Setup runs
 
 if ~isfield(stimulus,'runs')
-    disp('WARNING: Building new runs');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING: Building new runs!!!!!!!!!!!!! WARNING');
+    disp('If you are in the middle of a scan session this is bad');
+    disp('it means that the stim files were not saved/loaded correctly');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
+    disp('WARNING WARNING WARNING WARNING WARNING WARNING');
     stimulus.runs = struct;
     
     % build runs
@@ -187,8 +199,16 @@ if ~isfield(stimulus,'runs')
     stimulus.runs.imageIndexes = img_idxs;
     
     % Build run data
-    for run = 1:5
-        for rep = 1:3
+    for rep = 1:3
+        % set the trial order info 
+        trials = repmat(1:15,1,4);
+        cats = [1*ones(1,15) 2*ones(1,15) 3*ones(1,15) 4*ones(1,15)];
+        trialOrder = randperm(length(trials));
+        
+        repeatTrials = trials(trialOrder);
+        repeatCats = cats(trialOrder);
+        
+        for run = 1:5
             runData = struct;
 
             runData.fixate = fixOpts(run);
@@ -198,25 +218,18 @@ if ~isfield(stimulus,'runs')
             
             runData.group = run;
             runData.repeat = rep;
-
-            % pull the textures for this run
-            for ci = 1:length(categories)
-                if runData.useMask==0
-                    texs = stimulus.fbsdata.imgs.(categories{ci});
-                    texs = texs(squeeze(img_idxs(ci,rep,:)));
-                    runData.stimulus{ci} = texs;
-                else
-                    texs = stimulus.fbsdata.mimgs.(attend_categories{runData.useMask}).(categories{ci});
-                    texs = texs(squeeze(img_idxs(ci,rep,:)));
-                    runData.stimulus{ci} = texs;
-                end
-            end
+            
+            runData.trialOrder = repeatTrials;
+            runData.catOrder = repeatCats;
+            
+            % Save
             stimulus.runs.runs{run,rep} = runData;
         end
     end
     
     % Copy so that we have at least 3x each run
-    runOrder = [];
+    stimulus.runs.runOrder = [];
+    stimulus.runs.runData = {};
     runNums = 1:5;
     for reps = 1:3
         % for each rep round, 
@@ -224,13 +237,38 @@ if ~isfield(stimulus,'runs')
         for run = 1:5
             stimulus.runs.runData((reps-1)*5+run) = stimulus.runs.runs(runOrder(run),reps);
         end
+        stimulus.runs.runOrder = [stimulus.runs.runOrder runOrder];
     end
-    stimulus.runs.runOrder = runOrder;
 end
 
 % Choose run
 stimulus.curRun = stimulus.runs.runData{stimulus.run};
-disp(sprintf('Current run: %s',stimulus.curRun.text));
+disp('                                                                  ');
+disp('`````````````````````````````````````````````````````````````````');
+disp('`````````````````````````````````````````````````````````````````');
+disp('```````````````RUN INFO: WRITE THIS DOWN`````````````````````````');
+disp(sprintf('```` Current run type: %s',stimulus.curRun.text));
+disp(sprintf('```` Group type: %i',stimulus.curRun.group));
+disp(sprintf('```` This is repeat: %i',stimulus.curRun.repeat));
+maskType = {'NO','YES'};
+disp(sprintf('```` Using mask data set: %s',maskType{stimulus.curRun.useMask+1}));
+disp('`````````````````````````````````````````````````````````````````');
+disp('`````````````````````````````````````````````````````````````````');
+%% Pull textures
+
+% pull the textures for this run
+for ci = 1:length(categories)
+    if stimulus.curRun.useMask==0
+        texs = stimulus.fbsdata.imgs.(categories{ci});
+        texs = texs(squeeze(stimulus.runs.imageIndexes(ci,stimulus.curRun.repeat,:)));
+        stimulus.curRun.stimulus{ci} = texs;
+    else
+        texs = stimulus.fbsdata.mimgs.(attend_categories{stimulus.curRun.useMask}).(categories{ci});
+        texs = texs(squeeze(stimulus.runs.imageIndexes(ci,stimulus.curRun.repeat,:)));
+        stimulus.curRun.stimulus{ci} = texs;
+    end
+end
+
 %% Setup Task
 
 %%%%%%%%%%%%% PHASE ONE %%%%%%%%%%%%%%%%%
@@ -250,10 +288,12 @@ task{1}{1}.numTrials = 60; % 1096 volumes for scan
 task{1}{1}.random = 1;
 
 % stimulus controls (which image gets shown)
-task{1}{1}.parameter.trial = 1:15;
-task{1}{1}.parameter.category = 1:4;
+% task{1}{1}.parameter.trial = 1:15;
+% task{1}{1}.parameter.category = 1:4;
 
 % Task variables to be calculated later
+task{1}{1}.randVars.calculated.trial = nan;
+task{1}{1}.randVars.calculated.category = nan;
 task{1}{1}.randVars.calculated.task = nan; %0/1/2
 task{1}{1}.randVars.calculated.group = nan;
 task{1}{1}.randVars.calculated.repeat = nan;
@@ -343,6 +383,9 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 %%
 global stimulus
 stimulus.live.fixColor = [0 0 0];
+
+task.thistrial.trial = stimulus.curRun.trialOrder(task.trialnum);
+task.thistrial.category = stimulus.curRun.catOrder(task.trialnum);
 
 correctButtons = {[1 2 1 2] [2 1 1 2]};
 if stimulus.curRun.attend>0
