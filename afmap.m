@@ -1,4 +1,5 @@
 function [ myscreen ] = afmap( varargin )
+% scan info: 736 TRs (6 minute * 120 + 16)
 %
 % TODO
 % * fix rotation order
@@ -55,7 +56,7 @@ noeye = 0;
 debug = 0;
 replay = 0;
 attend = 0; run = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1','run=0'});
+getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=0','run=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -269,7 +270,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
             end
         end
         
-        disppercent(-1/length(stimulus.stimx));
+%         disppercent(-1/length(stimulus.stimx));
         for x = 1:length(stimulus.stimx)
             for y = 1:length(stimulus.stimy)
                 
@@ -402,6 +403,8 @@ if ~stimulus.replay
     
     orderIdx = stimulus.order.curOrder(stimulus.curRun);
     stimulus.build.curBuild = stimulus.order.BaseBui(orderIdx);
+    % override build
+    stop = 1;
     
     stimulus.attention.curAttend = stimulus.order.BaseAtt(orderIdx);
     
@@ -410,6 +413,8 @@ if ~stimulus.replay
     
     stimulus.staircase = stimulus.staircases{stimulus.attention.curAttend};
 end
+
+% stimulus.build.curBuild = 3;
 
 %% Display completion information
 if ~stimulus.replay
@@ -739,8 +744,8 @@ if stimulus.replay
     stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
 end
 
-% disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
-disppercent(stimulus.curTrial/120,'(afmap) Running: ');
+disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
+% disppercent(stimulus.curTrial/120,'(afmap) Running: ');
 
 function drawFix(myscreen)
 
@@ -785,7 +790,7 @@ function [task, myscreen] = startTrialCallback1(task,myscreen)
 global stimulus
 
 disp(sprintf('(afmap) Starting cycle %01.0f',(stimulus.curTrial/120)+1));
-disppercent(-1/120,'(afmap) Running: ');
+% disppercent(-1/120,'(afmap) Running: ');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
