@@ -226,9 +226,9 @@ task{1}{1}.seglen = [1.9 3.9];
 stimulus.seg.stim = 1;
 stimulus.seg.iti = 2;
 
-task{1}{1}.synchToVol = 1;
+task{1}{1}.synchToVol = [1 1];
 
-task{1}{1}.getResponse = 1;
+task{1}{1}.getResponse = [1 1];
 task{1}{1}.numTrials = 60; % 1096 volumes for scan
 
 task{1}{1}.random = 1;
@@ -255,7 +255,7 @@ else
     % use the modified fixation task (same timing as normal fixation task,
     % but it depends on the value in stimulus.live.correctButton for
     % whether or not the trial is correct. 
-    [task{2}, myscreen] = fbsear_fixStairInitTask(myscreen);
+%     [task{2}, myscreen] = fbsear_fixStairInitTask(myscreen);
 end
 
 %% Full Setup
@@ -278,6 +278,7 @@ disp(sprintf('(fbsear_pilot) Starting run number: %i.',stimulus.counter));
 
 stimulus.live.correctButton = 2;
 stimulus.live.lastCorrect = -1;
+stimulus.live.changeTime = -1;
 
 %% Main Task Loop
 
@@ -303,7 +304,9 @@ phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % update the task
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
-    [task{2}, myscreen] = updateTask(task{2},myscreen,1);
+    if stimulus.curRun.fixate
+        [task{2}, myscreen] = updateTask(task{2},myscreen,1);
+    end
     % flip screen
     myscreen = tickScreen(myscreen,task);
 end
@@ -330,10 +333,10 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 stimulus.live.fixColor = [0 0 0];
 
-if stimulus.live.lastCorrect>-1
-    task.lasttrial.correct = stimulus.live.lastCorrect;
-    stimulus.live.lastCorrect = -1;
-end
+% if stimulus.live.lastCorrect>-1
+%     task.lasttrial.correct = stimulus.live.lastCorrect;
+%     stimulus.live.lastCorrect = -1;
+% end
 
 correctButtons = {[1 2 1 2] [2 1 1 2]};
 if stimulus.curRun.attend>0
@@ -384,15 +387,26 @@ if task.thistrial.thisseg == stimulus.seg.stim
     % blt the current texture
     mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
 end
-% function upFix(stimulus)
-% %%
-% % for this experiment use a circle to indicate where participants can
-% % fixate inside of (rather than a cross which might arbitrarily enforce
-% % poisitioning
-% 
-% mglGluDisk(0,0,[1 1],0.5,60);
-% % mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
-% mglFixationCross(1,1,stimulus.live.fixColor);
+
+if ~stimulus.curRun.fixate
+    if stimulus.live.changeTime>0
+        if mglGetSecs > (stimulus.live.changeTime+1)
+            stimulus.live.fixColor = stimulus.colors.black;
+            stimulus.live.changeTime = -1;
+        end
+    end
+    upFix(stimulus);
+end
+
+function upFix(stimulus)
+%%
+% for this experiment use a circle to indicate where participants can
+% fixate inside of (rather than a cross which might arbitrarily enforce
+% poisitioning
+
+mglGluDisk(0,0,[1 1],0.5,60);
+% mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
+mglFixationCross(1,1,stimulus.live.fixColor);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -400,7 +414,27 @@ end
 %%
 function [task, myscreen] = getResponseCallback(task, myscreen)
 
-% pass
+global stimulus
+
+if ~stimulus.curRun.fixate
+    response = find(task.thistrial.buttonState);
+    response = response(1);
+
+    task.thistrial.gotResponse = task.thistrial.gotResponse + 1;
+
+    if task.thistrial.gotResponse==1
+        if response==stimulus.live.correctButton
+            task.thistrial.correct = 1;
+            stimulus.live.fixColor = stimulus.colors.green;
+        else
+            task.thistrial.correct = 0;
+            stimulus.live.fixColor = stimulus.colors.red;
+        end
+        stimulus.live.changeTime = mglGetSecs;
+    else
+        disp(sprintf('Got %i responses',task.thistrial.gotResponse));
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
