@@ -1,5 +1,4 @@
-function [ myscreen ] = afmap( varargin )
-% scan info: 736 TRs (6 minute * 120 + 16)
+function [ myscreen ] = afmap_grid( varargin )
 %
 % TODO
 % * fix rotation order
@@ -55,13 +54,8 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-<<<<<<< HEAD
-attend = 0; run = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=0','run=0'});
-=======
 attend = 0; run = 0; build = 0;
 getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1','run=0','build=0'});
->>>>>>> 8e4ac884c8b9fa782cb977677aa04ada194af44a
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -157,14 +151,23 @@ end
 
 %% Stimulus parameters
 if ~stimulus.replay
-    % we'll interpolate between these along an arc
-    stimulus.thetaMin = 0;
-    stimulus.thetaMax = 2*pi;
-    stimulus.minEcc = 1;
-    
-    stimulus.maxOnScreen = 36;
+    stimulus.stimX = 25; % max ecc in any direction
+    stimulus.stimY = 13;
+    stimulus.stimR = 2; % deg between each stimulus
 
-    % how 
+    if mod(stimulus.stimX,stimulus.stimR)==0 || mod(stimulus.stimY,stimulus.stimR)==0
+        warning('Your stimulus size is not correctly setup');
+    end
+
+    stimulus.stimx = -stimulus.stimX:stimulus.stimR:stimulus.stimX;
+    stimulus.stimy = -stimulus.stimY:stimulus.stimR:stimulus.stimY;
+    
+    if any(stimulus.stimx==0) || any(stimulus.stimy==0)
+        warning('Your stimulus overlaps the fixation cross and the attention task!! You totally fd up!');
+    end
+
+    % how many times each probe location turns on per contrast and size
+    % condition
     stimulus.probeOn = 2;
     % how long a probe stays up for (in TR, 4 = 2.0s)
     stimulus.probeUp = 4; % this must be EVEN!!
@@ -172,30 +175,25 @@ if ~stimulus.replay
     stimulus.probeDown = 12;
 
     % stimulus.live will hold what actually gets displayed on the screen
-% %     stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
-% %     stimulus.live.sz = zeros(length(stimulus.stimx),length(stimulus.stimy));
-% %     stimulus.live.ph = zeros(length(stimulus.stimx),length(stimulus.stimy));
-% %     stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.sz = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.ph = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
 
     % gratingContrasts and gratingsizes control the possible sizes 
     stimulus.gratingContrasts = [0.1 1.0];
-    % design eccs
-    stimulus.designEccs = logspace(0,log10(6),8);
-    stimulus.drawEccs = logspace(0,log10(28),8);
-    % the ratios are approximately the sigma / ecc ratio for V1, V4, and
-    % higher regions (MT/LO/VO/TO)
-    stimulus.gratingRatios = [.15 .27 0.5];
+    stimulus.gratingSizes = [0.5 1 2];
 
     % when we are doing the attention task
     stimulus.live.attend = 0;
 
     % blank options
-    stimulus.blanks.none.range = [2*pi 0];
-    stimulus.blanks.all.range = [0 2*pi];
-    stimulus.blanks.NW.range = [pi/2 pi];
-    stimulus.blanks.NE.range = [0 pi/2];
-    stimulus.blanks.SE.range = [3/2*pi 2*pi];
-    stimulus.blanks.SW.range = [pi 3/2*pi];
+    stimulus.blanks.none.range = [0 0 0 0];
+    stimulus.blanks.all.range = [-inf inf -inf inf];
+    stimulus.blanks.NW.range = [-inf 0 0 inf];
+    stimulus.blanks.NE.range = [0 inf 0 inf];
+    stimulus.blanks.SE.range = [0 inf -inf 0];
+    stimulus.blanks.SW.range = [-inf 0 -inf 0];
     stimulus.blanks.opts = {'NW','NE','SE','SW'};
 end
 
@@ -204,7 +202,16 @@ if ~stimulus.replay && ~isfield(stimulus,'attention')
     stimulus.attention = struct;
     stimulus.attention.attendX = [0 4 4];
     stimulus.attention.attendY = [0 4 -4];
-
+    for ai = 1:length(stimulus.attention.attendX)
+        if any(stimulus.attention.attendX(ai)==stimulus.stimx)
+            warning('Stimulus and attention task are overlapping on the x-axis');
+        end
+    end
+    for ai = 1:length(stimulus.attention.attendY)
+        if any(stimulus.attention.attendY(ai)==stimulus.stimy)
+            warning('Stimulus and attention task are overlapping on the y-axis');
+        end
+    end
     if stimulus.attend
         stimulus.attention.rotate = length(stimulus.attention.attendX);
     else
@@ -226,7 +233,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
     stimulus.build.cycleLength = 120;
     stimulus.build.availableTRs = stimulus.build.cycles*stimulus.build.cycleLength; % how long the task should run for
     
-    stimulus.build.conditions = length(stimulus.gratingContrasts)*length(stimulus.gratingRatios);
+    stimulus.build.conditions = length(stimulus.gratingContrasts)*length(stimulus.gratingSizes);
     stimulus.build.conditionsRep = stimulus.build.conditions * stimulus.probeOn; % total # of displays per location
     
     if stimulus.build.conditionsRep*(stimulus.probeUp+stimulus.probeDown) > (stimulus.build.availableTRs*2/3) % ~1/3 of the time the screen will be blank
@@ -239,12 +246,10 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
     for bi = 1:stimulus.build.uniques
         build = struct; % initialize
         
-        build.t = zeros(stimulus.build.availableTRs,stimulus.maxOnScreen);
-        build.ecc = zeros(stimulus.build.availableTRs,stimulus.maxOnScreen);
-        build.con = zeros(stimulus.build.availableTRs,stimulus.maxOnScreen);
-        build.sz = zeros(stimulus.build.availableTRs,stimulus.maxOnScreen);
-        build.ph = zeros(stimulus.build.availableTRs,stimulus.maxOnScreen);
-        build.theta = zeros(stimulus.build.availableTRs,stimulus.maxOnScreen);
+        build.con = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
+        build.sz = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
+        build.ph = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
+        build.theta = zeros(stimulus.build.availableTRs,length(stimulus.stimx),length(stimulus.stimy));
         
         % build the blackout positions for this run
         % each cycle goes ALL, {NW/NE/SE/SW}, NONE in 10 s increments (60 s
@@ -262,139 +267,110 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
         build.blackout = blackout;
         
         % now compute the X/Y ranges that are subject to the blackout
-        bmint = zeros(stimulus.build.cycles,6);
-        bmaxt = zeros(stimulus.build.cycles,6);
+        bminx = zeros(stimulus.build.cycles,6);
+        bmaxx = zeros(stimulus.build.cycles,6);
+        bminy = zeros(stimulus.build.cycles,6);
+        bmaxy = zeros(stimulus.build.cycles,6);
         for c = 1:stimulus.build.cycles
             for d = 1:6
-                bmint(c,d) = stimulus.blanks.(blackout{c,d}).range(1);
-                bmaxt(c,d) = stimulus.blanks.(blackout{c,d}).range(2);
+                bminx(c,d) = stimulus.blanks.(blackout{c,d}).range(1);
+                bmaxx(c,d) = stimulus.blanks.(blackout{c,d}).range(2);
+                bminy(c,d) = stimulus.blanks.(blackout{c,d}).range(3);
+                bmaxy(c,d) = stimulus.blanks.(blackout{c,d}).range(4);
             end
         end
         
-<<<<<<< HEAD
-%         disppercent(-1/length(stimulus.stimx));
+        disppercent(-1/length(stimulus.stimx));
         for x = 1:length(stimulus.stimx)
             for y = 1:length(stimulus.stimy)
-=======
-        mult = 3;
-        onScreenNum = [36 27 27 27 27 0]*mult;
-        
-        % polar angles where eccentricity was measured
-        mesAngles =  [-90 -60 -45 -30 -15 0 15 30 45 60 75 90];
-        % eccentricity measured at the above angles
-        mesEcc = ([15 17 20 28 38 35 30 26 24 22 21 21]-1)*1;
-
-        % linear interpolate (in radial coordinates) to make smoother
-        angles = -90:90;
-        ecc = interp1(mesAngles,mesEcc,angles,'linear');
-        angles = angles * pi/180;
-        
-        angles = [angles pi-angles];
-        ecc = [ecc ecc];
-        
-        angles = mod(angles,2*pi);
-
-%         figure; hold on
-%         for i = 1:length(angles)
-%             x = ecc(i) * cos(angles(i));
-%             y = ecc(i) * sin(angles(i));
-%             plot(x,y,'*');
-%         end
-        
-        disppercent(-1/stimulus.build.availableTRs);
-        
-        availableIdxs = ones(stimulus.build.availableTRs,ceil(stimulus.maxOnScreen*mult/3));
-        
-        for cycle = 1:stimulus.build.cycles
-            for innerCycle = 1:6
-                mint = bmint(cycle,innerCycle);
-                maxt = bmaxt(cycle,innerCycle);
                 
-                % get the TRs for the current (inner) cycle
-                TRs = (cycle-1)*120 + (((innerCycle-1)*20+1):innerCycle*20);
-                
-                % get how many onScreen we should generate (random, 50-100%
-                % of max)
-                maxOn = onScreenNum(innerCycle);
-                turnOn = round(rand*maxOn*.5 + maxOn*.5);
->>>>>>> 8e4ac884c8b9fa782cb977677aa04ada194af44a
-                
-                % get a random index for each one
-                idxs = randsample(TRs,turnOn,true);
-                
-                % get parameters, t (angle), ecc, size, etc
-                t = rand(size(idxs))*2*pi;
-                while any((t>mint).*(t<maxt))
-                    ridxs = logical((t>mint).*(t<maxt));
-                    t(ridxs) = rand(1,sum(ridxs))*2*pi;
+                % determine which cycles will get which of the conditions
+                % on which of their repeats
+                %    1     2       3       4
+                %  cycle  con     size    repeat
+                redo = true;
+                while redo
+                    conditionTiming = zeros(stimulus.build.conditionsRep,4);
+                    count = 1;
+                    for i = 1:length(stimulus.gratingContrasts)
+                        for j = 1:length(stimulus.gratingSizes)
+                            for k = 1:stimulus.probeOn
+                                conditionTiming(count,:) = [randi(stimulus.build.cycles) i j k];
+                                count = count + 1;
+                            end
+                        end
+                    end
+                    redo = false;
+                    for c = 1:stimulus.build.cycles
+                        cycleCount = sum(conditionTiming(:,1)==c);
+                        if (cycleCount==0) || (cycleCount >= (2 / stimulus.build.cycles * size(conditionTiming,1)))
+                            % if we accidentally generated a set of cycles
+                            % where there is a poor distribution of probes,
+                            % we just repeat it and do it again. 
+                            redo = true;
+                        end
+                    end
                 end
                 
-                % for ecc, flip across and then round to get maxEcc values
-                t2 = t;
-%                 t2 = mod(t2,2*pi);
-                
-                eccMax = zeros(size(t2));
-                
-                for ti = 1:length(t2)
-                    [~,mini] = min(abs(angles-t2(ti)));
-                    eccMax(ti) = ecc(mini);
-                end
-                
-                necc = stimulus.minEcc + rand(size(eccMax)).*(eccMax-stimulus.minEcc);
-                
-                con = randi(2,1,turnOn);
-                sz = randi(3,1,turnOn);
-                initph = rand(1,turnOn)>.5;
-                theta = rand(1,turnOn)*2*pi;
-                
-                % sort indexes
-                [sidxs,i] = sort(idxs);
-                
-                for oi = 1:turnOn
-                    cStartidx = sidxs(oi);
-                    ct = t(i(oi));
-                    cecc = necc(i(oi));
-                    ccon = con(i(oi));
-                    csz = sz(i(oi));
-                    cinitph = initph(i(oi));
-                    cph = [cinitph ~cinitph cinitph ~cinitph]+1;
-                    ctheta = theta(i(oi));
+                % pre-compute the blackout positions
+                sx = stimulus.stimx(x);
+                sy = stimulus.stimy(y);
+                bpos = logical((sx>bminx).*(sx<bmaxx).*(sy>bminy).*(sy<bmaxy));
+                for c = 1:stimulus.build.cycles
+                    % get all the indexes
+                    cStart = (c-1) * stimulus.build.cycleLength + 1;
+                    cEnd = c * stimulus.build.cycleLength;
+                    indexes = cStart:cEnd;
+                    % get the blackout indexes for this cycle
+                    for d = 1:6
+                        if bpos(c,d)
+                            % blackout
+                            rmindexes = cStart-1 + (((d-1)*20+1):(d*20));
+                            indexes = setdiff(indexes,rmindexes);
+                        end
+                    end
                     
-                    % first obtain the indexes that this stimulus will be
-                    % up for
-                    lidxs = cStartidx:(cStartidx+stimulus.probeUp-1);
+                    % for each cycle, build a stimulus display timeseries,
+                    % this means picking the actual timing of the various
+                    % events within the time block
+                    events = conditionTiming(conditionTiming(:,1)==c,:);
+                    eventTimes = randsample(indexes,size(events,1));
+                    attempts = 0;
+                    while any(diff(eventTimes)<(stimulus.probeUp+stimulus.probeDown))
+                        attempts = attempts + 1;
+                        eventTimes = randsample(indexes,size(events,1));
+%                         if attempts>10000
+%                             disp(sprintf('(afmap) Attempted %i times to create a functional cycle and failed--stimulus properties are fd up',attempts));
+%                             keyboard
+%                         end
+                    end
+                    if attempts>100000
+                        warning(sprintf('It took a whole lot of attempts: %i, to build that cycle',attempts));
+                    end
+                    for ei = 1:size(events,1)
+                        eidxs = eventTimes(ei):(eventTimes(ei)+stimulus.probeUp-1);
+                        build.con(eidxs,x,y) = events(ei,2);
+                        build.sz(eidxs,x,y) = events(ei,3);
+                        build.ph(eidxs,x,y) = repmat([1 2],1,length(eidxs)/2);
+                        build.theta(eidxs,x,y) = rand*2*pi;
+                    end
                     
-                    % now check where we can index this stimulus in the
-                    % index tracker
-                    storeIdx = find(availableIdxs(cStartidx,:),1);
-                    % block these indexes in the tracker
-                    availableIdxs(lidxs,storeIdx) = 0;
-                    
-                    % now block off the appropriate indexes in all the
-                    % build section
-                    build.t(lidxs,storeIdx) = ct; % theta does not change
-                    build.ecc(lidxs,storeIdx) = cecc;
-                    build.con(lidxs,storeIdx) = ccon; % contrast does not change
-                    build.sz(lidxs,storeIdx) = csz;
-                    build.ph(lidxs,storeIdx) = cph;
-                    build.theta(lidxs,storeIdx) = ctheta;
                 end
             end
+            disppercent(x/length(stimulus.stimx));
         end
-        disppercent(inf/stimulus.build.availableTRs);
+        disppercent(inf/length(stimulus.stimx));
         % test code
-        
-        %%
-%         figure
-%         colormap('gray');
-%         caxis([0 1]);
-% %         build.con = build.con>0;
-%         tb = build.con/max(build.con(:));
-%         for i = 1:720
-%             imagesc(squeeze(tb(i,:,:)));
-%             pause(.01);
-%         end
-        %%
+% %         keyboard
+% %         figure
+% %         colormap('gray');
+% %         caxis([0 1]);
+% % %         build.con = build.con>0;
+% %         tb = build.con/max(build.con(:));
+% %         for i = 1:720
+% %             imagesc(squeeze(tb(i,:,:)));
+% %             pause(.01);
+% %         end
         % test code end
         disp(sprintf('(afmap) Pre-build of build %i has finished (will be saved with stimfile).',bi));
         stimulus.builds{bi} = build;
@@ -437,8 +413,6 @@ if ~stimulus.replay
     
     orderIdx = stimulus.order.curOrder(stimulus.curRun);
     stimulus.build.curBuild = stimulus.order.BaseBui(orderIdx);
-    % override build
-    stop = 1;
     
     if stimulus.buildOverride
         stimulus.build.curBuild = stimulus.buildOverride;
@@ -451,8 +425,6 @@ if ~stimulus.replay
     
     stimulus.staircase = stimulus.staircases{stimulus.attention.curAttend};
 end
-
-% stimulus.build.curBuild = 3;
 
 %% Display completion information
 if ~stimulus.replay
@@ -519,21 +491,17 @@ if stimulus.replay
         for bi = 1:size(bIndexes,1)
             disp(sprintf('Build %i needs to be offset by %i from %i to %i',bi,m120(bi),def(bi),stimulus.tVolumes(bi)));
             
-            nt(nIndexes(bi,:),:) = stimulus.grid.t(bIndexes(bi,:),:);
-            necc(nIndexes(bi,:),:) = stimulus.grid.ecc(bIndexes(bi,:),:);
-            ncon(nIndexes(bi,:),:) = stimulus.grid.con(bIndexes(bi,:),:);
-            nsz(nIndexes(bi,:),:) = stimulus.grid.sz(bIndexes(bi,:),:);
-            nph(nIndexes(bi,:),:) = stimulus.grid.ph(bIndexes(bi,:),:);
-            ntheta(nIndexes(bi,:),:) = stimulus.grid.theta(bIndexes(bi,:),:);
+            ncon(nIndexes(bi,:),:,:) = stimulus.grid.con(bIndexes(bi,:),:,:);
+            nsz(nIndexes(bi,:),:,:) = stimulus.grid.sz(bIndexes(bi,:),:,:);
+            nph(nIndexes(bi,:),:,:) = stimulus.grid.ph(bIndexes(bi,:),:,:);
+            ntheta(nIndexes(bi,:),:,:) = stimulus.grid.theta(bIndexes(bi,:),:,:);
         end
         
         % replace
-        stimulus.grid.t = nt(1:orig_sz(1),:);
-        stimulus.grid.ecc = necc(1:orig_sz(1),:);
-        stimulus.grid.con = ncon(1:orig_sz(1),:);
-        stimulus.grid.sz = nsz(1:orig_sz(1),:);
-        stimulus.grid.ph = nph(1:orig_sz(1),:);
-        stimulus.grid.theta = ntheta(1:orig_sz(1),:);
+        stimulus.grid.con = ncon(1:orig_sz(1),:,:);
+        stimulus.grid.sz = nsz(1:orig_sz(1),:,:);
+        stimulus.grid.ph = nph(1:orig_sz(1),:,:);
+        stimulus.grid.theta = ntheta(1:orig_sz(1),:,:);
     end
 end
 
@@ -543,9 +511,7 @@ if ~stimulus.replay
     % update this every time the screen changes and save the time it
     % occurred
     stimulus.grid.buildNumber = stimulus.build.curBuild;
-    stimulus.grid.time = zeros(1,stimulus.build.availableTRs);
-    stimulus.grid.t = stimulus.builds{stimulus.build.curBuild}.t;
-    stimulus.grid.ecc = stimulus.builds{stimulus.build.curBuild}.ecc;
+    stimulus.grid.t = zeros(1,stimulus.build.availableTRs);
     stimulus.grid.con = stimulus.builds{stimulus.build.curBuild}.con;
     stimulus.grid.sz = stimulus.builds{stimulus.build.curBuild}.sz;
     stimulus.grid.ph = stimulus.builds{stimulus.build.curBuild}.ph;
@@ -801,12 +767,10 @@ global stimulus
 
 stimulus.curTrial = stimulus.curTrial + 1;
 
-stimulus.live.t = squeeze(stimulus.grid.t(stimulus.curTrial,:));
-stimulus.live.ecc = squeeze(stimulus.grid.ecc(stimulus.curTrial,:));
-stimulus.live.con = squeeze(stimulus.grid.con(stimulus.curTrial,:));
-stimulus.live.sz = squeeze(stimulus.grid.sz(stimulus.curTrial,:));
-stimulus.live.ph = squeeze(stimulus.grid.ph(stimulus.curTrial,:));
-stimulus.live.theta = squeeze(stimulus.grid.theta(stimulus.curTrial,:));
+stimulus.live.con = squeeze(stimulus.grid.con(stimulus.curTrial,:,:));
+stimulus.live.sz = squeeze(stimulus.grid.sz(stimulus.curTrial,:,:));
+stimulus.live.ph = squeeze(stimulus.grid.ph(stimulus.curTrial,:,:));
+stimulus.live.theta = squeeze(stimulus.grid.theta(stimulus.curTrial,:,:));
 stimulus.grid.t(stimulus.curTrial) = mglGetSecs;
 
 if stimulus.replay
@@ -844,11 +808,7 @@ if stimulus.replay
     stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
 end
 
-<<<<<<< HEAD
-disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
-=======
 % disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
->>>>>>> 8e4ac884c8b9fa782cb977677aa04ada194af44a
 % disppercent(stimulus.curTrial/120,'(afmap) Running: ');
 
 function drawFix(myscreen)
@@ -868,41 +828,27 @@ function drawGratings
 
 global stimulus
 
-live = find(stimulus.live.con>0);
+for xi = 1:length(stimulus.stimx)
+    for yi = 1:length(stimulus.stimy)
+        if stimulus.live.con(xi,yi)>0
+            x = stimulus.stimx(xi);
+            y = stimulus.stimy(yi);
+            con = stimulus.live.con(xi,yi);
+            sz = stimulus.live.sz(xi,yi);
+            ph = stimulus.live.ph(xi,yi);
+            theta = stimulus.live.theta(xi,yi);
 
-for si = 1:length(live)
-    cidx = live(si);
-    ct = stimulus.live.t(cidx);
-    cecc = stimulus.live.ecc(cidx);
-    x = cecc*cos(ct);
-    y = cecc*sin(ct);
-    con = stimulus.live.con(cidx);
-    sz = stimulus.live.sz(cidx);
-    ph = stimulus.live.ph(cidx);
-    theta = stimulus.live.theta(cidx);
-    
-    [~,eccIdx] = min(abs(cecc-stimulus.drawEccs));
-    
-    if stimulus.replay
-        % just draw a circle
-        % /2 because the FWHM defines a diameter of 1/2/3 degree
-        mglBltTexture(stimulus.gaussian(con,eccIdx,sz,ph),[x y],0,0,0);
+            if stimulus.replay
+                % just draw a circle
+                % /2 because the FWHM defines a diameter of 1/2/3 degree
+                mglBltTexture(stimulus.gaussian(con,sz,ph),[x y],0,0,0);
     %                 mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
-    else
-        % organized: contrast, ecc, size, ph
-        mglBltTexture(stimulus.grating(con,eccIdx,sz,ph),[x y],0,0,theta*180/pi);
+            else
+                mglBltTexture(stimulus.grating(con,sz,ph),[x y],0,0,theta*180/pi);
+            end
+        end
     end
-<<<<<<< HEAD
 end
-
-function [task, myscreen] = startTrialCallback1(task,myscreen)
-global stimulus
-
-disp(sprintf('(afmap) Starting cycle %01.0f',(stimulus.curTrial/120)+1));
-% disppercent(-1/120,'(afmap) Running: ');
-=======
-end 
->>>>>>> 8e4ac884c8b9fa782cb977677aa04ada194af44a
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1109,45 +1055,29 @@ files = dir(fullfile(sprintf('~/data/afmap/%s/17*stim*.mat',mglGetSID)));
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function localInitStimulus()
-%%
+
 global stimulus
 
-fwhm_sd = 2*sqrt(2*log(2));
-
 for ci = 1:length(stimulus.gratingContrasts)
-    for si = 1:length(stimulus.designEccs)
-        for ri = 1:length(stimulus.gratingRatios)
-            sz = stimulus.gratingRatios(ri) * stimulus.designEccs(si);
-            % use total degs / num to compute size
-            for phase = 1:2
-                grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz*4,sz*4,2/sz,0,(phase-1)*180) + 255/2;
-                gauss = mglMakeGaussian(sz*4,sz*4,sz/fwhm_sd,sz/fwhm_sd);
-                alphamask = repmat(grating,1,1,4);
-                alphamask(:,:,4) = gauss*255;
-
-                % make the grating
-                stimulus.grating(ci,si,ri,phase) = mglCreateTexture(alphamask); % high contrast
-                % make a gaussian (for when we display, make sure to use the
-                % actual contrast for this setting or we'll fuck up later)
-                gData = stimulus.gratingContrasts(ci)*255*ones(size(grating,1),size(grating,2),4);
-                gData(:,:,4) = gauss*255;
-                stimulus.gaussian(ci,si,ri,phase) = mglCreateTexture(gData);
-            end
+    for si = 1:length(stimulus.gratingSizes)
+        sz = 4 * stimulus.gratingSizes(si); % make it twice as a big, so that the FWHM can be equal to the size
+        % use total degs / num to compute size
+        for phase = 1:2
+            grating = stimulus.gratingContrasts(ci) * 255/2 * mglMakeGrating(sz,sz,4/stimulus.gratingSizes(si),0,(phase-1)*180) + 255/2;
+            gauss = mglMakeGaussian(sz,sz,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2,stimulus.gratingSizes(si)/(2*sqrt(2*log(2)))/2);
+            alphamask = repmat(grating,1,1,4);
+            alphamask(:,:,4) = gauss*255;
+            
+            % make the grating
+            stimulus.grating(ci,si,phase)  = mglCreateTexture(alphamask); % high contrast
+            % make a gaussian (for when we display, make sure to use the
+            % actual contrast for this setting or we'll fuck up later)
+            gData = stimulus.gratingContrasts(ci)*255*ones(size(grating,1),size(grating,2),4);
+            gData(:,:,4) = gauss*255;
+            stimulus.gaussian(ci,si,phase) = mglCreateTexture(gData);
         end
     end
 end
-
-%% testing
-
-% mglClearScreen;
-% for si = 1:7
-%     for ri = 1:3
-%         mglBltTexture(stimulus.gaussian(2,si,ri,1),[randn*10 randn*10]);
-%     end
-% end
-% mglFlush
-
-%%
 % 
 % %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % sets the gamma table so that we can have

@@ -39,8 +39,14 @@ angles = -15:90;
 ecc = interp1(mesAngles,mesEcc,angles,'linear');
 
 % width and height of screen in degrees when measured
-mesWidth = 74.9675043592654;
-mesHeight = 44.4029738290369;
+if ~isempty(strfind(myscreen.displayName,'fMRI'))
+    mesWidth = 74.9675043592654;
+    mesHeight = 44.4029738290369;
+else
+    warning('DO NOT IGNORE THIS: You are using gruProjStencil on a different screen than fMRIProjFlex--this WILL cause problems!');
+    mesWidth = myscreen.imageWidth;
+    mesHeight = myscreen.imageHeight;
+end
 
 % get current size of display (note that we do not
 % use imageWidth and imageHeight in myscreen since these values
