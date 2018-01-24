@@ -14,10 +14,15 @@ function [ myscreen ] = fbsear_pilot( varargin )
 %
 %    Parameters:
 %
-%      To run the
+%      On the first run call:
+%       fbsear_pilot('run=1','genTex=1');
 %
+%      All subsequent runs:
+%       fbsear_pilot('run=#');
 %
-%
+%    If you close the screen inbetween runs you need to repeat the
+%    'genTex=1' call, otherwise the textures will be incorrectly
+%    identified.
 
 global stimulus fixStimulus
 
@@ -248,15 +253,10 @@ task{1}{1}.randVars.calculated.taskPresent = nan;
 
 if stimulus.curRun.fixate
     
-    if ~isfield(fixStimulus,'threshold') fixStimulus.threshold = 0.5; end
+    if ~isfield(fixStimulus,'threshold') fixStimulus.threshold = 0.3; end
     if ~isfield(fixStimulus,'stairStepSize') fixStimulus.stairStepSize = 0.05; end
 
     [task{2}, myscreen] = fixStairInitTask(myscreen);
-else
-    % use the modified fixation task (same timing as normal fixation task,
-    % but it depends on the value in stimulus.live.correctButton for
-    % whether or not the trial is correct. 
-%     [task{2}, myscreen] = fbsear_fixStairInitTask(myscreen);
 end
 
 %% Full Setup
@@ -333,11 +333,6 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 %%
 global stimulus
 stimulus.live.fixColor = [0 0 0];
-
-% if stimulus.live.lastCorrect>-1
-%     task.lasttrial.correct = stimulus.live.lastCorrect;
-%     stimulus.live.lastCorrect = -1;
-% end
 
 correctButtons = {[1 2 1 2] [2 1 1 2]};
 if stimulus.curRun.attend>0
