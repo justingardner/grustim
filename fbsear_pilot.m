@@ -14,6 +14,10 @@ function [ myscreen ] = fbsear_pilot( varargin )
 %
 %    Parameters:
 %
+%    You should use *736* volumes (60 trials * 6 secs * 2 + 16) you will
+%    have to manually end each run by hitting ESC (if you use 736 a volume
+%    is acquired after the screen goes dark, so don't do that)
+%
 %      On the first run call:
 %       fbsear_pilot('run=1','genTex=1');
 %
@@ -344,7 +348,7 @@ task.thistrial.task = stimulus.curRun.attend; %0/1/2 - fixate/people/cars
 task.thistrial.group = stimulus.curRun.group; % this is the ATTENTION group (1/2/3/4/5)
 task.thistrial.repeat = stimulus.curRun.repeat;
 
-disp(sprintf('Correct button: %i',stimulus.live.correctButton));
+disp(sprintf('Trial #%i: Correct button: %i',task.trialnum,stimulus.live.correctButton));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
