@@ -5,12 +5,12 @@ mglEatKeys('12`');
 global stimulus
 
 % get arguments
-high = 0; low = 0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0;
-getArgs(varargin,{'high=0','low=0','tenbit=1','practice=0','auditoryTrain=0','visualTrain=0'},'verbose=1');
+high = 0; low = 0; bimodal=0; visual=0; auditory=0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0;
+getArgs(varargin,{'high=0','low=0','bimodal=0','visual=0','auditory=0','tenbit=1','practice=0','auditoryTrain=0','visualTrain=0'},'verbose=1');
 
-stimulus.gaussian.contrast = 0.05;
-stimulus.gaussian.diameterHighRel = 6;
-stimulus.gaussian.diameterLowRel = 36;
+stimulus.gaussian.contrast = 0.04;
+stimulus.gaussian.diameterHighRel = 4;
+stimulus.gaussian.diameterLowRel = 40;
 stimulus.noiseHighRel = 0.2;
 stimulus.noiseLowRel = 0.6;
 
@@ -26,7 +26,7 @@ elseif low
 %     stimulus.gaussian.diameter = 32;
 %     stimulus.gaussian.contrast = 0.15;
 else 
-    if auditoryTrain
+    if auditoryTrain || auditory
         tenbit =0;
         stimulus.gaussian.diameter = nan;
         stimulus.gaussian.contrast = nan;
@@ -37,11 +37,13 @@ else
 end
 stimulus.high = high;
 stimulus.low = low;
-% stimulus.med = med;
 stimulus.tenbit = tenbit;
 stimulus.practice = practice;
 stimulus.auditoryTrain = auditoryTrain;
 stimulus.visualTrain = visualTrain;
+stimulus.bimodal = bimodal;
+stimulus.visual = visual;
+stimulus.auditory = auditory;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
 % stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
@@ -49,7 +51,7 @@ stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame
     if ~stimulus.tenbit
         stimulus.gaussian.contrast = .1;
     end
-stimulus.colors.reservedColors = [1 1 1; 0.2 0.2 0.2; 0 1 0;1 0 0; 0 1 1];
+stimulus.colors.reservedColors = [1 1 1; 0.2 0.2 0.2; 0 1 0; 1 0 0; 0 1 1];
 
 stimulus.tone.samplesPerSecond = 44100;
 stimulus.tone.duration = .0015;
@@ -69,7 +71,7 @@ stimulus.midPoint = (stimulus.pos1 + stimulus.pos3)/2;
 stimulus.delta=2.5;
 
 % fixation cross
-stimulus.fixWidth = 0.5;
+stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 
 stimulus.initOffset = 2;
@@ -125,43 +127,60 @@ if stimulus.practice
     task{1}{1}.parameter.condition = {'vision','auditory','noOffset'};
     task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
     task{1}{1}.randVars.uniform.closeTo = [1 3];
-elseif stimulus.auditoryTrain
+elseif stimulus.auditoryTrain 
 %     task{1}{1}.numTrials = 30;
     task{1}{1}.parameter.condition = {'auditory'};
 %     task{1}{1}.parameter.offset = [7.5 10];
     task{1}{1}.parameter.closeTo = [1 3];
+    
     % figure;
     % xlabel('trial'); ylabel('correct'); 
     % xaxis([0 30]); yaxis([-1 2]);
 elseif stimulus.visualTrain
+  task{1}{1}.parameter.condition = {'vision'};
+  task{1}{1}.parameter.closeTo = [1 3];
+else
+  task{1}{1}.parameter.offset = [-7.5 -2.5 -1.25 0 1.25 2.5 7.5];
+  if stimulus.visual
 	task{1}{1}.parameter.condition = {'vision'};
     task{1}{1}.parameter.closeTo = [1 3];
-else
+    task{1}{1}.numBlocks = 9;
+  elseif stimulus.auditory
+     task{1}{1}.parameter.condition = {'auditory'};
+     task{1}{1}.parameter.closeTo = [1 3];
+    task{1}{1}.numBlocks = 9;
+  else
+  task{1}{1}.parameter.condition = {'noOffset','posOffset','negOffset'};
+  task{1}{1}.parameter.closeTo = [1 3];
+   task{1}{1}.numBlocks = 3;
+   % task{1}{1}.numTrials = 90;
+  end
+  stimulus.nTrialTotal = length(task{1}{1}.parameter.offset) * length(task{1}{1}.parameter.condition) * length(task{1}{1}.parameter.closeTo) * task{1}{1}.numBlocks;
 
-nVisRel = 2;
-nCond = 5;
-nRepeat = 10;
-stimulus.nTrialTotal = nVisRel*nCond*nRepeat;
-visRel = [repmat(1,1,nCond*nRepeat), repmat(0,1,nCond*nRepeat)];
-condition = repmat({'vision','auditory','noOffset','posOffset','negOffset'},1,nVisRel*nRepeat);
-randSeq = randperm(nVisRel*nCond*nRepeat);
+% nVisRel = 2;
+% nCond = 5;
+% nRepeat = 10;
+% stimulus.nTrialTotal = nVisRel*nCond*nRepeat;
+% visRel = [repmat(1,1,nCond*nRepeat), repmat(0,1,nCond*nRepeat)];
+% condition = repmat({'vision','auditory','noOffset','posOffset','negOffset'},1,nVisRel*nRepeat);
+% randSeq = randperm(nVisRel*nCond*nRepeat);
 
-task{1}{1}.numTrials = nVisRel*nCond*nRepeat;
- %  task{1}{1}.parameter.visRel = [1,0]; % high, low
- %    task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
-	% task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
+% task{1}{1}.numTrials = nVisRel*nCond*nRepeat;
+%   task{1}{1}.parameter.visRel = [1,0]; % high, low
+%     task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
+% 	task{1}{1}.numTrials = 10*length(task{1}{1}.parameter.condition);
 % using my own random sequence
-  task{1}{1}.randVars.visRel = visRel(randSeq);
-  task{1}{1}.randVars.condition = condition(randSeq);
+  % task{1}{1}.randVars.visRel = visRel(randSeq);
+  % task{1}{1}.randVars.condition = condition(randSeq);
 
-  task{1}{1}.randVars.uniform.closeTo = [1 3];
+  % task{1}{1}.randVars.uniform.closeTo = [1 3];
 end
 
 task{1}{1}.random = 1;
 
+task{1}{1}.randVars.calculated.probeOffset = nan; % from midpoint
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
-task{1}{1}.randVars.calculated.probeOffset = nan; % from midpoint
 task{1}{1}.randVars.calculated.noise = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.condNum = nan;
@@ -224,11 +243,11 @@ if task.thistrial.thisseg == 1
 	task.thistrial.condNum = find(strcmp(char(task.thistrial.condition),{'vision','auditory','noOffset','posOffset','negOffset'}));
   if (stimulus.visualTrain && stimulus.high) || stimulus.auditoryTrain
     task.thistrial.visRel = 1;
-  elseif stimulus.visualTrain && stimulus.low
+  elseif (stimulus.visualTrain && stimulus.low)
     task.thistrial.visRel = 0;
   end
 
-    if task.thistrial.visRel == 1
+    if stimulus.high || stimulus.auditory || stimulus.auditoryTrain
           task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
           task.thistrial.thisTranspd = stimulus.transpd.highRel;
           task.thistrial.thisTranspi = stimulus.transpi.highRel;
@@ -240,8 +259,13 @@ if task.thistrial.thisseg == 1
           task.thistrial.relNum = 2;
     end
 
-
     if stimulus.auditoryTrain || stimulus.visualTrain
+      if task.thistrial.closeTo == 1
+        sign = -1;
+      else
+        sign = 1;
+      end
+    
     	[testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
 %         testValue = task.thistrial.offset;
         task.thistrial.noise = 0;
@@ -250,33 +274,28 @@ if task.thistrial.thisseg == 1
         % else
         %   task.thistrial.visRel = 1;
         % end
+        task.thistrial.probeOffset = sign * testValue;
     else
+      task.thistrial.probeOffset = task.thistrial.offset;
         % get Test Value
-        [testValue, stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum});
-        if ~stimulus.low
-        if testValue > 10.5
-            testValue = 10.5;
-        end
-        else
-            if testValue > 4
-                testValue = 4;
-            end
-        end
-        task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
-        while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
-            task.thistrial.noise = 4 * randn(1);
-        end
+        % [testValue, stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum});
+        % if ~stimulus.low
+        % if testValue > 10.5
+        %     testValue = 10.5;
+        % end
+        % else
+        %     if testValue > 4
+        %         testValue = 4;
+        %     end
+        % end
+        % task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
+        % while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
+        %     task.thistrial.noise = 4 * randn(1);
+        % end
 
     end
 
-
-	if task.thistrial.closeTo == 1
-		sign = -1;
-	else
-		sign = 1;
-    end
-		
-	task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
+	% task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
  	switch char(task.thistrial.condition)
 		case 'vision'
       task.thistrial.xposV = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset stimulus.pos3];
@@ -313,7 +332,7 @@ elseif task.thistrial.thisseg == 8
 
 if ~(stimulus.auditoryTrain || stimulus.visualTrain)
 if task.trialnum < stimulus.nTrialTotal
-  if task.randVars.visRel(task.trialnum+1) == 1
+  if stimulus.high || stimulus.auditory || stimulus.auditoryTrain%task.randVars.visRel(task.trialnum+1) == 1
     task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
     task.thistrial.thisTranspi = stimulus.transpi.highRel;
   else
@@ -341,7 +360,7 @@ mglClearScreen(stimulus.colors.black);
 if any(task.thistrial.thisseg == [3 5 7])
   switch char(task.thistrial.condition)
 	case 'vision'
-    if task.thistrial.visRel == 1
+    if stimulus.high%task.thistrial.visRel == 1
 		  mglBltTexture(stimulus.tex.highRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
     else
       mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
@@ -354,7 +373,7 @@ if any(task.thistrial.thisseg == [3 5 7])
     mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	otherwise
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
-		if task.thistrial.visRel == 1
+		if stimulus.high%task.thistrial.visRel == 1
       mglBltTexture(stimulus.tex.highRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
     else
       mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
@@ -414,15 +433,15 @@ if ~task.thistrial.gotResponse
     end
     if ~(stimulus.auditoryTrain||stimulus.visualTrain)
         
-        if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
-            stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, task.thistrial.correct, ...
-            abs(task.thistrial.probeOffset));        
-        else
-          randomnumbers = [1 1 1 1 1 1 1 1 1 0];
-          thisrandom = randomnumbers(randi(length(randomnumbers),1));
-           stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, thisrandom, ...
-            abs(task.thistrial.probeOffset));
-        end
+        % if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
+        %     stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, task.thistrial.correct, ...
+        %     abs(task.thistrial.probeOffset));        
+        % else
+        %   randomnumbers = [1 1 1 1 1 1 1 1 1 0];
+        %   thisrandom = randomnumbers(randi(length(randomnumbers),1));
+        %    stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, thisrandom, ...
+        %     abs(task.thistrial.probeOffset));
+        % end
     else
         stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     end
@@ -442,14 +461,14 @@ if stimulus.auditoryTrain || stimulus.visualTrain
      'stepRule=pest','dispFig=1');
 else
 
-	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
-  relNames = {'high','low'};
-for rel = 1:2
-for cond = 1:5
-	stimulus.stair{rel}{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initOffset, 'initialThresholdSd', stimulus.initOffsetSd, ...
-		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=2','subplotNum',2*(cond-1)+rel,'subplotName',[relNames{rel},' ', condNames{cond}]);
-end
-end
+% 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
+%   relNames = {'high','low'};
+% for rel = 1:2
+% for cond = 1:5
+% 	stimulus.stair{rel}{cond} = doStaircase('init','quest', 'initialThreshold', stimulus.initOffset, 'initialThresholdSd', stimulus.initOffsetSd, ...
+% 		'pThreshold', 0.75,'dispFig=1','subplotRows=5','subplotCols=2','subplotNum',2*(cond-1)+rel,'subplotName',[relNames{rel},' ', condNames{cond}]);
+% end
+% end
    
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
