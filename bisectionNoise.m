@@ -9,10 +9,10 @@ high = 0; low = 0; bimodal=0; visual=0; auditory=0; tenbit = 1; practice = 0; au
 getArgs(varargin,{'high=0','low=0','bimodal=0','visual=0','auditory=0','tenbit=1','practice=0','auditoryTrain=0','visualTrain=0'},'verbose=1');
 
 stimulus.gaussian.contrast = 0.04;
-stimulus.gaussian.diameterHighRel = 4;
+stimulus.gaussian.diameterHighRel = 6;
 stimulus.gaussian.diameterLowRel = 40;
-stimulus.noiseHighRel = 0.2;
-stimulus.noiseLowRel = 0.6;
+stimulus.noiseHighRel = 0.15;
+stimulus.noiseLowRel = 0.65;
 
 if high
     stimulus.gaussian.diameter = stimulus.gaussian.diameterHighRel;
@@ -44,7 +44,7 @@ stimulus.visualTrain = visualTrain;
 stimulus.bimodal = bimodal;
 stimulus.visual = visual;
 stimulus.auditory = auditory;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%f%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
 % stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
 stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
@@ -73,6 +73,7 @@ stimulus.delta=2.5;
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
+stimulus.fixYpos = -4;
 
 stimulus.initOffset = 2;
 stimulus.initOffsetSd = 2.5;
@@ -100,7 +101,6 @@ transpi = linspace(0,round(255*stimulus.noiseLowRel),still);
 stimulus.transpi.lowRel = transpi;
 stimulus.transpi.lowRel(still+1:stimulus.nRefresh+1) = max(stimulus.transpi.lowRel);
 
-
 transpd = linspace(round(255*stimulus.noiseHighRel),0,still);
 stimulus.transpd.highRel = transpd;
 stimulus.transpd.highRel(still+1:stimulus.nRefresh+1) = min(stimulus.transpd.highRel);
@@ -118,7 +118,7 @@ myscreen = initScreen;
 %%%%%%%%%%%%%%%%%%%%% 
 task{1}{1}.waitForBacktick = 1;
 stimDur = stimulus.gaussian.duration;
-task{1}{1}.segmin = [1 0.5 stimDur 0.5-stimDur stimDur 0.5-stimDur stimDur 1.5 1];
+task{1}{1}.segmin = [1 0.5 stimDur 0.5-stimDur stimDur 0.5-stimDur stimDur 1.5 0.5];
 task{1}{1}.segmax = task{1}{1}.segmin;
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
 
@@ -144,15 +144,15 @@ else
   if stimulus.visual
 	task{1}{1}.parameter.condition = {'vision'};
     task{1}{1}.parameter.closeTo = [1 3];
-    task{1}{1}.numBlocks = 9;
+    task{1}{1}.numBlocks = 6;
   elseif stimulus.auditory
      task{1}{1}.parameter.condition = {'auditory'};
      task{1}{1}.parameter.closeTo = [1 3];
-    task{1}{1}.numBlocks = 9;
+    task{1}{1}.numBlocks = 6;
   else
   task{1}{1}.parameter.condition = {'noOffset','posOffset','negOffset'};
   task{1}{1}.parameter.closeTo = [1 3];
-   task{1}{1}.numBlocks = 3;
+   task{1}{1}.numBlocks = 2;
    % task{1}{1}.numTrials = 90;
   end
   stimulus.nTrialTotal = length(task{1}{1}.parameter.offset) * length(task{1}{1}.parameter.condition) * length(task{1}{1}.parameter.closeTo) * task{1}{1}.numBlocks;
@@ -365,12 +365,12 @@ if any(task.thistrial.thisseg == [3 5 7])
     else
       mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
     end
-    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
-    mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
+    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
+    mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	case 'auditory'
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
-    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
-    mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
+    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
+    mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	otherwise
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
 		if stimulus.high%task.thistrial.visRel == 1
@@ -378,24 +378,24 @@ if any(task.thistrial.thisseg == [3 5 7])
     else
       mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
     end
-    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
-    mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
+    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
+    mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
         
   end		
 
 elseif task.thistrial.thisseg == 9
   task.thistrial.r = task.thistrial.r + 1;
   [stimulus task] = updateNoise(stimulus,task,myscreen);
-  mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
-  mglBltTexture(task.thistrial.nextNoiseTex,[0 0 60 60]);
-  mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
+  mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
+  mglBltTexture(task.thistrial.nextNoiseTex,[0 0 70 70]);
+  mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
   task.thistrial.tr = task.thistrial.r;
   mglDeleteTexture(task.thistrial.nextNoiseTex);
   mglDeleteTexture(task.thistrial.thisNoiseTex);
 
 else
-   mglBltTexture(task.thistrial.thisNoiseTex,[0 0 60 60]);
-   mglFillOval(0,-1,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
+   mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
+   mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -679,7 +679,7 @@ stimulus.currentMaxContrast = maxContrast;
 function stimulus = createNoise(stimulus,task,myscreen)
 xDeg2pix = mglGetParam('xDeviceToPixels');
 yDeg2pix = mglGetParam('yDeviceToPixels');
-width = 2.0; height = 2.0;
+width = 2.5; height = 2.5;
 % get size in pixels
 widthPixels = round(width*xDeg2pix);
 heightPixels = round(height*yDeg2pix);
