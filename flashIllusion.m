@@ -74,7 +74,7 @@ end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
-
+plotResults(task{1}{1});
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -200,8 +200,19 @@ subplot(2,1,1);
 singleFlash = (task.randVars.nflash==1);
 for n = 1:4
 	nBeeps{n} = (task.randVars.nbeep == n);
-	perceived{n} = task.randVars.resp(singleFlash && nBeeps{n});
+	perceived{n} = task.randVars.resp(singleFlash & nBeeps{n});
+
+  avePerceived(n) = mean(perceived{n});
+  errPerceived(n) = std(perceived{n})/sqrt(length(perceived{n}));
 end
+
+myerrorbar([1:4],avePerceived,'yError',errPerceived);
+xlabel('N of beeps');
+ylabel('perceived N of flashes');
+title('single flash');
+
+
+return;
 
 
 task.randVars.resp
