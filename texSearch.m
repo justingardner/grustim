@@ -510,9 +510,12 @@ for i = 1:length(all_eccs)
   plot(1:4, y(i,:)+rand()*.05 - .025, '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
 plot(1:4, mean(y,1), '.k', 'MarkerSize', 20);
-%errorbar(1:4, mean(y,1), 1.96*std(y,1) / sqrt(data.nTrials), '.k');
-legend('5 degrees', '8 degrees', '11 degrees');
-title('Accuracy as a function of distractor layer', 'FontSize', 18);
+
+se = @(x) 1.96*nanstd(x) / sqrt(length(x));
+eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
+errorbar(1:4, mean(y,1), eb, '.k');
+legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
+title(sprintf('Accuracy as a function of distractor layer. nTrials=%i', data.nTrials), 'FontSize', 18);
 xlim([0 5]);ylim([0 1.2]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Identification Accuracy', 'FontSize', 16);
@@ -528,12 +531,14 @@ rt = data.reaction_time;
 y2 = [];
 for i = 1:length(all_eccs)
   ei = all_eccs(i);
-  y2(i,:) = [sum(rt(data.ecc==ei & data.layer==1)), sum(rt(data.ecc==ei & data.layer==2)), sum(rt(data.ecc==ei & data.layer==3)), sum(rt(data.ecc==ei & data.layer==4))]/(data.nTrials/4);
+  y2(i,:) = [nansum(rt(data.ecc==ei & data.layer==1)), nansum(rt(data.ecc==ei & data.layer==2)), nansum(rt(data.ecc==ei & data.layer==3)), nansum(rt(data.ecc==ei & data.layer==4))]/(data.nTrials/4);
   plot(1:4, y2(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
-plot(1:4, mean(y2,1), '.k', 'MarkerSize', 20);
-%errorbar(1:4, mean(y,1), 1.96*std(y,1) / sqrt(data.nTrials), '.k');
-legend('5 degrees', '8 degrees', '11 degrees');
+plot(1:4, nanmean(y2,1), '.k', 'MarkerSize', 20);
+
+eb = [se(rt(data.layer==1)), se(rt(data.layer==2)), se(rt(data.layer==3)), se(rt(data.layer==4))];
+errorbar(1:4, mean(y2,1), eb, '.k');
+legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
 title('Reaction Time as a function of distractor layer', 'FontSize', 18);
 xlim([0 5]);
 ylim([.1 .3]);
