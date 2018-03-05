@@ -29,11 +29,6 @@ stimulus.getData = getData;
 clear localizer invisible scan noeye task test2
 
 
-if stimulus.getData
-  myscreen = getTrialData(stimulus);
-  return
-end
-
 if stimulus.plots
     dispInfo(stimulus);
     myscreen = 0;
@@ -274,6 +269,7 @@ elseif task.thistrial.thisseg == stimulus.seg{task.thistrial.thisphase}.search
   stimulus.live.search = 1;
 elseif task.thistrial.thisseg == stimulus.seg{task.thistrial.thisphase}.feedback
   stimulus.live.feedback = 1;
+  stimulus.live.fix = 0;
 end
 
 % Select image parameters: size, eccentricity, and location
@@ -299,6 +295,10 @@ for i = 1:2
       disp(sprintf('Incorrect! You responded: %i, correct was: %i', task.thistrial.response, task.thistrial.targetPosition));
       upFix(stimulus, stimulus.colors.red);
     end
+  end
+
+  if stimulus.live.fix
+    upFix(stimulus, stimulus.colors.blue);
   end
 
   mglFlush
@@ -402,7 +402,8 @@ function upFix(stimulus, fixColor)
 if ieNotDefined('fixColor')
   fixColor = stimulus.live.fixColor;
 end
-mglGluAnnulus(0,0,0,.1,fixColor);
+%mglGluAnnulus(0,0,0,.1,fixColor);
+mglFixationCross(1,1,fixColor);
 
 
 %%% 
@@ -422,7 +423,7 @@ function [trials] = totalTrials()
 %%
 % Counts trials + estimates the threshold based on the last 500 trials
 % get the files list
-files = dir(fullfile(sprintf('~/data/texSearch/%s/17*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 trials = 0;
 
 for fi = 1:length(files)
@@ -437,7 +438,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%
 function data = getTrialData(rstimulus)
 %%
-files = dir(fullfile(sprintf('~/data/texSearch/%s/17*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 data = struct('subjResp', [], 'corrResp', [], 'scaling', [], 'image', [], 'synthPairs', [], 'whichRun', [], 'nTrials', []);
 data.nRuns = length(files);
 scaleIdx = [NaN NaN 1 2 3 4 5 NaN NaN 6];
@@ -468,88 +469,86 @@ function dispInfo(rstimulus)
 %%
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/texSearch/%s/17*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 
-count = 1; data = zeros(10000, 5,6);
-
-ims = [0, 0, 2, 3, 5];
+count = 1; 
+data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [], 'image', [], 'layer', [], 'ecc', [], 'reaction_time', []);
 
 for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
+  load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
+  
+  e = getTaskParameters(myscreen,task);
+  if e{1}.nTrials>1
     
-    e = getTaskParameters(myscreen,task);
-    if e{1}.nTrials>1
+    subj_resp = e{1}.response-10;
+    corr_resp = e{1}.randVars.targetPosition;
+    data.run = stimulus.counter;
+    data.subj_resp = [data.subj_resp subj_resp];
+    data.corr_resp = [data.corr_resp corr_resp];
+    data.corr_trials = [data.corr_trials subj_resp==corr_resp];
+    data.reaction_time = [data.reaction_time e{1}.reactionTime];
+    data.nTrials = data.nTrials + e{1}.nTrials;
+
+    data.image = [data.image e{1}.parameter.targIm];
+    data.layer = [data.layer e{1}.parameter.layer];
+    data.ecc = [data.ecc e{1}.parameter.eccentricity];
     
-        run = stimulus.counter;
-        corrects = e{1}.response == e{1}.parameter.correctResponse;
-        scaling = e{1}.parameter.scaling;
-        image = e{1}.parameter.image;
-        data(count,1, :) = [sum(corrects(scaling==3)), sum(corrects(scaling==4)), sum(corrects(scaling==5)), sum(corrects(scaling==6)), sum(corrects(scaling==7)), sum(corrects(scaling==10))]/48;
-        for imi = 2:5
-            data(count,imi, :) = [sum(corrects(scaling==3 & image == ims(imi))), sum(corrects(scaling==4 & image == ims(imi))), sum(corrects(scaling==5 & image == ims(imi))), sum(corrects(scaling==6 & image == ims(imi))), sum(corrects(scaling==7 & image == ims(imi))), sum(corrects(scaling==10 & image == ims(imi)))] / 12;
-        end
-    end
-    count = count + 1;
+  end
+  count = count + 1;
 end
 
-data = data(1:(count-1),:,:);
+%%
+figure;
+subplot(2,1,1);
+all_eccs = unique(data.ecc);
+ct = data.corr_trials;
+colors = brewermap(length(all_eccs), 'Dark2');
+y = [];
+for i = 1:length(all_eccs)
+  ei = all_eccs(i);
+  y(i,:) = [sum(ct(data.ecc==ei & data.layer==1)), sum(ct(data.ecc==ei & data.layer==2)), sum(ct(data.ecc==ei & data.layer==3)), sum(ct(data.ecc==ei & data.layer==4))]/(data.nTrials/12);
+  plot(1:4, y(i,:)+rand()*.05 - .025, '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+end
+plot(1:4, mean(y,1), '.k', 'MarkerSize', 20);
+%errorbar(1:4, mean(y,1), 1.96*std(y,1) / sqrt(data.nTrials), '.k');
+legend('5 degrees', '8 degrees', '11 degrees');
+title('Accuracy as a function of distractor layer', 'FontSize', 18);
+xlim([0 5]);ylim([0 1.2]);
+xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
+ylabel('Identification Accuracy', 'FontSize', 16);
+hline(0.25, ':');
+set(gca, 'FontSize', 14);
+set(gca, 'XTick', 1:4);
+set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
+
+
+subplot(2,1,2);
+all_eccs = unique(data.ecc);
+rt = data.reaction_time;
+y2 = [];
+for i = 1:length(all_eccs)
+  ei = all_eccs(i);
+  y2(i,:) = [sum(rt(data.ecc==ei & data.layer==1)), sum(rt(data.ecc==ei & data.layer==2)), sum(rt(data.ecc==ei & data.layer==3)), sum(rt(data.ecc==ei & data.layer==4))]/(data.nTrials/4);
+  plot(1:4, y2(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+end
+plot(1:4, mean(y2,1), '.k', 'MarkerSize', 20);
+%errorbar(1:4, mean(y,1), 1.96*std(y,1) / sqrt(data.nTrials), '.k');
+legend('5 degrees', '8 degrees', '11 degrees');
+title('Reaction Time as a function of distractor layer', 'FontSize', 18);
+xlim([0 5]);
+ylim([.1 .3]);
+xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
+ylabel('Identification Accuracy', 'FontSize', 16);
+set(gca, 'FontSize', 14);
+set(gca, 'XTick', 1:4);
+set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
+
+%%
+
+keyboard
 
 mglClose;
 
-%% fit parameters
-respAcc = squeeze(mean(data(:,1,:),1))';
-x0 = [1, 0.5];
-options = optimset('Display','iter');
-[x,fval,exitflag,output] = fminsearch(@(x) objectivefcn(x,respAcc), x0, options);
-
-scales = [0.3, 0.4, 0.5, 0.6, 0.7, 1.0];
-for si = 1:length(scales)
-  pc(si) = probCorrect(scales(si), x(1), x(2));
-end
-
-figure;
-x1 = [0.3 0.4 0.5 0.6 0.7 1.0];
-y = squeeze(mean(data(:,1,:),1));
-plot(x1, squeeze(mean(data(:,1,:),1)), '*k', 'LineWidth', 4, 'MarkerSize', 5); hold on;
-plot(x1, squeeze(mean(data(:,2,:),1)), '*y', 'LineWidth', 0.5, 'MarkerSize',5); hold on;
-plot(x1, squeeze(mean(data(:,3,:),1)), '*g', 'LineWidth', 0.5, 'MarkerSize',5); hold on;
-plot(x1, squeeze(mean(data(:,4,:),1)), '*b', 'LineWidth', 0.5, 'MarkerSize',5); hold on;
-plot(x1, squeeze(mean(data(:,5,:),1)), '*m', 'LineWidth', 0.5, 'MarkerSize',5); hold on;
-
-plot([0.3 0.4 0.5 0.6 0.7 1.0], pc, '-r', 'LineWidth', 4, 'MarkerSize', 5); hold on;
-errorbar(x1,y, 1.96*squeeze(std(data(:,1,:),1))/sqrt(length(y)), '*k');
-
-legend('All', 'Fountain', 'Railroad', 'City', 'Waterfall', 'BestFit');
-title(sprintf('Scaling vs Accuracy - Gain: %g; Scaling: %g', x(1), x(2)), 'FontSize', 18);
-xlabel('Scaling Constant', 'FontSize', 14);
-ylabel('Accuracy', 'FontSize', 14);
-keyboard
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Helper functions for analysis
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function pc = probCorrect(s, a0, s0)
-pc = normcdf(d(s,a0,s0) / sqrt(2)) * normcdf(d(s,a0,s0) / 2) + normcdf(-d(s,a0,s0) / sqrt(2))*normcdf(-d(s,a0,s0) / 2);
-
-function dist = d(s, a0, s0)
-if s > s0
-  dist = a0 * (1 - (s0^2)/(s^2));
-else
-  dist = 0;
-end
-
-function f = objectivefcn(x, data)
-
-%data = [0.50 0.604166666666667 0.651041666666667 0.625 0.59375 0.723958333333333];
-%data = [.48 .51 .51 .6 .7 .8];
-
-a0 = x(1); s0 = x(2);
-scales = [0.3 0.4 0.5 0.6 0.7 1.0];
-for i = 1:6
-  probs(i) = probCorrect(scales(i), a0, s0);
-end
-f = sum((probs - data).^2);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -557,19 +556,8 @@ f = sum((probs - data).^2);
 function localInitStimulus()
 
 global stimulus
-
-% stimulus.live.pos = 
-% stimulus.live.pos = logspace(log10(stimulus.cur_.isize),log10(stimulus.cur_.osize),stimulus.cur_.N);
-
-% mglClearScreen(0.5)
-% for gi = 1:stimulus.cur_.N
-    % for each grating distance
-    % calculate the center position to estimate the radius
-%     crad = stimulus.live.pos(gi);
-    % get total degrees around circle
-%     degs = 2*pi*crad;
-%     sz = degs/stimulus.cur_.num*0.6;
 sz = 1.5;
+
 % use total degs / num to compute size
 grating = 251/2*mglMakeGrating(sz,sz,2,0) + 255/2;
 gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
