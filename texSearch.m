@@ -122,19 +122,18 @@ end
 
 % Task important variables
 task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
-task{1}{1}.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
+task{1}{1}.layerNames = {'pool1', 'pool2', 'pool3', 'pool4', 'pool5'};
 task{1}{1}.stimDir = stimDirectory;
 
 % Trial parameters
 task{1}{1}.parameter.targIm = 1:10;
-task{1}{1}.parameter.layer = [1 2 3 4];
-%task{1}{1}.parameter.targetPosition = [1 2 3 4]; % target can be in one of 4 positions
+task{1}{1}.parameter.layer = [1 2 3 4 5];
 task{1}{1}.parameter.eccentricity = [5 8 11];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse(stimulus.seg{1}.search)=1;
-task{1}{1}.numTrials = 120;
+task{1}{1}.numTrials = 150;
 task{1}{1}.random = 1;
 
 if stimulus.scan
@@ -144,7 +143,6 @@ end
 % Task trial parameters
 
 % Task variables to be calculated later
-%task{1}{1}.randVars.eccentricity = 9; % search images are centered 5 degrees from center.
 task{1}{1}.randVars.calculated.targetPosition = NaN;
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{1}.randVars.calculated.dead = 0;
@@ -235,6 +233,9 @@ task.thistrial.targetPosition = randi(4, 1);
 % set response text
 stimulus.live.responseText = mglText('1 or 2?');
 
+% Disp trial parameters each trial
+disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d', task.trialnum, imName, layer, task.thistrial.eccentricity));
+
 % Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
@@ -289,10 +290,14 @@ for i = 1:2
     mglBltTexture(stimulus.live.target_image, [locations(task.thistrial.targetPosition,:), imSz, imSz]);
   elseif stimulus.live.feedback
     if task.thistrial.response == task.thistrial.targetPosition
-      disp(sprintf('Correct! You responded: %i, Correct answer: %i', task.thistrial.whichButton, task.thistrial.targetPosition));
+      if i == 1
+        disp(sprintf('Correct! You responded: %i, Correct answer: %i', task.thistrial.response, task.thistrial.targetPosition));
+      end
       upFix(stimulus, stimulus.colors.green);
     else
-      disp(sprintf('Incorrect! You responded: %i, correct was: %i', task.thistrial.response, task.thistrial.targetPosition));
+      if i == 1
+        disp(sprintf('Incorrect! You responded: %i, correct was: %i', task.thistrial.response, task.thistrial.targetPosition));
+      end
       upFix(stimulus, stimulus.colors.red);
     end
   end
@@ -506,10 +511,10 @@ colors = brewermap(length(all_eccs), 'Dark2');
 y = [];
 for i = 1:length(all_eccs)
   ei = all_eccs(i);
-  y(i,:) = [sum(ct(data.ecc==ei & data.layer==1)), sum(ct(data.ecc==ei & data.layer==2)), sum(ct(data.ecc==ei & data.layer==3)), sum(ct(data.ecc==ei & data.layer==4))]/(data.nTrials/12);
+  y(i,:) = [nansum(ct(data.ecc==ei & data.layer==1)), nansum(ct(data.ecc==ei & data.layer==2)), nansum(ct(data.ecc==ei & data.layer==3)), nansum(ct(data.ecc==ei & data.layer==4))]/(data.nTrials/12);
   plot(1:4, y(i,:)+rand()*.05 - .025, '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
-plot(1:4, mean(y,1), '.k', 'MarkerSize', 20);
+plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
 
 se = @(x) 1.96*nanstd(x) / sqrt(length(x));
 eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
