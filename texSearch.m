@@ -122,18 +122,18 @@ end
 
 % Task important variables
 task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
-task{1}{1}.layerNames = {'pool1', 'pool2', 'pool3', 'pool4', 'pool5'};
+task{1}{1}.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
 task{1}{1}.stimDir = stimDirectory;
 
 % Trial parameters
 task{1}{1}.parameter.targIm = 1:10;
-task{1}{1}.parameter.layer = [1 2 3 4 5];
+task{1}{1}.parameter.layer = [1 2 3 4];
 task{1}{1}.parameter.eccentricity = [5 8 11];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse(stimulus.seg{1}.search)=1;
-task{1}{1}.numTrials = 150;
+task{1}{1}.numTrials = 120;
 task{1}{1}.random = 1;
 
 if stimulus.scan
@@ -477,7 +477,8 @@ function dispInfo(rstimulus)
 files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 
 count = 1; 
-data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [], 'image', [], 'layer', [], 'ecc', [], 'reaction_time', []);
+data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
+              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0);
 
 for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
@@ -493,7 +494,9 @@ for fi = 1:length(files)
     data.corr_trials = [data.corr_trials subj_resp==corr_resp];
     data.reaction_time = [data.reaction_time e{1}.reactionTime];
     data.nTrials = data.nTrials + e{1}.nTrials;
-
+    % Calculate number of valid trials by excluding eye movements and pool5
+    data.nValTrials = data.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
+    
     data.image = [data.image e{1}.parameter.targIm];
     data.layer = [data.layer e{1}.parameter.layer];
     data.ecc = [data.ecc e{1}.parameter.eccentricity];
@@ -512,7 +515,7 @@ y = [];
 for i = 1:length(all_eccs)
   ei = all_eccs(i);
   y(i,:) = [nansum(ct(data.ecc==ei & data.layer==1)), nansum(ct(data.ecc==ei & data.layer==2)), nansum(ct(data.ecc==ei & data.layer==3)), nansum(ct(data.ecc==ei & data.layer==4))]/(data.nTrials/12);
-  plot(1:4, y(i,:)+rand()*.05 - .025, '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+  plot(1:4, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
 plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
 
@@ -520,7 +523,7 @@ se = @(x) 1.96*nanstd(x) / sqrt(length(x));
 eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
 errorbar(1:4, mean(y,1), eb, '.k');
 legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
-title(sprintf('Accuracy as a function of distractor layer. nTrials=%i', data.nTrials), 'FontSize', 18);
+title(sprintf('Accuracy as a function of distractor layer. nTrials=%i', data.nValTrials), 'FontSize', 18);
 xlim([0 5]);ylim([0 1.2]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Identification Accuracy', 'FontSize', 16);
@@ -548,7 +551,7 @@ title('Reaction Time as a function of distractor layer', 'FontSize', 18);
 xlim([0 5]);
 ylim([.1 .3]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
-ylabel('Identification Accuracy', 'FontSize', 16);
+ylabel('Reaction Time', 'FontSize', 16);
 set(gca, 'FontSize', 14);
 set(gca, 'XTick', 1:4);
 set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
