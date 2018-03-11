@@ -20,12 +20,16 @@ plots = 0;
 noeye = 0;
 debug = 0;
 getData = 0;
-getArgs(varargin,{'getData=0', 'scan=0','plots=0','noeye=0','debug=0'});
+plotEye = 0;
+stairImSz = 1;
+getArgs(varargin,{'stairImSz=1','getData=0', 'plotEye=0', 'scan=0','plots=0','noeye=0','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
 stimulus.getData = getData;
+stimulus.plotEye= plotEye;
+stimulus.stairImSz= stairImSz;
 clear localizer invisible scan noeye task test2
 
 
@@ -33,6 +37,15 @@ if stimulus.plots
     dispInfo(stimulus);
     myscreen = 0;
     return
+end
+
+if stimulus.plotEye
+  plotEyetraces(stimulus);
+  return
+end
+
+if stimulus.stairImSz
+  stimulus.strcs = {};
 end
 
 if stimulus.scan
@@ -144,6 +157,7 @@ end
 
 % Task variables to be calculated later
 task{1}{1}.randVars.calculated.targetPosition = NaN;
+task{1}{1}.randVars.calculated.imSz = NaN;
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
@@ -230,16 +244,91 @@ stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/v3/%s_%s_step_10000.jpg', dis
 % Select target position
 task.thistrial.targetPosition = randi(4, 1);
 
+% Staircase image size.
+if stimulus.stairImSz
+  task.thistrial.imSz = stairImSize(task);
+else
+  task.thistrial.imSz = 5;
+end
+
 % set response text
 stimulus.live.responseText = mglText('1 or 2?');
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d', task.trialnum, imName, layer, task.thistrial.eccentricity));
+disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d, Size, %g', task.trialnum, imName, layer, task.thistrial.eccentricity, task.thistrial.imSz));
 
 % Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 stimulus.live.eyeCount = 0;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% Run Staircase over imsize for each condition %%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+function newImSz = stairImSize(task)
+
+global stimulus
+
+lastN = 4;
+threshAcc = 0.75;
+increment = 0.25;
+
+eccs = [5, 8, 11];
+
+% first figure out which trial index it is
+trLayer = task.thistrial.layer;
+trEcc = find(eccs==task.thistrial.eccentricity);
+idxMtx = reshape(1:12, [3,4]);
+trIdx = idxMtx(trEcc, trLayer);
+
+% then update that element of stimulus.strcs
+cnm = sprintf('cond%d_acc', trIdx);
+fnm = sprintf('cond%d', trIdx);
+if ~isfield(stimulus.strcs, fnm)
+  stimulus.strcs.(fnm) = [];
+  stimulus.strcs.(cnm) = [];
+end
+
+
+% Update the last trial's condition
+if ~isempty(task.lasttrial)
+  lastIdx = idxMtx(find(eccs==task.lasttrial.eccentricity), task.lasttrial.layer);
+  lastAcc = (task.lasttrial.response == task.lasttrial.targetPosition);
+  lnm = sprintf('cond%d_acc', lastIdx);
+  stimulus.strcs.(lnm) = [stimulus.strcs.(lnm) lastAcc];
+else
+  % Load previous runs
+  f = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat')));
+  lsz = 5;
+  if length(f) > 0
+    l = load(f(end).name);
+    if isfield(l.stimulus, 'strcs')
+      lsz = l.stimulus.strcs.(fnm)(end);
+      disp(sprintf('Previous runs threshold found.. Starting image size at %g', lsz));
+    end
+  end
+end
+
+% for each of 12 conditions, store a running log of accuracies, and imSizes
+if length(stimulus.strcs.(fnm)) < 1
+  newImSz = lsz;
+else
+  % Get the image size on the last trial of this condition
+  prevSz = stimulus.strcs.(fnm)(end);
+
+  % Check a running average accuracy over the last 4 trials
+  % If the running average is less than threshold (0.75), increment imsize, otherwise decrement.
+  st = max(length(stimulus.strcs.(cnm)) - lastN, 1);
+  if mean(stimulus.strcs.(cnm)(st:end)) < threshAcc
+    newImSz = prevSz + increment;
+  else
+    newImSz = prevSz - increment;
+  end
+end
+
+stimulus.strcs.(fnm) = [stimulus.strcs.(fnm) newImSz];
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -274,7 +363,7 @@ elseif task.thistrial.thisseg == stimulus.seg{task.thistrial.thisphase}.feedback
 end
 
 % Select image parameters: size, eccentricity, and location
-imSz = 5; % Size in Degrees of Visual Angle to display image
+imSz = task.thistrial.imSz; % Size in Degrees of Visual Angle to display image
 ecc = task.thistrial.eccentricity / sqrt(2); % 
 locations = [-ecc ecc; ecc ecc; ecc -ecc; -ecc -ecc];
 distLocations = setdiff(1:4, task.thistrial.targetPosition);
@@ -282,7 +371,7 @@ distLocations = setdiff(1:4, task.thistrial.targetPosition);
 for i = 1:2
   mglClearScreen(0.5);
   if stimulus.live.target
-    mglBltTexture(stimulus.live.target_image, [0 0 imSz imSz]);
+    mglBltTexture(stimulus.live.target_image, [0 0 5 5]);
   elseif stimulus.live.search
     mglBltTexture(stimulus.live.d1, [locations(distLocations(1), :), imSz, imSz]);
     mglBltTexture(stimulus.live.d2, [locations(distLocations(2), :), imSz, imSz]);
@@ -467,10 +556,64 @@ for fi = 1:length(files)
   end
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% plot Eye Traces %%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function plotEyetraces(stimulus)
+
+cdir = pwd;
+
+cd(sprintf('~/data/texSearch/%s', mglGetSID));
+
+% get files list
+files = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat', mglGetSID)));
+
+idata = struct('xPos', {}, 'yPos', {}, 'pupil', {}, 'time', {}, 'isVal', [], 'respLoc', [], 'imLoc', []);
+idata(1).xPos{1} = 0;
+
+for fi = 1:length(files)
+  fnm = files(fi).name(1:end-4);
+
+  trace = getTaskEyeTraces(fnm);
+
+  %idata.xPos = [idata.xPos; trace.eye.xPos];
+  %idata.yPos = [idata.yPos; trace.eye.yPos];
+  idata.xPos{fi} = trace.eye.xPos;
+  idata.yPos{fi} = trace.eye.yPos;
+  idata.pupil{fi} = trace.eye.pupil;
+  idata.time{fi} = trace.eye.time;
+  
+  %idata.pupil = [idata.pupil; trace.eye.pupil];
+  %idata.time = [idata.time; trace.eye.time];
+
+  idata.isVal = [idata.isVal; ~isnan(trace.response)];
+
+  idata.respLoc = [idata.respLoc; trace.response-10];
+  idata.imLoc = [idata.imLoc; trace.randVars.targetPosition];
+
+end
+
+% Now, plot the eye traces by condition maybe?
+
+keyboard
+
+%%
+midX = nan(120, length(files));
+midY = nan(120, length(files));
+
+for ri = 1:length(files)
+  respLocs = idata.respLoc(ri,:);
+  imLocs = idata.imLoc(ri,:);
+
+  midX(:,ri) = median(idata.xPos{ri}, 2);
+  midY(:,ri) = median(idata.yPos{ri}, 2);
+end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%
 %    dispInfo    %
 %%%%%%%%%%%%%%%%%%%%%%%
-function dispInfo(rstimulus)
+function data = dispInfo(rstimulus)
 %%
 
 % get the files list
