@@ -21,8 +21,10 @@ noeye = 0;
 debug = 0;
 getData = 0;
 plotEye = 0;
-stairImSz = 1;
-getArgs(varargin,{'stairImSz=1','getData=0', 'plotEye=0', 'scan=0','plots=0','noeye=0','debug=0'});
+stairImSz = 0;
+varyImSz = 0;
+analyzeStair = 0;
+getArgs(varargin,{'varyImSz=0', 'analyzeStair=0', 'stairImSz=1','getData=0', 'plotEye=0', 'scan=0','plots=0','noeye=0','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -30,8 +32,14 @@ stimulus.debug = debug;
 stimulus.getData = getData;
 stimulus.plotEye= plotEye;
 stimulus.stairImSz= stairImSz;
+stimulus.varyImSz = varyImSz;
+stimulus.analyzeStair = analyzeStair;
 clear localizer invisible scan noeye task test2
 
+if stimulus.analyzeStair
+    analyzeStaircase();
+    return
+end
 
 if stimulus.plots
     dispInfo(stimulus);
@@ -45,6 +53,7 @@ if stimulus.plotEye
 end
 
 if stimulus.stairImSz
+  disp('Staircasing image size');
   stimulus.strcs = {};
 end
 
@@ -128,6 +137,9 @@ if stimulus.noeye==1
   task{1}{1}.segmin(1) = 0.5;
   task{1}{1}.segmax(1) = 0.5;
 end
+
+%
+stimulus.allSizes = [3, 4, 5, 6, 7, 8, 9, 10];
 
 % Task important variables
 task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
@@ -241,7 +253,9 @@ stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/v3/%s_%s_step_10000.jpg', dis
 task.thistrial.targetPosition = randi(4, 1);
 
 % Staircase image size.
-if stimulus.stairImSz
+if stimulus.varyImSz
+  task.thistrial.imSz = stimulus.allSizes(randi(length(stimulus.allSizes), 1));
+elseif stimulus.stairImSz
   task.thistrial.imSz = stairImSize(task);
 else
   task.thistrial.imSz = 5;
@@ -303,7 +317,7 @@ if length(stimulus.strcs.(fnm)) < 1
   f = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat', mglGetSID)));
   lsz = 5;
   if length(f) > 0
-    l = load(f(end).name);
+    l = load(fullfile(sprintf('~/data/texSearch/%s/%s', mglGetSID, f(end).name)));
     if isfield(l.stimulus, 'strcs')
       lsz = l.stimulus.strcs.(fnm)(end);
       disp(sprintf('Previous runs threshold found.. Starting image size at %g', lsz));
@@ -553,6 +567,102 @@ for fi = 1:length(files)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%% analyze staircase %%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function analyzeStaircase()
+
+files = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat', mglGetSID)));
+
+strDt = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
+              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0);
+
+for fi = 1:length(files)
+  l = load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
+   
+  e = getTaskParameters(l.myscreen, l.task);
+  strcs = l.stimulus.strcs;
+  
+  for ci = 1:12
+      cnm = sprintf('cond%d', ci);
+      anm = sprintf('cond%d_acc', ci);
+
+      if ~isfield(strDt, cnm)
+          strDt.(cnm) = strcs.(cnm);
+          strDt.(anm) = strcs.(anm);
+      else
+          strDt.(cnm) = [strDt.(cnm) strcs.(cnm)];
+          strDt.(anm) = [strDt.(anm) strcs.(anm)];
+      end
+  end
+  
+  if e{1}.nTrials>1
+    
+    subj_resp = e{1}.response-10;
+    corr_resp = e{1}.randVars.targetPosition;
+    strDt.run = l.stimulus.counter;
+    strDt.subj_resp = [strDt.subj_resp subj_resp];
+    strDt.corr_resp = [strDt.corr_resp corr_resp];
+    strDt.corr_trials = [strDt.corr_trials subj_resp==corr_resp];
+    strDt.reaction_time = [strDt.reaction_time e{1}.reactionTime];
+    strDt.nTrials = strDt.nTrials + e{1}.nTrials;
+    % Calculate number of valid trials by excluding eye movements and pool5
+    strDt.nValTrials = strDt.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
+    
+    strDt.image = [strDt.image e{1}.parameter.targIm];
+    strDt.layer = [strDt.layer e{1}.parameter.layer];
+    strDt.ecc = [strDt.ecc e{1}.parameter.eccentricity];
+    
+  end
+  
+end
+
+%% Plot threshold staircase changes over time
+conds = reshape(1:12, [3, 4]);
+figure;
+colors = brewermap(4, 'Dark2');
+
+thresh = nan(3,4);
+
+for ci = 1:12
+    [eccI, layI] = find(conds==ci);
+    
+    condi = sprintf('cond%d', ci);
+    plot(1:length(strDt.(condi)), strDt.(condi), '*-', 'Color', colors(layI,:)); hold on;
+    thresh(eccI, layI) = mean(strDt.(condi)(end-4:end));
+end
+title('Threshold changes over the course of all trials', 'FontSize', 18);
+xlabel('Trial count');
+ylabel('Threshold');
+
+%% Plot thresholds as a function of eccentricity.
+figure;
+all_layers = 1:4;
+colors = brewermap(length(all_layers), 'Dark2');
+y = [];
+ct = strDt.corr_trials;
+for i = 1:length(all_layers)
+  plot([5 8 11], thresh(:,i)', '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+  y(i,:) = [nansum(ct(strDt.ecc==5 & strDt.layer==i)), nansum(ct(strDt.ecc==8 & strDt.layer==i)), nansum(ct(strDt.ecc==11 & strDt.layer==i))]/(strDt.nValTrials/12);
+end
+for i = 1:length(all_layers)
+   X = [ones(3,1) [5 8 11]'];
+   b = X \ thresh(:,i);
+   yPred = X*b;
+   plot([5 8 11], yPred, '-', 'Color', colors(i,:));
+end
+    
+legend('Pool1', 'Pool2', 'Pool3', 'Pool4');
+title(sprintf('Size threshold as a function of eccentricity. nTrials=%i', strDt.nValTrials), 'FontSize', 18);
+xlim([3 13]);ylim([0 15]);
+xlabel('Eccentricity', 'FontSize', 16);
+ylabel('Size Threshold', 'FontSize', 16);
+set(gca, 'FontSize', 14);
+
+%%
+keyboard
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% plot Eye Traces %%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function plotEyetraces(stimulus)
@@ -617,7 +727,7 @@ files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 
 count = 1; 
 data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
-              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0);
+              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'imSz', []);
 
 for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
@@ -633,6 +743,7 @@ for fi = 1:length(files)
     data.corr_trials = [data.corr_trials subj_resp==corr_resp];
     data.reaction_time = [data.reaction_time e{1}.reactionTime];
     data.nTrials = data.nTrials + e{1}.nTrials;
+    data.imSz = [data.imSz e{1}.randVars.imSz];
     % Calculate number of valid trials by excluding eye movements and pool5
     data.nValTrials = data.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
     
@@ -644,7 +755,7 @@ for fi = 1:length(files)
   count = count + 1;
 end
 
-%%
+%% Plot Accuracy and Reaction Time as a function of distractor layer.
 figure;
 subplot(2,1,1);
 all_eccs = unique(data.ecc);
@@ -695,6 +806,65 @@ set(gca, 'FontSize', 14);
 set(gca, 'XTick', 1:4);
 set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
 
+%%
+
+keyboard
+
+%% Accuracy Vs Image Size (for different eccentricities)
+all_layers = 1:4;
+allSz = unique(data.imSz);
+colors = brewermap(3, 'Dark2');
+figure;
+y4 = [];
+ctd = @(x) nanmean(ct(data.imSz==x));
+ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.ecc==all_eccs(y)));
+plot(allSz, [ctd(3) ctd(4) ctd(5) ctd(6) ctd(7) ctd(8) ctd(9) ctd(10)], '.k', 'MarkerSize', 15); hold on;
+for i = 1:3
+  y4(i,:) = [ctd2(3,i) ctd2(4,i) ctd2(5,i) ctd2(6,i) ctd2(7,i) ctd2(8,i) ctd2(9,i) ctd2(10,i)];
+  plot(allSz, y4(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+end
+for i = 1:3
+   X = [ones(length(allSz),1) allSz'];
+   b = X \ y4(i,:)';
+   yPred = X*b;
+   plot(allSz, yPred, '-', 'Color', colors(i,:));
+end
+  
+xlim([2, 11]);
+ylim([.5, 1]);
+legend({'Mean', '5 degrees', '8 degrees', '11 degrees'});
+title(sprintf('Performance at different eccentricities as a function of image size. N=%d', data.nValTrials), 'FontSize', 16);
+xlabel('Image Size (degrees)', 'FontSize', 14)
+ylabel('Accuracy (% correct)', 'FontSize', 14);
+set(gca, 'XTick', allSz);
+
+
+%% Accuracy Vs Image Size (for different distractor layers)
+all_layers = 1:4;
+allSz = unique(data.imSz);
+figure;
+y4 = [];
+ctd = @(x) nanmean(ct(data.imSz==x));
+ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.layer==y));
+plot(allSz, [ctd(3) ctd(4) ctd(5) ctd(6) ctd(7) ctd(8) ctd(9) ctd(10)], '.k', 'MarkerSize', 15); hold on;
+for i = 1:4
+  y4(i,:) = [ctd2(3,i) ctd2(4,i) ctd2(5,i) ctd2(6,i) ctd2(7,i) ctd2(8,i) ctd2(9,i) ctd2(10,i)];
+  plot(allSz, y4(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+end
+for i = 1:4
+   X = [ones(length(allSz),1) allSz'];
+   b = X \ y4(i,:)';
+   yPred = X*b;
+   plot(allSz, yPred, '-', 'Color', colors(i,:));
+  end
+  
+xlim([2, 11]);
+ylim([.5, 1.2]);
+legend({'Mean', 'Pool1', 'Pool2', 'Pool3', 'Pool4'});
+title(sprintf('Performance at different distractor layers as a function of image size. N=%d', data.nValTrials), 'FontSize', 16);
+xlabel('Image Size (degrees)', 'FontSize', 14)
+ylabel('Accuracy (% correct)', 'FontSize', 14);
+set(gca, 'XTick', allSz);
 %%
 
 keyboard
