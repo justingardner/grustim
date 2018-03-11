@@ -48,10 +48,6 @@ if stimulus.stairImSz
   stimulus.strcs = {};
 end
 
-if stimulus.scan
-  warning('Not setup for scanning');
-end
-
 %% Stimulus parameters 
 %% Open Old Stimfile
 stimulus.counter = 1;
@@ -297,10 +293,14 @@ if ~isempty(task.lasttrial)
   lastIdx = idxMtx(find(eccs==task.lasttrial.eccentricity), task.lasttrial.layer);
   lastAcc = (task.lasttrial.response == task.lasttrial.targetPosition);
   lnm = sprintf('cond%d_acc', lastIdx);
+  % Update the correct condition's accuracy depending on if they got the last trial right or wrong.
   stimulus.strcs.(lnm) = [stimulus.strcs.(lnm) lastAcc];
-else
+end
+
+% for each of 12 conditions, store a running log of accuracies, and imSizes
+if length(stimulus.strcs.(fnm)) < 1
   % Load previous runs
-  f = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat')));
+  f = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat', mglGetSID)));
   lsz = 5;
   if length(f) > 0
     l = load(f(end).name);
@@ -309,10 +309,6 @@ else
       disp(sprintf('Previous runs threshold found.. Starting image size at %g', lsz));
     end
   end
-end
-
-% for each of 12 conditions, store a running log of accuracies, and imSizes
-if length(stimulus.strcs.(fnm)) < 1
   newImSz = lsz;
 else
   % Get the image size on the last trial of this condition
