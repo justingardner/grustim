@@ -53,7 +53,7 @@ if stimulus.plotEye
 end
 
 if stimulus.stairImSz
-  disp('Staircasing image size');
+  disp('(texSearch) Staircasing image size');
   stimulus.strcs = {};
 end
 
@@ -265,7 +265,7 @@ end
 stimulus.live.responseText = mglText('1 or 2?');
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d, Size, %g', task.trialnum, imName, layer, task.thistrial.eccentricity, task.thistrial.imSz));
+disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d, Size: %g', task.trialnum, imName, layer, task.thistrial.eccentricity, task.thistrial.imSz));
 
 % Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
@@ -282,7 +282,7 @@ function newImSz = stairImSize(task)
 global stimulus
 
 lastN = 4;
-threshAcc = 0.75;
+threshAcc = 0.70;
 increment = 0.25;
 
 eccs = [5, 8, 11];
@@ -333,8 +333,14 @@ else
   st = max(length(stimulus.strcs.(cnm)) - lastN, 1);
   if mean(stimulus.strcs.(cnm)(st:end)) < threshAcc
     newImSz = prevSz + increment;
+
+    % Make sure the image won't overflow past its quadrant boundaries (otherwise they will overlap)
+    newImSz = min(newImSz, floor(2*task.thistrial.eccentricity/sqrt(2)));
   else
     newImSz = prevSz - increment;
+
+    % floor out at 1.
+    newImSz = max(newImSz, 1);
   end
 end
 
