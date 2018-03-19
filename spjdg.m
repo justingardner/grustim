@@ -782,7 +782,7 @@ stimulus.colors.green = stimulus.colors.reservedColor(3);
 stimulus.colors.red = stimulus.colors.reservedColor(4);
 stimulus.colors.cyan = stimulus.colors.reservedColor(5);
 stimulus.colors.blue = stimulus.colors.reservedColor(6);
-stimulus.colors.blue = stimulus.colors.reservedColor(7);
+stimulus.colors.lightblue = stimulus.colors.reservedColor(7);
 stimulus.colors.lightgrey = stimulus.colors.reservedColor(8);
 
 
