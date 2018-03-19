@@ -277,11 +277,13 @@ stimulus = initClick(stimulus,task);
 mglWaitSecs(1);
 mglClearScreen(stimulus.colors.black);
 mglTextSet([],32,stimulus.colors.white);
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
+mglTextDraw('READY',[0 0]);
 mglFlush;
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
+mglClearScreen(stimulus.colors.black);
+mglTextDraw('READY',[0 0]);
 mglFlush;
 mglWaitSecs(1);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
