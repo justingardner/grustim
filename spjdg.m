@@ -376,11 +376,12 @@ if task.thistrial.thisseg == 1
         % while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
             task.thistrial.noise = 4 * randn(1);
         % end
+        task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
+
 
     end
 
-	task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
-
+	
  	switch char(task.thistrial.condition)
 		case 'vision'
       task.thistrial.xposV = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset];
@@ -650,7 +651,7 @@ if ~task.thistrial.gotResponse
 	if ~(stimulus.practice || stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan)
 		stimulus.fixColor = stimulus.colors.cyan;
     end
-    if ~(stimulus.auditoryTrain||stimulus.visualTrain)
+    if ~(stimulus.auditoryTrain||stimulus.visualTrain|| stimulus.visualMan || stimulus.auditoryMan)
         
         if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
             stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, task.thistrial.correct, ...
@@ -661,7 +662,7 @@ if ~task.thistrial.gotResponse
            stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, thisrandom, ...
             abs(task.thistrial.probeOffset));
         end
-    else
+    elseif ~(stimulus.visualMan || stimulus.auditoryMan)
         stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     end
 	task.thistrial.resp = task.thistrial.whichButton;
