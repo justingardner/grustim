@@ -71,10 +71,6 @@ if ~stimulus.generateTextures
     disp('WARNING: If the screen was closed textures will not work');
 end
 
-%% Image categories
-categories = {'person','car','personcar','null'};
-attend_categories = {'attend_person','attend_car'};
-
 %% Open Old Stimfile
 stimulus.counter = 1;
 
@@ -167,7 +163,7 @@ if ~isfield(stimulus,'runs')
     
     for ri = 1:4
         crun = struct;
-        crun.idxs = (idxs(ri)+1):idxs(ri+1);
+        crun.idxs = order((idxs(ri)+1):idxs(ri+1));
         crun.text = sprintf('Run group %i',ri);
         crun.fixate = true;
         for reps = 1:3
@@ -183,7 +179,7 @@ if ~isfield(stimulus,'runs')
         % for each rep round, 
         runOrder = runNums(randperm(length(runNums)));
         for run = 1:length(runNums)
-            stimulus.runs.runData((reps-1)*5+run) = stimulus.runs.runs(runOrder(run));
+            stimulus.runs.runData((reps-1)*length(runNums)+run) = stimulus.runs.runs(runOrder(run));
         end
         stimulus.runs.runOrder = [stimulus.runs.runOrder runOrder];
     end
