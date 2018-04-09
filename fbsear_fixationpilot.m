@@ -158,68 +158,32 @@ if ~isfield(stimulus,'runs')
     stimulus.runs = struct;
     
     % build runs
+    runNums = 1:4;
     
-    % Choose task types (fix/p/c/fix-cp/fix-cc)
-    fixOpts = [1 0 0 1 1]; % whether to run fixation task or not
-    maskOpts = [0 0 0 1 2]; % which mask set to use, boosted for people or boosted for cars
-    attend = [0 1 2 0 0]; % 1 = attend person, 2 = attend car
-    text = {'Fixate','Look for people','Look for cars','Fixate (contrast people)','Fixate (contrast cars)'};
+    % randomize the order of images
+    order = randperm(stimulus.fbsdata.n);
+    % copy into four runs
+    idxs = 0:(1080/4):length(order);
     
-    % Pick 45 images for each of the three runs
-    idx45 = zeros(length(categories),45);
-    for ci = 1:length(categories)
-        idx_opts = randperm(length(stimulus.fbsdata.imgs.(categories{ci})));
-        idx45(ci,:) = idx_opts(1:45);
-    end
-    % we now have the indexes for images from each set, copy out 15 for
-    % each set
-    img_idxs = zeros(length(categories),3,15);
-    for ci = 1:length(categories)
-        for rep = 1:3
-            img_idxs(ci,rep,:) = idx45(ci,(rep-1)*15+1:(rep*15));
-        end
-    end
-    
-    stimulus.runs.imageIndexes = img_idxs;
-    
-    % Build run data
-    for rep = 1:3
-        % set the trial order info 
-        trials = repmat(1:15,1,4);
-        cats = [1*ones(1,15) 2*ones(1,15) 3*ones(1,15) 4*ones(1,15)];
-        trialOrder = randperm(length(trials));
-        
-        repeatTrials = trials(trialOrder);
-        repeatCats = cats(trialOrder);
-        
-        for run = 1:5
-            runData = struct;
-
-            runData.fixate = fixOpts(run);
-            runData.useMask = maskOpts(run);
-            runData.attend = attend(run);
-            runData.text = text{run};
-            
-            runData.group = run;
-            runData.repeat = rep;
-            
-            runData.trialOrder = repeatTrials;
-            runData.catOrder = repeatCats;
-            
-            % Save
-            stimulus.runs.runs{run,rep} = runData;
+    for ri = 1:4
+        crun = struct;
+        crun.idxs = (idxs(ri)+1):idxs(ri+1);
+        crun.text = sprintf('Run group %i',ri);
+        crun.fixate = true;
+        for reps = 1:3
+            crun.repeat = reps;
+            stimulus.runs.runs{ri,reps} = crun;
         end
     end
     
     % Copy so that we have at least 3x each run
     stimulus.runs.runOrder = [];
     stimulus.runs.runData = {};
-    runNums = 1:5;
     for reps = 1:3
         % for each rep round, 
         runOrder = runNums(randperm(length(runNums)));
-        for run = 1:5
-            stimulus.runs.runData((reps-1)*5+run) = stimulus.runs.runs(runOrder(run),reps);
+        for run = 1:length(runNums)
+            stimulus.runs.runData((reps-1)*5+run) = stimulus.runs.runs(runOrder(run));
         end
         stimulus.runs.runOrder = [stimulus.runs.runOrder runOrder];
     end
@@ -232,31 +196,14 @@ disp('`````````````````````````````````````````````````````````````````');
 disp('`````````````````````````````````````````````````````````````````');
 disp('```````````````RUN INFO: WRITE THIS DOWN`````````````````````````');
 disp(sprintf('```` Current run type: %s',stimulus.curRun.text));
-disp(sprintf('```` Group type: %i',stimulus.curRun.group));
 disp(sprintf('```` This is repeat: %i',stimulus.curRun.repeat));
-maskType = {'NO','YES','YES'};
-disp(sprintf('```` Using mask data set: %s',maskType{stimulus.curRun.useMask+1}));
 disp('`````````````````````````````````````````````````````````````````');
 disp('`````````````````````````````````````````````````````````````````');
-%% Pull textures
-% 
-% % pull the textures for this run
-% for ci = 1:length(categories)
-%     if stimulus.curRun.useMask==0
-%         texs = stimulus.fbsdata.imgs.(categories{ci});
-%         texs = texs(squeeze(stimulus.runs.imageIndexes(ci,stimulus.curRun.repeat,:)));
-%         stimulus.curRun.stimulus{ci} = texs;
-%     else
-%         texs = stimulus.fbsdata.mimgs.(attend_categories{stimulus.curRun.useMask}).(categories{ci});
-%         texs = texs(squeeze(stimulus.runs.imageIndexes(ci,stimulus.curRun.repeat,:)));
-%         stimulus.curRun.stimulus{ci} = texs;
-%     end
-% end
 
 %% Load images
 
 if stimulus.generateTextures
-    loadFBSearImages(categories,attend_categories);
+    loadSemImages();
 end
 
 %% Setup Task
@@ -266,14 +213,13 @@ end
 
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.seglen = [1.9 1.9];
+task{1}{1}.seglen = [1.4];
 stimulus.seg.stim = 1;
-stimulus.seg.iti = 2;
 
 task{1}{1}.synchToVol = [1 1];
 
-task{1}{1}.getResponse = [0 1];
-task{1}{1}.numTrials = 60; % 1096 volumes for scan
+% task{1}{1}.getResponse = [0 1];
+task{1}{1}.numTrials = 1080/4; % 1096 volumes for scan
 
 task{1}{1}.random = 1;
 
@@ -283,11 +229,8 @@ task{1}{1}.random = 1;
 
 % Task variables to be calculated later
 task{1}{1}.randVars.calculated.trial = nan;
-task{1}{1}.randVars.calculated.category = nan;
-task{1}{1}.randVars.calculated.task = nan; %0/1/2
-task{1}{1}.randVars.calculated.group = nan;
+task{1}{1}.randVars.calculated.img = nan;
 task{1}{1}.randVars.calculated.repeat = nan;
-task{1}{1}.randVars.calculated.taskPresent = nan;
 
 %% Add fixation task
 
@@ -316,10 +259,10 @@ myscreen = eyeCalibDisp(myscreen);
 disp(sprintf('(fbsear_pilot) Starting run number: %i.',stimulus.counter));
 
 %% Live
-
-stimulus.live.correctButton = 2;
-stimulus.live.lastCorrect = -1;
-stimulus.live.changeTime = -1;
+% 
+% stimulus.live.correctButton = 2;
+% stimulus.live.lastCorrect = -1;
+% stimulus.live.changeTime = -1;
 
 %% Main Task Loop
 
@@ -327,12 +270,7 @@ for i = 1:2
     mglClearScreen(0.5); 
     mglTextSet([],32,stimulus.colors.white);
     if ~stimulus.curRun.fixate
-        mglFixationCross(1,1,stimulus.colors.white);
-        if stimulus.curRun.attend==1
-            mglTextDraw('Look for people',[0 2]);
-        elseif stimulus.curRun.attend==2
-            mglTextDraw('Look for cars',[0 2]);
-        end
+%         mglFixationCross(1,1,stimulus.colors.white);
     else
         mglTextDraw('Fixate',[0 2]);
     end
@@ -374,20 +312,7 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 stimulus.live.fixColor = [0 0 0];
 
-task.thistrial.trial = stimulus.curRun.trialOrder(task.trialnum);
-task.thistrial.category = stimulus.curRun.catOrder(task.trialnum);
-
-correctButtons = {[1 2 1 2] [2 1 1 2]};
-if stimulus.curRun.attend>0
-    flip = [1 0];
-    stimulus.live.correctButton= correctButtons{stimulus.curRun.attend}(task.thistrial.category);
-    task.thistrial.taskpresent = flip(stimulus.live.correctButton);
-end
-task.thistrial.task = stimulus.curRun.attend; %0/1/2 - fixate/people/cars
-task.thistrial.group = stimulus.curRun.group; % this is the ATTENTION group (1/2/3/4/5)
-task.thistrial.repeat = stimulus.curRun.repeat;
-
-disp(sprintf('Trial #%i: Correct button: %i',task.trialnum,stimulus.live.correctButton));
+disp(sprintf('Stimulus #%i: image %i.',task.trialnum,stimulus.curRun.idxs(task.trialnum)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -395,13 +320,6 @@ disp(sprintf('Trial #%i: Correct button: %i',task.trialnum,stimulus.live.correct
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 % pass
-global stimulus
-if task.thistrial.thisseg == stimulus.seg.stim
-    stimulus.live.fixColor = stimulus.colors.black;
-else
-    stimulus.live.fixColor = stimulus.colors.grey;
-end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -411,121 +329,39 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 mglClearScreen(0.5);
-if task.thistrial.thisseg == stimulus.seg.stim
     % blt the current texture
-    mglBltTexture(stimulus.curRun.stimulus{task.thistrial.category}{task.thistrial.trial},[0 0]);
-end
-
-if ~stimulus.curRun.fixate
-    if (stimulus.live.changeTime>0) && ( mglGetSecs > (stimulus.live.changeTime+1) )
-        stimulus.live.fixColor = stimulus.colors.black;
-        stimulus.live.changeTime = -1;
-    end
-    upFix(stimulus);
-end
-
-function upFix(stimulus)
-%%
-% for this experiment use a circle to indicate where participants can
-% fixate inside of (rather than a cross which might arbitrarily enforce
-% poisitioning
-mglGluDisk(0,0,[1 1],0.5,60);
-% mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
-mglFixationCross(1,3,stimulus.live.fixColor);
+mglBltTexture(stimulus.fbsdata.tex{stimulus.curRun.idxs(task.trialnum)},[0 0]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%
 function [task, myscreen] = getResponseCallback(task, myscreen)
-
-global stimulus
-
-if ~any(task.thistrial.whichButton==stimulus.responseKeys)
-    return
-end
-
-if ~stimulus.curRun.fixate
-
-    task.thistrial.gotResponse = task.thistrial.gotResponse + 1;
-
-    if task.thistrial.gotResponse==1
-        if task.thistrial.whichButton==stimulus.live.correctButton
-            task.thistrial.correct = 1;
-            stimulus.live.fixColor = stimulus.colors.green;
-            disp('Correct');
-        else
-            task.thistrial.correct = 0;
-            stimulus.live.fixColor = stimulus.colors.red;
-            disp('Incorrect');
-        end
-        stimulus.live.changeTime = mglGetSecs;
-    else
-        disp(sprintf('Got %i responses',task.thistrial.gotResponse));
-    end
-end
+% pass
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-function loadFBSearImages(cats,acats)
+function loadSemImages()
 %% load and setup
 global stimulus
 
 stimulus.fbsdata = struct;
 
 % get image data
-load(fullfile('~/proj/fbsear/data/info_m.mat'));
+load(fullfile('~/proj/fbsear/data/semantic.mat'));
 
 %% prepare mgl textures (both contrast masked and non-masked)
 
-stimulus.fbsdata.idx = struct;
-stimulus.fbsdata.idx.person = info.person;
-stimulus.fbsdata.idx.car = info.car;
-stimulus.fbsdata.idx.personcar = info.personcar;
-stimulus.fbsdata.idx.null = info.null;
+stimulus.fbsdata.n = length(semdata.imgs);
+stimulus.fbsdata.tex = cell(1,n);
 
-stimulus.fbsdata.imgs = struct;
-for ci = 1:length(cats)
-    
-    cat = cats{ci};
-    
-    img_texs = cell(size(info.imgs.(cat)));
-    
-    imgs = info.imgs.(cat);
-    
-    for ii = 1:length(imgs)
-        img = double(imgs{ii});
-        for rgb = 1:3
-            img(:,:,rgb) = flipud(img(:,:,rgb));
-        end
-%         img = permute(img,[3 1 2]);
-% %         img = reshape(img,size(img,3),size(img,1),size(img,2));
-%         img(4,:,:) = ones(1,size(img,2),size(img,3));
-        img_texs{ii} = mglCreateTexture(img);
+for ii = 1:length(semdata.imgs)
+    img = double(semdata.imgs{ii});
+    for rgb = 1:3
+        img(:,:,rgb) = flipud(img(:,:,rgb));
     end
     
-    stimulus.fbsdata.imgs.(cat) = img_texs;
-end
-
-stimulus.fbsdata.mimgs = struct;
-for aci = 1:length(acats)
-    acat = acats{aci};
-    for ci = 1:length(cat)
-        cat = cats{ci};
-        mimg_texs = cell(size(info.mimgs.(acat).(cat)));
-        mimgs = info.mimgs.(acat).(cat);
-        for ii = 1:length(imgs)
-            img = double(mimgs{ii});
-            for rgb = 1:3
-                img(:,:,rgb) = flipud(img(:,:,rgb));
-            end
-    %         img = permute(img,[3 1 2]);
-    % %         img = reshape(img,size(img,3),size(img,1),size(img,2));
-    %         img(4,:,:) = ones(1,size(img,2),size(img,3));
-            mimg_texs{ii} = mglCreateTexture(img);
-        end
-        stimulus.fbsdata.mimgs.(acat).(cat) = mimg_texs;
-    end
+    stimulus.fbsdata.tex{ii} = mglCreateTexture(img);
 end
