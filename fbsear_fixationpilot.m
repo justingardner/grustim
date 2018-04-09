@@ -78,22 +78,22 @@ attend_categories = {'attend_person','attend_car'};
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/fbsear_pilot/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/fbsear_fixationpilot/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/fbsear_pilot/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/fbsear_fixationpilot/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
         fname = files(end).name;
         
-        s = load(sprintf('~/data/fbsear_pilot/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/fbsear_fixationpilot/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
         stimulus.counter = s.stimulus.counter + 1;
         stimulus.runs = s.stimulus.runs;
         clear s;
-        disp(sprintf('(fbsear_pilot) Data file: %s loaded.',fname));
+        disp(sprintf('(fbsear_fixationpilot) Data file: %s loaded.',fname));
     end
 end
-disp(sprintf('(fbsear_pilot) This is run #%i',stimulus.counter));
+disp(sprintf('(fbsear_fixationpilot) This is run #%i',stimulus.counter));
 
 %% Setup Screen
 myscreen = initScreen('VPixx');
@@ -256,7 +256,7 @@ end
 myscreen = eyeCalibDisp(myscreen);
 
 % let the user know
-disp(sprintf('(fbsear_pilot) Starting run number: %i.',stimulus.counter));
+disp(sprintf('(fbsear_fixationpilot) Starting run number: %i.',stimulus.counter));
 
 %% Live
 % 
@@ -355,7 +355,7 @@ load(fullfile('~/proj/fbsear/data/semantic.mat'));
 %% prepare mgl textures (both contrast masked and non-masked)
 
 stimulus.fbsdata.n = length(semdata.imgs);
-stimulus.fbsdata.tex = cell(1,n);
+stimulus.fbsdata.tex = cell(1,stimulus.fbsdata.n);
 
 for ii = 1:length(semdata.imgs)
     img = double(semdata.imgs{ii});
