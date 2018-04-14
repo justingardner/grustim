@@ -46,7 +46,6 @@ end
 
 %% Initialize Variables
 
-stimulus.scale = 1;
 
 % add arguments later
 plots = 0;
@@ -58,6 +57,12 @@ stimulus.plots = plots;
 stimulus.run = run;
 stimulus.generateTextures = genTex;
 stimulus.screen = screen;
+
+if strcmp(screen,'fMRIProj32')    
+    stimulus.scale = 1.35;
+else
+    stimulus.scale = 1;
+end
 
 clear plots run genTex screen
 
@@ -238,6 +243,9 @@ if stimulus.curRun.fixate
     
     if ~isfield(fixStimulus,'threshold') fixStimulus.threshold = 0.3; end
     if ~isfield(fixStimulus,'stairStepSize') fixStimulus.stairStepSize = 0.05; end
+    if ~isfield(fixStimulus,'diskSize') fixStimulus.diskSize = 0.5; end
+    if ~isfield(fixStimulus,'fixWidth') fixStimulus.fixWidth = 0.5; end
+    if ~isfield(fixStimulus,'fixLineWidth') fixStimulus.fixLineWidth = 2; end
 
     [task{2}, myscreen] = fixStairInitTask(myscreen);
 end
