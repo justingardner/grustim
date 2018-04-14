@@ -6,19 +6,19 @@ function [ myscreen ] = fbsear_fixationpilot( varargin )
 %
 %    Usage: fbsear_fixationpilot(varargin)
 %    Authors: Dan Birman
-%    Date: 02/06/2017
+%    Date: 04/13/2017
 %
 %    Parameters:
 %
-%    You should use *736* volumes (60 trials * 6 secs * 2 + 16) you will
-%    have to manually end each run by hitting ESC (if you use 736 a volume
+%    You should use *836* volumes (270 images * 1.5 secs * 2 + 16) you will
+%    have to manually end each run by hitting ESC (if you use 836+1 a volume
 %    is acquired after the screen goes dark, so don't do that)
 %
 %      On the first run call:
-%       fbsear_pilot('run=1','genTex=1');
+%       fbsear_fixationpilot('run=1','genTex=1');
 %
 %      All subsequent runs:
-%       fbsear_pilot('run=#');
+%       fbsear_fixationpilot('run=#');
 %
 %    If you close the screen inbetween runs you need to repeat the
 %    'genTex=1' call, otherwise the textures will be incorrectly
@@ -52,12 +52,14 @@ stimulus.scale = 1;
 plots = 0;
 run = 0;
 genTex = 0;
-getArgs(varargin,{'plots=0','run=0','genTex=0'});
+screen = '';
+getArgs(varargin,{'plots=0','run=0','genTex=0','screen=fMRIProj32'});
 stimulus.plots = plots;
 stimulus.run = run;
 stimulus.generateTextures = genTex;
+stimulus.screen = screen;
 
-clear plots run genTex
+clear plots run genTex screen
 
 if stimulus.run==0
     disp('Please set a run number');
@@ -94,7 +96,7 @@ end
 disp(sprintf('(fbsear_fixationpilot) This is run #%i',stimulus.counter));
 
 %% Setup Screen
-myscreen = initScreen('test');
+myscreen = initScreen(stimulus.screen);
 
 if ~isfield(myscreen,'genTexTrack')
     myscreen.genTexTrack = rand*10000000;
