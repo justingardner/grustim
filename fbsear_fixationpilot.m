@@ -46,6 +46,8 @@ end
 
 %% Initialize Variables
 
+stimulus.scale = 1;
+
 % add arguments later
 plots = 0;
 run = 0;
@@ -92,7 +94,7 @@ end
 disp(sprintf('(fbsear_fixationpilot) This is run #%i',stimulus.counter));
 
 %% Setup Screen
-myscreen = initScreen('VPixx');
+myscreen = initScreen('test');
 
 if ~isfield(myscreen,'genTexTrack')
     myscreen.genTexTrack = rand*10000000;
@@ -135,6 +137,11 @@ stimulus.colors.green = [0 1 0];
 % stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
 % stimulus.colors.mrmin = stimulus.colors.nReserved;
 
+%% Load images
+
+if stimulus.generateTextures
+    loadSemImages();
+end
 %% Setup runs
 
 if ~isfield(stimulus,'runs')
@@ -196,11 +203,6 @@ disp(sprintf('```` This is repeat: %i',stimulus.curRun.repeat));
 disp('`````````````````````````````````````````````````````````````````');
 disp('`````````````````````````````````````````````````````````````````');
 
-%% Load images
-
-if stimulus.generateTextures
-    loadSemImages();
-end
 
 %% Setup Task
 
@@ -326,7 +328,16 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 mglClearScreen(0.5);
     % blt the current texture
-mglBltTexture(stimulus.fbsdata.tex{stimulus.curRun.idxs(task.trialnum)},[0 0]);
+if stimulus.scale~=1
+    pixPerDegW = myscreen.screenWidth/myscreen.imageWidth;
+    pixPerDegH = myscreen.screenHeight/myscreen.imageHeight;
+    cTex = stimulus.fbsdata.tex{stimulus.curRun.idxs(task.trialnum)};
+    degWidth = stimulus.scale*cTex.imageWidth/pixPerDegW;
+    degHeight = stimulus.scale*cTex.imageHeight/pixPerDegH;
+    mglBltTexture(cTex,[0 0 degWidth degHeight]);
+else
+    mglBltTexture(stimulus.fbsdata.tex{stimulus.curRun.idxs(task.trialnum)},[0 0]);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
