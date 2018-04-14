@@ -23,6 +23,12 @@ function [ myscreen ] = fbsear_fixationpilot( varargin )
 %    If you close the screen inbetween runs you need to repeat the
 %    'genTex=1' call, otherwise the textures will be incorrectly
 %    identified.
+%
+%
+% The screen size was measured on 3/14/18 was:
+% Angles | Degrees
+% 90 75 60 45 30 15 0 -15 -30 -45 -90
+% 6  6  7  7  13 11 10 10 8   7.5 6
 
 global stimulus fixStimulus
 
