@@ -54,12 +54,14 @@ end
 plots = 0;
 run = 0;
 genTex = 0;
-getArgs(varargin,{'plots=0','run=0','genTex=0'});
+test = 0;
+getArgs(varargin,{'plots=0','run=0','genTex=0','test=0'});
 stimulus.plots = plots;
 stimulus.run = run;
 stimulus.generateTextures = genTex;
+stimulus.test = test;
 
-clear plots run genTex
+clear plots run genTex test
 
 if stimulus.run==0
     disp('Please set a run number');
@@ -100,7 +102,11 @@ end
 disp(sprintf('(fbsear_pilot) This is run #%i',stimulus.counter));
 
 %% Setup Screen
-myscreen = initScreen('VPixx');
+if stimulus.test
+    myscreen = initScreen('test');
+else
+    myscreen = initScreen('VPixx');
+end
 
 if ~isfield(myscreen,'genTexTrack')
     myscreen.genTexTrack = rand*10000000;
