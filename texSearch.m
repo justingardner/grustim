@@ -24,7 +24,7 @@ plotEye = 0;
 stairImSz = 0;
 varyImSz = 0;
 analyzeStair = 0;
-getArgs(varargin,{'varyImSz=0', 'analyzeStair=0', 'stairImSz=1','getData=0', 'plotEye=0', 'scan=0','plots=0','noeye=0','debug=0'});
+getArgs(varargin,{'varyImSz=0', 'analyzeStair=0', 'stairImSz=0','getData=0', 'plotEye=0', 'scan=0','plots=0','noeye=0','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -96,7 +96,7 @@ myscreen = initStimulus('stimulus',myscreen);
 localInitStimulus();
   
 % Set response keys
-stimulus.responseKeys = [1 2 3 4]; % 
+%stimulus.responseKeys = [1 2 3 4];  
 stimulus.responseKeys = [11 12 13 14];
 
 % set colors
@@ -121,7 +121,8 @@ task{1}{1}.waitForBacktick = 1;
 tTarg = 0.500;
 isi = 0.500;
 searchTime = 2.00;
-stimDirectory = '~/proj/TextureSynthesis/stimuli';
+%stimDirectory = '~/proj/TextureSynthesis/stimuli';
+stimDirectory = '~/proj/TextureSynthesis/rf_stim';
 
 % task waits for fixation on first segment
 task{1}{1}.segmin = [inf tTarg isi searchTime .200];
@@ -142,14 +143,17 @@ end
 stimulus.allSizes = [3, 4, 5, 6, 7, 8, 9, 10];
 
 % Task important variables
-task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
-task{1}{1}.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
-task{1}{1}.stimDir = stimDirectory;
+%task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
+stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'fronds', 'forest', 'leaves', 'noodles', 'paneer', 'rocks', 'stanford', 'tulips', 'worms', 'zebras'};
+stimulus.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
+stimulus.rfNames = {'2x2', '3x3', '4x4'};
+stimulus.stimDir = stimDirectory;
 
 % Trial parameters
-task{1}{1}.parameter.targIm = 1:10;
-task{1}{1}.parameter.layer = [1 2 3 4];
-task{1}{1}.parameter.eccentricity = [5 8 11];
+% task{1}{1}.parameter.targIm = 1:length(stimulus.imNames);
+task{1}{1}.parameter.layer = 1:length(stimulus.layerNames);
+task{1}{1}.parameter.rfSize = 1:length(stimulus.rfNames);
+task{1}{1}.parameter.eccentricity = 8; %[5 8 11];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
@@ -164,6 +168,7 @@ end
 % Task trial parameters
 
 % Task variables to be calculated later
+task{1}{1}.randVars.calculated.targIm = NaN;
 task{1}{1}.randVars.calculated.targetPosition = NaN;
 task{1}{1}.randVars.calculated.imSz = NaN;
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
@@ -222,10 +227,6 @@ myscreen = endTask(myscreen,task);
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 
-%%
-%if ~isempty(task.lasttrial)
-%  disp(sprintf('Last trial - image: %d, scaling: 0.%d, correct response: %d, subject''s response: %d', task.lasttrial.image, task.lasttrial.scaling, task.lasttrial.correctResponse, task.lasttrial.response));
-%end
 global stimulus
 
 task.thistrial.dead = 0;
@@ -238,16 +239,20 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 
 % directories
 targetDir = '~/proj/TextureSynthesis/orig_ims';
-distDir = '~/proj/TextureSynthesis/stimuli';
+distDir = stimulus.stimDir;
+
+% Select image
+task.thistrial.targIm = randi(length(stimulus.imNames),1);
 
 %% Load all 4 images for this trial
-imName = task.imNames{task.thistrial.targIm};
-layer = task.layerNames{task.thistrial.layer};
+imName = stimulus.imNames{task.thistrial.targIm};
+layer = stimulus.layerNames{task.thistrial.layer};
+rfSz = stimulus.rfNames{task.thistrial.rfSize};
 
 stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s.jpg', targetDir, imName)));
-stimulus.live.d1 = genTexFromIm(imread(sprintf('%s/v1/%s_%s_step_10000.jpg', distDir, layer, imName)));
-stimulus.live.d2 = genTexFromIm(imread(sprintf('%s/v2/%s_%s_step_10000.jpg', distDir, layer, imName)));
-stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/v3/%s_%s_step_10000.jpg', distDir, layer, imName)));
+stimulus.live.d1 = genTexFromIm(imread(sprintf('%s/s1/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
+stimulus.live.d2 = genTexFromIm(imread(sprintf('%s/s2/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
+stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/s3/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
 
 % Select target position
 task.thistrial.targetPosition = randi(4, 1);
@@ -258,6 +263,7 @@ if stimulus.varyImSz
 elseif stimulus.stairImSz
   task.thistrial.imSz = stairImSize(task);
 else
+  %disp('Fixing imsize at 5');
   task.thistrial.imSz = 5;
 end
 
@@ -272,6 +278,7 @@ mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 stimulus.live.eyeCount = 0;
 
+%keyboard
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Run Staircase over imsize for each condition %%%%%%%%%%%%%%%%%%
@@ -658,8 +665,8 @@ for i = 1:length(all_layers)
 end
     
 legend('Pool1', 'Pool2', 'Pool3', 'Pool4');
-title(sprintf('Size threshold as a function of eccentricity. nTrials=%i', strDt.nValTrials), 'FontSize', 18);
-xlim([3 13]);ylim([0 15]);
+title(sprintf('%s: Size threshold as a function of eccentricity. nTrials=%i', mglGetSID, strDt.nValTrials), 'FontSize', 18);
+xlim([3 13]);ylim([0 17]);
 xlabel('Eccentricity', 'FontSize', 16);
 ylabel('Size Threshold', 'FontSize', 16);
 set(gca, 'FontSize', 14);
@@ -779,7 +786,7 @@ se = @(x) 1.96*nanstd(x) / sqrt(length(x));
 eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
 errorbar(1:4, mean(y,1), eb, '.k');
 legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
-title(sprintf('Accuracy as a function of distractor layer. nTrials=%i', data.nValTrials), 'FontSize', 18);
+title(sprintf('%s: Accuracy as a function of distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
 xlim([0 5]);ylim([0 1.2]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Identification Accuracy', 'FontSize', 16);
