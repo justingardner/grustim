@@ -149,6 +149,7 @@ stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clo
 stimulus.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
 stimulus.rfNames = {'2x2', '3x3', '4x4'};
 stimulus.stimDir = stimDirectory;
+stimulus.imSize = 6;
 
 % Trial parameters
 % task{1}{1}.parameter.targIm = 1:length(stimulus.imNames);
@@ -265,7 +266,7 @@ elseif stimulus.stairImSz
   task.thistrial.imSz = stairImSize(task);
 else
   %disp('Fixing imsize at 5');
-  task.thistrial.imSz = 6;
+  task.thistrial.imSz = stimulus.imSize;
 end
 
 % set response text
@@ -395,7 +396,7 @@ distLocations = setdiff(1:4, task.thistrial.targetPosition);
 for i = 1:2
   mglClearScreen(0.5);
   if stimulus.live.target
-    mglBltTexture(stimulus.live.target_image, [0 0 5 5]);
+    mglBltTexture(stimulus.live.target_image, [0 0 stimulus.imSize stimulus.imSize]);
   elseif stimulus.live.search
     mglBltTexture(stimulus.live.d1, [locations(distLocations(1), :), imSz, imSz]);
     mglBltTexture(stimulus.live.d2, [locations(distLocations(2), :), imSz, imSz]);
@@ -741,7 +742,7 @@ files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 
 count = 1; 
 data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
-              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'imSz', []);
+              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'rf_size', [], 'imSz', []);
 
 for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
@@ -757,36 +758,41 @@ for fi = 1:length(files)
     data.corr_trials = [data.corr_trials subj_resp==corr_resp];
     data.reaction_time = [data.reaction_time e{1}.reactionTime];
     data.nTrials = data.nTrials + e{1}.nTrials;
+    %data.
     data.imSz = [data.imSz e{1}.randVars.imSz];
     % Calculate number of valid trials by excluding eye movements and pool5
     data.nValTrials = data.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
     
-    data.image = [data.image e{1}.parameter.targIm];
+    data.image = [data.image e{1}.randVars.targIm];
     data.layer = [data.layer e{1}.parameter.layer];
+    data.rf_size = [data.rf_size e{1}.parameter.rfSize];
     data.ecc = [data.ecc e{1}.parameter.eccentricity];
     
   end
   count = count + 1;
 end
 
-%% Plot Accuracy and Reaction Time as a function of distractor layer.
+%% Plot accuracy and reaction time as a function of distractor layer & RF Size
 figure;
 subplot(2,1,1);
-all_eccs = unique(data.ecc);
+
+all_RFs = unique(data.rf_size);
 ct = data.corr_trials;
-colors = brewermap(length(all_eccs), 'Dark2');
+colors = brewermap(length(all_RFs), 'Dark2');
 y = [];
-for i = 1:length(all_eccs)
-  ei = all_eccs(i);
-  y(i,:) = [nansum(ct(data.ecc==ei & data.layer==1)), nansum(ct(data.ecc==ei & data.layer==2)), nansum(ct(data.ecc==ei & data.layer==3)), nansum(ct(data.ecc==ei & data.layer==4))]/(data.nTrials/12);
+for i = 1:length(all_RFs)
+  ei = all_RFs(i);
+  for j = 1:length(unique(data.layer))
+      y(i,j) = nansum(ct(data.rf_size==ei & data.layer == j)) / length(ct(data.rf_size==ei & data.layer==j));
+  end
   plot(1:4, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
-plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
+%plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
 
 se = @(x) 1.96*nanstd(x) / sqrt(length(x));
 eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
-errorbar(1:4, mean(y,1), eb, '.k');
-legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
+errorbar(1:4, nanmean(y,1), eb, '.k');
+legend('2x2', '3x3', '4x4');
 title(sprintf('%s: Accuracy as a function of distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
 xlim([0 5]);ylim([0 1.2]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
@@ -798,22 +804,24 @@ set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
 
 
 subplot(2,1,2);
-all_eccs = unique(data.ecc);
+all_RFs = unique(data.rf_size);
 rt = data.reaction_time;
 y2 = [];
-for i = 1:length(all_eccs)
-  ei = all_eccs(i);
-  y2(i,:) = [nansum(rt(data.ecc==ei & data.layer==1)), nansum(rt(data.ecc==ei & data.layer==2)), nansum(rt(data.ecc==ei & data.layer==3)), nansum(rt(data.ecc==ei & data.layer==4))]/(data.nTrials/4);
+for i = 1:length(all_RFs)
+  ei = all_RFs(i);
+  for j = 1:length(unique(data.layer))
+      y2(i,j) = nansum(rt(data.rf_size==ei & data.layer==j)) / length(rt(data.rf_size==ei & data.layer==j));
+  end
   plot(1:4, y2(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
 plot(1:4, nanmean(y2,1), '.k', 'MarkerSize', 20);
 
 eb = [se(rt(data.layer==1)), se(rt(data.layer==2)), se(rt(data.layer==3)), se(rt(data.layer==4))];
 errorbar(1:4, mean(y2,1), eb, '.k');
-legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
+legend('2x2', '3x3', '4x4');
 title('Reaction Time as a function of distractor layer', 'FontSize', 18);
 xlim([0 5]);
-ylim([.1 .3]);
+ylim([.2 .8]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Reaction Time', 'FontSize', 16);
 set(gca, 'FontSize', 14);
@@ -831,7 +839,7 @@ colors = brewermap(3, 'Dark2');
 figure;
 y4 = [];
 ctd = @(x) nanmean(ct(data.imSz==x));
-ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.ecc==all_eccs(y)));
+ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.ecc==all_RFs(y)));
 plot(allSz, [ctd(3) ctd(4) ctd(5) ctd(6) ctd(7) ctd(8) ctd(9) ctd(10)], '.k', 'MarkerSize', 15); hold on;
 for i = 1:3
   y4(i,:) = [ctd2(3,i) ctd2(4,i) ctd2(5,i) ctd2(6,i) ctd2(7,i) ctd2(8,i) ctd2(9,i) ctd2(10,i)];
