@@ -144,7 +144,8 @@ stimulus.allSizes = [3, 4, 5, 6, 7, 8, 9, 10];
 
 % Task important variables
 %task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
-stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'fronds', 'forest', 'leaves', 'noodles', 'paneer', 'rocks', 'stanford', 'tulips', 'worms', 'zebras'};
+stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'fronds', 'forest', 'leaves', 'noodles', 'rocks', 'stanford', 'tulips', 'worms', 'zebras'};
+% excluding paneer and ramen
 stimulus.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
 stimulus.rfNames = {'2x2', '3x3', '4x4'};
 stimulus.stimDir = stimDirectory;
@@ -153,7 +154,7 @@ stimulus.stimDir = stimDirectory;
 % task{1}{1}.parameter.targIm = 1:length(stimulus.imNames);
 task{1}{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}{1}.parameter.rfSize = 1:length(stimulus.rfNames);
-task{1}{1}.parameter.eccentricity = 8; %[5 8 11];
+task{1}{1}.parameter.eccentricity = 10; %[5 8 11];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
@@ -264,7 +265,7 @@ elseif stimulus.stairImSz
   task.thistrial.imSz = stairImSize(task);
 else
   %disp('Fixing imsize at 5');
-  task.thistrial.imSz = 5;
+  task.thistrial.imSz = 6;
 end
 
 % set response text
