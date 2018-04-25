@@ -699,7 +699,7 @@ se = @(x) 1.96*nanstd(x) / sqrt(length(x));
 eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
 errorbar(1:4, nanmean(y,1), eb, '.k');
 legend('2x2', '3x3', '4x4');
-title(sprintf('%s: Accuracy as a function of distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
+title(sprintf('%s: Accuracy vs distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
 xlim([0 5]);ylim([0 1]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Identification Accuracy', 'FontSize', 16);
@@ -710,30 +710,32 @@ set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
 
 
 subplot(2,1,2);
+
+% calculate RF size in degrees
+all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
+
 all_RFs = unique(data.rf_size);
-rt = data.reaction_time;
-y2 = [];
-for i = 1:length(all_RFs)
-  ei = all_RFs(i);
-  for j = 1:length(unique(data.layer))
-      y2(i,j) = nansum(rt(data.rf_size==ei & data.layer==j)) / length(rt(data.rf_size==ei & data.layer==j));
-  end
-  plot(1:4, y2(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+all_layers = unique(data.layer);
+ct = data.corr_trials;
+colors = brewermap(length(all_layers), 'Dark2');
+
+y = [];
+for i = 1:length(all_layers)
+    li = all_layers(i);
+    for j = 1:length(all_RFs)
+        ei = all_RFs(j);
+        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image~= 10 & data.image ~= 11 & data.image ~= 15));
+    end
+    plot(all_RF_deg, y(i,:), '.:', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
-plot(1:4, nanmean(y2,1), '.k', 'MarkerSize', 20);
 
-eb = [se(rt(data.layer==1)), se(rt(data.layer==2)), se(rt(data.layer==3)), se(rt(data.layer==4))];
-errorbar(1:4, mean(y2,1), eb, '.k');
-legend('2x2', '3x3', '4x4');
-title('Reaction Time as a function of distractor layer', 'FontSize', 18);
-xlim([0 5]);
-ylim([0 1]);
-xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
-ylabel('Reaction Time', 'FontSize', 16);
+legend(stimulus.layerNames);
+xlim([0 4]); ylim([0 1]);
+xlabel('Gram RF Size (dva)', 'FontSize', 16);
+ylabel('Accuracy', 'FontSize', 16);
+title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSize', 18);
+hline(0.25, ':');
 set(gca, 'FontSize', 14);
-set(gca, 'XTick', 1:4);
-set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
-
 
 %% Plot individual images.
 figure;
