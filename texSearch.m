@@ -581,100 +581,6 @@ for fi = 1:length(files)
   end
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% analyze staircase %%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function analyzeStaircase()
-
-files = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat', mglGetSID)));
-
-strDt = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
-              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0);
-
-for fi = 1:length(files)
-  l = load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
-   
-  e = getTaskParameters(l.myscreen, l.task);
-  strcs = l.stimulus.strcs;
-  
-  for ci = 1:12
-      cnm = sprintf('cond%d', ci);
-      anm = sprintf('cond%d_acc', ci);
-
-      if ~isfield(strDt, cnm)
-          strDt.(cnm) = strcs.(cnm);
-          strDt.(anm) = strcs.(anm);
-      else
-          strDt.(cnm) = [strDt.(cnm) strcs.(cnm)];
-          strDt.(anm) = [strDt.(anm) strcs.(anm)];
-      end
-  end
-  
-  if e{1}.nTrials>1
-    
-    subj_resp = e{1}.response-10;
-    corr_resp = e{1}.randVars.targetPosition;
-    strDt.run = l.stimulus.counter;
-    strDt.subj_resp = [strDt.subj_resp subj_resp];
-    strDt.corr_resp = [strDt.corr_resp corr_resp];
-    strDt.corr_trials = [strDt.corr_trials subj_resp==corr_resp];
-    strDt.reaction_time = [strDt.reaction_time e{1}.reactionTime];
-    strDt.nTrials = strDt.nTrials + e{1}.nTrials;
-    % Calculate number of valid trials by excluding eye movements and pool5
-    strDt.nValTrials = strDt.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
-    
-    strDt.image = [strDt.image e{1}.parameter.targIm];
-    strDt.layer = [strDt.layer e{1}.parameter.layer];
-    strDt.ecc = [strDt.ecc e{1}.parameter.eccentricity];
-    
-  end
-  
-end
-
-%% Plot threshold staircase changes over time
-conds = reshape(1:12, [3, 4]);
-figure;
-colors = brewermap(4, 'Dark2');
-
-thresh = nan(3,4);
-
-for ci = 1:12
-    [eccI, layI] = find(conds==ci);
-    
-    condi = sprintf('cond%d', ci);
-    plot(1:length(strDt.(condi)), strDt.(condi), '*-', 'Color', colors(layI,:)); hold on;
-    thresh(eccI, layI) = mean(strDt.(condi)(end-4:end));
-end
-title('Threshold changes over the course of all trials', 'FontSize', 18);
-xlabel('Trial count');
-ylabel('Threshold');
-
-%% Plot thresholds as a function of eccentricity.
-figure;
-all_layers = 1:4;
-colors = brewermap(length(all_layers), 'Dark2');
-y = [];
-ct = strDt.corr_trials;
-for i = 1:length(all_layers)
-  plot([5 8 11], thresh(:,i)', '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-  y(i,:) = [nansum(ct(strDt.ecc==5 & strDt.layer==i)), nansum(ct(strDt.ecc==8 & strDt.layer==i)), nansum(ct(strDt.ecc==11 & strDt.layer==i))]/(strDt.nValTrials/12);
-end
-for i = 1:length(all_layers)
-   X = [ones(3,1) [5 8 11]'];
-   b = X \ thresh(:,i);
-   yPred = X*b;
-   plot([5 8 11], yPred, '-', 'Color', colors(i,:));
-end
-    
-legend('Pool1', 'Pool2', 'Pool3', 'Pool4');
-title(sprintf('%s: Size threshold as a function of eccentricity. nTrials=%i', mglGetSID, strDt.nValTrials), 'FontSize', 18);
-xlim([3 13]);ylim([0 17]);
-xlabel('Eccentricity', 'FontSize', 16);
-ylabel('Size Threshold', 'FontSize', 16);
-set(gca, 'FontSize', 14);
-
-%%
-keyboard
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -794,7 +700,7 @@ eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct
 errorbar(1:4, nanmean(y,1), eb, '.k');
 legend('2x2', '3x3', '4x4');
 title(sprintf('%s: Accuracy as a function of distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
-xlim([0 5]);ylim([0 1.2]);
+xlim([0 5]);ylim([0 1]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Identification Accuracy', 'FontSize', 16);
 hline(0.25, ':');
@@ -821,15 +727,60 @@ errorbar(1:4, mean(y2,1), eb, '.k');
 legend('2x2', '3x3', '4x4');
 title('Reaction Time as a function of distractor layer', 'FontSize', 18);
 xlim([0 5]);
-ylim([.2 .8]);
+ylim([0 1]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Reaction Time', 'FontSize', 16);
 set(gca, 'FontSize', 14);
 set(gca, 'XTick', 1:4);
 set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
 
-%%
 
+%% Plot individual images.
+figure;
+all_ims = unique(data.image);
+imnames = stimulus.imNames;
+
+all_RFs = unique(data.rf_size);
+all_layers = unique(data.layer);
+ct = data.corr_trials;
+colors = brewermap(length(all_layers), 'Dark2');
+
+% Labels for x axis and legend
+xLabels = stimulus.rfNames;
+lnLabels = stimulus.layerNames;
+
+% calculate RF size in degrees
+all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
+
+for imi = 1:length(all_ims)
+  im = all_ims(imi);
+  subplot(5,4,imi);
+
+  y = [];
+  for i = 1:length(all_layers)
+    li = all_layers(i);
+    for j = 1:length(all_RFs)
+        ei = all_RFs(j);
+        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image == im));
+    end
+    plot(all_RF_deg, y(i,:), '.:', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+  end
+
+  nTrials = sum(~isnan(data.subj_resp(data.image==im)));
+  if imi == length(all_ims)
+    legend(lnLabels);
+  end
+  title(sprintf('%s: nTrials=%i', imnames{imi}, nTrials), 'FontSize', 16);
+  xlim([0 4]);ylim([0 1]);
+  xlabel('Gram RF Size (degrees)', 'FontSize', 12);
+  ylabel('Accuracy', 'FontSize', 12);
+  hline(0.25, ':');
+  set(gca, 'FontSize', 12);
+  %set(gca, 'XTick', 1:length(xLabels));
+  %set(gca, 'XTickLabel',xLabels);
+
+end
+%%
 keyboard
 
 %% Accuracy Vs Image Size (for different eccentricities)
