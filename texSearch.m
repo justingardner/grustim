@@ -144,10 +144,10 @@ stimulus.allSizes = [3, 4, 5, 6, 7, 8, 9, 10];
 
 % Task important variables
 %task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
-stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'fronds', 'forest', 'leaves', 'noodles', 'rocks', 'stanford', 'tulips', 'worms', 'zebras'};
-% excluding paneer and ramen
-stimulus.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
-stimulus.rfNames = {'2x2', '3x3', '4x4'};
+stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'leaves', 'noodles', 'rocks', 'tulips', 'worms', 'zebras'};
+% excluding paneer and ramen - now also excluding forest fronds and stanford
+stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
+stimulus.rfNames = {'1x1', '2x2', '3x3', '4x4'};
 stimulus.stimDir = stimDirectory;
 stimulus.imSize = 6;
 
