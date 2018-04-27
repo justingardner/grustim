@@ -199,7 +199,7 @@ if ~isfield(stimulus,'runs')
         % for each rep round, 
         runOrder = runNums(randperm(length(runNums)));
         for run = 1:length(runNums)
-            stimulus.runs.runData((reps-1)*length(runNums)+run) = stimulus.runs.runs(runOrder(run));
+            stimulus.runs.runData((reps-1)*length(runNums)+run) = stimulus.runs.runs(runOrder(run),reps);
         end
         stimulus.runs.runOrder = [stimulus.runs.runOrder runOrder];
     end
