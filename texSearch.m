@@ -683,30 +683,31 @@ figure;
 subplot(2,1,1);
 
 all_RFs = unique(data.rf_size);
+nLayers = length(unique(data.layer));
 ct = data.corr_trials;
 colors = brewermap(length(all_RFs), 'Dark2');
 y = [];
 for i = 1:length(all_RFs)
   ei = all_RFs(i);
-  for j = 1:length(unique(data.layer))
+  for j = 1:nLayers
       y(i,j) = nansum(ct(data.rf_size==ei & data.layer == j)) / length(ct(data.rf_size==ei & data.layer==j));
   end
-  plot(1:4, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+  plot(1:nLayers, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
 end
 %plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
 
 se = @(x) 1.96*nanstd(x) / sqrt(length(x));
-eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
-errorbar(1:4, nanmean(y,1), eb, '.k');
-legend('2x2', '3x3', '4x4');
+eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3))];
+errorbar(1:nLayers, nanmean(y,1), eb, '.k');
+legend(stimulus.rfNames);
 title(sprintf('%s: Accuracy vs distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
-xlim([0 5]);ylim([0 1]);
+xlim([0 nLayers+1]);ylim([0 1]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Identification Accuracy', 'FontSize', 16);
 hline(0.25, ':');
 set(gca, 'FontSize', 14);
-set(gca, 'XTick', 1:4);
-set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
+set(gca, 'XTick', 1:nLayers);
+set(gca, 'XTickLabel', stimulus.layerNames);
 
 
 subplot(2,1,2);
@@ -730,7 +731,7 @@ for i = 1:length(all_layers)
 end
 
 legend(stimulus.layerNames);
-xlim([0 4]); ylim([0 1]);
+xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
 xlabel('Gram RF Size (dva)', 'FontSize', 16);
 ylabel('Accuracy', 'FontSize', 16);
 title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSize', 18);
@@ -756,7 +757,7 @@ all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
 
 for imi = 1:length(all_ims)
   im = all_ims(imi);
-  subplot(5,4,imi);
+  subplot(4,4,imi);
 
   y = [];
   for i = 1:length(all_layers)
@@ -773,7 +774,7 @@ for imi = 1:length(all_ims)
     legend(lnLabels);
   end
   title(sprintf('%s: nTrials=%i', imnames{imi}, nTrials), 'FontSize', 16);
-  xlim([0 4]);ylim([0 1]);
+  xlim([0 max(all_RF_deg)+1]);ylim([0 1]);
   xlabel('Gram RF Size (degrees)', 'FontSize', 12);
   ylabel('Accuracy', 'FontSize', 12);
   hline(0.25, ':');
