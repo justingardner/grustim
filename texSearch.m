@@ -273,7 +273,7 @@ end
 stimulus.live.responseText = mglText('1 or 2?');
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d, Size: %g', task.trialnum, imName, layer, task.thistrial.eccentricity, task.thistrial.imSz));
+disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d, RF Size: %s', task.trialnum, imName, layer, task.thistrial.eccentricity, rfSz));
 
 % Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
@@ -479,7 +479,7 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
     stimulus.live.lastTrigger = now;
   end
   if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-    disp('Starting trial--eye centered and space pressed.');
+    disp('Starting trial--eye centered.');
     task = jumpSegment(task);
   end
 end
@@ -664,7 +664,6 @@ for fi = 1:length(files)
     data.corr_trials = [data.corr_trials subj_resp==corr_resp];
     data.reaction_time = [data.reaction_time e{1}.reactionTime];
     data.nTrials = data.nTrials + e{1}.nTrials;
-    %data.
     data.imSz = [data.imSz e{1}.randVars.imSz];
     % Calculate number of valid trials by excluding eye movements and pool5
     data.nValTrials = data.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
@@ -678,28 +677,36 @@ for fi = 1:length(files)
   count = count + 1;
 end
 
+% fitline function
+fitLine = @(x,y) polyval(polyfit(x,y,1),x);
+
 %% Plot accuracy and reaction time as a function of distractor layer & RF Size
 figure;
+set(gcf, 'Position', [436, 485, 458, 599]);
+
 subplot(2,1,1);
 
 all_RFs = unique(data.rf_size);
 nLayers = length(unique(data.layer));
 ct = data.corr_trials;
 colors = brewermap(length(all_RFs), 'Dark2');
+x1 = 1:nLayers;
 y = [];
 for i = 1:length(all_RFs)
   ei = all_RFs(i);
   for j = 1:nLayers
       y(i,j) = nansum(ct(data.rf_size==ei & data.layer == j)) / length(ct(data.rf_size==ei & data.layer==j));
   end
-  plot(1:nLayers, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+  plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
 end
 %plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
 
-se = @(x) 1.96*nanstd(x) / sqrt(length(x));
-eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3))];
-errorbar(1:nLayers, nanmean(y,1), eb, '.k');
-legend(stimulus.rfNames);
+h = findobj(gca, 'Type', 'line');
+legend(h(length(h)-1:-2:1), stimulus.rfNames);
+
+%se = @(x) 1.96*nanstd(x) / sqrt(length(x));
+%eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3))];
+%errorbar(1:nLayers, nanmean(y,1), eb, '.k');
 title(sprintf('%s: Accuracy vs distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
 xlim([0 nLayers+1]);ylim([0 1]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
@@ -727,10 +734,13 @@ for i = 1:length(all_layers)
         ei = all_RFs(j);
         y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image~= 10 & data.image ~= 11 & data.image ~= 15));
     end
-    plot(all_RF_deg, y(i,:), '.:', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+    plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+    plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:)); hold on;
 end
 
-legend(stimulus.layerNames);
+h = findobj(gca, 'Type', 'line');
+legend(h(length(h)-1:-2:1), stimulus.layerNames, 'Location', 'southeast');
+
 xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
 xlabel('Gram RF Size (dva)', 'FontSize', 16);
 ylabel('Accuracy', 'FontSize', 16);
@@ -738,8 +748,11 @@ title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSiz
 hline(0.25, ':');
 set(gca, 'FontSize', 14);
 
+saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
+
 %% Plot individual images.
 figure;
+set(gcf, 'Position', [680, 268, 1005, 830]);
 all_ims = unique(data.image);
 imnames = stimulus.imNames;
 
@@ -766,12 +779,14 @@ for imi = 1:length(all_ims)
         ei = all_RFs(j);
         y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image == im));
     end
-    plot(all_RF_deg, y(i,:), '.:', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+    plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+    plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:));
   end
 
   nTrials = sum(~isnan(data.subj_resp(data.image==im)));
   if imi == length(all_ims)
-    legend(lnLabels);
+    h = findobj(gca, 'Type', 'line');
+    legend(h(length(h)-1:-2:1), lnLabels, 'Location', 'bestoutside');
   end
   title(sprintf('%s: nTrials=%i', imnames{imi}, nTrials), 'FontSize', 16);
   xlim([0 max(all_RF_deg)+1]);ylim([0 1]);
@@ -783,8 +798,12 @@ for imi = 1:length(all_ims)
   %set(gca, 'XTickLabel',xLabels);
 
 end
+
+saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_img_results.png', mglGetSID));
+
+
 %%
-keyboard
+return
 
 %% Accuracy Vs Image Size (for different eccentricities)
 all_layers = 1:4;
