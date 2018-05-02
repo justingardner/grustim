@@ -54,12 +54,14 @@ end
 plots = 0;
 run = 0;
 genTex = 0;
-getArgs(varargin,{'plots=0','run=0','genTex=0'});
+test = 0;
+getArgs(varargin,{'plots=0','run=0','genTex=0','test=0'});
 stimulus.plots = plots;
 stimulus.run = run;
 stimulus.generateTextures = genTex;
+stimulus.test = test;
 
-clear plots run genTex
+clear plots run genTex test
 
 if stimulus.run==0
     disp('Please set a run number');
@@ -100,7 +102,11 @@ end
 disp(sprintf('(fbsear_pilot) This is run #%i',stimulus.counter));
 
 %% Setup Screen
-myscreen = initScreen('VPixx');
+if stimulus.test
+    myscreen = initScreen('test');
+else
+    myscreen = initScreen('VPixx');
+end
 
 if ~isfield(myscreen,'genTexTrack')
     myscreen.genTexTrack = rand*10000000;
@@ -108,12 +114,6 @@ end
 
 % set background to grey
 myscreen.background = 0.5;
-
-%% Load images
-
-if stimulus.generateTextures
-    loadFBSearImages(categories,attend_categories);
-end
 
 %% Setup missing initial variables
 
@@ -148,6 +148,12 @@ stimulus.colors.green = [0 1 0];
 % 
 % stimulus.colors.mrmax = stimulus.colors.nReserved - 1 + stimulus.colors.nUnreserved;
 % stimulus.colors.mrmin = stimulus.colors.nReserved;
+
+%% Load images
+
+if stimulus.generateTextures
+    loadFBSearImages(categories,attend_categories);
+end
 
 %% Setup runs
 
@@ -244,12 +250,12 @@ disp('```````````````RUN INFO: WRITE THIS DOWN`````````````````````````');
 disp(sprintf('```` Current run type: %s',stimulus.curRun.text));
 disp(sprintf('```` Group type: %i',stimulus.curRun.group));
 disp(sprintf('```` This is repeat: %i',stimulus.curRun.repeat));
-maskType = {'NO','YES'};
+maskType = {'NO','YES','YES'};
 disp(sprintf('```` Using mask data set: %s',maskType{stimulus.curRun.useMask+1}));
 disp('`````````````````````````````````````````````````````````````````');
 disp('`````````````````````````````````````````````````````````````````');
 %% Pull textures
-
+% 
 % pull the textures for this run
 for ci = 1:length(categories)
     if stimulus.curRun.useMask==0
@@ -263,6 +269,7 @@ for ci = 1:length(categories)
     end
 end
 
+
 %% Setup Task
 
 %%%%%%%%%%%%% PHASE ONE %%%%%%%%%%%%%%%%%
@@ -270,13 +277,13 @@ end
 
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.seglen = [1.9 3.9];
+task{1}{1}.seglen = [1.9];
 stimulus.seg.stim = 1;
-stimulus.seg.iti = 2;
+% stimulus.seg.iti = ;
 
-task{1}{1}.synchToVol = [1 1];
+task{1}{1}.synchToVol = [1];
 
-task{1}{1}.getResponse = [0 1];
+task{1}{1}.getResponse = [1];
 task{1}{1}.numTrials = 60; % 1096 volumes for scan
 
 task{1}{1}.random = 1;
@@ -483,6 +490,12 @@ stimulus.fbsdata = struct;
 load(fullfile('~/proj/fbsear/data/info_m.mat'));
 
 %% prepare mgl textures (both contrast masked and non-masked)
+
+stimulus.fbsdata.idx = struct;
+stimulus.fbsdata.idx.person = info.person;
+stimulus.fbsdata.idx.car = info.car;
+stimulus.fbsdata.idx.personcar = info.personcar;
+stimulus.fbsdata.idx.null = info.null;
 
 stimulus.fbsdata.imgs = struct;
 for ci = 1:length(cats)

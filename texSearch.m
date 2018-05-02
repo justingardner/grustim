@@ -24,7 +24,7 @@ plotEye = 0;
 stairImSz = 0;
 varyImSz = 0;
 analyzeStair = 0;
-getArgs(varargin,{'varyImSz=0', 'analyzeStair=0', 'stairImSz=1','getData=0', 'plotEye=0', 'scan=0','plots=0','noeye=0','debug=0'});
+getArgs(varargin,{'varyImSz=0', 'analyzeStair=0', 'stairImSz=0','getData=0', 'plotEye=0', 'scan=0','plots=0','noeye=0','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -96,7 +96,7 @@ myscreen = initStimulus('stimulus',myscreen);
 localInitStimulus();
   
 % Set response keys
-stimulus.responseKeys = [1 2 3 4]; % 
+%stimulus.responseKeys = [1 2 3 4];  
 stimulus.responseKeys = [11 12 13 14];
 
 % set colors
@@ -121,7 +121,8 @@ task{1}{1}.waitForBacktick = 1;
 tTarg = 0.500;
 isi = 0.500;
 searchTime = 2.00;
-stimDirectory = '~/proj/TextureSynthesis/stimuli';
+%stimDirectory = '~/proj/TextureSynthesis/stimuli';
+stimDirectory = '~/proj/TextureSynthesis/rf_stim';
 
 % task waits for fixation on first segment
 task{1}{1}.segmin = [inf tTarg isi searchTime .200];
@@ -142,14 +143,19 @@ end
 stimulus.allSizes = [3, 4, 5, 6, 7, 8, 9, 10];
 
 % Task important variables
-task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
-task{1}{1}.layerNames = {'pool1', 'pool2', 'pool3', 'pool4'};
-task{1}{1}.stimDir = stimDirectory;
+%task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
+stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'leaves', 'noodles', 'rocks', 'tulips', 'worms', 'zebras'};
+% excluding paneer and ramen - now also excluding forest fronds and stanford
+stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
+stimulus.rfNames = {'1x1', '2x2', '3x3', '4x4'};
+stimulus.stimDir = stimDirectory;
+stimulus.imSize = 6;
 
 % Trial parameters
-task{1}{1}.parameter.targIm = 1:10;
-task{1}{1}.parameter.layer = [1 2 3 4];
-task{1}{1}.parameter.eccentricity = [5 8 11];
+% task{1}{1}.parameter.targIm = 1:length(stimulus.imNames);
+task{1}{1}.parameter.layer = 1:length(stimulus.layerNames);
+task{1}{1}.parameter.rfSize = 1:length(stimulus.rfNames);
+task{1}{1}.parameter.eccentricity = 10; %[5 8 11];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
@@ -164,6 +170,7 @@ end
 % Task trial parameters
 
 % Task variables to be calculated later
+task{1}{1}.randVars.calculated.targIm = NaN;
 task{1}{1}.randVars.calculated.targetPosition = NaN;
 task{1}{1}.randVars.calculated.imSz = NaN;
 task{1}{1}.randVars.calculated.detected = 0; % did they see the grating
@@ -222,10 +229,6 @@ myscreen = endTask(myscreen,task);
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 
-%%
-%if ~isempty(task.lasttrial)
-%  disp(sprintf('Last trial - image: %d, scaling: 0.%d, correct response: %d, subject''s response: %d', task.lasttrial.image, task.lasttrial.scaling, task.lasttrial.correctResponse, task.lasttrial.response));
-%end
 global stimulus
 
 task.thistrial.dead = 0;
@@ -238,16 +241,20 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 
 % directories
 targetDir = '~/proj/TextureSynthesis/orig_ims';
-distDir = '~/proj/TextureSynthesis/stimuli';
+distDir = stimulus.stimDir;
+
+% Select image
+task.thistrial.targIm = randi(length(stimulus.imNames),1);
 
 %% Load all 4 images for this trial
-imName = task.imNames{task.thistrial.targIm};
-layer = task.layerNames{task.thistrial.layer};
+imName = stimulus.imNames{task.thistrial.targIm};
+layer = stimulus.layerNames{task.thistrial.layer};
+rfSz = stimulus.rfNames{task.thistrial.rfSize};
 
 stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s.jpg', targetDir, imName)));
-stimulus.live.d1 = genTexFromIm(imread(sprintf('%s/v1/%s_%s_step_10000.jpg', distDir, layer, imName)));
-stimulus.live.d2 = genTexFromIm(imread(sprintf('%s/v2/%s_%s_step_10000.jpg', distDir, layer, imName)));
-stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/v3/%s_%s_step_10000.jpg', distDir, layer, imName)));
+stimulus.live.d1 = genTexFromIm(imread(sprintf('%s/s1/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
+stimulus.live.d2 = genTexFromIm(imread(sprintf('%s/s2/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
+stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/s3/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
 
 % Select target position
 task.thistrial.targetPosition = randi(4, 1);
@@ -258,20 +265,22 @@ if stimulus.varyImSz
 elseif stimulus.stairImSz
   task.thistrial.imSz = stairImSize(task);
 else
-  task.thistrial.imSz = 5;
+  %disp('Fixing imsize at 5');
+  task.thistrial.imSz = stimulus.imSize;
 end
 
 % set response text
 stimulus.live.responseText = mglText('1 or 2?');
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d, Size: %g', task.trialnum, imName, layer, task.thistrial.eccentricity, task.thistrial.imSz));
+disp(sprintf('Trial %d - Image: %s, Layer: %s, Ecc: %d, RF Size: %s', task.trialnum, imName, layer, task.thistrial.eccentricity, rfSz));
 
 % Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 stimulus.live.eyeCount = 0;
 
+%keyboard
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Run Staircase over imsize for each condition %%%%%%%%%%%%%%%%%%
@@ -387,7 +396,7 @@ distLocations = setdiff(1:4, task.thistrial.targetPosition);
 for i = 1:2
   mglClearScreen(0.5);
   if stimulus.live.target
-    mglBltTexture(stimulus.live.target_image, [0 0 5 5]);
+    mglBltTexture(stimulus.live.target_image, [0 0 stimulus.imSize stimulus.imSize]);
   elseif stimulus.live.search
     mglBltTexture(stimulus.live.d1, [locations(distLocations(1), :), imSz, imSz]);
     mglBltTexture(stimulus.live.d2, [locations(distLocations(2), :), imSz, imSz]);
@@ -470,7 +479,7 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
     stimulus.live.lastTrigger = now;
   end
   if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-    disp('Starting trial--eye centered and space pressed.');
+    disp('Starting trial--eye centered.');
     task = jumpSegment(task);
   end
 end
@@ -572,100 +581,6 @@ for fi = 1:length(files)
   end
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% analyze staircase %%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function analyzeStaircase()
-
-files = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat', mglGetSID)));
-
-strDt = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
-              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0);
-
-for fi = 1:length(files)
-  l = load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
-   
-  e = getTaskParameters(l.myscreen, l.task);
-  strcs = l.stimulus.strcs;
-  
-  for ci = 1:12
-      cnm = sprintf('cond%d', ci);
-      anm = sprintf('cond%d_acc', ci);
-
-      if ~isfield(strDt, cnm)
-          strDt.(cnm) = strcs.(cnm);
-          strDt.(anm) = strcs.(anm);
-      else
-          strDt.(cnm) = [strDt.(cnm) strcs.(cnm)];
-          strDt.(anm) = [strDt.(anm) strcs.(anm)];
-      end
-  end
-  
-  if e{1}.nTrials>1
-    
-    subj_resp = e{1}.response-10;
-    corr_resp = e{1}.randVars.targetPosition;
-    strDt.run = l.stimulus.counter;
-    strDt.subj_resp = [strDt.subj_resp subj_resp];
-    strDt.corr_resp = [strDt.corr_resp corr_resp];
-    strDt.corr_trials = [strDt.corr_trials subj_resp==corr_resp];
-    strDt.reaction_time = [strDt.reaction_time e{1}.reactionTime];
-    strDt.nTrials = strDt.nTrials + e{1}.nTrials;
-    % Calculate number of valid trials by excluding eye movements and pool5
-    strDt.nValTrials = strDt.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
-    
-    strDt.image = [strDt.image e{1}.parameter.targIm];
-    strDt.layer = [strDt.layer e{1}.parameter.layer];
-    strDt.ecc = [strDt.ecc e{1}.parameter.eccentricity];
-    
-  end
-  
-end
-
-%% Plot threshold staircase changes over time
-conds = reshape(1:12, [3, 4]);
-figure;
-colors = brewermap(4, 'Dark2');
-
-thresh = nan(3,4);
-
-for ci = 1:12
-    [eccI, layI] = find(conds==ci);
-    
-    condi = sprintf('cond%d', ci);
-    plot(1:length(strDt.(condi)), strDt.(condi), '*-', 'Color', colors(layI,:)); hold on;
-    thresh(eccI, layI) = mean(strDt.(condi)(end-4:end));
-end
-title('Threshold changes over the course of all trials', 'FontSize', 18);
-xlabel('Trial count');
-ylabel('Threshold');
-
-%% Plot thresholds as a function of eccentricity.
-figure;
-all_layers = 1:4;
-colors = brewermap(length(all_layers), 'Dark2');
-y = [];
-ct = strDt.corr_trials;
-for i = 1:length(all_layers)
-  plot([5 8 11], thresh(:,i)', '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-  y(i,:) = [nansum(ct(strDt.ecc==5 & strDt.layer==i)), nansum(ct(strDt.ecc==8 & strDt.layer==i)), nansum(ct(strDt.ecc==11 & strDt.layer==i))]/(strDt.nValTrials/12);
-end
-for i = 1:length(all_layers)
-   X = [ones(3,1) [5 8 11]'];
-   b = X \ thresh(:,i);
-   yPred = X*b;
-   plot([5 8 11], yPred, '-', 'Color', colors(i,:));
-end
-    
-legend('Pool1', 'Pool2', 'Pool3', 'Pool4');
-title(sprintf('Size threshold as a function of eccentricity. nTrials=%i', strDt.nValTrials), 'FontSize', 18);
-xlim([3 13]);ylim([0 15]);
-xlabel('Eccentricity', 'FontSize', 16);
-ylabel('Size Threshold', 'FontSize', 16);
-set(gca, 'FontSize', 14);
-
-%%
-keyboard
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -733,7 +648,7 @@ files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 
 count = 1; 
 data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
-              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'imSz', []);
+              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'rf_size', [], 'imSz', []);
 
 for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
@@ -753,68 +668,142 @@ for fi = 1:length(files)
     % Calculate number of valid trials by excluding eye movements and pool5
     data.nValTrials = data.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
     
-    data.image = [data.image e{1}.parameter.targIm];
+    data.image = [data.image e{1}.randVars.targIm];
     data.layer = [data.layer e{1}.parameter.layer];
+    data.rf_size = [data.rf_size e{1}.parameter.rfSize];
     data.ecc = [data.ecc e{1}.parameter.eccentricity];
     
   end
   count = count + 1;
 end
 
-%% Plot Accuracy and Reaction Time as a function of distractor layer.
-figure;
-subplot(2,1,1);
-all_eccs = unique(data.ecc);
-ct = data.corr_trials;
-colors = brewermap(length(all_eccs), 'Dark2');
-y = [];
-for i = 1:length(all_eccs)
-  ei = all_eccs(i);
-  y(i,:) = [nansum(ct(data.ecc==ei & data.layer==1)), nansum(ct(data.ecc==ei & data.layer==2)), nansum(ct(data.ecc==ei & data.layer==3)), nansum(ct(data.ecc==ei & data.layer==4))]/(data.nTrials/12);
-  plot(1:4, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-end
-plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
+% fitline function
+fitLine = @(x,y) polyval(polyfit(x,y,1),x);
 
-se = @(x) 1.96*nanstd(x) / sqrt(length(x));
-eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3)), se(ct(data.layer==4))];
-errorbar(1:4, mean(y,1), eb, '.k');
-legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
-title(sprintf('Accuracy as a function of distractor layer. nTrials=%i', data.nValTrials), 'FontSize', 18);
-xlim([0 5]);ylim([0 1.2]);
+%% Plot accuracy and reaction time as a function of distractor layer & RF Size
+figure;
+set(gcf, 'Position', [436, 485, 458, 599]);
+
+subplot(2,1,1);
+
+all_RFs = unique(data.rf_size);
+nLayers = length(unique(data.layer));
+ct = data.corr_trials;
+colors = brewermap(length(all_RFs), 'Dark2');
+x1 = 1:nLayers;
+y = [];
+for i = 1:length(all_RFs)
+  ei = all_RFs(i);
+  for j = 1:nLayers
+      y(i,j) = nansum(ct(data.rf_size==ei & data.layer == j)) / length(ct(data.rf_size==ei & data.layer==j));
+  end
+  plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
+end
+%plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
+
+h = findobj(gca, 'Type', 'line');
+legend(h(length(h)-1:-2:1), stimulus.rfNames);
+
+%se = @(x) 1.96*nanstd(x) / sqrt(length(x));
+%eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3))];
+%errorbar(1:nLayers, nanmean(y,1), eb, '.k');
+title(sprintf('%s: Accuracy vs distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
+xlim([0 nLayers+1]);ylim([0 1]);
 xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
 ylabel('Identification Accuracy', 'FontSize', 16);
 hline(0.25, ':');
 set(gca, 'FontSize', 14);
-set(gca, 'XTick', 1:4);
-set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
+set(gca, 'XTick', 1:nLayers);
+set(gca, 'XTickLabel', stimulus.layerNames);
 
 
 subplot(2,1,2);
-all_eccs = unique(data.ecc);
-rt = data.reaction_time;
-y2 = [];
-for i = 1:length(all_eccs)
-  ei = all_eccs(i);
-  y2(i,:) = [nansum(rt(data.ecc==ei & data.layer==1)), nansum(rt(data.ecc==ei & data.layer==2)), nansum(rt(data.ecc==ei & data.layer==3)), nansum(rt(data.ecc==ei & data.layer==4))]/(data.nTrials/4);
-  plot(1:4, y2(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-end
-plot(1:4, nanmean(y2,1), '.k', 'MarkerSize', 20);
 
-eb = [se(rt(data.layer==1)), se(rt(data.layer==2)), se(rt(data.layer==3)), se(rt(data.layer==4))];
-errorbar(1:4, mean(y2,1), eb, '.k');
-legend('5 degrees', '8 degrees', '11 degrees', 'Mean');
-title('Reaction Time as a function of distractor layer', 'FontSize', 18);
-xlim([0 5]);
-ylim([.1 .3]);
-xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
-ylabel('Reaction Time', 'FontSize', 16);
+% calculate RF size in degrees
+all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
+
+all_RFs = unique(data.rf_size);
+all_layers = unique(data.layer);
+ct = data.corr_trials;
+colors = brewermap(length(all_layers), 'Dark2');
+
+y = [];
+for i = 1:length(all_layers)
+    li = all_layers(i);
+    for j = 1:length(all_RFs)
+        ei = all_RFs(j);
+        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image~= 10 & data.image ~= 11 & data.image ~= 15));
+    end
+    plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+    plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:)); hold on;
+end
+
+h = findobj(gca, 'Type', 'line');
+legend(h(length(h)-1:-2:1), stimulus.layerNames, 'Location', 'southeast');
+
+xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
+xlabel('Gram RF Size (dva)', 'FontSize', 16);
+ylabel('Accuracy', 'FontSize', 16);
+title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSize', 18);
+hline(0.25, ':');
 set(gca, 'FontSize', 14);
-set(gca, 'XTick', 1:4);
-set(gca, 'XTickLabel', {'Pool1', 'Pool2', 'Pool3', 'Pool4'});
+
+saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
+
+%% Plot individual images.
+figure;
+set(gcf, 'Position', [680, 268, 1005, 830]);
+all_ims = unique(data.image);
+imnames = stimulus.imNames;
+
+all_RFs = unique(data.rf_size);
+all_layers = unique(data.layer);
+ct = data.corr_trials;
+colors = brewermap(length(all_layers), 'Dark2');
+
+% Labels for x axis and legend
+xLabels = stimulus.rfNames;
+lnLabels = stimulus.layerNames;
+
+% calculate RF size in degrees
+all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
+
+for imi = 1:length(all_ims)
+  im = all_ims(imi);
+  subplot(4,4,imi);
+
+  y = [];
+  for i = 1:length(all_layers)
+    li = all_layers(i);
+    for j = 1:length(all_RFs)
+        ei = all_RFs(j);
+        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image == im));
+    end
+    plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+    plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:));
+  end
+
+  nTrials = sum(~isnan(data.subj_resp(data.image==im)));
+  if imi == length(all_ims)
+    h = findobj(gca, 'Type', 'line');
+    legend(h(length(h)-1:-2:1), lnLabels, 'Location', 'bestoutside');
+  end
+  title(sprintf('%s: nTrials=%i', imnames{imi}, nTrials), 'FontSize', 16);
+  xlim([0 max(all_RF_deg)+1]);ylim([0 1]);
+  xlabel('Gram RF Size (degrees)', 'FontSize', 12);
+  ylabel('Accuracy', 'FontSize', 12);
+  hline(0.25, ':');
+  set(gca, 'FontSize', 12);
+  %set(gca, 'XTick', 1:length(xLabels));
+  %set(gca, 'XTickLabel',xLabels);
+
+end
+
+saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_img_results.png', mglGetSID));
+
 
 %%
-
-keyboard
+return
 
 %% Accuracy Vs Image Size (for different eccentricities)
 all_layers = 1:4;
@@ -823,7 +812,7 @@ colors = brewermap(3, 'Dark2');
 figure;
 y4 = [];
 ctd = @(x) nanmean(ct(data.imSz==x));
-ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.ecc==all_eccs(y)));
+ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.ecc==all_RFs(y)));
 plot(allSz, [ctd(3) ctd(4) ctd(5) ctd(6) ctd(7) ctd(8) ctd(9) ctd(10)], '.k', 'MarkerSize', 15); hold on;
 for i = 1:3
   y4(i,:) = [ctd2(3,i) ctd2(4,i) ctd2(5,i) ctd2(6,i) ctd2(7,i) ctd2(8,i) ctd2(9,i) ctd2(10,i)];

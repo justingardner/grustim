@@ -395,7 +395,9 @@ if task.thistrial.thisseg == 1
         % else testValue + stimulus.coordshift < -15
         %   testValue = -15 + stimulus.coordshift;
         % end
+        task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
 
+<<<<<<< HEAD
         testValue = 10^(testValue);
         % task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
         % while testValue - stimulus.coordshift + task.thistrial.noise < -stimulus.coordshift
@@ -406,7 +408,12 @@ if task.thistrial.thisseg == 1
     end
 
 	% task.thistrial.probeOffset = (testValue + task.thistrial.noise);
+=======
 
+    end
+>>>>>>> 736229a0cdb802fcb3f3e87d6c711ffe1d1f9113
+
+	
  	switch char(task.thistrial.condition)
 
 		case 'vision'
@@ -691,6 +698,7 @@ if ~task.thistrial.gotResponse
     elseif task.thistrial.whichButton == 2
       task.thistrial.respRight = 1;
     end
+<<<<<<< HEAD
 
     stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, ...
       task.thistrial.respRight, log10(task.thistrial.probeOffset));
@@ -714,6 +722,22 @@ if ~task.thistrial.gotResponse
     % else
     %     stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     % end
+=======
+    if ~(stimulus.auditoryTrain||stimulus.visualTrain|| stimulus.visualMan || stimulus.auditoryMan)
+        
+        if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
+            stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, task.thistrial.correct, ...
+            abs(task.thistrial.probeOffset));        
+        else
+          randomnumbers = [1 1 1 1 1 1 1 1 1 0];
+          thisrandom = randomnumbers(randi(length(randomnumbers),1));
+           stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, thisrandom, ...
+            abs(task.thistrial.probeOffset));
+        end
+    elseif ~(stimulus.visualMan || stimulus.auditoryMan)
+        stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
+    end
+>>>>>>> 736229a0cdb802fcb3f3e87d6c711ffe1d1f9113
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
     task = jumpSegment(task);
