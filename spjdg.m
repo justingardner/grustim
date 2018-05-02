@@ -1,15 +1,17 @@
 function myscreen = spjdg(varargin)
 
 clear global stimulus
-mglEatKeys('12`sf-=');
+mglEatKeys('12`sf-=cd');
 global stimulus
 
 % get arguments
 high = 0; low = 0; bimodal=0; visual=0; auditory=0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0; 
-visualMan=0; auditoryMan=0; spencer=0; noiseHigh=0; noiseLow=0; unimodal=0;
+visualMan=0; auditoryMan=0; spencer=[]; noiseHigh=0; noiseLow=0; unimodal=0;
 getArgs(varargin,{'high=0','low=0','bimodal=0','visual=0','auditory=0','tenbit=1','practice=0',...
-  'auditoryTrain=0','visualTrain=0','visualMan=0','auditoryMan=0','spencer=0','noiseHigh=0','noiseLow=0','unimodal=0'},'verbose=1');
-
+  'auditoryTrain=0','visualTrain=0','visualMan=0','auditoryMan=0','spencer=[]','noiseHigh=0','noiseLow=0','unimodal=0'},'verbose=1');
+if isempty(spencer) || ~any(spencer==[0 1])
+    error('(spjdg) spencer?');
+end
 stimulus.gaussian.contrast = 0.05;
 stimulus.gaussian.diameterHighRel = 6;
 stimulus.gaussian.diameterLowRel = 36;
@@ -65,7 +67,7 @@ stimulus.auditoryMan = auditoryMan;
 stimulus.spencer= spencer;
 stimulus.unimodal=unimodal;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%f%%%%%%%%%%%%%%%%%%%%%%
-stimulus.gaussian.duration = .015;%.015;% .025;%1/60; % one(or two) frame 
+stimulus.gaussian.duration = .05;%.015;% .025;%1/60; % one(or two) frame 
     if ~stimulus.tenbit
         stimulus.gaussian.contrast = .1;
     end
@@ -93,18 +95,14 @@ stimulus.delta=2.5;
 stimulus.fixWidth = 2.5;
 stimulus.fixColor = [1 1 1];
 stimulus.fixYpos = -4;
-
+if ~visualMan || ~auditoryMan || ~auditoryTrain || ~visualTrain
 stimulus.coordshift = 15;
+else
+stimulus.coordshift = 0;
+end
 
 stimulus.initOffset = log10(5 + stimulus.coordshift);
 stimulus.initOffsetSd = log10(2);
-
-% stimulus.initialThreshold = 6;
-%     stimulus.initialStepsize = 2.5;
-%     stimulus.minThreshold = -30;
-%     stimulus.maxThreshold = 15;
-%     stimulus.minStepsize = 0.75;
-%     stimulus.maxStepsize = 5;
 
 if stimulus.auditoryTrain || stimulus.visualTrain
     stimulus.initialThreshold = 10;
@@ -140,7 +138,7 @@ stimulus.transpd.lowRel(still+1:stimulus.nRefresh+1) = min(stimulus.transpd.lowR
 
 
 % initalize the screen
-myscreen.keyboard.nums = [19,20,127,126,2,4,50,37,28,25, 9, 3]; % 1 2 up down s f space enter - =(+) (c=red) (d=green)
+myscreen.keyboard.nums = [19,20,127,126,2,4,50,37,28,25, 9, 3]; % 1 2 up down s f space enter - =(+) (c=red) (d=green)  **124 left  125 right
 myscreen = initScreen(myscreen);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%
@@ -397,7 +395,6 @@ if task.thistrial.thisseg == 1
         % end
         task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
 
-<<<<<<< HEAD
         testValue = 10^(testValue);
         % task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
         % while testValue - stimulus.coordshift + task.thistrial.noise < -stimulus.coordshift
@@ -408,10 +405,6 @@ if task.thistrial.thisseg == 1
     end
 
 	% task.thistrial.probeOffset = (testValue + task.thistrial.noise);
-=======
-
-    end
->>>>>>> 736229a0cdb802fcb3f3e87d6c711ffe1d1f9113
 
 	
  	switch char(task.thistrial.condition)
@@ -698,7 +691,6 @@ if ~task.thistrial.gotResponse
     elseif task.thistrial.whichButton == 2
       task.thistrial.respRight = 1;
     end
-<<<<<<< HEAD
 
     stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, ...
       task.thistrial.respRight, log10(task.thistrial.probeOffset));
@@ -722,7 +714,7 @@ if ~task.thistrial.gotResponse
     % else
     %     stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     % end
-=======
+
     if ~(stimulus.auditoryTrain||stimulus.visualTrain|| stimulus.visualMan || stimulus.auditoryMan)
         
         if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
@@ -737,7 +729,6 @@ if ~task.thistrial.gotResponse
     elseif ~(stimulus.visualMan || stimulus.auditoryMan)
         stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     end
->>>>>>> 736229a0cdb802fcb3f3e87d6c711ffe1d1f9113
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
     task = jumpSegment(task);
