@@ -11,7 +11,7 @@
 %
 %        e.g: waitForKeypress
 %
-function [  ]=waitForKeypress(  )
+function [ key ]=waitForKeypress(  )
 
 while (1); k=mglGetKeys; if (any(k)),break;end;end
 keycode = find(k);
