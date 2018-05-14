@@ -185,6 +185,8 @@ if ~isfield(stimulus,'runs')
         crun = struct;
         crun.idxs = order((idxs(ri)+1):idxs(ri+1));
         crun.text = sprintf('Run group %i',ri);
+        crun.oids = stimulus.fbsdata.ids(crun.idxs);
+        crun.anns = stimulus.fbsdata.anns(crun.idxs,:);
         crun.fixate = true;
         for reps = 1:3
             crun.repeat = reps;
@@ -199,7 +201,7 @@ if ~isfield(stimulus,'runs')
         % for each rep round, 
         runOrder = runNums(randperm(length(runNums)));
         for run = 1:length(runNums)
-            stimulus.runs.runData((reps-1)*length(runNums)+run) = stimulus.runs.runs(runOrder(run));
+            stimulus.runs.runData((reps-1)*length(runNums)+run) = stimulus.runs.runs(runOrder(run),reps);
         end
         stimulus.runs.runOrder = [stimulus.runs.runOrder runOrder];
     end
@@ -388,3 +390,8 @@ for ii = 1:length(semdata.imgs)
     
     stimulus.fbsdata.tex{ii} = mglCreateTexture(img);
 end
+
+%% pull the annotations mglClose
+
+stimulus.fbsdata.anns = semdata.anns;
+stimulus.fbsdata.ids = semdata.ids;
