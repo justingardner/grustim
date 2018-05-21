@@ -7,7 +7,7 @@
 %       date: 03/03/2016
 %    purpose: Code for replicating Harrison & Tong, 2009
 %       
-function myscreen = cogneuro_chichi(scan,numJitter)
+function myscreen = cogneuro_workingmemory_chichi(scan,numJitter)
 
 % check arguments
 if ~any(nargin == [0 1 2])
@@ -70,8 +70,10 @@ if debugMode
 end
 
 % initalize the screen, set the background to gray
+myscreen = initScreen('fMRIproj32');
 myscreen.background = 128/255;
-myscreen = initScreen(myscreen);
+mglClearScreen(myscreen.background);mglFlush;
+mglClearScreen(myscreen.background);mglFlush;
 
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital

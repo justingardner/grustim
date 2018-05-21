@@ -84,7 +84,7 @@ end
 %% Setup Screen
 % Settings for Oban/Psychophysics room launch
 if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
+    myscreen = initScreen('fMRIproj32');
 else
     myscreen = initScreen('VPixx'); % this will default out if your computer isn't the psychophysics computer
 end
