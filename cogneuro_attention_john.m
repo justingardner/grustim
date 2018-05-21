@@ -26,7 +26,7 @@
 %
 %   TR .5 = 296 volumes (10 * 14 * 2 + 16)
 
-function [myscreen] = cogneuro_attention(varargin)
+function [myscreen] = cogneuro_attention_john(varargin)
 
 global stimulus
 clear fixStimulus
@@ -43,7 +43,7 @@ getArgs(varargin,{'stimFileNum=-1','testing=0','scan=0'});
 stimulus.scan = scan;
 stimulus.testing = testing;
 
-if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==4
+if stimulus.scan && ~mglGetParam('ignoreInitialVols')==16 && ~mglGetParam('ignoreInitialVols')==6
     warning('ignoreInitialVols is set to %i.',mglGetParam('ignoreInitialVols'));
     if ~strcmp('y',input('Is this correct? [y/n]'))
         mglSetParam('ignoreInitialVols',input('Please input the correct value (mux8 = 16, mux2 = 4): '));
@@ -58,7 +58,7 @@ stimulus.colors.rmed = 127.5;
 
 % We're going to add an equal number of reserved colors to the top and
 % bottom, to try to keep the center of the gamma table stable.
-stimulus.colors.reservedBottom = [0 0 0; .6 .6 .6]; % fixation cross colors
+stimulus.colors.reservedBottom = [0 0 0; .8 .8 .8]; % fixation cross colors
 stimulus.colors.reservedTop = [.55 0 0; 0 .55 0]; % correct/incorrect colors
 stimulus.colors.black = 0/255; stimulus.colors.white = 1/255;
 stimulus.colors.red = 254/255; stimulus.colors.green = 255/255;
@@ -76,7 +76,7 @@ stimulus.pedestals.initThresh.angle = 10.0; % angle that the staircase will star
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
 if stimulus.scan
-    stimulus.contrast = .04; % 4%
+    stimulus.contrast = .5; % 4%
 else
     stimulus.contrast = .5;
 end
@@ -84,7 +84,7 @@ end
 %% Setup Screen
 % Settings for Oban/Psychophysics room launch
 if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
+    myscreen = initScreen('fMRIproj32');
 else
     myscreen = initScreen('VPixx'); % this will default out if your computer isn't the psychophysics computer
 end
@@ -260,7 +260,7 @@ disp(sprintf('(cogneuro_att) Attending: %s, Respond: %s, Rot: %2.2f deg',aT{task
 % Now make our gratings (we could save these ahead of time and rotate, but
 % they generate in only a few ms so whatever, screw it).
 g = mglMakeGrating(10,10,0.5,stimulus.pedestals.angle + rot*task.thistrial.dir1,0);
-gauss = mglMakeGaussian(10,10,2,2);
+gauss = mglMakeGaussian(10,10,1.25,1.25);
 % normalize
 g = (g .* gauss + 1) / 2; % bounded 0-1
 g =  (stimulus.colors.nUnreserved-stimulus.colors.nReserved)* g +stimulus.colors.nReserved + 1;
@@ -339,8 +339,8 @@ mglFixationCross(1.5,1.5,stimulus.live.fixColor);
 
 function stimulus = upGrate(stimulus)
 % distance is to the center of the grating, in degrees
-mglBltTexture(stimulus.live.tex1,[-7.5 0]);
-mglBltTexture(stimulus.live.tex2,[7.5 0]);
+mglBltTexture(stimulus.live.tex1,[-5 0]);
+mglBltTexture(stimulus.live.tex2,[5 0]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
