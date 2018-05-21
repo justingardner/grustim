@@ -18,8 +18,8 @@ if nargin < 1, scan = 0; end
 if nargin < 1, numJitter = 4; end
 
 % set for debugging - makes the delay period shorter among other things.
-debugMode = 1;
-
+debugMode = 0;
+if scan, debugMode = 0;end
 % stimulus parameters get stored in a global variable
 global stimulus;
 
@@ -50,12 +50,11 @@ stimulus.fixWidth = 1.5;
 
 % orientation jitter values
 stimulus.orientationJitterValues = [-5 -15 -30 5 15 30];
-stimulus.orientationJitterValues = 90;%[-5 -15 -30 5 15 30];
 
 % delay interval in seconds
-stimulus.delayInterval = 10;
-stimulus.itimin = 3;
-stimulus.itimax = 12;
+stimulus.delayInterval = 11;
+stimulus.itimin = 2;
+stimulus.itimax = 9;
 
 % only sets these in debug mode for testing
 if debugMode
@@ -66,6 +65,8 @@ if debugMode
   % set stimulus iti
   stimulus.itimin = 2;
   stimulus.itimax = 2;
+  % amount of change
+  stimulus.orientationJitterValues = 90;%[-5 -15 -30 5 15 30];
 end
 
 % initalize the screen, set the background to gray
