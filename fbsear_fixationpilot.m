@@ -10,7 +10,7 @@ function [ myscreen ] = fbsear_fixationpilot( varargin )
 %
 %    Parameters:
 %
-%    You should use *836* volumes (270 images * 1.5 secs * 2 + 16) you will
+%    You should use *826* volumes (270 images * 1.5 secs * 2 + 16) you will
 %    have to manually end each run by hitting ESC (if you use 836+1 a volume
 %    is acquired after the screen goes dark, so don't do that)
 %
@@ -184,6 +184,7 @@ if ~isfield(stimulus,'runs')
     for ri = 1:4
         crun = struct;
         crun.idxs = order((idxs(ri)+1):idxs(ri+1));
+        crun.group = ri;
         crun.text = sprintf('Run group %i',ri);
         crun.oids = stimulus.fbsdata.ids(crun.idxs);
         crun.anns = stimulus.fbsdata.anns(crun.idxs,:);
