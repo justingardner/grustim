@@ -9,8 +9,10 @@ function [ myscreen ] = fbsear_fixationpilot( varargin )
 %    Date: 04/13/2017
 %
 %    Parameters:
-%
-%    You should use *836* volumes (270 images * 1.5 secs * 2 + 16) you will
+% 
+%   with mux6 sequence, use: 270 images * 2 vols + 12 = 552
+%   with mux8  270 * 3 vols + 16 = 826
+%    you will
 %    have to manually end each run by hitting ESC (if you use 836+1 a volume
 %    is acquired after the screen goes dark, so don't do that)
 %
@@ -184,6 +186,7 @@ if ~isfield(stimulus,'runs')
     for ri = 1:4
         crun = struct;
         crun.idxs = order((idxs(ri)+1):idxs(ri+1));
+        crun.group = ri;
         crun.text = sprintf('Run group %i',ri);
         crun.oids = stimulus.fbsdata.ids(crun.idxs);
         crun.anns = stimulus.fbsdata.anns(crun.idxs,:);
@@ -226,7 +229,7 @@ disp('`````````````````````````````````````````````````````````````````');
 
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.seglen = [1.4];
+task{1}{1}.seglen = [1.3];
 stimulus.seg.stim = 1;
 
 task{1}{1}.synchToVol = [1 1];

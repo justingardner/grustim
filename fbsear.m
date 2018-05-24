@@ -18,7 +18,7 @@ function [ myscreen ] = fbsear( varargin )
 %
 %
 %
-pi
+
 global stimulus
 
 stimulus = struct;

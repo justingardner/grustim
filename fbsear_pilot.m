@@ -250,8 +250,13 @@ disp('```````````````RUN INFO: WRITE THIS DOWN`````````````````````````');
 disp(sprintf('```` Current run type: %s',stimulus.curRun.text));
 disp(sprintf('```` Group type: %i',stimulus.curRun.group));
 disp(sprintf('```` This is repeat: %i',stimulus.curRun.repeat));
-maskType = {'NO','YES','YES'};
-disp(sprintf('```` Using mask data set: %s',maskType{stimulus.curRun.useMask+1}));
+%<<<<<<< HEAD
+%maskType = {'NO','YES'};
+%%disp(sprintf('```` Using mask data set: %s',maskType{stimulus.curRun.useMask+1}));
+%=======
+%maskType = {'NO','YES','YES'};
+%disp(sprintf('```` Using mask data set: %s',maskType{stimulus.curRun.useMask+1}));
+%>>>>>>> 24ab497ededea48010a3f48d0bd2f26faeb46d79
 disp('`````````````````````````````````````````````````````````````````');
 disp('`````````````````````````````````````````````````````````````````');
 %% Pull textures
