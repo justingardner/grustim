@@ -19,7 +19,6 @@ plots = 0;
 noeye = 0;
 debug = 0;
 getData = 0;
-analyzeStair = 0;
 getArgs(varargin,{'getData=0',  'scan=0','plots=0','noeye=0','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
@@ -98,6 +97,7 @@ stimulus.seg{1}.ITI = 2;
 
 % Task important variables
 stimulus.eccentricity = 6;
+stimulus.stimSize = 2;
 
 % Trial parameters
 task{1}{1}.parameter.stimLength = [1,2,3]; % Number of frames to present stimulus for
@@ -290,17 +290,23 @@ end
 % Draw stimulus
 if task.taskID == 1 && task.thistrial.thisseg==stimulus.seg{1}.stim % LEFT side task
   if stimulus.live.stim1 < task.thistrial.stimLength
-    mglBltTexture(stimulus.live.grating, [-stimulus.eccentricity, 0]);
+    %mglBltTexture(stimulus.live.grating, [-stimulus.eccentricity, 0, stimulus.stimSize, stimulus.stimSize]);
+    drawCheckerboard(-stimulus.eccentricity, 0, stimulus.stimSize);
     stimulus.live.stim1 = stimulus.live.stim1 + 1;
-  elseif stimulus.live.stim1 >= task.thistrial.stimLength
+  elseif stimulus.live.stim1 > task.thistrial.stimLength
     task = jumpSegment(task);
+  else
+    stimulus.live.stim1 = stimulus.live.stim1 + 1;
   end
 elseif task.taskID == 2 && task.thistrial.thisseg==stimulus.seg{1}.stim % RIGHT side task
   if stimulus.live.stim2 < task.thistrial.stimLength
-    mglBltTexture(stimulus.live.grating, [stimulus.eccentricity, 0]);
+    %mglBltTexture(stimulus.live.grating, [stimulus.eccentricity, 0, stimulus.stimSize, stimulus.stimSize]);
+    drawCheckerboard(stimulus.eccentricity, 0, stimulus.stimSize);
     stimulus.live.stim2 = stimulus.live.stim2 + 1;
-  elseif stimulus.live.stim2 >= task.thistrial.stimLength
+  elseif stimulus.live.stim2 > task.thistrial.stimLength
     task = jumpSegment(task);
+  else
+    stimulus.live.stim2 = stimulus.live.stim2 + 1;
   end
 end
 
@@ -432,6 +438,14 @@ end
 
 return
 
+function drawCheckerboard(x,y,sz)
+
+sqSz = sz/2;
+
+mglQuad([x-sqSz, x, x-sqSz, x; x, x+sqSz, x, x+sqSz; x, x+sqSz, x, x+sqSz; x-sqSz, x, x-sqSz, x],...
+        [y+sqSz, y+sqSz, y, y; y+sqSz, y+sqSz, y, y; y, y, y-sqSz, y-sqSz; y, y, y-sqSz, y-sqSz],...
+        [0, 1, 1, 0; 0, 1, 1, 0; 0, 1, 1, 0]);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -447,6 +461,10 @@ gauss = mglMakeGaussian(sz,sz,sz/6,sz/6);
 alphamask = repmat(grating,1,1,4);
 alphamask(:,:,4) = gauss*255;
 
+alphamask = ones(20,20);
+alphamask(1:10, 1:10) = 0;
+alphamask(10:20, 10:20) = 0;
+
 % we'll adjust the gamma table to control contrast
-stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast        
+stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
 
