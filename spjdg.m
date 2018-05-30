@@ -12,11 +12,11 @@ getArgs(varargin,{'high=0','low=0','bimodal=0','visual=0','auditory=0','tenbit=1
 if isempty(spencer) || ~any(spencer==[0 1])
     error('(spjdg) spencer?');
 end
-stimulus.gaussian.contrast = 0.05;
-stimulus.gaussian.diameterHighRel = 6;
+stimulus.gaussian.contrast = 0.5;
+stimulus.gaussian.diameterHighRel = 36;
 stimulus.gaussian.diameterLowRel = 36;
 if ~noiseHigh && ~noiseLow
-stimulus.noiseHighRel = 0.15;
+stimulus.noiseHighRel = 0.0;
 stimulus.noiseLowRel = 0.65;
 else
   stimulus.noiseHighRel = noiseHigh;
@@ -102,7 +102,7 @@ stimulus.delta=2.5;
 stimulus.fixWidth = 2.5;
 stimulus.fixColor = [1 1 1];
 stimulus.fixYpos = -4;
-if ~visualMan || ~auditoryMan || ~auditoryTrain || ~visualTrain || ~easy
+if ~(visualMan || auditoryMan || auditoryTrain || visualTrain || easy)
 stimulus.coordshift = 15;
 else
 stimulus.coordshift = 0;
@@ -253,6 +253,7 @@ task{1}{1}.randVars.calculated.condNum = nan;
 task{1}{1}.randVars.calculated.tr = nan;
 task{1}{1}.randVars.calculated.relNum = nan;
 task{1}{1}.randVars.calculated.respRight = nan;
+task{1}{1}.randVars.calculated.direction = nan;
 
 if stimulus.visualTrain || stimulus.auditoryTrain || stimulus.visualMan || stimulus.auditoryMan || stimulus.easy
   task{1}{1}.randVars.calculated.visRel = nan;
@@ -367,6 +368,7 @@ if task.thistrial.thisseg == 1
       else
         sign = 1;
       end
+      task.thistrial.direction = sign;
     % end
     if stimulus.auditoryTrain || stimulus.visualTrain
     
@@ -385,38 +387,22 @@ if task.thistrial.thisseg == 1
       % task.thistrial.probeOffset = task.thistrial.offset;
         %% get Test Value
         [testValue, stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum});
-        % % if ~stimulus.low
-        % if testValue > 10.5
-        %     testValue = 10.5;
-        % end
-        % else
-        %     if testValue > 4
-        %         testValue = 4;
-        %     end
-        % end
-        % task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
-        % % while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
-        %     task.thistrial.noise = 4 * randn(1);
-        % % end
-        % if testValue > 15 + stimulus.coordshift;
-        %   testValue = 15 + stimulus.coordshift;
-        % else testValue + stimulus.coordshift < -15
-        %   testValue = -15 + stimulus.coordshift;
-        % end
-        task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
-
+ 
         testValue = 10^(testValue);
-        % task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
-        % while testValue - stimulus.coordshift + task.thistrial.noise < -stimulus.coordshift
-        %     task.thistrial.noise = 4 * randn(1);
-        % end
-        task.thistrial.probeOffset = testValue;% + task.thistrial.noise;
+        if testValue > 15 + stimulus.coordshift
+          testValue = 15 + stimulus.coordshift;
+        elseif testValue < -15 + stimulus.coordshift
+          testValue = -15 + stimulus.coordshift;
+        end
+        task.thistrial.noise = 5 * randn(1); % random number from a gaussian distribution with a std of 4 deg
+        while (testValue + task.thistrial.noise < -15+stimulus.coordshift) || (testValue + task.thistrial.noise > 15+stimulus.coordshift)
+            task.thistrial.noise = 5 * randn(1);
+        end
+        task.thistrial.probeOffset = testValue + task.thistrial.noise;
 
     end
 
-	% task.thistrial.probeOffset = (testValue + task.thistrial.noise);
 
-	
  	switch char(task.thistrial.condition)
 
 		case 'vision'
@@ -684,8 +670,8 @@ elseif task.thistrial.thisseg ==6
 % here, we just check whether this is the first time we got a response
 if ~task.thistrial.gotResponse
   
-	if (task.thistrial.probeOffset < 0 && (task.thistrial.whichButton == 1 || (stimulus.spencer==1&&task.thistrial.whichButton==11) )) || ... % closer to the first
-		(task.thistrial.probeOffset > 0 && (task.thistrial.whichButton == 2 || (stimulus.spencer==1&&task.thistrial.whichButton==12) ))  % closer to the third 
+	if (task.thistrial.probeOffset-stimulus.coordshift < 0 && (task.thistrial.whichButton == 1 || (stimulus.spencer==1&&task.thistrial.whichButton==11) )) || ... % closer to the first
+		(task.thistrial.probeOffset-stimulus.coordshift > 0 && (task.thistrial.whichButton == 2 || (stimulus.spencer==1&&task.thistrial.whichButton==12) ))  % closer to the third 
 		% correct
 		task.thistrial.correct = 1;
 		% if any(task.thistrial.condNum == [1 2 3])	
