@@ -6,17 +6,17 @@ global stimulus
 
 % get arguments
 high = 0; low = 0; bimodal=0; visual=0; auditory=0; tenbit = 1; practice = 0; auditoryTrain = 0; visualTrain=0; 
-visualMan=0; auditoryMan=0; spencer=[]; noiseHigh=0; noiseLow=0; unimodal=0;
+visualMan=0; auditoryMan=0; spencer=[]; noiseHigh=0; noiseLow=0; unimodal=0; easy=0;
 getArgs(varargin,{'high=0','low=0','bimodal=0','visual=0','auditory=0','tenbit=1','practice=0',...
-  'auditoryTrain=0','visualTrain=0','visualMan=0','auditoryMan=0','spencer=[]','noiseHigh=0','noiseLow=0','unimodal=0'},'verbose=1');
+  'auditoryTrain=0','visualTrain=0','visualMan=0','auditoryMan=0','spencer=[]','noiseHigh=0','noiseLow=0','unimodal=0','easy=0'},'verbose=1');
 if isempty(spencer) || ~any(spencer==[0 1])
     error('(spjdg) spencer?');
 end
-stimulus.gaussian.contrast = 0.05;
-stimulus.gaussian.diameterHighRel = 6;
+stimulus.gaussian.contrast = 0.5;
+stimulus.gaussian.diameterHighRel = 36;
 stimulus.gaussian.diameterLowRel = 36;
 if ~noiseHigh && ~noiseLow
-stimulus.noiseHighRel = 0.15;
+stimulus.noiseHighRel = 0.0;
 stimulus.noiseLowRel = 0.65;
 else
   stimulus.noiseHighRel = noiseHigh;
@@ -27,6 +27,12 @@ if visualMan
   stimulus.noiseContrast = 0;
   stimulus.gaussian.diameter = stimulus.gaussian.diameterHighRel;
   stimulus.offset = 10;
+  stimulus.visrel = 1;
+elseif easy
+    stimulus.noiseContrast = 0;
+    stimulus.gaussian.diameter = 36;
+    stimulus.gaussian.contrast = 0.5;
+    stimulus.offset = 10;
   stimulus.visrel = 1;
 else
 
@@ -66,6 +72,7 @@ stimulus.visualMan = visualMan;
 stimulus.auditoryMan = auditoryMan;
 stimulus.spencer= spencer;
 stimulus.unimodal=unimodal;
+stimulus.easy = easy;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%f%%%%%%%%%%%%%%%%%%%%%%
 stimulus.gaussian.duration = .05;%.015;% .025;%1/60; % one(or two) frame 
     if ~stimulus.tenbit
@@ -95,7 +102,7 @@ stimulus.delta=2.5;
 stimulus.fixWidth = 2.5;
 stimulus.fixColor = [1 1 1];
 stimulus.fixYpos = -4;
-if ~visualMan || ~auditoryMan || ~auditoryTrain || ~visualTrain
+if ~(visualMan || auditoryMan || auditoryTrain || visualTrain || easy)
 stimulus.coordshift = 15;
 else
 stimulus.coordshift = 0;
@@ -138,7 +145,7 @@ stimulus.transpd.lowRel(still+1:stimulus.nRefresh+1) = min(stimulus.transpd.lowR
 
 
 % initalize the screen
-myscreen.keyboard.nums = [19,20,127,126,2,4,50,37,28,25, 9, 3]; % 1 2 up down s f space enter - =(+) (c=red) (d=green)  **124 left  125 right
+myscreen.keyboard.nums = [124,125,127,126,2,4,50,37,28,25, 9, 3]; % 1 2 up down s f space enter - =(+) (c=red) (d=green)  **124 left  125 right   19 1, 20 2
 myscreen = initScreen(myscreen);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%
@@ -146,15 +153,19 @@ myscreen = initScreen(myscreen);
 %%%%%%%%%%%%%%%%%%%%% 
 task{1}{1}.waitForBacktick = 1;
 stimDur = stimulus.gaussian.duration;
-if ~(stimulus.visualMan || stimulus.auditoryMan)
+if ~(stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
 task{1}{1}.segmin = [1 0.5 stimDur 0.5 stimDur inf 0.5];
 task{1}{1}.getResponse = [0 0 0 0 0 1 0];
 elseif stimulus.visualMan
-task{1}{1}.segmin = [2 0.5 stimDur*100 0.5*10 stimDur*100 inf inf];
+task{1}{1}.segmin = [2 0.5 stimDur*25 0.5*10 stimDur*25 inf inf];
 task{1}{1}.getResponse = [0 0 0 0 0 1 1];
 elseif stimulus.auditoryMan
-  task{1}{1}.segmin = [2 0.5 stimDur 0.5*5 stimDur inf inf];
+  task{1}{1}.segmin = [2 0.5 stimDur 0.5*4 stimDur inf inf];
 task{1}{1}.getResponse = [0 0 0 0 0 1 1];
+elseif stimulus.easy
+    task{1}{1}.segmin = [1 0.5 1 0.5 1 inf 0.5];
+task{1}{1}.getResponse = [0 0 0 0 0 1 0];
+    
 
 end
 
@@ -174,14 +185,13 @@ elseif stimulus.auditoryTrain || stimulus.auditoryMan
     if stimulus.auditoryMan
     task{1}{1}.randVars.uniform.visRel = stimulus.visrel;
     end
-    
     % figure;
     % xlabel('trial'); ylabel('correct'); 
     % xaxis([0 30]); yaxis([-1 2]);
-elseif stimulus.visualTrain || stimulus.visualMan
+elseif stimulus.visualTrain || stimulus.visualMan || stimulus.easy
   task{1}{1}.parameter.condition = {'vision'};
   task{1}{1}.parameter.closeTo = [1 2];
-  if stimulus.visualMan
+  if stimulus.visualMan || stimulus.easy
     task{1}{1}.randVars.uniform.visRel = stimulus.visrel;
    end
 
@@ -243,8 +253,9 @@ task{1}{1}.randVars.calculated.condNum = nan;
 task{1}{1}.randVars.calculated.tr = nan;
 task{1}{1}.randVars.calculated.relNum = nan;
 task{1}{1}.randVars.calculated.respRight = nan;
+task{1}{1}.randVars.calculated.direction = nan;
 
-if stimulus.visualTrain || stimulus.auditoryTrain || stimulus.visualMan || stimulus.auditoryMan
+if stimulus.visualTrain || stimulus.auditoryTrain || stimulus.visualMan || stimulus.auditoryMan || stimulus.easy
   task{1}{1}.randVars.calculated.visRel = nan;
 end
 if stimulus.visualMan || stimulus.auditoryMan
@@ -272,7 +283,7 @@ stimulus = initClick(stimulus,task);
 
 mglWaitSecs(1);
 mglClearScreen(stimulus.colors.black);
-mglTextSet([],50,stimulus.colors.white);
+mglTextSet([],85,stimulus.colors.white);
 mglTextDraw('READY',[0 0]);
 mglFlush;
 mglClearScreen(stimulus.colors.black);
@@ -304,10 +315,10 @@ dispPsychometric(task{1}{1},stimulus);
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 if task.thistrial.thisseg == 1
-  if strcmp(char(task.thistrial.condition),'auditory') && task.thistrial.visRel == 0
-    disp('(spjdg) Skipping auditory low rel trial');
-    task = jumpSegment(task,inf);
-  end
+%   if strcmp(char(task.thistrial.condition),'auditory') && task.thistrial.visRel == 0
+%     disp('(spjdg) Skipping auditory low rel trial');
+%     task = jumpSegment(task,inf);
+%   end
   stimulus.f = 0;
   task.thistrial.r = 0;
 	stimulus.fixColor = stimulus.colors.blue;
@@ -316,10 +327,10 @@ if task.thistrial.thisseg == 1
     task.thistrial.visRel = 1;
   elseif (stimulus.visualTrain && stimulus.low) %||(stimulus.visual && stimulus.low)
     task.thistrial.visRel = 0;
-  elseif stimulus.visualMan || stimulus.auditoryMan
+  elseif stimulus.visualMan || stimulus.auditoryMan || stimulus.easy
     task.thistrial.visRel = stimulus.visrel;
   end
-  if ~stimulus.visualMan
+  if ~stimulus.visualMan || ~stimulus.easy
    if task.thistrial.visRel == 1
           task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
           task.thistrial.thisTranspd = stimulus.transpd.highRel;
@@ -333,7 +344,7 @@ if task.thistrial.thisseg == 1
     end
   
 
-  elseif stimulus.visualMan
+  elseif stimulus.visualMan || stimulus.easy
       task.thistrial.thisCreateNoiseCon = stimulus.noiseContrast;
       task.thistrial.relNum = task.thistrial.visRel;
       % task.thistrial.thisTranspd = stimulus.transpd.highRel;
@@ -357,6 +368,7 @@ if task.thistrial.thisseg == 1
       else
         sign = 1;
       end
+      task.thistrial.direction = sign;
     % end
     if stimulus.auditoryTrain || stimulus.visualTrain
     
@@ -369,44 +381,28 @@ if task.thistrial.thisseg == 1
         %   task.thistrial.visRel = 1;
         % end
         task.thistrial.probeOffset = sign * testValue;
-    elseif stimulus.auditoryMan || stimulus.visualMan
+    elseif stimulus.auditoryMan || stimulus.visualMan || stimulus.easy
       task.thistrial.probeOffset = stimulus.offset * sign;
     else
       % task.thistrial.probeOffset = task.thistrial.offset;
         %% get Test Value
         [testValue, stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum});
-        % % if ~stimulus.low
-        % if testValue > 10.5
-        %     testValue = 10.5;
-        % end
-        % else
-        %     if testValue > 4
-        %         testValue = 4;
-        %     end
-        % end
-        % task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
-        % % while (stimulus.midPoint + (testValue + task.thistrial.noise) <= stimulus.pos1+stimulus.delta ) || (stimulus.midPoint + (testValue + task.thistrial.noise) >= stimulus.pos3-stimulus.delta)
-        %     task.thistrial.noise = 4 * randn(1);
-        % % end
-        % if testValue > 15 + stimulus.coordshift;
-        %   testValue = 15 + stimulus.coordshift;
-        % else testValue + stimulus.coordshift < -15
-        %   testValue = -15 + stimulus.coordshift;
-        % end
-        task.thistrial.probeOffset = sign * (testValue + task.thistrial.noise);
-
+ 
         testValue = 10^(testValue);
-        % task.thistrial.noise = 4 * randn(1); % random number from a gaussian distribution with a std of 4 deg
-        % while testValue - stimulus.coordshift + task.thistrial.noise < -stimulus.coordshift
-        %     task.thistrial.noise = 4 * randn(1);
-        % end
-        task.thistrial.probeOffset = testValue;% + task.thistrial.noise;
+        if testValue > 15 + stimulus.coordshift
+          testValue = 15 + stimulus.coordshift;
+        elseif testValue < -15 + stimulus.coordshift
+          testValue = -15 + stimulus.coordshift;
+        end
+        task.thistrial.noise = 5 * randn(1); % random number from a gaussian distribution with a std of 4 deg
+        while (testValue + task.thistrial.noise < -15+stimulus.coordshift) || (testValue + task.thistrial.noise > 15+stimulus.coordshift)
+            task.thistrial.noise = 5 * randn(1);
+        end
+        task.thistrial.probeOffset = testValue + task.thistrial.noise;
 
     end
 
-	% task.thistrial.probeOffset = (testValue + task.thistrial.noise);
 
-	
  	switch char(task.thistrial.condition)
 
 		case 'vision'
@@ -425,7 +421,7 @@ if task.thistrial.thisseg == 1
       task.thistrial.xposV = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset+stimulus.delta ];
       task.thistrial.xposA = [stimulus.pos1 stimulus.midPoint+task.thistrial.probeOffset-stimulus.delta ];
 	end
-  if ~(stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan)
+  if ~(stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
     task.thistrial.xposV(2) = task.thistrial.xposV(2) - stimulus.coordshift;
     task.thistrial.xposA(2) = task.thistrial.xposA(2) - stimulus.coordshift;
   end
@@ -448,7 +444,7 @@ elseif task.thistrial.thisseg == 6%8
 	stimulus.fixColor = stimulus.colors.lightgrey;
 
 
-if ~(stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan)
+if ~(stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
 
 
  if task.trialnum < stimulus.nTrialTotal
@@ -509,6 +505,16 @@ if any(task.thistrial.thisseg == [3 5])
     end
     mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
     mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
+    if stimulus.easy
+        mglTextSet([],85,stimulus.colors.white);
+        if task.thistrial.thisseg == 3
+            text = 'FLASH 1';
+        else
+            text = 'FLASH 2';
+        end
+        mglTextDraw(text,[task.thistrial.xposV(floor(task.thistrial.thisseg/2)) 15]);
+    end
+
 	case 'auditory'
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
     mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
@@ -542,7 +548,11 @@ elseif task.thistrial.thisseg == 7 %9
     mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 
   end
-
+elseif task.thistrial.thisseg == 6
+     mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
+   mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
+    mglTextSet([],85,stimulus.colors.white);
+    mglTextDraw('RESPOND',[0 -1.5]);
 
 else
    mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
@@ -629,7 +639,7 @@ if task.thistrial.thisseg == 7 && (stimulus.visualMan || stimulus.auditoryMan)
       stimulus.offset = 10;
 
       % reset segment durs
-      task.segmin = [2 0.5 stimulus.gaussian.duration*100 0.5*10 stimulus.gaussian.duration*100 inf inf];
+      task.segmin = [2 0.5 stimulus.gaussian.duration*75 0.5*10 stimulus.gaussian.duration*75 inf inf];
       task.segmax = task.segmin;
       disp(sprintf('(spjdg) manual mode: high vision done. starting low vision'));
 
@@ -660,17 +670,21 @@ elseif task.thistrial.thisseg ==6
 % here, we just check whether this is the first time we got a response
 if ~task.thistrial.gotResponse
   
-	if (task.thistrial.probeOffset < 0 && (task.thistrial.whichButton == 1 || (stimulus.spencer==1&&task.thistrial.whichButton==11) )) || ... % closer to the first
-		(task.thistrial.probeOffset > 0 && (task.thistrial.whichButton == 2 || (stimulus.spencer==1&&task.thistrial.whichButton==12) ))  % closer to the third 
+	if (task.thistrial.probeOffset-stimulus.coordshift < 0 && (task.thistrial.whichButton == 1 || (stimulus.spencer==1&&task.thistrial.whichButton==11) )) || ... % closer to the first
+		(task.thistrial.probeOffset-stimulus.coordshift > 0 && (task.thistrial.whichButton == 2 || (stimulus.spencer==1&&task.thistrial.whichButton==12) ))  % closer to the third 
 		% correct
 		task.thistrial.correct = 1;
 		% if any(task.thistrial.condNum == [1 2 3])	
 		% % feedback
 		if stimulus.practice || stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan
 			stimulus.fixColor = stimulus.colors.green;
-		end
+        end
 		disp(sprintf('(spjdg) %i:%s offset %0.3f resp %i correct', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset-stimulus.coordshift, task.thistrial.whichButton));
+        if stimulus.easy
+            mglTextSet([],85,stimulus.colors.white);
+        mglTextDraw('CORRECT',[0 -1.5]);
+        end
 
 	else
 		% incorrect
@@ -681,9 +695,13 @@ if ~task.thistrial.gotResponse
 		end
 		disp(sprintf('(spjdg) %i:%s offset %0.3f resp %i incorrect', ...
             task.trialnum, char(task.thistrial.condition), task.thistrial.probeOffset-stimulus.coordshift, task.thistrial.whichButton));
+        if stimulus.easy
+            mglTextSet([],85,stimulus.colors.white);
+        mglTextDraw('INCORRECT',[0 -1.5]);
+        end
 	end
 
-	if ~(stimulus.practice || stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan)
+	if ~(stimulus.practice || stimulus.auditoryTrain || stimulus.visualTrain || stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
 		stimulus.fixColor = stimulus.colors.cyan;
 
     if task.thistrial.whichButton == 1
@@ -715,7 +733,7 @@ if ~task.thistrial.gotResponse
     %     stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     % end
 
-    if ~(stimulus.auditoryTrain||stimulus.visualTrain|| stimulus.visualMan || stimulus.auditoryMan)
+    if ~(stimulus.auditoryTrain||stimulus.visualTrain|| stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
         
         if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
             stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, task.thistrial.correct, ...
@@ -726,7 +744,7 @@ if ~task.thistrial.gotResponse
            stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, thisrandom, ...
             abs(task.thistrial.probeOffset));
         end
-    elseif ~(stimulus.visualMan || stimulus.auditoryMan)
+    elseif ~(stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
         stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     end
 	task.thistrial.resp = task.thistrial.whichButton;
@@ -745,7 +763,7 @@ if stimulus.auditoryTrain || stimulus.visualTrain
         'initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize, ...
     'minStepsize',stimulus.minStepsize,'maxStepsize',stimulus.maxStepsize,'minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,...
      'stepRule=pest','dispFig=1');
-elseif ~(stimulus.visualMan || stimulus.auditoryMan)
+elseif ~(stimulus.visualMan || stimulus.auditoryMan ||stimulus.easy)
 
 	condNames = {'vision','auditory','noOffset','posOffset','negOffset'};
   relNames = {'high','low'};
