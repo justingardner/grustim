@@ -16,10 +16,10 @@ stimulus = struct;
 % add arguments later
 scan = 0;
 plots = 0;
-noeye = 0;
+noeye = 1;
 debug = 0;
 getData = 0;
-getArgs(varargin,{'getData=0',  'scan=0','plots=0','noeye=0','debug=0'});
+getArgs(varargin,{'getData=0','scan=0','plots=0','noeye=1','debug=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -55,7 +55,7 @@ disp(sprintf('(saccadeRF) This is run #%i',stimulus.counter));
 myscreen = initScreen('VPixx2');
 
 % set background to grey
-myscreen.background = 0.5;
+myscreen.background = 0; % change back to 0.5;
 
 %% Setup missing initial variables
 if ~isfield(stimulus,'counter')
@@ -81,16 +81,19 @@ stimulus.live.cueColor = stimulus.colors.black;
 
 stimulus.curTrial(1) = 0;
 
+% Number of Trials
+nTrials = 10000;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%% TASK 1: Left Side %%%%%%%%%%%%%%%%%%%%%%
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 %% Define stimulus timing
-stimTime = 2.000;
-ITI = 5.000;
-task{1}{1}.segmin = [stimTime ITI];
-task{1}{1}.segmax = [stimTime ITI];
+stimTime = 1.000;
+ITI_min = 3.000; ITI_max = 12.00;
+task{1}{1}.segmin = [stimTime ITI_min];
+task{1}{1}.segmax = [stimTime ITI_max];
 stimulus.seg = {};
 stimulus.seg{1}.stim = 1;
 stimulus.seg{1}.ITI = 2;
@@ -105,7 +108,7 @@ task{1}{1}.parameter.stimSize = [1,2,4];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
-task{1}{1}.numTrials = 180;
+task{1}{1}.numTrials = nTrials;
 task{1}{1}.random = 1;
 if stimulus.scan
   task{1}{1}.synchToVol(stimulus.seg{1}.ITI) = 1;
@@ -117,6 +120,8 @@ end
 task{1}{1}.randVars.calculated.detected = 0;
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
+
+task{1}{1}.randVars.calculated.stimTime = NaN;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -130,8 +135,8 @@ task{2}{1} = struct;
 task{2}{1}.waitForBacktick = 1;
 
 %% Define stimulus timing
-task{2}{1}.segmin = [stimTime ITI];
-task{2}{1}.segmax = [stimTime ITI];
+task{2}{1}.segmin = [stimTime ITI_min];
+task{2}{1}.segmax = [stimTime ITI_max];
 stimulus.seg = {};
 stimulus.seg{1}.stim = 1;
 stimulus.seg{1}.ITI = 2;
@@ -142,7 +147,7 @@ task{2}{1}.parameter.stimSize = [1,2,4];
 
 task{2}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{2}{1}.getResponse = zeros(size(task{1}{1}.segmin));
-task{2}{1}.numTrials = 180;
+task{2}{1}.numTrials = nTrials;
 task{2}{1}.random = 1;
 if stimulus.scan
   task{2}{1}.synchToVol(stimulus.seg{1}.ITI) = 1;
@@ -152,6 +157,8 @@ end
 task{2}{1}.randVars.calculated.detected = 0;
 task{2}{1}.randVars.calculated.dead = 0;
 task{2}{1}.randVars.calculated.visible = 1;
+
+task{2}{1}.randVars.calculated.stimTime = NaN;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -170,16 +177,18 @@ disp(sprintf('(saccadeRF) Starting run number: %i.',stimulus.counter));
 
 %% Main Task Loop
 
-mglClearScreen(0.5); 
+%% change back to 0.5
+mglClearScreen(0); 
 upFix(stimulus);
 
 mglFlush
-mglClearScreen(0.5); 
+mglClearScreen(0); 
 upFix(stimulus);
 
 phaseNum = 1;
 % Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
+  mglClearScreen(0);
   % update the left task
   [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
   % update the right task
@@ -215,10 +224,25 @@ task.thistrial.visible = 1;
 task.thistrial.response = 0;
 
 stimulus.live.gotResponse = 0;
+if task.taskID == 1
+  stimulus.live.stim1 = 0;
+  stimulus.live.task1Dead = 0;
+elseif task.taskID == 2
+  stimulus.live.stim2 = 0;
+  stimulus.live.task2Dead = 0;
+end
+if task.taskID == 1
+    stimulus.live.t1 = nan;
+elseif task.taskID == 2
+    stimulus.live.t2 = nan;
+end
+
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d (%d) - numFrames: %d', task.trialnum, task.taskID, task.thistrial.stimLength));
+if task.taskID == 1
+    disp(sprintf('Trial %d (L) - numFrames: %d', task.trialnum, task.thistrial.stimLength));
+end
 
 % Reset mouse to center of screen at start of every trial
 mglSetMousePosition(960,540,1);
@@ -233,20 +257,29 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
+stimulus.live.text = nan;
 stimulus.live.triggerWaiting = 0;
 stimulus.live.eyeDead = 0;
 stimulus.live.fix = 1;
 
-stimulus.live.stim1 = 0;
-stimulus.live.stim2 = 0;
-
-for i = 1:2
-  mglClearScreen(0.5);
-  if stimulus.live.fix
-    upFix(stimulus, stimulus.colors.blue);
-  end
-  mglFlush
+if task.thistrial.thisseg == stimulus.seg{1}.ITI && task.taskID == 1
+  disp(sprintf('Drawing %d frames took %g secs', task.thistrial.stimLength, stimulus.live.t1));
+  stimulus.live.text = mglText(sprintf('numFrames: %d', task.thistrial.stimLength));
 end
+
+%for i = 1:2
+  %if ~(stimulus.live.text && task.taskID == 2)
+  %  mglClearScreen(0); %% change back
+  %end
+  %if stimulus.live.text && task.taskID == 1
+  %  mglTextDraw(sprintf('Previous numFrames: %d', task.thistrial.stimLength), [-stimulus.eccentricity, 10]);
+  %end
+  
+  %if stimulus.live.fix
+  %  upFix(stimulus, stimulus.colors.blue);
+  %end
+  %mglFlush
+%end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -256,77 +289,90 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-% jump to next trial if you are dead and 1 second has elapsed since eye
-% movement
-if task.thistrial.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
-  task = jumpSegment(task,inf);
-end
+% % jump to next trial if you are dead and 1 second has elapsed since eye
+% % movement
+% if task.thistrial.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
+%   task = jumpSegment(task,inf);
+% end
+% 
+% % skip screen updates if you are already dead
+% if task.thistrial.dead
+%   if task.thistrial.dead && stimulus.live.eyeDead
+%     mglTextSet([],32,stimulus.colors.red);
+%     mglTextDraw('Eye Movement Detected',[0 0]);
+%   end
+%   return
+% end
+% 
+% % Eye movement detection Code
+% if ~stimulus.noeye
+%   [pos,~] = mglEyelinkGetCurrentEyePos;
+%   dist = hypot(pos(1),pos(2));
+%   if ~any(isnan(pos))
+%     if dist > 1.5 && stimulus.live.eyeCount > 30
+%       disp('Eye movement detected!!!!');
+%       task.thistrial.dead = 1;
+%       stimulus.live.eyeDead=1;
+%       return
+%     elseif dist > 1.5
+%       stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+%     end
+%   end
+% end
 
-% skip screen updates if you are already dead
-if task.thistrial.dead
-  if task.thistrial.dead && stimulus.live.eyeDead
-    mglTextSet([],32,stimulus.colors.red);
-    mglTextDraw('Eye Movement Detected',[0 0]);
+% Code for drawing checkerboard on each frame
+if task.taskID == 1 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stimulus.live.task1Dead% LEFT side task
+  % set clock
+  if stimulus.live.stim1 == 0
+      stimulus.live.t1 = mglGetSecs;
   end
-  return
-end
-
-% Eye movement detection Code
-if ~stimulus.noeye
-  [pos,~] = mglEyelinkGetCurrentEyePos;
-  dist = hypot(pos(1),pos(2));
-  if ~any(isnan(pos))
-    if dist > 1.5 && stimulus.live.eyeCount > 30
-      disp('Eye movement detected!!!!');
-      task.thistrial.dead = 1;
-      stimulus.live.eyeDead=1;
-      return
-    elseif dist > 1.5
-      stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-    end
-  end
-end
-
-% Draw stimulus
-if task.taskID == 1 && task.thistrial.thisseg==stimulus.seg{1}.stim % LEFT side task
+  
+  %draw stim
   if stimulus.live.stim1 < task.thistrial.stimLength
-    %mglBltTexture(stimulus.live.grating, [-stimulus.eccentricity, 0, stimulus.stimSize, stimulus.stimSize]);
     drawCheckerboard(-stimulus.eccentricity, 0, stimulus.stimSize);
     stimulus.live.stim1 = stimulus.live.stim1 + 1;
-  elseif stimulus.live.stim1 > task.thistrial.stimLength
-    task = jumpSegment(task);
   else
-    stimulus.live.stim1 = stimulus.live.stim1 + 1;
+    stimulus.live.t1 = mglGetSecs(stimulus.live.t1);
+    stimulus.live.task1Dead = 1;
   end
-elseif task.taskID == 2 && task.thistrial.thisseg==stimulus.seg{1}.stim % RIGHT side task
+elseif task.taskID == 2 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stimulus.live.task2Dead % RIGHT side task
+  % set clock
+  if stimulus.live.stim2 == 0
+    stimulus.live.t2 = mglGetSecs;
+  end
+  
+  %draw stim
   if stimulus.live.stim2 < task.thistrial.stimLength
-    %mglBltTexture(stimulus.live.grating, [stimulus.eccentricity, 0, stimulus.stimSize, stimulus.stimSize]);
     drawCheckerboard(stimulus.eccentricity, 0, stimulus.stimSize);
     stimulus.live.stim2 = stimulus.live.stim2 + 1;
-  elseif stimulus.live.stim2 > task.thistrial.stimLength
-    task = jumpSegment(task);
   else
-    stimulus.live.stim2 = stimulus.live.stim2 + 1;
+    stimulus.live.t2 = mglGetSecs(stimulus.live.t2);
+    stimulus.live.task2Dead = 1;
   end
 end
 
-% Trial trigger on eye fixation code  
-if ~stimulus.noeye && stimulus.live.triggerWaiting
-  now = mglGetSecs;
-  % check eye position, if 
-  if ~any(isnan(pos))
-    wasCentered = stimulus.live.centered;
-    stimulus.live.centered = dist<2.5;
-    if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
-      stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
-    end
-    stimulus.live.lastTrigger = now;
-  end
-  if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-    disp('Starting trial--eye centered.');
-    task = jumpSegment(task);
-  end
-end
+% Code for drawing text during ITI
+%if task.taskID == 1 && task.thistrial.thisseg == stimulus.seg{1}.ITI
+  %mglBltTexture(stimulus.live.text, [-stimulus.eccentricity, 10]);
+%end
+
+% % Trial trigger on eye fixation code  
+% if ~stimulus.noeye && stimulus.live.triggerWaiting
+%   now = mglGetSecs;
+%   % check eye position, if 
+%   if ~any(isnan(pos))
+%     wasCentered = stimulus.live.centered;
+%     stimulus.live.centered = dist<2.5;
+%     if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+%       stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
+%     end
+%     stimulus.live.lastTrigger = now;
+%   end
+%   if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
+%     disp('Starting trial--eye centered.');
+%     task = jumpSegment(task);
+%   end
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
