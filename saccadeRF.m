@@ -28,9 +28,9 @@ stimulus.getData = getData;
 clear localizer invisible scan noeye task test2
 
 if stimulus.plots
-    dispInfo(stimulus);
-    myscreen = 0;
-    return
+  dispInfo(stimulus);
+  myscreen = 0;
+  return
 end
 
 %% Stimulus parameters 
@@ -52,10 +52,14 @@ end
 disp(sprintf('(saccadeRF) This is run #%i',stimulus.counter));
 
 %% Setup Screen
-myscreen = initScreen('VPixx2');
+if stimulus.scan
+  myscreen = initScreen('fMRIprojFlex');
+else
+  myscreen = initScreen('VPixx2');
+end
 
 % set background to grey
-myscreen.background = 0; % change back to 0.5;
+myscreen.background = 0.5; 
 
 %% Setup missing initial variables
 if ~isfield(stimulus,'counter')
@@ -65,7 +69,7 @@ end
 %% Initialize Stimulus
 myscreen = initStimulus('stimulus',myscreen);
 
-localInitStimulus();
+%localInitStimulus();
   
 % Set response keys
 stimulus.responseKeys = [11 12 13 14];
@@ -121,8 +125,12 @@ task{1}{1}.randVars.calculated.detected = 0;
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
 
-task{1}{1}.randVars.calculated.stimTime = NaN;
+task{1}{1}.randVars.calculated.stimTimeL = NaN;
 
+
+%% Initialize stimulus
+initCheckerboard(stimulus.eccentricity, stimulus.stimSize, 4);
+%keyboard
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
@@ -143,7 +151,7 @@ stimulus.seg{1}.ITI = 2;
 
 % Trial parameters
 task{2}{1}.parameter.stimLength = [1,2,3]; % Number of frames to present stimulus for
-task{2}{1}.parameter.stimSize = [1,2,4];
+%task{2}{1}.parameter.stimSize = [1,2,4];
 
 task{2}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{2}{1}.getResponse = zeros(size(task{1}{1}.segmin));
@@ -166,6 +174,10 @@ for phaseNum = 1:length(task{2})
   [task{2}{phaseNum}, myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%Fixation task
+[task{3}, myscreen] = fixStairInitTask(myscreen);
+
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -177,22 +189,23 @@ disp(sprintf('(saccadeRF) Starting run number: %i.',stimulus.counter));
 
 %% Main Task Loop
 
-%% change back to 0.5
-mglClearScreen(0); 
+mglClearScreen(0.5); 
 upFix(stimulus);
 
 mglFlush
-mglClearScreen(0); 
+mglClearScreen(0.5); 
 upFix(stimulus);
 
 phaseNum = 1;
 % Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
-  mglClearScreen(0);
+  mglClearScreen(0.5);
   % update the left task
   [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
   % update the right task
   [task{2}, myscreen, phaseNum] = updateTask(task{2}, myscreen, phaseNum);
+  % update the fixation task
+  [task{3}, myscreen] = updateTask(task{3}, myscreen, 1);
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -241,7 +254,7 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 
 % Disp trial parameters each trial
 if task.taskID == 1
-    disp(sprintf('Trial %d (L) - numFrames: %d', task.trialnum, task.thistrial.stimLength));
+  disp(sprintf('Trial %d (L) - numFrames: %d', task.trialnum, task.thistrial.stimLength));
 end
 
 % Reset mouse to center of screen at start of every trial
@@ -264,7 +277,9 @@ stimulus.live.fix = 1;
 
 if task.thistrial.thisseg == stimulus.seg{1}.ITI && task.taskID == 1
   disp(sprintf('Drawing %d frames took %g secs', task.thistrial.stimLength, stimulus.live.t1));
-  stimulus.live.text = mglText(sprintf('numFrames: %d', task.thistrial.stimLength));
+  task.thistrial.stimTime = stimulus.live.t1;
+elseif task.thistrial.thisseg == stimulus.seg{1}.ITI && task.taskID == 2
+  task.thistrial.stimTime = stimulus.live.t2;
 end
 
 %for i = 1:2
@@ -329,7 +344,8 @@ if task.taskID == 1 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stimulus
   
   %draw stim
   if stimulus.live.stim1 < task.thistrial.stimLength
-    drawCheckerboard(-stimulus.eccentricity, 0, stimulus.stimSize);
+    %drawCheckerboard(-stimulus.eccentricity, 0, stimulus.stimSize);
+    drawCheckerboard(stimulus.live.leftStim);
     stimulus.live.stim1 = stimulus.live.stim1 + 1;
   else
     stimulus.live.t1 = mglGetSecs(stimulus.live.t1);
@@ -343,13 +359,17 @@ elseif task.taskID == 2 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stim
   
   %draw stim
   if stimulus.live.stim2 < task.thistrial.stimLength
-    drawCheckerboard(stimulus.eccentricity, 0, stimulus.stimSize);
+    drawCheckerboard(stimulus.live.rightStim);
+    %drawCheckerboard(stimulus.eccentricity, 0, stimulus.stimSize);
     stimulus.live.stim2 = stimulus.live.stim2 + 1;
   else
     stimulus.live.t2 = mglGetSecs(stimulus.live.t2);
     stimulus.live.task2Dead = 1;
   end
 end
+
+% Draw cross
+%mglFixationCross(1,1, stimulus.colors.blue);
 
 % Code for drawing text during ITI
 %if task.taskID == 1 && task.thistrial.thisseg == stimulus.seg{1}.ITI
@@ -484,14 +504,69 @@ end
 
 return
 
-function drawCheckerboard(x,y,sz)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%% drawCheckerboard()
+% Draws checkerboard to screen using mglQuad
+% Args:
+%   - stim: struct returned by generateCheckerboard
+function drawCheckerboard(stim)
 
-sqSz = sz/2;
+mglQuad(stim.x, stim.y, stim.rgb);
 
-mglQuad([x-sqSz, x, x-sqSz, x; x, x+sqSz, x, x+sqSz; x, x+sqSz, x, x+sqSz; x-sqSz, x, x-sqSz, x],...
-        [y+sqSz, y+sqSz, y, y; y+sqSz, y+sqSz, y, y; y, y, y-sqSz, y-sqSz; y, y, y-sqSz, y-sqSz],...
-        [0, 1, 1, 0; 0, 1, 1, 0; 0, 1, 1, 0]);
+%sqSz = sz/4;
 
+%mglQuad([x-sqSz, x, x-sqSz, x; x, x+sqSz, x, x+sqSz; x, x+sqSz, x, x+sqSz; x-sqSz, x, x-sqSz, x],...
+%        [y+sqSz, y+sqSz, y, y; y+sqSz, y+sqSz, y, y; y, y, y-sqSz, y-sqSz; y, y, y-sqSz, y-sqSz],...
+%        [0, 1, 1, 0; 0, 1, 1, 0; 0, 1, 1, 0]);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%% initCheckerboard()
+%  Function to initialize left and right checkerboards for this task
+%     and save them into stimulus.live.leftStim and rightStim
+%  Args:
+%    - ecc: eccentricity of left and right stimulus centers
+%    - sz: size in degrees along a side
+%    - nSq: number of squares along a side
+function initCheckerboard(ecc, sz, nSq)
+% ecc = 6 (x=+/-6, y=0), sz = 2, nSq = 4
+global stimulus;
+
+stimulus.live.leftStim = generateCheckerboard(-ecc,0, sz, nSq);
+stimulus.live.rightStim = generateCheckerboard(ecc,0, sz, nSq);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% generateCheckerboard()
+%   Function to pre-generate checkerboards
+% Args:
+%   - center position (x0,y0)
+%   - height/width of checkerboard (sz)
+%   - number of squares per side.
+% Returns: 
+%   - struct containing x,y, and rgb fields which can be used as arguments for mglQuad
+function checkerboard = generateCheckerboard(x0,y0, sz, nSq)
+sqSz = sz / nSq;
+lim = nSq/2;
+
+x = nan(4, nSq * nSq); y = nan(4, nSq*nSq); rgb = nan(3, nSq*nSq);
+x(1,:) = repmat(x0-lim*sqSz : sqSz : x0 + (lim-1)*sqSz, 1, nSq);
+x(2,:) = repmat(x0-(lim-1)*sqSz : sqSz : x0 + lim*sqSz, 1, nSq);
+x(3,:) = x(2,:);
+x(4,:) = x(1,:);
+
+y(1,:) = vectify(repmat(y0+lim*sqSz: -sqSz: y0-(lim-1)*sqSz, nSq, 1))';
+y(2,:) = y(1,:);
+y(3,:) = vectify(repmat(y0+(lim-1)*sqSz: -sqSz: y0-lim*sqSz, nSq, 1))';
+y(4,:) = y(3,:);
+
+a = repmat([1 0], 1, lim);
+b = flip(a);
+for i = 1:3
+  rgb(i,:) = repmat([a, b], 1, lim);
+end
+
+% for each side, return an x and y array
+checkerboard = struct('x', x, 'y', y, 'rgb', rgb);
+return;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
