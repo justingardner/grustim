@@ -568,6 +568,9 @@ end
 checkerboard = struct('x', x, 'y', y, 'rgb', rgb);
 return;
 
+function v = vectify(vec)
+v = vec(:);
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
