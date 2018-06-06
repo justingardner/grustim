@@ -145,6 +145,7 @@ stimulus.allSizes = [3, 4, 5, 6, 7, 8, 9, 10];
 % Task important variables
 %task{1}{1}.imNames = {'rocks', 'tulips', 'leaves', 'fronds', 'cherries', 'clouds', 'bubbles', 'balls', 'forest', 'worms'};
 stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'leaves', 'noodles', 'rocks', 'tulips', 'worms', 'zebras'};
+stimulus.imNames = {'bananas', 'bark', 'bison', 'blossoms', 'blotch', 'braids', 'bricks', 'bubbly', 'bumpy', 'crystals', 'dalmatians', 'ducks', 'face', 'frills', 'fur', 'galaxy', 'gourds', 'grass', 'honeycomb', 'lace', 'marbled', 'marbles', 'monarchs', 'paisley', 'pears', 'phlox', 'rorschach', 'spiky', 'splotchy', 'stars', 'succulent', 'tiles'};
 % excluding paneer and ramen - now also excluding forest fronds and stanford
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
 stimulus.rfNames = {'1x1', '2x2', '3x3', '4x4'};
@@ -155,12 +156,12 @@ stimulus.imSize = 6;
 % task{1}{1}.parameter.targIm = 1:length(stimulus.imNames);
 task{1}{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}{1}.parameter.rfSize = 1:length(stimulus.rfNames);
-task{1}{1}.parameter.eccentricity = 10; %[5 8 11];
+task{1}{1}.parameter.eccentricity = [6 9 12];
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse(stimulus.seg{1}.search)=1;
-task{1}{1}.numTrials = 120;
+task{1}{1}.numTrials = 144;
 task{1}{1}.random = 1;
 
 if stimulus.scan
@@ -280,87 +281,11 @@ mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 stimulus.live.eyeCount = 0;
 
-%keyboard
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Run Staircase over imsize for each condition %%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function newImSz = stairImSize(task)
-
-global stimulus
-
-lastN = 4;
-threshAcc = 0.70;
-increment = 0.25;
-
-eccs = [5, 8, 11];
-
-% first figure out which trial index it is
-trLayer = task.thistrial.layer;
-trEcc = find(eccs==task.thistrial.eccentricity);
-idxMtx = reshape(1:12, [3,4]);
-trIdx = idxMtx(trEcc, trLayer);
-
-% then update that element of stimulus.strcs
-cnm = sprintf('cond%d_acc', trIdx);
-fnm = sprintf('cond%d', trIdx);
-if ~isfield(stimulus.strcs, fnm)
-  stimulus.strcs.(fnm) = [];
-  stimulus.strcs.(cnm) = [];
-end
-
-
-% Update the last trial's condition
-if ~isempty(task.lasttrial)
-  lastIdx = idxMtx(find(eccs==task.lasttrial.eccentricity), task.lasttrial.layer);
-  lastAcc = (task.lasttrial.response == task.lasttrial.targetPosition);
-  lnm = sprintf('cond%d_acc', lastIdx);
-  % Update the correct condition's accuracy depending on if they got the last trial right or wrong.
-  stimulus.strcs.(lnm) = [stimulus.strcs.(lnm) lastAcc];
-end
-
-% for each of 12 conditions, store a running log of accuracies, and imSizes
-if length(stimulus.strcs.(fnm)) < 1
-  % Load previous runs
-  f = dir(fullfile(sprintf('~/data/texSearch/%s/18*.mat', mglGetSID)));
-  lsz = 5;
-  if length(f) > 0
-    l = load(fullfile(sprintf('~/data/texSearch/%s/%s', mglGetSID, f(end).name)));
-    if isfield(l.stimulus, 'strcs')
-      lsz = l.stimulus.strcs.(fnm)(end);
-      disp(sprintf('Previous runs threshold found.. Starting image size at %g', lsz));
-    end
-  end
-  newImSz = lsz;
-else
-  % Get the image size on the last trial of this condition
-  prevSz = stimulus.strcs.(fnm)(end);
-
-  % Check a running average accuracy over the last 4 trials
-  % If the running average is less than threshold (0.75), increment imsize, otherwise decrement.
-  st = max(length(stimulus.strcs.(cnm)) - lastN, 1);
-  if mean(stimulus.strcs.(cnm)(st:end)) < threshAcc
-    newImSz = prevSz + increment;
-
-    % Make sure the image won't overflow past its quadrant boundaries (otherwise they will overlap)
-    newImSz = min(newImSz, floor(2*task.thistrial.eccentricity/sqrt(2)));
-  else
-    newImSz = prevSz - increment;
-
-    % floor out at 1.
-    newImSz = max(newImSz, 1);
-  end
-end
-
-stimulus.strcs.(fnm) = [stimulus.strcs.(fnm) newImSz];
-  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
-%%
 
 global stimulus
 
@@ -654,6 +579,7 @@ for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
   
   e = getTaskParameters(myscreen,task);
+  keyboard
   if e{1}.nTrials>1
     
     subj_resp = e{1}.response-10;
@@ -748,13 +674,16 @@ title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSiz
 hline(0.25, ':');
 set(gca, 'FontSize', 14);
 
-saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
+%saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
 
-%% Plot individual images.
+%% Plot individual images -- Accuracy vs Gram RF Size
 figure;
 set(gcf, 'Position', [680, 268, 1005, 830]);
 all_ims = unique(data.image);
 imnames = stimulus.imNames;
+
+% Calculate image slopes
+imslopes = nan(length(all_ims), length(all_layers));
 
 all_RFs = unique(data.rf_size);
 all_layers = unique(data.layer);
@@ -781,6 +710,9 @@ for imi = 1:length(all_ims)
     end
     plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
     plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:));
+
+    p = polyfit(all_RF_deg, y(i,:), 1);
+    imslopes(imi,i) = p(1);
   end
 
   nTrials = sum(~isnan(data.subj_resp(data.image==im)));
@@ -794,15 +726,64 @@ for imi = 1:length(all_ims)
   ylabel('Accuracy', 'FontSize', 12);
   hline(0.25, ':');
   set(gca, 'FontSize', 12);
-  %set(gca, 'XTick', 1:length(xLabels));
-  %set(gca, 'XTickLabel',xLabels);
 
 end
 
-saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_img_results.png', mglGetSID));
+%slopes.imnames = stimulus.imnames; 
+%slopes.imslopes = imslopes;
+%save('~/proj/TextureSynthesis/tmp/imslopes.mat', '-struct', 'slopes');
 
+%% Plot individual images -- Accuracy vs Layer
+figure; 
+set(gcf, 'Position', [680, 268, 1005, 830]);
+
+% Calculate image slopes
+imslopes_layer = nan(length(all_ims), length(all_layers));
+
+for imi = 1:length(all_ims)
+  im = all_ims(imi);
+  subplot(4,4,imi);
+
+  all_RFs = unique(data.rf_size);
+  nLayers = length(unique(data.layer));
+  ct = data.corr_trials;
+  colors = brewermap(length(all_RFs), 'Dark2');
+  x1 = 1:nLayers;
+  y = [];
+  for i = 1:length(all_RFs)
+    ei = all_RFs(i);
+    for j = 1:nLayers
+        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == j & data.image ==im));
+    end
+    plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
+    p = polyfit(x1, y(i,:), 1);
+    imslopes_layer(imi,i) = p(1);
+  end
+  %plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
+
+  if imi == length(all_ims) 
+    h = findobj(gca, 'Type', 'line');
+    legend(h(length(h)-1:-2:1), stimulus.rfNames, 'Location', 'bestoutside');
+  end
+  
+  title(sprintf('%s: nTrials=%i', stimulus.imNames{imi}, data.nValTrials), 'FontSize', 16);
+  xlim([0 nLayers+1]);ylim([0 1]);
+  xlabel('CNN Layer Matched', 'FontSize', 12);
+  ylabel('Identification Accuracy', 'FontSize', 12);
+  hline(0.25, ':');
+  set(gca, 'FontSize', 12);
+  set(gca, 'XTick', 1:nLayers);
+  set(gca, 'XTickLabel', stimulus.layerNames);
+end
+
+slopes = struct();
+slopes.layernames = stimulus.layerNames;
+slopes.imnames = stimulus.imNames; 
+slopes.imslopes = imslopes_layer;
+%save('~/proj/TextureSynthesis/tmp/imslopes_layer.mat', '-struct', 'slopes');
 
 %%
+keyboard
 return
 
 %% Accuracy Vs Image Size (for different eccentricities)
