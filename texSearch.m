@@ -579,7 +579,6 @@ for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
   
   e = getTaskParameters(myscreen,task);
-  keyboard
   if e{1}.nTrials>1
     
     subj_resp = e{1}.response-10;
@@ -610,37 +609,39 @@ fitLine = @(x,y) polyval(polyfit(x,y,1),x);
 figure;
 set(gcf, 'Position', [436, 485, 458, 599]);
 
-subplot(2,1,1);
+subplot(2,3,1);
 
+all_eccs = unique(data.ecc);
 all_RFs = unique(data.rf_size);
 nLayers = length(unique(data.layer));
 ct = data.corr_trials;
 colors = brewermap(length(all_RFs), 'Dark2');
 x1 = 1:nLayers;
-y = [];
-for i = 1:length(all_RFs)
-  ei = all_RFs(i);
-  for j = 1:nLayers
-      y(i,j) = nansum(ct(data.rf_size==ei & data.layer == j)) / length(ct(data.rf_size==ei & data.layer==j));
+
+for k = 1:length(all_eccs)
+  subplot(2,3,k);
+  y = [];
+  for i = 1:length(all_RFs)
+    ei = all_RFs(i);
+    for j = 1:nLayers
+        y(i,j) = nansum(ct(data.rf_size==ei & data.layer == j)) / length(ct(data.rf_size==ei & data.layer==j));
+    end
+    plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
   end
-  plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
+  %plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
+
+  h = findobj(gca, 'Type', 'line');
+  legend(h(length(h)-1:-2:1), stimulus.rfNames);
+
+  title(sprintf('%s: Accuracy vs distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
+  xlim([0 nLayers+1]);ylim([0 1]);
+  xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
+  ylabel('Identification Accuracy', 'FontSize', 16);
+  hline(0.25, ':');
+  set(gca, 'FontSize', 14);
+  set(gca, 'XTick', 1:nLayers);
+  set(gca, 'XTickLabel', stimulus.layerNames);
 end
-%plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
-
-h = findobj(gca, 'Type', 'line');
-legend(h(length(h)-1:-2:1), stimulus.rfNames);
-
-%se = @(x) 1.96*nanstd(x) / sqrt(length(x));
-%eb = [se(ct(data.layer==1)), se(ct(data.layer==2)), se(ct(data.layer==3))];
-%errorbar(1:nLayers, nanmean(y,1), eb, '.k');
-title(sprintf('%s: Accuracy vs distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
-xlim([0 nLayers+1]);ylim([0 1]);
-xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
-ylabel('Identification Accuracy', 'FontSize', 16);
-hline(0.25, ':');
-set(gca, 'FontSize', 14);
-set(gca, 'XTick', 1:nLayers);
-set(gca, 'XTickLabel', stimulus.layerNames);
 
 
 subplot(2,1,2);
@@ -653,29 +654,34 @@ all_layers = unique(data.layer);
 ct = data.corr_trials;
 colors = brewermap(length(all_layers), 'Dark2');
 
-y = [];
-for i = 1:length(all_layers)
-    li = all_layers(i);
-    for j = 1:length(all_RFs)
-        ei = all_RFs(j);
-        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image~= 10 & data.image ~= 11 & data.image ~= 15));
-    end
-    plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-    plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:)); hold on;
+for k = 1:length(all_eccs)
+  subplot(2,3,k+length(all_eccs));
+  y = [];
+  for i = 1:length(all_layers)
+      li = all_layers(i);
+      for j = 1:length(all_RFs)
+          ei = all_RFs(j);
+          y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image~= 10 & data.image ~= 11 & data.image ~= 15));
+      end
+      plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+      plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:)); hold on;
+  end
+
+  h = findobj(gca, 'Type', 'line');
+  legend(h(length(h)-1:-2:1), stimulus.layerNames, 'Location', 'southeast');
+
+  xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
+  xlabel('Gram RF Size (dva)', 'FontSize', 16);
+  ylabel('Accuracy', 'FontSize', 16);
+  title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSize', 18);
+  hline(0.25, ':');
+  set(gca, 'FontSize', 14);
 end
-
-h = findobj(gca, 'Type', 'line');
-legend(h(length(h)-1:-2:1), stimulus.layerNames, 'Location', 'southeast');
-
-xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
-xlabel('Gram RF Size (dva)', 'FontSize', 16);
-ylabel('Accuracy', 'FontSize', 16);
-title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSize', 18);
-hline(0.25, ':');
-set(gca, 'FontSize', 14);
 
 %saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
 
+%
+keyboard
 %% Plot individual images -- Accuracy vs Gram RF Size
 figure;
 set(gcf, 'Position', [680, 268, 1005, 830]);
