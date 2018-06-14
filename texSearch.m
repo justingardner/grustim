@@ -623,7 +623,7 @@ for k = 1:length(all_eccs)
   for i = 1:length(all_RFs)
     ei = all_RFs(i);
     for j = 1:nLayers
-        y(i,j) = nansum(ct(data.rf_size==ei & data.layer == j)) / length(ct(data.rf_size==ei & data.layer==j));
+        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == j & data.ecc==all_eccs(k)));
     end
     plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
   end
@@ -631,10 +631,12 @@ for k = 1:length(all_eccs)
 
   h = findobj(gca, 'Type', 'line');
   legend(h(length(h)-1:-2:1), stimulus.rfNames);
+  nTr = sum(~isnan(ct(data.ecc==all_eccs(k))));
 
-  title(sprintf('%s: Accuracy vs distractor layer. nTrials=%i', mglGetSID, data.nValTrials), 'FontSize', 18);
+  
+  title(sprintf('%s: Ecc=%i deg. nTrials=%i', mglGetSID, all_eccs(k), nTr), 'FontSize', 18);
   xlim([0 nLayers+1]);ylim([0 1]);
-  xlabel('CNN Layer from which distractors were generated', 'FontSize', 16);
+  xlabel('CNN Layer', 'FontSize', 16);
   ylabel('Identification Accuracy', 'FontSize', 16);
   hline(0.25, ':');
   set(gca, 'FontSize', 14);
@@ -643,7 +645,7 @@ for k = 1:length(all_eccs)
 end
 
 
-subplot(2,1,2);
+%subplot(2,1,2);
 
 % calculate RF size in degrees
 all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
@@ -660,7 +662,7 @@ for k = 1:length(all_eccs)
       li = all_layers(i);
       for j = 1:length(all_RFs)
           ei = all_RFs(j);
-          y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image~= 10 & data.image ~= 11 & data.image ~= 15));
+          y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.ecc==all_eccs(k)));
       end
       plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
       plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:)); hold on;
@@ -672,14 +674,14 @@ for k = 1:length(all_eccs)
   xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
   xlabel('Gram RF Size (dva)', 'FontSize', 16);
   ylabel('Accuracy', 'FontSize', 16);
-  title(sprintf('Accuracy vs Gram RF Size. nTrials=%i', data.nValTrials), 'FontSize', 18);
+  title(sprintf('RF Size vs Accuracy - Ecc=%i deg', all_eccs(k)), 'FontSize', 18);
   hline(0.25, ':');
   set(gca, 'FontSize', 14);
 end
 
 %saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
 
-%
+%%
 keyboard
 %% Plot individual images -- Accuracy vs Gram RF Size
 figure;
