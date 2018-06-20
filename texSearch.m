@@ -606,17 +606,18 @@ fitLine = @(x,y) polyval(polyfit(x,y,1),x);
 
 %% Plot accuracy and reaction time as a function of distractor layer & RF Size
 figure;
-set(gcf, 'Position', [436, 485, 458, 599]);
-
-subplot(2,3,1);
+set(gcf, 'Position', [436, 460, 1038, 624]);
 
 all_eccs = unique(data.ecc);
 all_RFs = unique(data.rf_size);
+all_layers = unique(data.layer);
+
 nLayers = length(unique(data.layer));
-ct = data.corr_trials;
-colors = brewermap(length(all_RFs), 'Dark2');
 x1 = 1:nLayers;
 
+ct = data.corr_trials;
+
+colors = brewermap(length(all_RFs), 'Dark2');
 for k = 1:length(all_eccs)
   subplot(2,3,k);
   y = [];
@@ -627,34 +628,26 @@ for k = 1:length(all_eccs)
     end
     plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
   end
-  %plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
 
   h = findobj(gca, 'Type', 'line');
-  legend(h(length(h)-1:-2:1), stimulus.rfNames);
+  legend(h(length(h)-1:-2:1), stimulus.rfNames, 'Location', 'southwest');
   nTr = sum(~isnan(ct(data.ecc==all_eccs(k))));
-
-  
-  title(sprintf('%s: Ecc=%i deg. nTrials=%i', mglGetSID, all_eccs(k), nTr), 'FontSize', 18);
-  xlim([0 nLayers+1]);ylim([0 1]);
-  xlabel('CNN Layer', 'FontSize', 16);
-  ylabel('Identification Accuracy', 'FontSize', 16);
+  if k ~= 1
+    title(sprintf('Ecc=%i deg. nTrials=%i', all_eccs(k), nTr), 'FontSize', 18);
+  else
+    title(sprintf('%s: Ecc = %i deg.', mglGetSID, all_eccs(k)), 'FontSize', 18);
+  end
+  xlim([0 nLayers+1]); xlabel('CNN Layer', 'FontSize', 16);
+  ylim([0 1]); ylabel('Identification Accuracy', 'FontSize', 16);
   hline(0.25, ':');
   set(gca, 'FontSize', 14);
-  set(gca, 'XTick', 1:nLayers);
-  set(gca, 'XTickLabel', stimulus.layerNames);
+  set(gca, 'XTick', 1:nLayers); set(gca, 'XTickLabel', stimulus.layerNames);
 end
-
-
-%subplot(2,1,2);
 
 % calculate RF size in degrees
 all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
 
-all_RFs = unique(data.rf_size);
-all_layers = unique(data.layer);
-ct = data.corr_trials;
 colors = brewermap(length(all_layers), 'Dark2');
-
 for k = 1:length(all_eccs)
   subplot(2,3,k+length(all_eccs));
   y = [];
@@ -674,12 +667,60 @@ for k = 1:length(all_eccs)
   xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
   xlabel('Gram RF Size (dva)', 'FontSize', 16);
   ylabel('Accuracy', 'FontSize', 16);
-  title(sprintf('RF Size vs Accuracy - Ecc=%i deg', all_eccs(k)), 'FontSize', 18);
+  if k~=1
+    title(sprintf('RF Size vs Accuracy - Ecc=%i deg', all_eccs(k)), 'FontSize', 18);
+  else
+    title(sprintf('Ecc = %i deg', all_eccs(k)), 'FontSize', 18);
+  end
   hline(0.25, ':');
   set(gca, 'FontSize', 14);
 end
 
 %saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
+
+%% Eccentricity Plots
+figure; set(gcf, 'Position', [974, 344, 389, 738]);
+subplot(2,1,1);
+
+%  First plot all RF Sizes
+y = []; colors = brewermap(length(all_RFs), 'Dark2');
+for i = 1:length(all_RFs)
+  for j = 1:length(all_eccs)
+    y(i,j) = nanmean(ct(data.rf_size==all_RFs(i) & data.ecc==all_eccs(j)));
+  end
+  plot(all_eccs, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+  plot(all_eccs, fitLine(all_eccs, y(i,:)), '-', 'Color', colors(i,:));
+end
+h = findobj(gca, 'Type', 'line');
+legend(h(length(h)-1:-2:1), stimulus.rfNames, 'Location', 'southeast');
+xlim([min(all_eccs)-1, max(all_eccs)+1]); ylim([0 1]);
+xlabel('Eccentricity (degs)', 'FontSize', 16);
+ylabel('Accuracy', 'FontSize', 16);
+title(sprintf('%s: Pooling Region Size', mglGetSID), 'FontSize', 18);
+hline(0.25, ':');
+set(gca, 'FontSize', 14);
+
+subplot(2,1,2);
+
+%  Then, plot Sizes
+y = []; colors = brewermap(length(all_layers), 'Dark2');
+for i = 1:length(all_layers)
+  for j = 1:length(all_eccs)
+    y(i,j) = nanmean(ct(data.layer==all_layers(i) & data.ecc==all_eccs(j)));
+  end
+  plot(all_eccs, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
+  plot(all_eccs, fitLine(all_eccs, y(i,:)), '-', 'Color', colors(i,:));
+end
+h = findobj(gca, 'Type', 'line');
+legend(h(length(h)-1:-2:1), stimulus.layerNames, 'Location', 'southeast');
+xlim([min(all_eccs)-1, max(all_eccs)+1]); ylim([0 1]);
+xlabel('Eccentricity (degs)', 'FontSize', 16);
+ylabel('Accuracy', 'FontSize', 16);
+title(sprintf('Feature Complexity'), 'FontSize', 18);
+hline(0.25, ':');
+set(gca, 'FontSize', 14);
+
+
 
 %%
 keyboard
@@ -706,7 +747,7 @@ all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
 
 for imi = 1:length(all_ims)
   im = all_ims(imi);
-  subplot(4,4,imi);
+  subplot(7,7,imi);
 
   y = [];
   for i = 1:length(all_layers)
@@ -792,67 +833,6 @@ slopes.imslopes = imslopes_layer;
 %%
 keyboard
 return
-
-%% Accuracy Vs Image Size (for different eccentricities)
-all_layers = 1:4;
-allSz = unique(data.imSz);
-colors = brewermap(3, 'Dark2');
-figure;
-y4 = [];
-ctd = @(x) nanmean(ct(data.imSz==x));
-ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.ecc==all_RFs(y)));
-plot(allSz, [ctd(3) ctd(4) ctd(5) ctd(6) ctd(7) ctd(8) ctd(9) ctd(10)], '.k', 'MarkerSize', 15); hold on;
-for i = 1:3
-  y4(i,:) = [ctd2(3,i) ctd2(4,i) ctd2(5,i) ctd2(6,i) ctd2(7,i) ctd2(8,i) ctd2(9,i) ctd2(10,i)];
-  plot(allSz, y4(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-end
-for i = 1:3
-   X = [ones(length(allSz),1) allSz'];
-   b = X \ y4(i,:)';
-   yPred = X*b;
-   plot(allSz, yPred, '-', 'Color', colors(i,:));
-end
-  
-xlim([2, 11]);
-ylim([.5, 1]);
-legend({'Mean', '5 degrees', '8 degrees', '11 degrees'});
-title(sprintf('Performance at different eccentricities as a function of image size. N=%d', data.nValTrials), 'FontSize', 16);
-xlabel('Image Size (degrees)', 'FontSize', 14)
-ylabel('Accuracy (% correct)', 'FontSize', 14);
-set(gca, 'XTick', allSz);
-
-
-%% Accuracy Vs Image Size (for different distractor layers)
-all_layers = 1:4;
-allSz = unique(data.imSz);
-figure;
-y4 = [];
-ctd = @(x) nanmean(ct(data.imSz==x));
-ctd2 = @(x,y) nanmean(ct(data.imSz==x & data.layer==y));
-plot(allSz, [ctd(3) ctd(4) ctd(5) ctd(6) ctd(7) ctd(8) ctd(9) ctd(10)], '.k', 'MarkerSize', 15); hold on;
-for i = 1:4
-  y4(i,:) = [ctd2(3,i) ctd2(4,i) ctd2(5,i) ctd2(6,i) ctd2(7,i) ctd2(8,i) ctd2(9,i) ctd2(10,i)];
-  plot(allSz, y4(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-end
-for i = 1:4
-   X = [ones(length(allSz),1) allSz'];
-   b = X \ y4(i,:)';
-   yPred = X*b;
-   plot(allSz, yPred, '-', 'Color', colors(i,:));
-  end
-  
-xlim([2, 11]);
-ylim([.5, 1.2]);
-legend({'Mean', 'Pool1', 'Pool2', 'Pool3', 'Pool4'});
-title(sprintf('Performance at different distractor layers as a function of image size. N=%d', data.nValTrials), 'FontSize', 16);
-xlabel('Image Size (degrees)', 'FontSize', 14)
-ylabel('Accuracy (% correct)', 'FontSize', 14);
-set(gca, 'XTick', allSz);
-%%
-
-keyboard
-
-mglClose;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
