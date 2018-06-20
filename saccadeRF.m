@@ -16,12 +16,19 @@ stimulus = struct;
 % add arguments later
 scan = 0;
 plots = 0;
-noeye = 1;
-getArgs(varargin,{'scan=0','plots=0','noeye=1'});
+noeye = 0;
+ploteye=1;
+getArgs(varargin,{'scan=0','plots=0','noeye=0', 'ploteye=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.ploteye = ploteye;
 clear localizer invisible scan noeye task test2
+
+% Plot eye traces
+if stimulus.ploteye
+  plotEyetraces(stimulus);
+end
 
 %% Stimulus parameters 
 %% Open Old Stimfile
@@ -77,8 +84,8 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % Define stimulus timing
-task{1}{1}.segmin = [2.00 1.00];
-task{1}{1}.segmax = [5.00 2.00];
+task{1}{1}.segmin = [3.00 1.00];
+task{1}{1}.segmax = [9.00 2.00];
 stimulus.seg = {};
 stimulus.seg{1}.fix = 1;
 stimulus.seg{1}.sacc = 2;
@@ -87,8 +94,8 @@ stimulus.seg{1}.sacc = 2;
 stimulus.stimLength = 2;
 stimulus.stimSize = 2;
 stimulus.fixEcc = 5;
-stimulus.saccLatency = 0.180; % Time to wait after the cue before flashing stimulus.
-stimulus.cueLength = 4; % Number of frames to change color of fixation cross
+stimulus.saccLatency = 0.300; % Time to wait after the cue before flashing stimulus.
+stimulus.cueLength = 10; % Number of frames to change color of fixation cross
 
 % Trial parameters
 task{1}{1}.parameter.stimPos = [-10, 0, 10]; % x position 
@@ -110,7 +117,11 @@ task{1}{1}.randVars.calculated.detected = 0;
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
 
+% Keep track of the length that the stimulus was displayed,
+% the time of cue onset, and the time of saccade onset.
 task{1}{1}.randVars.calculated.stimTime = NaN;
+task{1}{1}.randVars.calculated.saccOnset = NaN;
+task{1}{1}.randVars.calculated.cueOnset = NaN;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -201,6 +212,7 @@ stimulus.live.cueFrames = 0; % counter for displaying cue
 stimulus.live.nFrames = 0; % counter for displaying stimulus
 stimulus.live.saccStart = 0;
 stimulus.live.saccLat = 0;
+stimulus.live.frameCount = NaN;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -226,6 +238,7 @@ if task.thistrial.thisseg == stimulus.seg{1}.sacc
   if stimulus.live.cueFrames < stimulus.cueLength
     if stimulus.live.cueFrames == 0 % Start timer on cue onset
       stimulus.live.tCue = mglGetSecs;
+      task.thistrial.cueOnset = stimulus.live.tCue;
     end
     % Turn current side fixation cross green for cueLength frames.
     mglFixationCross(1,1,stimulus.colors.green,[fixLocs(task.thistrial.whichSide+1),0]);
@@ -236,14 +249,21 @@ if task.thistrial.thisseg == stimulus.seg{1}.sacc
   if ~isnan(distFromFix) && distFromFix > 0.5 && stimulus.live.saccStart == 0
     stimulus.live.saccStart = 1;
     stimulus.live.saccLat = mglGetSecs(stimulus.live.tCue);
+    task.thistrial.saccOnset = mglGetSecs;
     disp(sprintf('Saccade initiated. Latency = %g seconds', stimulus.live.saccLat));
   end
     
   % Draw checkerboard 180ms after cue onset.
   if task.thistrial.stimPresent == 1 && mglGetSecs(stimulus.live.tCue) > stimulus.saccLatency
+    if stimulus.live.nFrames == 0
+      stimulus.live.frameCount = mglGetSecs;
+    end
+
     if stimulus.live.nFrames < stimulus.stimLength
       drawCheckerboard(stimulus.live.stim);
       stimulus.live.nFrames = stimulus.live.nFrames + 1;
+    elseif stimulus.live.nFrames == stimulus.stimLength
+      task.thistrial.stimLength = mglGetSecs(stimulus.live.frameCount);
     end
   end
 end
@@ -397,3 +417,113 @@ return;
 
 function v = vectify(vec)
 v = vec(:);
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% plotEyeTraces ( stimulus )
+%
+% Plots eye traces for saccade task.
+function plotEyetraces(stimulus)
+
+%%
+cdir = pwd;
+
+cd(sprintf('~/data/saccadeRF/%s', mglGetSID));
+
+% get files list
+files = dir(fullfile(sprintf('~/data/saccadeRF/%s/18*.mat', mglGetSID)));
+
+idata = struct('xPos', {}, 'yPos', {}, 'pupil', {}, 'time', {}, 'targetSide', [], 'cueOnset', []);
+idata(1).xPos{1} = 0;
+
+for fi = 1:length(files)
+  fnm = files(fi).name(1:end-4);
+
+  trace = getTaskEyeTraces(fnm);
+
+  %idata.xPos = [idata.xPos; trace.eye.xPos];
+  %idata.yPos = [idata.yPos; trace.eye.yPos];
+  idata.xPos{fi} = trace.eye.xPos;
+  idata.yPos{fi} = trace.eye.yPos;
+  idata.pupil{fi} = trace.eye.pupil;
+  idata.time{fi} = trace.eye.time;
+
+  idata.targetSide = [idata.targetSide; trace.randVars.whichSide];
+
+  % Get start of saccade segment (approx when cue onset)
+  a = [trace.trials(:).segtime];
+  cueOnset = a(2:2:length(a));
+  idata.cueOnset = [idata.cueOnset; cueOnset]; 
+
+end
+
+%% On each trial, align eye position to trial start time.
+% at the end we want a nTrials x nTimePoints mtx of eye traces (e.g.200 x 100)
+% for both left and right eyes.
+plotEveryTrial = 1;
+if plotEveryTrial==1; figure; ct=1; end;
+
+for fi = 1:length(files)
+  xPos = idata.xPos{fi}; % nTrials x nEyeTimePoints
+  targetSide = idata.targetSide(fi,:); % 1 x nTrials
+  cueOnset = idata.cueOnset(fi,:); % 1 x nTrials
+  time = idata.time{fi}; % 1x nEyetimePoints
+  nTrials = size(xPos,1);
+  
+  % for each trial
+  for ti = 1:nTrials
+    try
+    xTrl = xPos(ti,:); %
+    
+    t = time + (ti-1)*(time(end)+.002);
+    % align on the time of cueOnset
+    a = find(t >= cueOnset(ti));
+    cueOn = a(1);
+    
+    % Plot x eye position during interval
+    xrng = cueOn-250 : cueOn + 500;
+    yrng = xTrl(xrng);
+    
+    % find saccade time
+    fixPos = mean(xTrl(cueOn:cueOn+20));
+    xt = xTrl(cueOn:cueOn+500);
+    ft = find(abs(xt-fixPos) > 1);
+    saccOn = ft(1)+cueOn-1;
+
+    % calculate saccade latency
+    latency = saccOn - cueOn;
+    disp(sprintf('Trial %g: Latency = %g ms', ti,latency));
+    
+    % Plot x position vs time
+    % draw lines at cue onset and saccade onset
+    if ~isempty(ft) && plotEveryTrial == 1
+      subplot(2,2,ct);
+      plot(xrng, yrng, '*'); hold on;
+      vline(a(1), 'g');
+      vline(saccOn, 'b');
+      ct = ct+1;
+      %keyboard
+    end
+    catch ME
+      disp(sprintf('Error on trial %d', ti));
+      disp(ME.identifier);
+    end
+    %clear xTrl t a cueOn xrng yrng fixPos xt ft saccOn latency;
+  end
+end
+
+
+%%
+keyboard
+
+%%
+midX = nan(120, length(files));
+midY = nan(120, length(files));
+
+for ri = 1:length(files)
+  respLocs = idata.respLoc(ri,:);
+  imLocs = idata.imLoc(ri,:);
+
+  midX(:,ri) = median(idata.xPos{ri}, 2);
+  midY(:,ri) = median(idata.yPos{ri}, 2);
+end
