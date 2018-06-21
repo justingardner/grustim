@@ -76,7 +76,7 @@ stimulus.colors.blue = [0 0 1];
 stimulus.curTrial(1) = 0;
 
 % Number of Trials
-nTrials = 10000;
+nTrials = 100;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%% TASK 1: Left Side %%%%%%%%%%%%%%%%%%%%%%
@@ -85,7 +85,7 @@ task{1}{1}.waitForBacktick = 1;
 
 % Define stimulus timing
 task{1}{1}.segmin = [3.00 1.00];
-task{1}{1}.segmax = [9.00 2.00];
+task{1}{1}.segmax = [12.00 1.00];
 stimulus.seg = {};
 stimulus.seg{1}.fix = 1;
 stimulus.seg{1}.sacc = 2;
