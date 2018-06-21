@@ -1,8 +1,8 @@
-function [ myscreen ] = saccadeRF( varargin )
+function [ myscreen ] = stimLenTest( varargin )
 %
 % Saccade task to measure compression 
 %
-%  Usage: saccadeRF(varargin)
+%  Usage: stimLenTest(varargin)
 %  Authors: Akshay Jagadeesh
 %  Date: 02/27/2018
 %
@@ -19,12 +19,14 @@ plots = 0;
 noeye = 1;
 debug = 0;
 getData = 0;
-getArgs(varargin,{'getData=0','scan=0','plots=0','noeye=1','debug=0'});
+fixSide = 0;
+getArgs(varargin,{'getData=0','scan=0','plots=0','noeye=1','debug=0', 'fixSide=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.debug = debug;
 stimulus.getData = getData;
+stimulus.fixSide = fixSide;
 clear localizer invisible scan noeye task test2
 
 if stimulus.plots
@@ -103,12 +105,9 @@ stimulus.seg{1}.stim = 1;
 stimulus.seg{1}.ITI = 2;
 
 % Task important variables
-stimulus.eccentricity = 6;
+stimulus.eccentricity = 10;
 stimulus.stimSize = 2;
-
-% Trial parameters
-task{1}{1}.parameter.stimLength = [1,2,3]; % Number of frames to present stimulus for
-task{1}{1}.parameter.stimSize = [1,2,4];
+stimulus.stimLength = 2; % Number of frames to present stimulus for.
 
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
@@ -125,7 +124,7 @@ task{1}{1}.randVars.calculated.detected = 0;
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
 
-task{1}{1}.randVars.calculated.stimTimeL = NaN;
+task{1}{1}.randVars.calculated.stimTime = NaN;
 
 
 %% Initialize stimulus
@@ -150,9 +149,6 @@ stimulus.seg{1}.stim = 1;
 stimulus.seg{1}.ITI = 2;
 
 % Trial parameters
-task{2}{1}.parameter.stimLength = [1,2,3]; % Number of frames to present stimulus for
-%task{2}{1}.parameter.stimSize = [1,2,4];
-
 task{2}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{2}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{2}{1}.numTrials = nTrials;
@@ -174,9 +170,68 @@ for phaseNum = 1:length(task{2})
   [task{2}{phaseNum}, myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%
-%Fixation task
-[task{3}, myscreen] = fixStairInitTask(myscreen);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% TASK 3: Center Side %%%%%%%%%%%%%%%%%%%%%%
+task{3}{1} = struct;
+task{3}{1}.waitForBacktick = 1;
+
+%% Define stimulus timing
+task{3}{1}.segmin = [stimTime ITI_min];
+task{3}{1}.segmax = [stimTime ITI_max];
+stimulus.seg = {};
+stimulus.seg{1}.stim = 1;
+stimulus.seg{1}.ITI = 2;
+
+% Trial parameters
+%task{3}{1}.parameter.stimLength = [1,2,3]; % Number of frames to present stimulus for
+%task{2}{1}.parameter.stimSize = [1,2,4];
+
+task{3}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
+task{3}{1}.getResponse = zeros(size(task{1}{1}.segmin));
+task{3}{1}.numTrials = nTrials;
+task{3}{1}.random = 1;
+if stimulus.scan
+  task{3}{1}.synchToVol(stimulus.seg{1}.ITI) = 1;
+end
+
+% Task variables to be calculated late
+task{3}{1}.randVars.calculated.detected = 0;
+task{3}{1}.randVars.calculated.dead = 0;
+task{3}{1}.randVars.calculated.visible = 1;
+
+task{3}{1}.randVars.calculated.stimTime = NaN;
+
+%% Full Setup
+% Initialize task (note phase == 1)
+for phaseNum = 1:length(task{3})
+  [task{3}{phaseNum}, myscreen] = initTask(task{3}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%% TASK 4: Center Side %%%%%%%%%%%%%%%%%%%%%%
+task{4}{1} = struct;
+task{4}{1}.waitForBacktick = 1;
+
+%% Define stimulus timing
+task{4}{1}.segmin = [3.00 1.00];
+task{4}{1}.segmax = [12.00 1.00];
+
+stimulus.seg{2}.fix = 1;
+stimulus.seg{2}.sacc = 2;
+
+task{4}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
+task{4}{1}.getResponse = zeros(size(task{1}{1}.segmin));
+task{4}{1}.numTrials = nTrials;
+task{4}{1}.random = 1;
+
+% Task variables to be calculated late
+task{4}{1}.randVars.calculated.greenSide = NaN;
+
+%% Full Setup
+% Initialize task (note phase == 1)
+for phaseNum = 1:length(task{4})
+  [task{4}{phaseNum}, myscreen] = initTask(task{4}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
+end
 
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -204,8 +259,10 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
   [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
   % update the right task
   [task{2}, myscreen, phaseNum] = updateTask(task{2}, myscreen, phaseNum);
-  % update the fixation task
-  [task{3}, myscreen] = updateTask(task{3}, myscreen, 1);
+  % update the central task
+  [task{3}, myscreen, phaseNum] = updateTask(task{3}, myscreen, phaseNum);
+  % update the crosses
+  [task{4}, myscreen, phaseNum] = updateTask(task{4}, myscreen, phaseNum);
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -243,18 +300,27 @@ if task.taskID == 1
 elseif task.taskID == 2
   stimulus.live.stim2 = 0;
   stimulus.live.task2Dead = 0;
+elseif task.taskID == 3
+  stimulus.live.stim3 = 0;
+  stimulus.live.task3Dead = 0;
 end
 if task.taskID == 1
     stimulus.live.t1 = nan;
 elseif task.taskID == 2
     stimulus.live.t2 = nan;
+elseif task.taskID == 3
+    stimulus.live.t3 = nan;
+end
+
+if task.taskID == 4
+  task.thistrial.greenSide = mod(task.trialnum,2);
 end
 
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % Disp trial parameters each trial
 if task.taskID == 1
-  disp(sprintf('Trial %d (L) - numFrames: %d', task.trialnum, task.thistrial.stimLength));
+  disp(sprintf('Trial %d (L) - numFrames: %d', task.trialnum, stimulus.stimLength));
 end
 
 % Reset mouse to center of screen at start of every trial
@@ -276,25 +342,15 @@ stimulus.live.eyeDead = 0;
 stimulus.live.fix = 1;
 
 if task.thistrial.thisseg == stimulus.seg{1}.ITI && task.taskID == 1
-  disp(sprintf('Drawing %d frames took %g secs', task.thistrial.stimLength, stimulus.live.t1));
+  disp(sprintf('Drawing %d frames took %g secs', stimulus.stimLength, stimulus.live.t1));
   task.thistrial.stimTime = stimulus.live.t1;
 elseif task.thistrial.thisseg == stimulus.seg{1}.ITI && task.taskID == 2
   task.thistrial.stimTime = stimulus.live.t2;
+elseif task.thistrial.thisseg == stimulus.seg{1}.ITI && task.taskID == 3
+  task.thistrial.stimTime = stimulus.live.t3;
+elseif task.taskID == 4
+  stimulus.live.greenCtr = 0;
 end
-
-%for i = 1:2
-  %if ~(stimulus.live.text && task.taskID == 2)
-  %  mglClearScreen(0); %% change back
-  %end
-  %if stimulus.live.text && task.taskID == 1
-  %  mglTextDraw(sprintf('Previous numFrames: %d', task.thistrial.stimLength), [-stimulus.eccentricity, 10]);
-  %end
-  
-  %if stimulus.live.fix
-  %  upFix(stimulus, stimulus.colors.blue);
-  %end
-  %mglFlush
-%end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -304,36 +360,9 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-% % jump to next trial if you are dead and 1 second has elapsed since eye
-% % movement
-% if task.thistrial.dead && mglGetSecs(task.thistrial.segStartSeconds)>1
-%   task = jumpSegment(task,inf);
-% end
-% 
-% % skip screen updates if you are already dead
-% if task.thistrial.dead
-%   if task.thistrial.dead && stimulus.live.eyeDead
-%     mglTextSet([],32,stimulus.colors.red);
-%     mglTextDraw('Eye Movement Detected',[0 0]);
-%   end
-%   return
-% end
-% 
-% % Eye movement detection Code
-% if ~stimulus.noeye
-%   [pos,~] = mglEyelinkGetCurrentEyePos;
-%   dist = hypot(pos(1),pos(2));
-%   if ~any(isnan(pos))
-%     if dist > 1.5 && stimulus.live.eyeCount > 30
-%       disp('Eye movement detected!!!!');
-%       task.thistrial.dead = 1;
-%       stimulus.live.eyeDead=1;
-%       return
-%     elseif dist > 1.5
-%       stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-%     end
-%   end
-% end
+% Draw two fixation crosses
+mglFixationCross(1,1,stimulus.colors.white, [-5,0]);
+mglFixationCross(1,1,stimulus.colors.white, [5,0]);
 
 % Code for drawing checkerboard on each frame
 if task.taskID == 1 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stimulus.live.task1Dead% LEFT side task
@@ -343,7 +372,7 @@ if task.taskID == 1 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stimulus
   end
   
   %draw stim
-  if stimulus.live.stim1 < task.thistrial.stimLength
+  if stimulus.live.stim1 < stimulus.stimLength
     %drawCheckerboard(-stimulus.eccentricity, 0, stimulus.stimSize);
     drawCheckerboard(stimulus.live.leftStim);
     stimulus.live.stim1 = stimulus.live.stim1 + 1;
@@ -358,7 +387,7 @@ elseif task.taskID == 2 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stim
   end
   
   %draw stim
-  if stimulus.live.stim2 < task.thistrial.stimLength
+  if stimulus.live.stim2 < stimulus.stimLength
     drawCheckerboard(stimulus.live.rightStim);
     %drawCheckerboard(stimulus.eccentricity, 0, stimulus.stimSize);
     stimulus.live.stim2 = stimulus.live.stim2 + 1;
@@ -366,33 +395,29 @@ elseif task.taskID == 2 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stim
     stimulus.live.t2 = mglGetSecs(stimulus.live.t2);
     stimulus.live.task2Dead = 1;
   end
+elseif task.taskID == 3 && task.thistrial.thisseg==stimulus.seg{1}.stim && ~stimulus.live.task3Dead % Center task
+  if stimulus.live.stim3 == 0
+    stimulus.live.t3 = mglGetSecs;
+  end
+
+  if stimulus.live.stim3 < stimulus.stimLength
+    drawCheckerboard(stimulus.live.centerStim);
+    stimulus.live.stim3 = stimulus.live.stim3 +1;
+  else
+    stimulus.live.t3 = mglGetSecs(stimulus.live.t3);
+    stimulus.live.task3Dead = 1;
+  end
 end
 
-% Draw cross
-%mglFixationCross(1,1, stimulus.colors.blue);
 
-% Code for drawing text during ITI
-%if task.taskID == 1 && task.thistrial.thisseg == stimulus.seg{1}.ITI
-  %mglBltTexture(stimulus.live.text, [-stimulus.eccentricity, 10]);
-%end
-
-% % Trial trigger on eye fixation code  
-% if ~stimulus.noeye && stimulus.live.triggerWaiting
-%   now = mglGetSecs;
-%   % check eye position, if 
-%   if ~any(isnan(pos))
-%     wasCentered = stimulus.live.centered;
-%     stimulus.live.centered = dist<2.5;
-%     if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
-%       stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
-%     end
-%     stimulus.live.lastTrigger = now;
-%   end
-%   if stimulus.live.triggerTime > 0.5 % not in ms dummy, wait 1.5 seconds (reasonable slow time)
-%     disp('Starting trial--eye centered.');
-%     task = jumpSegment(task);
-%   end
-% end
+% Change the color of the crosses to green every now and then.
+fixSide = [-5, 5];
+if task.taskID == 4
+  if task.thistrial.thisseg == stimulus.seg{2}.sacc && stimulus.live.greenCtr < 10
+    mglFixationCross(1,1,stimulus.colors.green,[fixSide(task.thistrial.greenSide+1), 0]);
+    stimulus.live.greenCtr = stimulus.live.greenCtr + 1;
+  end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
@@ -533,6 +558,7 @@ global stimulus;
 
 stimulus.live.leftStim = generateCheckerboard(-ecc,0, sz, nSq);
 stimulus.live.rightStim = generateCheckerboard(ecc,0, sz, nSq);
+stimulus.live.centerStim = generateCheckerboard(0,0, sz, nSq);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% generateCheckerboard()
