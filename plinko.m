@@ -1,3 +1,18 @@
+% plinko.m
+%
+%      usage: plinko(varargin)
+%         by: minyoung lee
+%       date: 06/2018
+%    purpose: run plinko task (from Gerstenberg & Siegel & Tenenbaum, 2018) with mgl
+%			  To run the audio-visual prediction task (Expt 2a)
+%			  plinko('prediction=1')
+%			  
+%			  To run the audio-visual inference task (Expt 2b)
+%			  plinko('inference=1')
+%
+%			  To run the audio-visual inference with occlusion task (Expt 3)
+%			  plinko('occlusion=1')
+
 function myscreen = plinko(varargin)
 clear global
 % check arguments
@@ -5,7 +20,8 @@ prediction = 0; inference = 0; occlusion = 0;
 getArgs(varargin,{'prediction=0','inference=0','occlusion=0'},'verbose=1');
 
 if ~(prediction || inference || occlusion)
-	error('(plinko) task type not defined.');
+	display('(plinko) task type not defined. running prediction task...');
+	prediction = 1;
 end
 
 % world = [2,6,9,10,12,13,14,15,16,20,26,27,32,38,42,43,45,47,48,50,56,59,62,63,70,74,76,79,80,82,84,86,90,91,92,94,99,104,105,109,111,112,113,115,118];
@@ -22,8 +38,8 @@ myscreen.keyboard.nums = [19,20,21,50]; % 1,2,3,space
 
 % set up task
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [2 1 5 5 4 inf];
-task{1}{1}.segmax = [2 1 5 5 4 inf];
+task{1}{1}.segmin = [2 1 4 4 3 inf];
+task{1}{1}.segmax = [2 1 4 4 3 inf];
 task{1}{1}.getResponse = [0 0 0 0 0 1];
 task{1}{1}.random = 1;
 task{1}{1}.numBlocks = 1;
@@ -139,6 +155,8 @@ elseif (task.thistrial.thisseg == 6)
 	% show the obstacles
 	mglBltTexture(stimulus.tex.thisWorld, [0 0 stimulus.widthDeg stimulus.heightDeg],0,0,180);
 	if stimulus.prediction
+		mglTextSet([],40,[0 0 0]);
+    	mglTextDraw('Where did the ball land?',[0 0]);
 		% get mouse response
 		click = mglGetMouseEvent();
     	if exist('click','var') && click.clickState && (click.x >= 0 && click.x <= myscreen.screenWidth)
@@ -147,6 +165,9 @@ elseif (task.thistrial.thisseg == 6)
     	if ~isnan(stimulus.xposout)
     		mglFillOval(stimulus.xposout, -stimulus.heightDeg/2 + 1.5, [1 1],[1 0 0]);
     	end
+    else
+    	mglTextSet([],40,[0 0 0]);
+    	mglTextDraw('In which hole was the ball dropped?',[0 0]);
 	end
 
 end  
