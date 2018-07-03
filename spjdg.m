@@ -12,16 +12,16 @@ getArgs(varargin,{'high=0','low=0','bimodal=0','visual=0','auditory=0','tenbit=1
 if isempty(spencer) || ~any(spencer==[0 1])
     error('(spjdg) spencer?');
 end
-stimulus.gaussian.contrast = 0.5;
-stimulus.gaussian.diameterHighRel = 36;
+stimulus.gaussian.contrast = 0.05;
+stimulus.gaussian.diameterHighRel = 6;
 stimulus.gaussian.diameterLowRel = 36;
-if ~noiseHigh && ~noiseLow
-stimulus.noiseHighRel = 0.0;
-stimulus.noiseLowRel = 0.65;
-else
-  stimulus.noiseHighRel = noiseHigh;
-  stimulus.noiseLowRel = noiseLow;
-end
+% if ~noiseHigh && ~noiseLow
+stimulus.noiseHighRel = 0.150;
+stimulus.noiseLowRel = 0.55;
+% % else
+%   stimulus.noiseHighRel = noiseHigh;
+%   stimulus.noiseLowRel = noiseLow;
+% end`
 
 if visualMan
   stimulus.noiseContrast = 0;
@@ -30,10 +30,11 @@ if visualMan
   stimulus.visrel = 1;
 elseif easy
     stimulus.noiseContrast = 0;
-    stimulus.gaussian.diameter = 36;
+    stimulus.gaussian.diameterLowRel = 10;
+    stimulus.gaussian.diameter = stimulus.gaussian.diameterLowRel;
     stimulus.gaussian.contrast = 0.5;
     stimulus.offset = 10;
-  stimulus.visrel = 1;
+  stimulus.visrel = 2;
 else
 
 if high
@@ -74,7 +75,7 @@ stimulus.spencer= spencer;
 stimulus.unimodal=unimodal;
 stimulus.easy = easy;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%f%%%%%%%%%%%%%%%%%%%%%%
-stimulus.gaussian.duration = .05;%.015;% .025;%1/60; % one(or two) frame 
+stimulus.gaussian.duration = .015;%.015;% .025;%1/60; % one(or two) frame 
     if ~stimulus.tenbit
         stimulus.gaussian.contrast = .1;
     end
@@ -330,7 +331,7 @@ if task.thistrial.thisseg == 1
   elseif stimulus.visualMan || stimulus.auditoryMan || stimulus.easy
     task.thistrial.visRel = stimulus.visrel;
   end
-  if ~stimulus.visualMan || ~stimulus.easy
+  if ~stimulus.visualMan && ~stimulus.easy
    if task.thistrial.visRel == 1
           task.thistrial.thisCreateNoiseCon = stimulus.noiseHighRel;
           task.thistrial.thisTranspd = stimulus.transpd.highRel;
@@ -512,7 +513,7 @@ if any(task.thistrial.thisseg == [3 5])
         else
             text = 'FLASH 2';
         end
-        mglTextDraw(text,[task.thistrial.xposV(floor(task.thistrial.thisseg/2)) 15]);
+        mglTextDraw(text,[task.thistrial.xposV(floor(task.thistrial.thisseg/2)) 12.5]);
     end
 
 	case 'auditory'
@@ -532,7 +533,7 @@ if any(task.thistrial.thisseg == [3 5])
   end		
 
 elseif task.thistrial.thisseg == 7 %9
-  if ~(stimulus.visualMan || stimulus.auditoryMan)
+  if ~(stimulus.visualMan || stimulus.auditoryMan ||stimulus.easy)
   if task.thistrial.r < 60
   task.thistrial.r = task.thistrial.r + 1;
   end
@@ -733,20 +734,6 @@ if ~task.thistrial.gotResponse
     %     stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     % end
 
-    if ~(stimulus.auditoryTrain||stimulus.visualTrain|| stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
-        
-        if strcmp(char(task.thistrial.condition),'vision') || strcmp(char(task.thistrial.condition),'auditory')
-            stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, task.thistrial.correct, ...
-            abs(task.thistrial.probeOffset));        
-        else
-          randomnumbers = [1 1 1 1 1 1 1 1 1 0];
-          thisrandom = randomnumbers(randi(length(randomnumbers),1));
-           stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum} = doStaircase('update', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}, thisrandom, ...
-            abs(task.thistrial.probeOffset));
-        end
-    elseif ~(stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
-        stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
-    end
 	task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
     task = jumpSegment(task);
