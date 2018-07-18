@@ -15,13 +15,21 @@ end
 stimulus.gaussian.contrast = 0.05;
 stimulus.gaussian.diameterHighRel = 6;
 stimulus.gaussian.diameterLowRel = 36;
-% if ~noiseHigh && ~noiseLow
-stimulus.noiseHighRel = 0.150;
-stimulus.noiseLowRel = 0.55;
-% % else
-%   stimulus.noiseHighRel = noiseHigh;
-%   stimulus.noiseLowRel = noiseLow;
-% end`
+% % if ~noiseHigh && ~noiseLow
+% stimulus.noiseHighRel = 0.150;
+% stimulus.noiseLowRel = 0.55;
+% % % else
+% %   stimulus.noiseHighRel = noiseHigh;
+% %   stimulus.noiseLowRel = noiseLow;
+% % end`
+
+if ~noiseHigh && ~noiseLow
+stimulus.noiseHighRel = 0.15;
+stimulus.noiseLowRel = 0.65;
+else
+  stimulus.noiseHighRel = noiseHigh;
+  stimulus.noiseLowRel = noiseLow;
+end
 
 if visualMan
   stimulus.noiseContrast = 0;
@@ -158,7 +166,7 @@ if ~(stimulus.visualMan || stimulus.auditoryMan || stimulus.easy)
 task{1}{1}.segmin = [1 0.5 stimDur 0.5 stimDur inf 0.5];
 task{1}{1}.getResponse = [0 0 0 0 0 1 0];
 elseif stimulus.visualMan
-task{1}{1}.segmin = [2 0.5 stimDur*25 0.5*10 stimDur*25 inf inf];
+task{1}{1}.segmin = [2 0.5 stimDur*15 0.5*8 stimDur*15 inf inf];
 task{1}{1}.getResponse = [0 0 0 0 0 1 1];
 elseif stimulus.auditoryMan
   task{1}{1}.segmin = [2 0.5 stimDur 0.5*4 stimDur inf inf];
@@ -199,15 +207,16 @@ elseif stimulus.visualTrain || stimulus.visualMan || stimulus.easy
 else
 
 nVisRel = 2;
-condNames = {'vision','vision','auditory','auditory','posOffset','negOffset'};
+condNames = {'vision','auditory','posOffset','negOffset'};
+cond2 = {'vision','posOffset','negOffset'};
 nCond = length(condNames);
 nRepeat = 10;
-stimulus.nTrialTotal = nVisRel*nCond*nRepeat;
-visRel = [repmat(1,1,nCond*nRepeat), repmat(0,1,nCond*nRepeat)];
-condition = repmat(condNames,1,nVisRel*nRepeat);  %,'auditory','posOffset','negOffset'
-randSeq = randperm(nVisRel*nCond*nRepeat);
+stimulus.nTrialTotal = nVisRel*(nCond-1)*nRepeat + nRepeat;
+visRel = [repmat(1,1,(nCond)*nRepeat), repmat(0,1,(nCond-1)*nRepeat)];
+condition = [repmat(condNames,1,nRepeat), repmat(cond2,1,nRepeat)];  %,'auditory','posOffset','negOffset'
+randSeq = randperm(length(condition));%randperm(nVisRel*nCond*nRepeat);
 
-task{1}{1}.numTrials = nVisRel*nCond*nRepeat;
+task{1}{1}.numTrials = length(condition);%nVisRel*nCond*nRepeat;
 stimulus.nTrialTotal = task{1}{1}.numTrials;
  %  task{1}{1}.parameter.visRel = [1,0]; % high, low
  %    task{1}{1}.parameter.condition = {'vision','auditory','noOffset','posOffset','negOffset'};
@@ -390,13 +399,13 @@ if task.thistrial.thisseg == 1
         [testValue, stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum}] = doStaircase('testValue', stimulus.stair{task.thistrial.relNum}{task.thistrial.condNum});
  
         testValue = 10^(testValue);
-        if testValue > 15 + stimulus.coordshift
-          testValue = 15 + stimulus.coordshift;
-        elseif testValue < -15 + stimulus.coordshift
-          testValue = -15 + stimulus.coordshift;
+        if testValue > 10 + stimulus.coordshift
+          testValue = 10 + stimulus.coordshift;
+        elseif testValue < -10 + stimulus.coordshift
+          testValue = -10 + stimulus.coordshift;
         end
         task.thistrial.noise = 5 * randn(1); % random number from a gaussian distribution with a std of 4 deg
-        while (testValue + task.thistrial.noise < -15+stimulus.coordshift) || (testValue + task.thistrial.noise > 15+stimulus.coordshift)
+        while (testValue + task.thistrial.noise < -10+stimulus.coordshift) || (testValue + task.thistrial.noise > 10+stimulus.coordshift)
             task.thistrial.noise = 5 * randn(1);
         end
         task.thistrial.probeOffset = testValue + task.thistrial.noise;
@@ -439,7 +448,8 @@ if task.thistrial.thisseg == 1
   end
   task.thistrial.thisNoiseTex = stimulus.noisetex;
   task.thistrial.thisnoise = stimulus.noise;
-
+elseif any(task.thistrial.thisseg == [3 5])
+    stimulus.hasPlayed = 0;
 elseif task.thistrial.thisseg == 6%8
   
 	stimulus.fixColor = stimulus.colors.lightgrey;
@@ -517,11 +527,17 @@ if any(task.thistrial.thisseg == [3 5])
     end
 
 	case 'auditory'
+        if ~stimulus.hasPlayed
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
+        stimulus.hasPlayed = 1;
+        end
     mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
     mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);
 	otherwise
+		if ~stimulus.hasPlayed
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
+        stimulus.hasPlayed = 1;
+        end
 		if task.thistrial.visRel == 1
       mglBltTexture(stimulus.tex.highRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
     else

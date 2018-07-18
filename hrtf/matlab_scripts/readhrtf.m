@@ -18,13 +18,13 @@ function [x] = readhrtf(elev,azim,select)
 %
 % Root directory for Macintosh or UNIX. Put your own in here.
 %
-if (length(getenv('MACHTYPE')) == 0)
-	root = 'Pokey:hrtf';
-	dir_ch = ':';
-else
+% if (length(getenv('MACHTYPE')) == 0)
+% 	root = 'Pokey:hrtf';
+% 	dir_ch = ':';
+% else
 	root = '/grustim/hrtf';
 	dir_ch = '/';
-end
+% end
 %
 % check arguments
 %
