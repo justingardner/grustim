@@ -1,6 +1,6 @@
 function [ myscreen ] = afmap2( varargin )
 % ***scan info: 736 TRs (6 minute * 120 + 16)***
-%
+% *** set 'noeye=1' to turn of the eye tracker***
 %
 %ATTENTIONFIELDMAPPING (afmap2)
 %
@@ -15,6 +15,8 @@ function [ myscreen ] = afmap2( varargin )
 %
 %   If you accidentally crash a run or need to stop the scanner you can
 %   specify a run by setting the flag, 'run=#'.
+%
+%   During scanning use 'noeye=1'
 
 %%
 
@@ -31,12 +33,12 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-attend = 0; run = 0; build = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1','run=0','build=0'});
-% `````````````````````````````````````````````````````````````````````````>>> 8e4ac884c8b9fa782cb977677aa04ada194af44a
+attend = 0; run = 0; build = 0; eyewindow=0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','debug=0','replay=0','attend=1','run=0','build=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
@@ -45,7 +47,7 @@ stimulus.buildOverride = build;
 if ~stimulus.attend
     warning('*****ATTENTION MODE IS DISABLED*****');
 end
-clear localizer invisible scan noeye task test2 attend build
+clear localizer invisible scan noeye task test2 attend build eyewindow
 
 %% Replay mode
 if any(replay>0)
@@ -175,7 +177,7 @@ end
 if ~stimulus.replay && ~isfield(stimulus,'attention') 
     stimulus.attention = struct;
     stimulus.attention.attendX = [0 5 5];
-    stimulus.attention.attendY = [0 5 -5];
+    stimulus.attention.attendY = [0 -5 5];
 
     if stimulus.attend
         stimulus.attention.rotate = length(stimulus.attention.attendX);
@@ -585,9 +587,9 @@ task{1}{1}.randVars.calculated.probesOn = nan;
 stimulus.curStep = 0;
 
 if ~stimulus.replay
-    fixStimulus.diskSize = 0.75;
-    fixStimulus.fixWidth = 1;
-    fixStimulus.fixLineWidth = 3;
+    fixStimulus.diskSize = 1;
+    fixStimulus.fixWidth = 1.25;
+    fixStimulus.fixLineWidth = 4;
     fixStimulus.stairStepSize = 0.02;
     fixStimulus.stimTime = 0.25;
     fixStimulus.interTime = 0.35;
@@ -595,7 +597,7 @@ if ~stimulus.replay
     fixStimulus.responseTime = 1;
     fixStimulus.staircase = stimulus.staircase;
     fixStimulus.pos = [stimulus.attention.curAttendX stimulus.attention.curAttendY];
-    [task{2}, myscreen] = gruFixStairInitTask(myscreen);
+    [task{2}, myscreen] = gruFixStairInitTask_afmap(myscreen);
 end
 
 %% Full Setup
@@ -700,6 +702,8 @@ function [task, myscreen] = startTrialCallback1(task,myscreen)
 global stimulus
 
 disp(sprintf('(afmap2) Starting cycle %01.0f',(stimulus.curStep/120)+1));
+stimulus.live.dead = 0;
+stimulus.live.eyeCount=0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
@@ -707,9 +711,19 @@ disp(sprintf('(afmap2) Starting cycle %01.0f',(stimulus.curStep/120)+1));
 
 function [task, myscreen] = startSegmentCallback1(task,myscreen)
 %%
-global stimulus
+global stimulus fixStimulus
 
 stimulus.curStep = stimulus.curStep + 1;
+
+% check online eye
+if (stimulus.live.dead==2) && all(fixStimulus.thisColor==[0 1 1])
+    % we can reset the colors now
+    stimulus.live.dead= 0;
+    stimulus.live.eyeCount = 0;
+elseif (stimulus.live.dead==1) && all(fixStimulus.thisColor==[1 1 0])
+    % set the timer
+    stimulus.live.dead = 2;
+end
 
 stimulus.live.t = squeeze(stimulus.grid.t(stimulus.curStep,:));
 stimulus.live.ecc = squeeze(stimulus.grid.ecc(stimulus.curStep,:));
@@ -757,14 +771,18 @@ function drawFix(myscreen)
 
 global stimulus fixStimulus;
 
-if fixStimulus.trainingMode,mglClearScreen;end
+if stimulus.live.dead
+    mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],stimulus.colors.red,60);
+else
+    if fixStimulus.trainingMode,mglClearScreen;end
 
-if ~isempty(fixStimulus.displayText)
-  mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
+    if ~isempty(fixStimulus.displayText)
+      mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
+    end
+    mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+
+    mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
 end
-mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
-
-mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
 
 % draw an annulus around the cross that stays up permanently (helps to
 % avoid losing the cross due to adaptation)
@@ -808,8 +826,37 @@ end
 
 function [task, myscreen] = screenUpdateCallback1(task, myscreen)
 %%
-% global stimulus
+global stimulus
 
+drawFix(myscreen);
+
+% check eye pos
+if (~stimulus.noeye) && (stimulus.eyewindow>0)
+    [pos,~] = mglEyelinkGetCurrentEyePos;
+    
+    % mouse version for testing with no eyetracker
+%     mInfo = mglGetMouse(myscreen.screenNumber);
+%     degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+%     degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+%     
+%     pos = [degx, degy];
+    
+    % compute distance
+    dist = hypot(pos(1),pos(2));
+end
+
+% Eye movement detection code
+if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~stimulus.live.dead
+    if ~any(isnan(pos))
+        if dist > stimulus.eyeWindow && stimulus.live.eyeCount > 30
+            disp('Eye movement detected!!!!');
+            stimulus.live.dead = 1;
+            return
+        elseif dist > stimulus.eyeWindow
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
