@@ -1,4 +1,4 @@
-function [ myscreen ] = afmap( varargin )
+function [ myscreen ] = afmap2( varargin )
 % scan info: 736 TRs (6 minute * 120 + 16)
 %
 % TODO
@@ -27,13 +27,8 @@ function [ myscreen ] = afmap( varargin )
 %   is at full contrast to differentiate from the probe stimuli (and to
 %   minimize the effect of the probes on performance)
 %
-%   Notes 6/23/18: I started a second copy of afmap (afmap2) which has a
-%   different attention task. I'm worried that (1) the task is too hard and
-%   (2) it isn't continuous in nature, which might lead people to attend
-%   differently at different times. 
+%   
 
-warning('This code is deprecated -- you shouldn''t be using it');
-return
 %%
 
 global stimulus
