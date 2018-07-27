@@ -96,7 +96,7 @@ if ~stimulus.replay
 
         if length(files) >= 1
             fname = files(end).name;
-
+            
             s = load(sprintf('~/data/afmap2/%s/%s',mglGetSID,fname));
             % copy staircases and run numbers
             stimulus.counter = s.stimulus.counter + 1;
@@ -108,10 +108,12 @@ if ~stimulus.replay
             stimulus.order = s.stimulus.order;
             stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
             if s.stimulus.attend ~= stimulus.attend
-                error('Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
+                error('(afmap2) Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
             end
             clear s;
             disp(sprintf('(afmap2) Data file: %s loaded.',fname));
+        else
+            warning('(afmap2) Unable to load previous data files. If this is *not* the first run there is something wrong.');
         end
     end
 end
@@ -848,11 +850,11 @@ end
 % Eye movement detection code
 if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~stimulus.live.dead
     if ~any(isnan(pos))
-        if dist > stimulus.eyeWindow && stimulus.live.eyeCount > 30
+        if dist > stimulus.eyewindow && stimulus.live.eyeCount > 30
             disp('Eye movement detected!!!!');
             stimulus.live.dead = 1;
             return
-        elseif dist > stimulus.eyeWindow
+        elseif dist > stimulus.eyewindow
             stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
         end
     end
