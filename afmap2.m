@@ -176,8 +176,8 @@ end
 %% Attention stimulus
 if ~stimulus.replay && ~isfield(stimulus,'attention') 
     stimulus.attention = struct;
-    stimulus.attention.attendX = [0 5 5];
-    stimulus.attention.attendY = [0 -5 5];
+    stimulus.attention.attendX = [0 5 0];
+    stimulus.attention.attendY = [0 -5 0];
 
     if stimulus.attend
         stimulus.attention.rotate = length(stimulus.attention.attendX);
