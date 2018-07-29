@@ -18,11 +18,13 @@ scan = 0;
 plots = 0;
 noeye = 0;
 ploteye=1;
-getArgs(varargin,{'scan=0','plots=0','noeye=0', 'ploteye=0'});
+fixSide=-1;
+getArgs(varargin,{'scan=0','plots=0','noeye=0', 'ploteye=0', 'fixSide=-1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.ploteye = ploteye;
+stimulus.fixSide = fixSide;
 clear localizer invisible scan noeye task test2
 
 % Plot eye traces
@@ -47,6 +49,19 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/saccadeRF/%s',mglGetSID))
   end
 end
 disp(sprintf('(saccadeRF) This is run #%i',stimulus.counter));
+
+% Set up condition type
+switch stimulus.fixSide
+  case -1
+    disp('Run Type: Saccade');
+    stimulus.runType = 'saccade';
+  case 0
+    disp('Run Type: Fixate Left');
+    stimulus.runType = 'fixLeft';
+  case 1
+    disp('Run Type: Fixate Right');
+    stimulus.runType = 'fixRight';
+end
 
 %% Setup Screen
 if stimulus.scan
@@ -84,17 +99,17 @@ task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
 % Define stimulus timing
-task{1}{1}.segmin = [3.00 1.00];
-task{1}{1}.segmax = [12.00 1.00];
+task{1}{1}.segmin = [1.00 3.00];
+task{1}{1}.segmax = [1.00 12.0];
 stimulus.seg = {};
-stimulus.seg{1}.fix = 1;
-stimulus.seg{1}.sacc = 2;
+stimulus.seg{1}.sacc = 1;
+stimulus.seg{1}.fix = 2;
 
 % Task important variables
 stimulus.stimLength = 2;
 stimulus.stimSize = 2;
 stimulus.fixEcc = 5;
-stimulus.saccLatency = 0.300; % Time to wait after the cue before flashing stimulus.
+stimulus.saccLatency = 0.350; % Time to wait after the cue before flashing stimulus.
 stimulus.cueLength = 10; % Number of frames to change color of fixation cross
 
 % Trial parameters
@@ -106,13 +121,13 @@ task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.numTrials = nTrials;
 task{1}{1}.random = 1;
 if stimulus.scan
-  task{1}{1}.synchToVol(stimulus.seg{1}.ITI) = 1;
+  task{1}{1}.synchToVol(stimulus.seg{1}.fix) = 1;
 end
 
 % Task trial parameters
 
 % Task variables to be calculated late
-task{1}{1}.randVars.calculated.whichSide = NaN; % -1 is left, 1 is right.
+task{1}{1}.randVars.calculated.fixSide = NaN; % 0 is left, 1 is right.
 task{1}{1}.randVars.calculated.detected = 0;
 task{1}{1}.randVars.calculated.dead = 0;
 task{1}{1}.randVars.calculated.visible = 1;
@@ -122,6 +137,10 @@ task{1}{1}.randVars.calculated.visible = 1;
 task{1}{1}.randVars.calculated.stimTime = NaN;
 task{1}{1}.randVars.calculated.saccOnset = NaN;
 task{1}{1}.randVars.calculated.cueOnset = NaN;
+task{1}{1}.randVars.calculated.saccTarget = NaN;
+task{1}{1}.randVars.calculated.probePos_ifPresent = NaN; % Position of the probe (if present; otherwise, NaN)
+task{1}{1}.randVars.calculated.probeDistFromFix = NaN; % Distance (degrees) from the probe to the fixation point
+task{1}{1}.randVars.calculated.fixPos = NaN; % Position in degrees of the fixation point on each trial
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -134,17 +153,9 @@ myscreen = eyeCalibDisp(myscreen);
 
 % let the user know
 disp(sprintf('(saccadeRF) Starting run number: %i.',stimulus.counter));
-
-%% Main Task Loop
-
-mglClearScreen(0.5); 
-%upFix(stimulus);
-
-mglFlush
-mglClearScreen(0.5); 
-%upFix(stimulus);
-
 phaseNum = 1;
+
+%% Main task loop
 % Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
   mglClearScreen(0.5);
@@ -180,9 +191,15 @@ task.thistrial.detected = 0;
 task.thistrial.visible = 1;
 task.thistrial.response = 0;
 
-% Alternate side of the stimulus on each trial
-task.thistrial.whichSide = mod(task.trialnum,2); % 0 for left, 1 for right
-task.thistrial.saccTarget = mod(task.trialnum+1,2);
+% Set fixation side and saccade target depending on trial type
+if stimulus.runType == 'saccade'
+  % Alternate side of the stimulus on each trial
+  task.thistrial.fixSide = mod(task.trialnum,2); % 0 for left, 1 for right
+  task.thistrial.saccTarget = mod(task.trialnum+1,2);
+else
+  % If fixation run, set fixSide to specified side.
+  task.thistrial.fixSide = stimulus.fixSide;
+end
 
 stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
@@ -191,12 +208,22 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 initCheckerboard(task.thistrial.stimPos, stimulus.stimSize, 4);
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Side: %d, Stim Present: %d, Stim Position: %d', task.trialnum, task.thistrial.whichSide, task.thistrial.stimPresent, task.thistrial.stimPos));
+disp(sprintf('Trial %d - Side: %d, Stim Present: %d, Stim Position: %d', task.trialnum, task.thistrial.fixSide, task.thistrial.stimPresent, task.thistrial.stimPos));
 
 % Reset mouse to center of screen at start of every trial
-%mglSetMousePosition(960,540,1);
 myscreen.flushMode = 0;
 stimulus.live.eyeCount = 0;
+
+% Set RandVars probePos_ifPresent (-1 if stim not present, [-10, 0, 10] if present)
+fixLocs = [-stimulus.fixEcc, stimulus.fixEcc];
+task.thistrial.fixPos = fixLocs(task.thistrial.fixSide+1);
+if task.thistrial.stimPresent == 1
+  task.thistrial.probePos_ifPresent = task.thistrial.stimPos;
+  task.thistrial.probeDistFromFix = task.thistrial.fixPos - task.thistrial.stimPos;
+else
+  task.thistrial.probePos_ifPresent = -1;
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -229,7 +256,7 @@ mglFixationCross(1,1,stimulus.colors.white,[fixLocs(2),0]);
 %% Get eye position
 pos = mglEyelinkGetCurrentEyePos; % NaN if noeye
 xEye = pos(1);
-distFromFix = abs(fixLocs(task.thistrial.whichSide+1) - xEye);
+distFromFix = abs(fixLocs(task.thistrial.fixSide+1) - xEye);
 
 %% Saccade Segment
 if task.thistrial.thisseg == stimulus.seg{1}.sacc 
@@ -241,7 +268,7 @@ if task.thistrial.thisseg == stimulus.seg{1}.sacc
       task.thistrial.cueOnset = stimulus.live.tCue;
     end
     % Turn current side fixation cross green for cueLength frames.
-    mglFixationCross(1,1,stimulus.colors.green,[fixLocs(task.thistrial.whichSide+1),0]);
+    mglFixationCross(1,1,stimulus.colors.green,[fixLocs(task.thistrial.fixSide+1),0]);
     stimulus.live.cueFrames = stimulus.live.cueFrames +1;
   end
 
@@ -448,7 +475,7 @@ for fi = 1:length(files)
   idata.pupil{fi} = trace.eye.pupil;
   idata.time{fi} = trace.eye.time;
 
-  idata.targetSide = [idata.targetSide; trace.randVars.whichSide];
+  idata.targetSide = [idata.targetSide; trace.randVars.fixSide];
 
   % Get start of saccade segment (approx when cue onset)
   a = [trace.trials(:).segtime];
