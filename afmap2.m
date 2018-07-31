@@ -33,11 +33,12 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-attend = 0; run = 0; build = 0; eyewindow=0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','debug=0','replay=0','attend=1','run=0','build=0'});
+attend = 0; run = 0; build = 0; eyewindow=0; mouse=0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','debug=0','replay=0','attend=1','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.mousedebug = mouse;
 stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
 stimulus.replay = replay;
@@ -47,7 +48,7 @@ stimulus.buildOverride = build;
 if ~stimulus.attend
     warning('*****ATTENTION MODE IS DISABLED*****');
 end
-clear localizer invisible scan noeye task test2 attend build eyewindow
+clear localizer invisible scan noeye task test2 attend build eyewindow mouse
 
 %% Replay mode
 if any(replay>0)
@@ -834,14 +835,27 @@ drawFix(myscreen);
 
 % check eye pos
 if (~stimulus.noeye) && (stimulus.eyewindow>0)
-    [pos,~] = mglEyelinkGetCurrentEyePos;
     
     % mouse version for testing with no eyetracker
-%     mInfo = mglGetMouse(myscreen.screenNumber);
-%     degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-%     degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-%     
-%     pos = [degx, degy];
+    if stimulus.mousedebug
+        mInfo = mglGetMouse(myscreen.screenNumber);
+        degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+        degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+
+        pos = [degx, degy];
+    else
+        [pos,~] = mglEyelinkGetCurrentEyePos; 
+    end
+    
+    if stimulus.debug > 0
+        if stimulus.debug >= 10
+            disp(sprintf('Mouse position: %1.1f %1.1f',pos(1),pos(2)));
+            stimulus.debug = 1;
+        else
+            stimulus.debug = stimulus.debug+1;
+        end
+    end
+        
     
     % compute distance
     dist = hypot(pos(1),pos(2));
