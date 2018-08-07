@@ -216,6 +216,9 @@ else
   task.incorrect = task.incorrect+1;
 end
 
+corrects = {'Incorrect','Correct'};
+disp(sprintf('(fixtask) Subject pressed %i, %s',find(task.thistrial.buttonState),corrects{response+1}));
+
 % update staircase
 fixStimulus.staircase = doStaircase('update',fixStimulus.staircase,response);
 [fixStimulus.threshold, fixStimulus.staircase] = doStaircase('testValue',fixStimulus.staircase);

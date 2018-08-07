@@ -33,11 +33,12 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-attend = 0; run = 0; build = 0; eyewindow=0; mouse=0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','debug=0','replay=0','attend=1','run=0','build=0','mouse=0'});
+attend = 0; run = 0; build = 0; eyewindow=0; mouse=0; practice=0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','practice=0','debug=0','replay=0','attend=1','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.practice = practice;
 stimulus.mousedebug = mouse;
 stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
@@ -48,7 +49,7 @@ stimulus.buildOverride = build;
 if ~stimulus.attend
     warning('*****ATTENTION MODE IS DISABLED*****');
 end
-clear localizer invisible scan noeye task test2 attend build eyewindow mouse
+clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice
 
 %% Replay mode
 if any(replay>0)
@@ -179,8 +180,8 @@ end
 %% Attention stimulus
 if ~stimulus.replay && ~isfield(stimulus,'attention') 
     stimulus.attention = struct;
-    stimulus.attention.attendX = [0 5 0];
-    stimulus.attention.attendY = [0 -5 0];
+    stimulus.attention.attendX = [0 5 -5];
+    stimulus.attention.attendY = [0 0 0];
 
     if stimulus.attend
         stimulus.attention.rotate = length(stimulus.attention.attendX);
@@ -595,9 +596,16 @@ if ~stimulus.replay
     fixStimulus.fixLineWidth = 4;
     fixStimulus.stairStepSize = 0.02;
     fixStimulus.stimTime = 0.25;
-    fixStimulus.interTime = 0.35;
+    fixStimulus.interTime = 0.35; %0.35
     fixStimulus.stairUsePest = 1;
-    fixStimulus.responseTime = 1;
+    fixStimulus.responseTime = 1.2; %1.0
+    if stimulus.practice == 1
+        fixStimulus.interTime = 0.5;
+        fixStimulus.responseTime = 1.35;
+    elseif stimulus.practice== 2
+        fixStimulus.interTime = 0.75;
+        fixStimulus.responseTime = 1.5;
+    end
     fixStimulus.staircase = stimulus.staircase;
     fixStimulus.pos = [stimulus.attention.curAttendX stimulus.attention.curAttendY];
     [task{2}, myscreen] = gruFixStairInitTask_afmap(myscreen);
