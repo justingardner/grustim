@@ -33,8 +33,8 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-attend = 0; run = 0; build = 0; eyewindow=0; mouse=0; practice=0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','practice=0','debug=0','replay=0','attend=1','run=0','build=0','mouse=0'});
+attend = 0; run = 0; build = 0; eyewindow=0; mouse=0; practice=0; info = 0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','practice=0','debug=0','replay=0','attend=1','run=0','build=0','mouse=0','info=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -50,6 +50,38 @@ if ~stimulus.attend
     warning('*****ATTENTION MODE IS DISABLED*****');
 end
 clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice
+
+%% Info mode
+
+% simply return the list of runs that were performed and which attention
+% modes and builds these were for
+if ~(info==0)
+    stop = 1;
+    
+    % check that info is actually a folder
+    fname = fullfile('~/data/afmap2/',info,'Etc');
+    
+    if ~isdir(fname)
+        warning('Info should be a data folder in ~/data/afmap2');
+        return
+    end
+    
+    files = dir(fname);
+    
+    for fi = 1:length(files)
+        if ~isempty(strfind(files(fi).name,'.mat'))
+        
+            load(fullfile(fname,files(fi).name));
+            disp(sprintf('File: %s',files(fi).name));
+%             disp(sprintf('Run: %i, Build: %i, Attend: %i',stimulus.curRun,stimulus.build.curBuild,stimulus.attention.curAttend));
+            disp(sprintf('r%i_b%i_a%i',stimulus.curRun,stimulus.build.curBuild,stimulus.attention.curAttend));
+        end
+    end
+    
+    
+    % return
+    return
+end
 
 %% Replay mode
 if any(replay>0)
