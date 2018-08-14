@@ -6,9 +6,9 @@ function [ myscreen ] = afmap2( varargin )
 %
 %   Map the attention field in the scanner. This function works by having a
 %   participant perform an asynchronous attention task at fixation or in a
-%   quarterfield region. A random process generates flashes of rotated 
+%   quarterfield region. A random process generates flashes of rotated
 %   gratings throughout the visual field at low or high contrast.
-%   
+%
 %   The attention task involves performing the standard luminance decrement
 %   task at an off-fixation location. The task is sped up to be more
 %   continuous than it usually is and is staircased.
@@ -33,11 +33,13 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-attend = 0; run = 0; build = 0; eyewindow=0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','debug=0','replay=0','attend=1','run=0','build=0'});
+attend = 0; run = 0; build = 0; eyewindow=0; mouse=0; practice=0; info = 0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','practice=0','debug=0','replay=0','attend=1','run=0','build=0','mouse=0','info=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.practice = practice;
+stimulus.mousedebug = mouse;
 stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
 stimulus.replay = replay;
@@ -47,7 +49,43 @@ stimulus.buildOverride = build;
 if ~stimulus.attend
     warning('*****ATTENTION MODE IS DISABLED*****');
 end
-clear localizer invisible scan noeye task test2 attend build eyewindow
+clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice
+
+if stimulus.scan
+    warning('Disabling eyewindow');
+    stimulus.eyewindow=0;
+end
+%% Info mode
+
+% simply return the list of runs that were performed and which attention
+% modes and builds these were for
+if ~(info==0)
+    stop = 1;
+    
+    % check that info is actually a folder
+    fname = fullfile('~/data/afmap2/',info,'Etc');
+    
+    if ~isdir(fname)
+        warning('Info should be a data folder in ~/data/afmap2');
+        return
+    end
+    
+    files = dir(fname);
+    
+    for fi = 1:length(files)
+        if ~isempty(strfind(files(fi).name,'.mat'))
+            
+            load(fullfile(fname,files(fi).name));
+            disp(sprintf('File: %s',files(fi).name));
+            %             disp(sprintf('Run: %i, Build: %i, Attend: %i',stimulus.curRun,stimulus.build.curBuild,stimulus.attention.curAttend));
+            disp(sprintf('r%i_b%i_a%i',stimulus.curRun,stimulus.build.curBuild,stimulus.attention.curAttend));
+        end
+    end
+    
+    
+    % return
+    return
+end
 
 %% Replay mode
 if any(replay>0)
@@ -89,11 +127,11 @@ end
 if ~stimulus.replay
     stimulus.counter = 1;
     stimulus.curRun = 1;
-
+    
     if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap2/%s',mglGetSID))
         % Directory exists, check for a stimefile
         files = dir(sprintf('~/data/afmap2/%s/1*mat',mglGetSID));
-
+        
         if length(files) >= 1
             fname = files(end).name;
             
@@ -139,21 +177,21 @@ if ~stimulus.replay
     stimulus.minEcc = 1;
     
     stimulus.maxOnScreen = 36;
-
-    % how 
+    
+    % how
     stimulus.probeOn = 2;
     % how long a probe stays up for (in TR, 4 = 2.0s)
     stimulus.probeUp = 4; % this must be EVEN!!
     % how long a probe is guaranteed to stay down (in TR, 12 = 6.0s)
     stimulus.probeDown = 12;
-
+    
     % stimulus.live will hold what actually gets displayed on the screen
-% %     stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
-% %     stimulus.live.sz = zeros(length(stimulus.stimx),length(stimulus.stimy));
-% %     stimulus.live.ph = zeros(length(stimulus.stimx),length(stimulus.stimy));
-% %     stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
-
-    % gratingContrasts and gratingsizes control the possible sizes 
+    % %     stimulus.live.con = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    % %     stimulus.live.sz = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    % %     stimulus.live.ph = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    % %     stimulus.live.theta = zeros(length(stimulus.stimx),length(stimulus.stimy));
+    
+    % gratingContrasts and gratingsizes control the possible sizes
     stimulus.gratingContrasts = [0.1 1.0];
     % design eccs
     stimulus.designEccs = logspace(0,log10(6),8);
@@ -161,10 +199,10 @@ if ~stimulus.replay
     % the ratios are approximately the sigma / ecc ratio for V1, V4, and
     % higher regions (MT/LO/VO/TO)
     stimulus.gratingRatios = [.15 .27 0.5];
-
+    
     % when we are doing the attention task
     stimulus.live.attend = 0;
-
+    
     % blank options
     stimulus.blanks.none.range = [2*pi 0];
     stimulus.blanks.all.range = [0 2*pi];
@@ -176,11 +214,11 @@ if ~stimulus.replay
 end
 
 %% Attention stimulus
-if ~stimulus.replay && ~isfield(stimulus,'attention') 
+if ~stimulus.replay && ~isfield(stimulus,'attention')
     stimulus.attention = struct;
-    stimulus.attention.attendX = [0 5 0];
-    stimulus.attention.attendY = [0 -5 0];
-
+    stimulus.attention.attendX = [0 5 -5];
+    stimulus.attention.attendY = [0 0 0];
+    
     if stimulus.attend
         stimulus.attention.rotate = length(stimulus.attention.attendX);
     else
@@ -197,7 +235,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
     
     stimulus.build.uniques = 3; % how many unique patterns to generate
     stimulus.build.rotate = 3; % how many patterns to rotate through (set to 4 or 5 for 2x repeat runs)
-        
+    
     stimulus.build.cycles = 6;
     stimulus.build.cycleLength = 120;
     stimulus.build.availableTRs = stimulus.build.cycles*stimulus.build.cycleLength; % how long the task should run for
@@ -254,7 +292,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
         mesAngles =  [-90 -60 -45 -30 -15 0 15 30 45 60 75 90];
         % eccentricity measured at the above angles
         mesEcc = ([15 17 20 28 38 35 30 26 24 22 21 21]-1)*1;
-
+        
         % linear interpolate (in radial coordinates) to make smoother
         angles = -90:90;
         ecc = interp1(mesAngles,mesEcc,angles,'linear');
@@ -264,13 +302,13 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
         ecc = [ecc ecc];
         
         angles = mod(angles,2*pi);
-
-%         figure; hold on
-%         for i = 1:length(angles)
-%             x = ecc(i) * cos(angles(i));
-%             y = ecc(i) * sin(angles(i));
-%             plot(x,y,'*');
-%         end
+        
+        %         figure; hold on
+        %         for i = 1:length(angles)
+        %             x = ecc(i) * cos(angles(i));
+        %             y = ecc(i) * sin(angles(i));
+        %             plot(x,y,'*');
+        %         end
         
         disppercent(-1/stimulus.build.availableTRs);
         
@@ -301,7 +339,7 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
                 
                 % for ecc, flip across and then round to get maxEcc values
                 t2 = t;
-%                 t2 = mod(t2,2*pi);
+                %                 t2 = mod(t2,2*pi);
                 
                 eccMax = zeros(size(t2));
                 
@@ -414,7 +452,7 @@ end
 
 %% Display completion information
 if ~stimulus.replay
-
+    
     strs = {};
     initStrs = {'Build\t','#\t'};
     for bi = 1:stimulus.build.rotate
@@ -432,7 +470,7 @@ if ~stimulus.replay
     if stimulus.attend
         disp('******************************');
         disp(sprintf('\tAttention condition'));
-    %     disp(aconds);
+        %     disp(aconds);
         for bi = 1:stimulus.build.rotate
             disp(sprintf('%s',strs{bi}));
         end
@@ -539,11 +577,11 @@ end
 
 if ~stimulus.replay
     myscreen.stimulusNames{1} = 'stimulus';
-
+    
     if ~isfield(stimulus.live,'grating')
         localInitStimulus();
     end
-
+    
     stimulus.responseKeys = [1 2]; % left right
 else
     localInitStimulus();
@@ -593,9 +631,16 @@ if ~stimulus.replay
     fixStimulus.fixLineWidth = 4;
     fixStimulus.stairStepSize = 0.02;
     fixStimulus.stimTime = 0.25;
-    fixStimulus.interTime = 0.35;
+    fixStimulus.interTime = 0.35; %0.35
     fixStimulus.stairUsePest = 1;
-    fixStimulus.responseTime = 1;
+    fixStimulus.responseTime = 1.2; %1.0
+    if stimulus.practice == 1
+        fixStimulus.interTime = 0.5;
+        fixStimulus.responseTime = 1.35;
+    elseif stimulus.practice== 2
+        fixStimulus.interTime = 0.75;
+        fixStimulus.responseTime = 1.5;
+    end
     fixStimulus.staircase = stimulus.staircase;
     fixStimulus.pos = [stimulus.attention.curAttendX stimulus.attention.curAttendY];
     [task{2}, myscreen] = gruFixStairInitTask_afmap(myscreen);
@@ -613,7 +658,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if ~stimulus.replay
     myscreen = eyeCalibDisp(myscreen);
-
+    
     % let the user know
     disp(sprintf('(afmap2) Starting run number: %i.',stimulus.counter));
 end
@@ -660,11 +705,11 @@ myscreen.flushMode = 1;
 % save stimulus
 if stimulus.replay
     s = load(replay);
-
+    
     screenWidth = myscreen.screenWidth; screenHeight = myscreen.screenHeight;
     imageWidth = myscreen.imageWidth; imageHeight = myscreen.imageHeight;
     [pRFstim.x, pRFstim.y] = ndgrid(-imageWidth/2:imageWidth/(screenWidth-1):imageWidth/2, -imageHeight/2:imageHeight/(screenHeight-1):imageHeight/2);
-
+    
     pRFstim.t = 1:size(stimulus.frames,3);
     
     if size(stimulus.frames,3)~=720
@@ -744,14 +789,14 @@ if stimulus.replay
 else
     mglClearScreen();
     drawGratings();
-    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+    if stimulus.attention.curAttendX~=0 || stimulus.attention.curAttendY ~= 0
         mglFixationCross(1,3,stimulus.colors.black);
     end
     drawFix(myscreen);
     mglFlush;
     mglClearScreen();
     drawGratings();
-    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+    if stimulus.attention.curAttendX~=0 || stimulus.attention.curAttendY ~= 0
         mglFixationCross(1,3,stimulus.colors.black);
     end
     drawFix(myscreen);
@@ -776,12 +821,12 @@ if stimulus.live.dead
     mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],stimulus.colors.red,60);
 else
     if fixStimulus.trainingMode,mglClearScreen;end
-
+    
     if ~isempty(fixStimulus.displayText)
-      mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
+        mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
     end
     mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
-
+    
     mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
 end
 
@@ -814,12 +859,12 @@ for si = 1:length(live)
         % just draw a circle
         % /2 because the FWHM defines a diameter of 1/2/3 degree
         mglBltTexture(stimulus.gaussian(con,eccIdx,sz,ph),[x y],0,0,0);
-    %                 mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
+        %                 mglFillOval(x,y,repmat(stimulus.gratingSizes(sz)/(2*sqrt(2*log(2)))*2,1,2),stimulus.gratingContrasts(con)*[1 1 1]);
     else
         % organized: contrast, ecc, size, ph
         mglBltTexture(stimulus.grating(con,eccIdx,sz,ph),[x y],0,0,theta*180/pi);
     end
-end 
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -833,14 +878,28 @@ drawFix(myscreen);
 
 % check eye pos
 if (~stimulus.noeye) && (stimulus.eyewindow>0)
-    [pos,~] = mglEyelinkGetCurrentEyePos;
+    
     
     % mouse version for testing with no eyetracker
-%     mInfo = mglGetMouse(myscreen.screenNumber);
-%     degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-%     degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-%     
-%     pos = [degx, degy];
+    if stimulus.mousedebug
+        mInfo = mglGetMouse(myscreen.screenNumber);
+        degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+        degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+        
+        pos = [degx, degy];
+    else
+        [pos,~] = mglEyelinkGetCurrentEyePos;
+    end
+    
+    if stimulus.debug > 0
+        if stimulus.debug >= 10
+            disp(sprintf('Mouse position: %1.1f %1.1f',pos(1),pos(2)));
+            stimulus.debug = 1;
+        else
+            stimulus.debug = stimulus.debug+1;
+        end
+    end
+    
     
     % compute distance
     dist = hypot(pos(1),pos(2));
@@ -849,7 +908,8 @@ end
 % Eye movement detection code
 if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~stimulus.live.dead
     if ~any(isnan(pos))
-        if dist > stimulus.eyewindow && stimulus.live.eyeCount > 30
+        
+        if dist > stimulus.eyewindow && stimulus.live.eyeCount > 40
             disp('Eye movement detected!!!!');
             stimulus.live.dead = 1;
             return
@@ -871,10 +931,10 @@ global stimulus
 
 for ai = 1:stimulus.attention.rotate
     stimulus.staircases{ai} = doStaircase('init','upDown',...
-                'initialThreshold',0.40,...
-                'initialStepsize',0.03,...
-                'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
-                'nTrials=80','maxStepsize=0.2','minStepsize=0.0001');
+        'initialThreshold',0.40,...
+        'initialStepsize',0.03,...
+        'minThreshold=0.0001','maxThreshold=0.4','stepRule','pest',...
+        'nTrials=80','maxStepsize=0.2','minStepsize=0.0001');
 end
 
 function resetStair()
@@ -916,7 +976,7 @@ for ci = 1:length(stimulus.gratingContrasts)
                 gauss = mglMakeGaussian(sz*4,sz*4,sz/fwhm_sd,sz/fwhm_sd);
                 alphamask = repmat(grating,1,1,4);
                 alphamask(:,:,4) = gauss*255;
-
+                
                 % make the grating
                 stimulus.grating(ci,si,ri,phase) = mglCreateTexture(alphamask); % high contrast
                 % make a gaussian (for when we display, make sure to use the
