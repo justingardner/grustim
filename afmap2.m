@@ -1,44 +1,29 @@
-function [ myscreen ] = afmap( varargin )
-% scan info: 736 TRs (6 minute * 120 + 16)
+function [ myscreen ] = afmap2( varargin )
+% ***scan info: 736 TRs (6 minute * 120 + 16)***
+% *** set 'noeye=1' to turn of the eye tracker***
 %
-% TODO
-% * fix rotation order
-% * fix fixation cross task (way too hard at 5,5)
-%
-%
-%ATTENTIONFIELDMAPPING 
+%ATTENTIONFIELDMAPPING (afmap2)
 %
 %   Map the attention field in the scanner. This function works by having a
 %   participant perform an asynchronous attention task at fixation or in a
-%   quarterfield region. A pre-determined poisson process generates random
-%   flashes of rotated gratings throughout the visual field at low or high
-%   contrast.
-%
-%   The probe stimuli have three sizes 0.5x0.5, 1x1 or 2x2 deg, to
-%   help estimate different RF sizes and are placed at 2 degree
-%   increments. The probability of a probe stimulus turning on is 2.5% per
-%   TR and the dead time is five seconds. The code starts with a 10 s blank
-%   and has another 10 s blank every three minutes. Probes are at 20% and
-%   80% contrast, each probe lasts two TRs.
+%   quarterfield region. A random process generates flashes of rotated 
+%   gratings throughout the visual field at low or high contrast.
 %   
-%   The attention task involves performing orientation judgments on gabors
-%   at a location cued continuously by a circular aperture. Fixation is
-%   maintained at the center and monitored within a 1.5 deg window. Gabor
-%   is at full contrast to differentiate from the probe stimuli (and to
-%   minimize the effect of the probes on performance)
+%   The attention task involves performing the standard luminance decrement
+%   task at an off-fixation location. The task is sped up to be more
+%   continuous than it usually is and is staircased.
 %
-%   Notes 6/23/18: I started a second copy of afmap (afmap2) which has a
-%   different attention task. I'm worried that (1) the task is too hard and
-%   (2) it isn't continuous in nature, which might lead people to attend
-%   differently at different times. 
+%   If you accidentally crash a run or need to stop the scanner you can
+%   specify a run by setting the flag, 'run=#'.
+%
+%   During scanning use 'noeye=1'
 
-warning('This code is deprecated -- you shouldn''t be using it');
-return
 %%
 
-global stimulus
+global stimulus fixStimulus
 
 stimulus = struct;
+fixStimulus = struct;
 
 %% Initialize Variables
 
@@ -48,16 +33,12 @@ plots = 0;
 noeye = 0;
 debug = 0;
 replay = 0;
-% % <<<<<<< HEAD`````````````````````````````````
-% attend = 0; run = 0;
-% getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=0','run=0'});
-% =======
-attend = 0; run = 0; build = 0;
-getArgs(varargin,{'scan=1','plots=0','noeye=0','debug=0','replay=0','attend=1','run=0','build=0'});
-% `````````````````````````````````````````````````````````````````````````>>> 8e4ac884c8b9fa782cb977677aa04ada194af44a
+attend = 0; run = 0; build = 0; eyewindow=0;
+getArgs(varargin,{'scan=1','plots=0','noeye=0','eyewindow=1.5','debug=0','replay=0','attend=1','run=0','build=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
@@ -66,7 +47,7 @@ stimulus.buildOverride = build;
 if ~stimulus.attend
     warning('*****ATTENTION MODE IS DISABLED*****');
 end
-clear localizer invisible scan noeye task test2 attend build
+clear localizer invisible scan noeye task test2 attend build eyewindow
 
 %% Replay mode
 if any(replay>0)
@@ -109,14 +90,14 @@ if ~stimulus.replay
     stimulus.counter = 1;
     stimulus.curRun = 1;
 
-    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap/%s',mglGetSID))
+    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afmap2/%s',mglGetSID))
         % Directory exists, check for a stimefile
-        files = dir(sprintf('~/data/afmap/%s/1*mat',mglGetSID));
+        files = dir(sprintf('~/data/afmap2/%s/1*mat',mglGetSID));
 
         if length(files) >= 1
             fname = files(end).name;
-
-            s = load(sprintf('~/data/afmap/%s/%s',mglGetSID,fname));
+            
+            s = load(sprintf('~/data/afmap2/%s/%s',mglGetSID,fname));
             % copy staircases and run numbers
             stimulus.counter = s.stimulus.counter + 1;
             stimulus.curRun = s.stimulus.curRun + 1;
@@ -127,10 +108,12 @@ if ~stimulus.replay
             stimulus.order = s.stimulus.order;
             stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
             if s.stimulus.attend ~= stimulus.attend
-                error('Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
+                error('(afmap2) Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
             end
             clear s;
-            disp(sprintf('(afmap) Data file: %s loaded.',fname));
+            disp(sprintf('(afmap2) Data file: %s loaded.',fname));
+        else
+            warning('(afmap2) Unable to load previous data files. If this is *not* the first run there is something wrong.');
         end
     end
 end
@@ -143,8 +126,8 @@ end
 %% Display run info
 if ~stimulus.replay
     disp('*************************');
-    disp(sprintf('(afmap) This is scan #%i',stimulus.counter));
-    disp(sprintf('(afmap) This is run #%i',stimulus.curRun));
+    disp(sprintf('(afmap2) This is scan #%i',stimulus.counter));
+    disp(sprintf('(afmap2) This is run #%i',stimulus.curRun));
     disp('*************************');
 end
 
@@ -195,8 +178,8 @@ end
 %% Attention stimulus
 if ~stimulus.replay && ~isfield(stimulus,'attention') 
     stimulus.attention = struct;
-    stimulus.attention.attendX = [0 4 4];
-    stimulus.attention.attendY = [0 4 -4];
+    stimulus.attention.attendX = [0 5 0];
+    stimulus.attention.attendY = [0 -5 0];
 
     if stimulus.attend
         stimulus.attention.rotate = length(stimulus.attention.attendX);
@@ -372,21 +355,11 @@ if ~stimulus.replay && ~isfield(stimulus,'build')
         % test code
         
         %%
-%         figure
-%         colormap('gray');
-%         caxis([0 1]);
-% %         build.con = build.con>0;
-%         tb = build.con/max(build.con(:));
-%         for i = 1:720
-%             imagesc(squeeze(tb(i,:,:)));
-%             pause(.01);
-%         end
-        %%
         % test code end
-        disp(sprintf('(afmap) Pre-build of build %i has finished (will be saved with stimfile).',bi));
+        disp(sprintf('(afmap2) Pre-build of build %i has finished (will be saved with stimfile).',bi));
         stimulus.builds{bi} = build;
     end
-    disp(sprintf('(afmap) Pre-build complete. Created %i unique builds which will rotate every %i runs.',stimulus.build.uniques,stimulus.build.rotate));
+    disp(sprintf('(afmap2) Pre-build complete. Created %i unique builds which will rotate every %i runs.',stimulus.build.uniques,stimulus.build.rotate));
 end
 
 %% Build the order
@@ -406,7 +379,7 @@ end
 %% Staircase
 if ~stimulus.replay
     if ~isfield(stimulus,'staircases')
-        disp('(afmap) WARNING: New staircase');
+        disp('(afmap2) WARNING: New staircase');
         initStair();
     else
         resetStair();
@@ -470,8 +443,8 @@ end
 %% Display build info
 if ~stimulus.replay
     disp('******************************');
-    disp(sprintf('(afmap) Build %i selected',stimulus.build.curBuild));
-    disp(sprintf('(afmap) Attending X: %i Y: %i selected',stimulus.attention.curAttendX,stimulus.attention.curAttendY));
+    disp(sprintf('(afmap2) Build %i selected',stimulus.build.curBuild));
+    disp(sprintf('(afmap2) Attending X: %i Y: %i selected',stimulus.attention.curAttendX,stimulus.attention.curAttendY));
     disp('******************************');
 end
 
@@ -535,7 +508,7 @@ if ~stimulus.replay
     stimulus.grid.sz = stimulus.builds{stimulus.build.curBuild}.sz;
     stimulus.grid.ph = stimulus.builds{stimulus.build.curBuild}.ph;
     stimulus.grid.theta = stimulus.builds{stimulus.build.curBuild}.theta;
-    disp(sprintf('(afmap) Build %i loaded from pre-build',stimulus.build.curBuild));
+    disp(sprintf('(afmap2) Build %i loaded from pre-build',stimulus.build.curBuild));
 end
 
 %% Setup attention
@@ -552,7 +525,6 @@ if stimulus.replay
 else
     myscreen = initScreen('VPixx');
 end
-
 % set background to grey
 myscreen.background = 0.5;
 
@@ -592,7 +564,7 @@ else
     task{1}{1}.waitForBacktick = 1;
     task{1}{1}.seglen = repmat(0.500,1,120);
     if stimulus.scan
-        task{1}{1}.seglen(end) = 0.050; % make the last segment short so that it will synchtovol and hopefully align the runs
+        task{1}{1}.seglen(end) = 0.050; % make the last segment short so that it will synchtovol and hopefully align the runs correctly
     end
 end
 
@@ -613,55 +585,26 @@ task{1}{1}.randVars.calculated.probesOn = nan;
 
 %% Setup Attention Task
 
-stimulus.curTrial = 0;
+stimulus.curStep = 0;
 
 if ~stimulus.replay
-    global fixStimulus %#ok<TLEV>
-
-    fixStimulus.diskSize = 0.75;
-    fixStimulus.fixWidth = 1;
-    fixStimulus.fixLineWidth = 3;
-    fixStimulus.stimTime = 0.35;
-    fixStimulus.interTime = 1.4;
+    fixStimulus.diskSize = 1;
+    fixStimulus.fixWidth = 1.25;
+    fixStimulus.fixLineWidth = 4;
+    fixStimulus.stairStepSize = 0.02;
+    fixStimulus.stimTime = 0.25;
+    fixStimulus.interTime = 0.35;
     fixStimulus.stairUsePest = 1;
-    fixStimulus.responseTime = 2;
+    fixStimulus.responseTime = 1;
     fixStimulus.staircase = stimulus.staircase;
     fixStimulus.pos = [stimulus.attention.curAttendX stimulus.attention.curAttendY];
-    [task{2}, myscreen] = gruFixStairInitTask(myscreen);
-    
-    % task{2}{1} = struct;
-    % task{2}{1}.waitForBacktick = 0;
-    % % task waits for fixation on first segment
-    % task{2}{1}.segmin = [0.500 1 0.200 1];
-    % task{2}{1}.segmax = [2.500 1 0.200 1];
-    % 
-    % stimulus.seg.ITI = 1;
-    % stimulus.seg.delay1 = 2;
-    % stimulus.seg.stim = 3;
-    % stimulus.seg.resp = 4;
-    % 
-    % task{2}{1}.synchToVol = [0 0 0 0];
-    % task{2}{1}.getResponse = [0 0 0 1];
-    % 
-    % task{2}{1}.numTrials = Inf;
-    % 
-    % task{2}{1}.parameter.rotation = [-1 1];
-    % 
-    % task{2}{1}.random = 1;
-    % 
-    % if stimulus.scan
-    %     task{2}{1}.synchToVol = 1;
-    % end
-    % 
-    % task{2}{1}.randVars.calculated.resp = nan;
-    % task{2}{1}.randVars.calculated.correct = nan;``
+    [task{2}, myscreen] = gruFixStairInitTask_afmap(myscreen);
 end
 
 %% Full Setup
 % Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
     [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback1,@screenUpdateCallback1,[],@startTrialCallback1,[],[]);
-%     [task{2}{phaseNum}, myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback2,@screenUpdateCallback2,@getResponseCallback2,@startTrialCallback2,[],[]);
 end
 
 %% EYE CALIB
@@ -672,7 +615,7 @@ if ~stimulus.replay
     myscreen = eyeCalibDisp(myscreen);
 
     % let the user know
-    disp(sprintf('(afmap) Starting run number: %i.',stimulus.counter));
+    disp(sprintf('(afmap2) Starting run number: %i.',stimulus.counter));
 end
 
 %% Main Task Loop
@@ -749,7 +692,7 @@ end
 myscreen = endTask(myscreen,task);
 
 if ~stimulus.replay && stimulus.plots
-    disp('(afmap) Displaying plots');
+    disp('(afmap2) Displaying plots');
     dispInfo(stimulus);
 end
 
@@ -759,8 +702,9 @@ end
 function [task, myscreen] = startTrialCallback1(task,myscreen)
 global stimulus
 
-disp(sprintf('(afmap) Starting cycle %01.0f',(stimulus.curTrial/120)+1));
-% disppercent(-1/120,'(afmap) Running: ');
+disp(sprintf('(afmap2) Starting cycle %01.0f',(stimulus.curStep/120)+1));
+stimulus.live.dead = 0;
+stimulus.live.eyeCount=0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
@@ -768,17 +712,27 @@ disp(sprintf('(afmap) Starting cycle %01.0f',(stimulus.curTrial/120)+1));
 
 function [task, myscreen] = startSegmentCallback1(task,myscreen)
 %%
-global stimulus
+global stimulus fixStimulus
 
-stimulus.curTrial = stimulus.curTrial + 1;
+stimulus.curStep = stimulus.curStep + 1;
 
-stimulus.live.t = squeeze(stimulus.grid.t(stimulus.curTrial,:));
-stimulus.live.ecc = squeeze(stimulus.grid.ecc(stimulus.curTrial,:));
-stimulus.live.con = squeeze(stimulus.grid.con(stimulus.curTrial,:));
-stimulus.live.sz = squeeze(stimulus.grid.sz(stimulus.curTrial,:));
-stimulus.live.ph = squeeze(stimulus.grid.ph(stimulus.curTrial,:));
-stimulus.live.theta = squeeze(stimulus.grid.theta(stimulus.curTrial,:));
-stimulus.grid.t(stimulus.curTrial) = mglGetSecs;
+% check online eye
+if (stimulus.live.dead==2) && all(fixStimulus.thisColor==[0 1 1])
+    % we can reset the colors now
+    stimulus.live.dead= 0;
+    stimulus.live.eyeCount = 0;
+elseif (stimulus.live.dead==1) && all(fixStimulus.thisColor==[1 1 0])
+    % set the timer
+    stimulus.live.dead = 2;
+end
+
+stimulus.live.t = squeeze(stimulus.grid.t(stimulus.curStep,:));
+stimulus.live.ecc = squeeze(stimulus.grid.ecc(stimulus.curStep,:));
+stimulus.live.con = squeeze(stimulus.grid.con(stimulus.curStep,:));
+stimulus.live.sz = squeeze(stimulus.grid.sz(stimulus.curStep,:));
+stimulus.live.ph = squeeze(stimulus.grid.ph(stimulus.curStep,:));
+stimulus.live.theta = squeeze(stimulus.grid.theta(stimulus.curStep,:));
+stimulus.grid.t(stimulus.curStep) = mglGetSecs;
 
 if stimulus.replay
     mglClearScreen(0);
@@ -805,31 +759,37 @@ end
 
 % draw gratings for probe task
 
-
 if stimulus.replay
     mglFlush % the screen will blank after the frame, but whatever
     frame = mglFrameGrab;
     if ~isfield(stimulus,'frames')
         stimulus.frames = zeros(myscreen.screenWidth,myscreen.screenHeight,stimulus.build.availableTRs);
     end
-    stimulus.frames(:,:,stimulus.curTrial) = frame(:,:,1);
+    stimulus.frames(:,:,stimulus.curStep) = frame(:,:,1);
 end
-
-disp(sprintf('(afmap) Starting trial %01.0f',stimulus.curTrial));
-% disppercent(stimulus.curTrial/120,'(afmap) Running: ');
 
 function drawFix(myscreen)
 
-global fixStimulus;
+global stimulus fixStimulus;
 
-if fixStimulus.trainingMode,mglClearScreen;end
+if stimulus.live.dead
+    mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],stimulus.colors.red,60);
+else
+    if fixStimulus.trainingMode,mglClearScreen;end
 
-if ~isempty(fixStimulus.displayText)
-  mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
+    if ~isempty(fixStimulus.displayText)
+      mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
+    end
+    mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+
+    mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
 end
-mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
 
-mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
+% draw an annulus around the cross that stays up permanently (helps to
+% avoid losing the cross due to adaptation)
+for i = 0:45:(360-1)
+    mglGluPartialDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize,fixStimulus.diskSize*1.1,i,22.5,stimulus.colors.white);
+end
 
 function drawGratings
 
@@ -867,105 +827,41 @@ end
 
 function [task, myscreen] = screenUpdateCallback1(task, myscreen)
 %%
-% global stimulus
-
-
-
-function [task, myscreen] = startTrialCallback2(task,myscreen)
-%%
 global stimulus
 
-stimulus.curTrial = stimulus.curTrial + 1;
+drawFix(myscreen);
 
-[rotation, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
-task.thistrial.rotation = rotation*task.thistrial.rotation;
-
-rotText = {'-','+'};
-disp(sprintf('Trial %i: %s%01.2f',stimulus.curTrial,rotText{1+(task.thistrial.rotation>0)},abs(task.thistrial.rotation)*180/pi));
+% check eye pos
+if (~stimulus.noeye) && (stimulus.eyewindow>0)
+    [pos,~] = mglEyelinkGetCurrentEyePos;
     
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [task, myscreen] = startSegmentCallback2(task, myscreen)
-%%
-
-global stimulus
-
-stimulus.live.fix = 1;
-stimulus.live.stim = 0;
-stimulus.live.fixColor = stimulus.colors.white;
-
-if task.thistrial.thisseg==stimulus.seg.ITI
-    stimulus.live.fixColor = stimulus.colors.black;
-elseif task.thistrial.thisseg == stimulus.seg.stim
-    stimulus.live.rotation = task.thistrial.rotation*180/pi;
-    stimulus.live.stim = 1;
-% elseif task.thistrial.thisseg == stimulus.seg.stim2
-%     stimulus.live.rotation = task.thistrial.rotation*180/pi;
+    % mouse version for testing with no eyetracker
+%     mInfo = mglGetMouse(myscreen.screenNumber);
+%     degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+%     degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+%     
+%     pos = [degx, degy];
+    
+    % compute distance
+    dist = hypot(pos(1),pos(2));
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function [task, myscreen] = screenUpdateCallback2(task, myscreen)
-%%
-global stimulus
-
-% mglClearScreen();
-
-if stimulus.live.fix
-    upFix(stimulus);
-end
-
-if stimulus.live.stim
-    upStim(stimulus);
-end
-
-upAttend(stimulus);
-
-function upAttend(stimulus)
-%%
-for i = 1:8
-    mglGluPartialDisk(stimulus.live.aX,stimulus.live.aY,0.99,1.01,(i-1)*360/8-11.25,360/16,stimulus.colors.white);
-end
-
-function upFix(stimulus)
-%%
-% mglGluAnnulus(0,0,1.5,1.55,stimulus.live.fixColor,64);
-mglFixationCross(1,1,stimulus.live.fixColor);
-
-function upStim(stimulus)
-
-mglBltTexture(stimulus.grating(3,1),[stimulus.live.aX,stimulus.live.aY],0,0,stimulus.live.rotation+90);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%
-function [task, myscreen] = getResponseCallback2(task, myscreen)
-
-global stimulus
-
-colors = [stimulus.colors.red;stimulus.colors.green];
-text = {'Incorrect','Correct'};
-stext = {'Left','Right'};
-if any(task.thistrial.whichButton==stimulus.responseKeys)
-    if task.thistrial.gotResponse==0
-        task.thistrial.correct = (task.thistrial.whichButton==1 && task.thistrial.rotation>0) || (task.thistrial.whichButton==2 && task.thistrial.rotation<0);
-        stimulus.staircase = doStaircase('update',stimulus.staircase,task.thistrial.correct);
-        
-        stimulus.live.fixColor = colors(task.thistrial.correct+1,:);
-        disp(sprintf('Subject responded %s: %s',stext{task.thistrial.whichButton},text{task.thistrial.correct+1}));
-    else
-        disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse));
+% Eye movement detection code
+if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~stimulus.live.dead
+    if ~any(isnan(pos))
+        if dist > stimulus.eyewindow && stimulus.live.eyeCount > 30
+            disp('Eye movement detected!!!!');
+            stimulus.live.dead = 1;
+            return
+        elseif dist > stimulus.eyewindow
+            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        end
     end
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%                              HELPER FUNCTIONS                           %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -988,79 +884,18 @@ global stimulus
 for ai = 1:stimulus.attention.rotate
     s = stimulus.staircases{ai};
     if doStaircase('stop',s)
-        disp('(afmap) Staircase is being reset');
+        disp('(afmap2) Staircase is being reset');
         s(end+1) = doStaircase('init',s(end));
         if s(end).s.threshold>1
-            disp('(afmap) Bad staircase threshold: setting to 1');
+            disp('(afmap2) Bad staircase threshold: setting to 1');
             s(end).s.threshold=1;
         elseif s(end).s.threshold<0
-            disp('(afmap) Bad staircase threshold: setting to 0.05');
+            disp('(afmap2) Bad staircase threshold: setting to 0.05');
             s(end).s.threshold=0.05;
         end
         stimulus.staircases{ai} = s;
     end
 end
-
-function [trials] = totalTrials()
-%%
-
-% Counts trials + estimates the threshold based on the last 500 trials
-
-% get the files list
-files = dir(fullfile(sprintf('~/data/afmap/%s/17*stim*.mat',mglGetSID)));
-
-trials = 0;
-
-for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/afmap/%s/%s',mglGetSID,files(fi).name)));
-    
-    e = getTaskParameters(myscreen,task);
-    e = e{1}; % why?!
-    trials = trials + e.nTrials;
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%
-%    dispInfo    %
-%%%%%%%%%%%%%%%%%%%%%%%
-function dispInfo(rstimulus)
-%%
-
-% ctask = task; cscreen = myscreen; % save this incase we need them
-
-% compute % correct for valid and invalid trials, display learning over
-% time (including history from other runs)
-% exp = getTaskParameters(task,myscreen);
-
-% get the files list
-files = dir(fullfile(sprintf('~/data/afmap/%s/17*stim*.mat',mglGetSID)));
-
-% load the files and pull out the data (long form)
-%  rrun # counter #    local trial     real trial   angle     respAngle    
-%     1       2             3              4           5           6
-%  target    startRespAngle     contrast     detected      ecc    priorsd
-%     7            8                9           10          11      12
-%    rotation
-%       13
-% count = 1; data = zeros(10000,13);
-% 
-% for fi = 1:length(files)
-%     load(fullfile(sprintf('~/data/afmap_%s/%s/%s',rstimulus.condition,mglGetSID,files(fi).name)));
-%     
-%     e = getTaskParameters(myscreen,task);
-%     if e{1}(1).nTrials>1
-%         e = e{1}(2); % why?!
-%     
-%         run = stimulus.counter;
-% 
-%         data(count:count+(e.nTrials-1),:) = [repmat(fi,e.nTrials,1) repmat(run,e.nTrials,1) (1:e.nTrials)' (count:count+(e.nTrials-1))' ...
-%             e.randVars.angle' e.randVars.respAngle' e.parameter.target' ...
-%             e.randVars.startRespAngle' e.randVars.contrast' e.randVars.detected' ...
-%             e.parameter.ecc' e.parameter.priorSTD' e.randVars.rotation'];
-% 
-%         count = count+e.nTrials;
-%     end
-% end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -1103,110 +938,3 @@ end
 %     end
 % end
 % mglFlush
-
-%%
-% 
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % sets the gamma table so that we can have
-% % finest possible control over the stimulus contrast.
-% %
-% % stimulus.colors.reservedColors should be set to the reserved colors (for cue colors, etc).
-% % maxContrast is the maximum contrast you want to be able to display.
-% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function setGammaTable(maxContrast)
-% 
-% global stimulus;
-% 
-% % set the bottom
-% gammaTable(1:size(stimulus.colors.reservedBottom,1),1:size(stimulus.colors.reservedBottom,2)) = stimulus.colors.reservedBottom;
-% 
-% % set the gamma table
-% if maxContrast == 1
-%     % create the rest of the gamma table
-%     cmax = 1;cmin = 0;
-%     luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
-% 
-%     % now get the linearized range
-%     redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-%     greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-%     blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
-% elseif maxContrast > 0
-%     % create the rest of the gamma table
-%     cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
-%     luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nUnreserved-1)):cmax;
-% 
-%     % now get the linearized range
-%     redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-%     greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-%     blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
-% else
-%     % if we are asked for 0 contrast then simply set all the values to gray
-%     redLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,.5,'linear'),1,stimulus.colors.nUnreserved);
-%     greenLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,.5,'linear'),1,stimulus.colors.nUnreserved);
-%     blueLinearized = repmat(interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,.5,'linear'),1,stimulus.colors.nUnreserved);
-% end
-% 
-% % add to the table!
-% gammaTable((stimulus.colors.mrmin:stimulus.colors.mrmax)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
-% 
-% % set the top
-% gammaTable = [gammaTable; stimulus.colors.reservedTop];
-% 
-% if size(gammaTable,1)~=256
-%     disp('(setGammaTable) Failure: Incorrect number of colors in gamma table produced');
-%     keyboard
-% end
-% 
-% % set the gamma table
-% succ = mglSetGammaTable(gammaTable);
-% 
-% if ~succ
-%     warning('Gamma table set failure');
-%     keyboard
-% end
-% 
-% % remember what the current maximum contrast is that we can display
-% stimulus.curMaxContrast = maxContrast;
-% 
-% 
-% function initGammaTable(myscreen)
-% global stimulus
-% %% Gamma Table Initialization
-% 
-% % get gamma table
-% if ~isfield(myscreen,'gammaTable')
-%   stimulus.linearizedGammaTable = mglGetGammaTable;
-%   disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-%   disp(sprintf('(cuecon:initGratings) No gamma table found in myscreen. Contrast displays like this'));
-%   disp(sprintf('         should be run with a valid calibration made by moncalib for this monitor.'));
-%   disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-% else
-%   % check to make sure this matches the calibration file
-%   
-%   % get each channel table that should have been set by mglGetGammaTable
-%   redTable = myscreen.initScreenGammaTable.redTable(:);
-%   greenTable = myscreen.initScreenGammaTable.greenTable(:);
-%   blueTable = myscreen.initScreenGammaTable.blueTable(:);
-%   % get what the calibration structure says it should have been set to
-%   gammaTable = myscreen.gammaTable(:);
-%   % table values are only good to 10 bits
-%   redTable = round(redTable*1024)/1024;
-%   greenTable = round(greenTable*1024)/1024;
-%   blueTable = round(blueTable*1024)/1024;
-%   gammaTable = round(gammaTable*1024)/1024;
-%   % compare, ignoring nans
-%   if ~isequaln(mglGetGammaTable,myscreen.initScreenGammaTable) || ~isequaln(redTable,gammaTable) || ~isequaln(greenTable,gammaTable) || ~isequaln(blueTable,gammaTable)
-%     disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-%     disp(sprintf('(curecon:initGrating) Gamma table does not match calibration'));
-%     disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-%     keyboard
-%   end
-% end
-% stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
-
-function ovals = osum(ivals)
-% compute the "other" sum, i.e. vals[i] = sum(vals[~i])
-ivals(ivals==0)=1;
-for i = 1:length(ivals)
-    ovals(i) = sum(ivals(setdiff(1:length(ivals),i)));
-end

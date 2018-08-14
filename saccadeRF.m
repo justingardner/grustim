@@ -14,12 +14,12 @@ stimulus = struct;
 %% Initialize Variables
 
 % add arguments later
-scan = 0;
+scan = 1;
 plots = 0;
 noeye = 0;
 ploteye=1;
 fixSide=-1;
-getArgs(varargin,{'scan=0','plots=0','noeye=0', 'ploteye=0', 'fixSide=-1'});
+getArgs(varargin,{'scan=1','plots=0','noeye=0', 'ploteye=0', 'fixSide=-1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -109,7 +109,7 @@ stimulus.seg{1}.fix = 2;
 stimulus.stimLength = 2;
 stimulus.stimSize = 2;
 stimulus.fixEcc = 5;
-stimulus.saccLatency = 0.350; % Time to wait after the cue before flashing stimulus.
+stimulus.saccLatency = 0.400; % Time to wait after the cue before flashing stimulus.
 stimulus.cueLength = 10; % Number of frames to change color of fixation cross
 
 % Trial parameters
@@ -192,7 +192,7 @@ task.thistrial.visible = 1;
 task.thistrial.response = 0;
 
 % Set fixation side and saccade target depending on trial type
-if stimulus.runType == 'saccade'
+if strcmp(stimulus.runType, 'saccade')
   % Alternate side of the stimulus on each trial
   task.thistrial.fixSide = mod(task.trialnum,2); % 0 for left, 1 for right
   task.thistrial.saccTarget = mod(task.trialnum+1,2);
