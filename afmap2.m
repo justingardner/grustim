@@ -51,6 +51,11 @@ if ~stimulus.attend
 end
 clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice
 
+if stimulus.scan
+    warning('Disabling eyewindow');
+    stimulus.eyewindow=0;
+end
+
 %% Replay mode
 if any(replay>0)
     if ischar(replay)
@@ -754,14 +759,14 @@ if stimulus.replay
 else
     mglClearScreen();
     drawGratings();
-    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+    if stimulus.attention.curAttendX~=0 || stimulus.attention.curAttendY ~= 0
         mglFixationCross(1,3,stimulus.colors.black);
     end
     drawFix(myscreen);
     mglFlush;
     mglClearScreen();
     drawGratings();
-    if stimulus.attention.curAttendX>0 || stimulus.attention.curAttendY > 0
+    if stimulus.attention.curAttendX~=0 || stimulus.attention.curAttendY ~= 0
         mglFixationCross(1,3,stimulus.colors.black);
     end
     drawFix(myscreen);
@@ -872,7 +877,7 @@ end
 % Eye movement detection code
 if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~stimulus.live.dead
     if ~any(isnan(pos))
-        if dist > stimulus.eyewindow && stimulus.live.eyeCount > 30
+        if dist > stimulus.eyewindow && stimulus.live.eyeCount > 40
             disp('Eye movement detected!!!!');
             stimulus.live.dead = 1;
             return
