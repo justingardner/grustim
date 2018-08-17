@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 scan = 0;
 run = 0;
-getArgs(varargin,{'scan=0', 'run=1'});
+getArgs(varargin,{'scan=1', 'run=1'});
 stimulus.scan = scan;
 stimulus.run = run;
 clear scan run;
@@ -89,7 +89,7 @@ stimulus.seg = {};
 
 % Task important variables
 stimulus.imNames = {'bark', 'branch', 'bricks', 'cracks', 'drops', 'floor', 'glass', 'rocks', 'spikes', 'wood'};
-stimulus.layerNames = {'pool2', 'pool4'};
+stimulus.layerNames = {'pool1', 'pool4'};
 stimulus.rfNames = {'1x1'};
 stimulus.stimDir = '~/proj/TextureSynthesis/out_bw';
 stimulus.noiseDir = '~/proj/TextureSynthesis/spectral_noise';
@@ -141,7 +141,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen = eyeCalibDisp(myscreen);
+%myscreen = eyeCalibDisp(myscreen);
 
 %% Main Task Loop
 
