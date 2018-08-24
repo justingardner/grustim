@@ -435,9 +435,8 @@ if ~stimulus.replay
     
     orderIdx = stimulus.order.curOrder(stimulus.curRun);
     stimulus.build.curBuild = stimulus.order.BaseBui(orderIdx);
+
     % override build
-    stop = 1;
-    
     if stimulus.buildOverride
         stimulus.build.curBuild = stimulus.buildOverride;
     end
@@ -874,47 +873,49 @@ function [task, myscreen] = screenUpdateCallback1(task, myscreen)
 %%
 global stimulus
 
-drawFix(myscreen);
+if ~stimulus.replay
+    drawFix(myscreen);
 
-% check eye pos
-if (~stimulus.noeye) && (stimulus.eyewindow>0)
-    
-    
-    % mouse version for testing with no eyetracker
-    if stimulus.mousedebug
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-        degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-        
-        pos = [degx, degy];
-    else
-        [pos,~] = mglEyelinkGetCurrentEyePos;
-    end
-    
-    if stimulus.debug > 0
-        if stimulus.debug >= 10
-            disp(sprintf('Mouse position: %1.1f %1.1f',pos(1),pos(2)));
-            stimulus.debug = 1;
+    % check eye pos
+    if (~stimulus.noeye) && (stimulus.eyewindow>0)
+
+
+        % mouse version for testing with no eyetracker
+        if stimulus.mousedebug
+            mInfo = mglGetMouse(myscreen.screenNumber);
+            degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+            degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+
+            pos = [degx, degy];
         else
-            stimulus.debug = stimulus.debug+1;
+            [pos,~] = mglEyelinkGetCurrentEyePos;
         end
-    end
-    
-    
-    % compute distance
-    dist = hypot(pos(1),pos(2));
-end
 
-% Eye movement detection code
-if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~stimulus.live.dead
-    if ~any(isnan(pos))
-        
-        if dist > stimulus.eyewindow && stimulus.live.eyeCount > 40
-            disp('Eye movement detected!!!!');
-            stimulus.live.dead = 1;
-            return
-        elseif dist > stimulus.eyewindow
-            stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+        if stimulus.debug > 0
+            if stimulus.debug >= 10
+                disp(sprintf('Mouse position: %1.1f %1.1f',pos(1),pos(2)));
+                stimulus.debug = 1;
+            else
+                stimulus.debug = stimulus.debug+1;
+            end
+        end
+
+
+        % compute distance
+        dist = hypot(pos(1),pos(2));
+    end
+
+    % Eye movement detection code
+    if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~stimulus.live.dead
+        if ~any(isnan(pos))
+
+            if dist > stimulus.eyewindow && stimulus.live.eyeCount > 40
+                disp('Eye movement detected!!!!');
+                stimulus.live.dead = 1;
+                return
+            elseif dist > stimulus.eyewindow
+                stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+            end
         end
     end
 end
