@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 scan = 0;
 run = 0;
-getArgs(varargin,{'scan=1', 'run=1'});
+getArgs(varargin,{'scan=0', 'run=1'});
 stimulus.scan = scan;
 stimulus.run = run;
 clear scan run;
@@ -67,14 +67,9 @@ stimulus.colors.blue = [0 0 1];
 stimulus.live.fixColor = stimulus.colors.blue;
 stimulus.live.cueColor = stimulus.colors.black;
 
-%% Setup Task
-
-%%%%%%%%%%%%% PHASE ONE %%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%% SETUP TEXTURE TASK %%%%%%%%%%%%%%%%%
 
 stimulus.curTrial(1) = 0;
-
-task{1}{1} = struct;
-task{1}{1}.waitForBacktick = 1;
 
 %% Define stimulus timing
 stimRate = 5; % hertz
@@ -82,29 +77,56 @@ blockLen = 9; % seconds
 stimLen = 1.0 / stimRate; % seconds
 nSegs = stimRate * blockLen;
 
-% task waits for fixation on first segment
-task{1}{1}.segmin = repmat(stimLen, [1 nSegs]);
-task{1}{1}.segmax = repmat(stimLen, [1 nSegs]);
-stimulus.seg = {};
-
 % Task important variables
 stimulus.imNames = {'bark', 'branch', 'bricks', 'cracks', 'drops', 'floor', 'glass', 'rocks', 'spikes', 'wood'};
 stimulus.layerNames = {'pool1', 'pool4'};
 stimulus.rfNames = {'1x1'};
-stimulus.stimDir = '~/proj/TextureSynthesis/out_bw';
-stimulus.noiseDir = '~/proj/TextureSynthesis/spectral_noise';
-stimulus.imSize = 12;
+stimulus.stimDir = '~/proj/TextureSynthesis/out_bw_vig';
+stimulus.noiseDir = '~/proj/TextureSynthesis/spectral_noise_vig';
+stimulus.imSize = 8;
 stimulus.nSegsPerBlock = nSegs;
 
-% Choose which image and which pooling layer to display on this run
+% Choose which image and which pooling layer to display on this run on each side
 [a,b] = meshgrid(1:length(stimulus.imNames), 1:length(stimulus.layerNames));
 stimulus.conditions = reshape(cat(2,a',b'), [], 2);
-imageIndex = stimulus.conditions(stimulus.run, 1);
+imageIndex_L = stimulus.conditions(stimulus.run, 1);
+imageIndex_R = (length(stimulus.imNames)+1) - imageIndex_L;
 layerIndex = stimulus.conditions(stimulus.run, 2);
-stimulus.runImage = stimulus.imNames{imageIndex};
+
+stimulus.runImageLeft = stimulus.imNames{imageIndex_L};
+stimulus.runImageRight = stimulus.imNames{imageIndex_R};
 stimulus.runLayer = stimulus.layerNames{layerIndex};
 
-disp(sprintf('(textureLoc) Run #%i: Image = %s, Layer = %s', stimulus.run, stimulus.runImage, stimulus.runLayer));
+disp(sprintf('(textureLoc) Run #%i: Layer = %s, LeftImg = %s, RightImg = %s', stimulus.run, stimulus.runLayer, stimulus.runImageLeft, stimulus.runImageRight));
+
+%% Preload images
+stimulus.live.leftStim = struct();
+stimulus.live.rightStim = struct();
+stimulus.live.leftNoise = struct();
+stimulus.live.rightNoise = struct();
+disppercent(-inf, 'Preloading images');
+for i = 1:10
+  sd1 = imread(sprintf('%s/v%i/1x1_%s_%s.jpg', stimulus.stimDir, i, stimulus.runLayer, stimulus.runImageLeft));
+  sd2 = imread(sprintf('%s/v%i/1x1_%s_%s.jpg', stimulus.stimDir, i, stimulus.runLayer, stimulus.runImageRight));
+  nd1 = imread(sprintf('%s/v%i/noise_%s.jpg', stimulus.noiseDir, i, stimulus.runImageLeft));
+  nd2 = imread(sprintf('%s/v%i/noise_%s.jpg', stimulus.noiseDir, i, stimulus.runImageRight));
+
+  stimulus.live.leftStim.(sprintf('v%i', i)) = genTexFromIm(sd1);
+  stimulus.live.rightStim.(sprintf('v%i', i)) = genTexFromIm(sd2);
+  stimulus.live.leftNoise.(sprintf('v%i', i)) = genTexFromIm(nd1);
+  stimulus.live.rightNoise.(sprintf('v%i', i)) = genTexFromIm(nd2);
+  disppercent(i / 10);
+end
+disppercent(inf);
+clear sd1 sd2 nd1 nd2
+
+%%%%%%%%%%%%% LEFT SIDE TASK %%%%%%%%%%%%%%%%%
+task{1}{1} = struct;
+task{1}{1}.waitForBacktick = 1;
+% task waits for fixation on first segment
+task{1}{1}.segmin = repmat(stimLen, [1 nSegs]);
+task{1}{1}.segmax = repmat(stimLen, [1 nSegs]);
+stimulus.seg = {};
 
 % Trial parameters
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
@@ -119,22 +141,55 @@ if stimulus.scan
   task{1}{1}.segmax(end) = 0.100;
 end
 
-% Task trial parameters
+% Specify task parameters
+task{1}{1}.parameter.stimXPos = -8;
+task{1}{1}.parameter.stimSide = {'left'};
 
 % Task variables to be calculated later
 task{1}{1}.randVars.calculated.noiseOrTex = NaN;
 task{1}{1}.randVars.calculated.whichStimVersions = {'v1', 'v2'};
 
-%% Full Setup
-% Initialize task (note phase == 1)
 for phaseNum = 1:length(task{1})
   [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
 
+%%%%%%%%%%%%%% RIGHT SIDE TASK %%%%%%%%%%%%%%%%%
+%
+task{2}{1} = struct;
+task{2}{1}.waitForBacktick = 1;
+task{2}{1}.segmin = repmat(stimLen, [1 nSegs]);
+task{2}{1}.segmax = repmat(stimLen, [1 nSegs]);
+stimulus.seg = {};
+
+% Trial parameters
+task{2}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
+task{2}{1}.getResponse = zeros(size(task{1}{1}.segmin));
+task{2}{1}.numTrials = 20;
+
+if stimulus.scan
+  task{2}{1}.synchToVol(nSegs) = 1;
+  % Shorten the last segment to account for synchtovol
+  task{2}{1}.segmin(end) = 0.100;
+  task{2}{1}.segmax(end) = 0.100;
+end
+
+% Specify task parameters
+task{2}{1}.parameter.stimXPos = 8;
+task{2}{1}.parameter.stimSide = {'right'};
+
+% Task variables to be calculated later
+task{2}{1}.randVars.calculated.noiseOrTex = NaN;
+task{2}{1}.randVars.calculated.whichStimVersions = {'v1', 'v2'};
+
+% Initialize task
+for phaseNum = 1:length(task{2})
+  [task{2}{phaseNum}, myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
+end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% set the second task to be the fixation staircase task
-%[task{2} myscreen] = fixStairInitTask(myscreen);
+% set the third task to be the fixation staircase task
+[task{3} myscreen] = fixStairInitTask(myscreen);
 
 
 %% EYE CALIB
@@ -159,7 +214,8 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
   [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
 
   % update fixation task
-%  [task{2} myscreen] = updateTask(task{2},myscreen,1);
+  [task{2}, myscreen, phaseNum] = updateTask(task{2},myscreen,phaseNum);
+  [task{3}, myscreen, phaseNum] = updateTask(task{3},myscreen,1);
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -199,13 +255,11 @@ stimulus.live.stimVersions = {stimDirs{task.thistrial.whichStimVersions}};
 if mod(task.trialnum,2)==0 % even trials = spectral noise
   stimulus.live.trialType = 'spectral_noise';
   task.thistrial.noiseOrTex = 0;
-  disp(sprintf('Block %i - Type: %s, Image: %s', task.trialnum, stimulus.live.trialType, stimulus.runImage));
-  stimulus.live.stimPaths = cellfun(@(c)[stimulus.noiseDir '/' c '/noise_' stimulus.runImage '.jpg'], stimulus.live.stimVersions, 'uni', false);
+  disp(sprintf('Block %i - Side: %s, Type: %s', task.trialnum, task.thistrial.stimSide{1}, stimulus.live.trialType));
 else % odd trials = textures
   stimulus.live.trialType = 'texture';
   task.thistrial.noiseOrTex = 1;
-  disp(sprintf('Block %i - Type: %s, Image: %s, Layer: %s', task.trialnum, stimulus.live.trialType, stimulus.runImage, stimulus.runLayer));
-  stimulus.live.stimPaths = cellfun(@(c)[stimulus.stimDir '/' c '/1x1_' stimulus.runLayer '_' stimulus.runImage '.jpg'], stimulus.live.stimVersions, 'uni', false);
+  disp(sprintf('Block %i - Side: %s, Type: %s, Layer: %s', task.trialnum, task.thistrial.stimSide{1}, stimulus.live.trialType, stimulus.runLayer));
 end
 
 % Reset mouse to center of screen at start of every trial
@@ -221,15 +275,22 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
-im = imread(stimulus.live.stimPaths{task.thistrial.thisseg});
-tex = genTexFromIm(im);
-clear im
+%im = imread(stimulus.live.stimPaths{task.thistrial.thisseg});
+%tex = genTexFromIm(im);
+%clear im
+
+ver = sprintf('v%i', task.thistrial.whichStimVersions(task.thistrial.thisseg));
+if task.thistrial.noiseOrTex
+  tex = stimulus.live.(sprintf('%sStim', task.thistrial.stimSide{1})).(ver);
+else
+  tex = stimulus.live.(sprintf('%sNoise', task.thistrial.stimSide{1})).(ver);
+end
 
 for i = 1:2
-  mglClearScreen(0.5);
-  mglBltTexture(tex, [0 0 stimulus.imSize stimulus.imSize]);
+  %mglClearScreen(0.5);
+  mglBltTexture(tex, [task.thistrial.stimXPos 0 stimulus.imSize stimulus.imSize]);
 
-  upFix(stimulus);
+  %upFix(stimulus);
   mglFlush;
 end
 
