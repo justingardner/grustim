@@ -81,8 +81,8 @@ nSegs = stimRate * blockLen;
 stimulus.imNames = {'bark', 'branch', 'bricks', 'cracks', 'drops', 'floor', 'glass', 'rocks', 'spikes', 'wood'};
 stimulus.layerNames = {'pool1', 'pool4'};
 stimulus.rfNames = {'1x1'};
-stimulus.stimDir = '~/proj/TextureSynthesis/out_bw_vig';
-stimulus.noiseDir = '~/proj/TextureSynthesis/spectral_noise_vig';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/out_bw_vig';
+stimulus.noiseDir = '~/proj/TextureSynthesis/stimuli/spectral_noise_vig';
 stimulus.imSize = 8;
 stimulus.nSegsPerBlock = nSegs;
 

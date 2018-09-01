@@ -122,7 +122,7 @@ tTarg = 0.500;
 isi = 0.500;
 searchTime = 2.00;
 %stimDirectory = '~/proj/TextureSynthesis/stimuli';
-stimDirectory = '~/proj/TextureSynthesis/rf_stim';
+stimDirectory = '~/proj/TextureSynthesis/stimuli/rf_stim';
 
 % task waits for fixation on first segment
 task{1}{1}.segmin = [inf tTarg isi searchTime .200];
@@ -240,7 +240,7 @@ stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 % directories
-targetDir = '~/proj/TextureSynthesis/orig_ims';
+targetDir = '~/proj/TextureSynthesis/stimuli/orig_ims';
 distDir = stimulus.stimDir;
 
 % Select image
@@ -572,7 +572,7 @@ files = dir(fullfile(sprintf('~/data/texSearch/%s/18*stim*.mat',mglGetSID)));
 
 count = 1; 
 data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
-              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'rf_size', [], 'imSz', []);
+              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'rf_size', [], 'imSz', [], 'accByRuns', []);
 
 for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texSearch/%s/%s',mglGetSID,files(fi).name)));
@@ -597,12 +597,20 @@ for fi = 1:length(files)
     data.rf_size = [data.rf_size e{1}.parameter.rfSize];
     data.ecc = [data.ecc e{1}.parameter.eccentricity];
     
+    data.accByRuns = [data.accByRuns nanmean(subj_resp==corr_resp)];
+        
   end
   count = count + 1;
 end
 
 % fitline function
 fitLine = @(x,y) polyval(polyfit(x,y,1),x);
+
+%% Plot performance by runs
+figure; plot(data.accByRuns, '.', 'MarkerSize', 25); hold on;
+plot(1:length(data.accByRuns), fitLine(1:length(data.accByRuns), data.accByRuns), '-');
+title(sprintf('%s: Performance across runs', mglGetSID), 'FontSize', 18); 
+ylabel('Accuracy', 'FontSize', 16); xlabel('Run Number', 'FontSize', 16);
 
 %% Plot accuracy and reaction time as a function of distractor layer & RF Size
 figure;
