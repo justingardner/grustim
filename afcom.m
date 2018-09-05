@@ -145,12 +145,12 @@ stimulus.colors.white = [1 1 1]; stimulus.colors.red = [1 0 0];
 stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
 
 % setup color wheel
-stimulus.colorwheel.stops = [255 0 0 ; 255 255 0 ; 0 255 0 ; 0 255 255 ; 0 0 255 ; 255 0 255];
-stimulus.colorwheel.thetas = 0:(2*pi/6):(2*pi-.05);
+stimulus.colorwheel.stops = [255 0 0 ; 255 255 0 ; 0 255 0 ; 0 255 255 ; 0 0 255 ; 255 0 255 ; 255 0 0];
+stimulus.colorwheel.thetas = 0:(2*pi/6):2*pi;
 
 %% Sizes
 stimulus.fixWidth = 0.5;
-stimulus.probeWidth = 0.5;
+stimulus.probeWidth = 1;
 
 %% Setup Probe Task
 
@@ -160,10 +160,11 @@ stimulus.seg.cue = 1;
 stimulus.seg.stim = 2;
 stimulus.seg.delay = 3;
 stimulus.seg.resp = 4;
-stimulus.seg.iti = 5;
+stimulus.seg.feedback = 5;
+stimulus.seg.iti = 6;
 
-task{1}{1}.segmin = [1 2 2 3 2];
-task{1}{1}.segmax = [1 2 2 3 8];
+task{1}{1}.segmin = [1 2 2 2.5 0.5 2];
+task{1}{1}.segmax = [1 2 2 2.5 0.5 8];
 
 task{1}{1}.waitForBacktick = 1;
 
@@ -210,6 +211,9 @@ stimulus.live.rightIdxs = find(stimulus.live.right(:));
 stimulus.live.allIdxs = 1:(size(stimulus.grid,1)*size(stimulus.grid,2));
 
 stimulus.live.trackingAngle = 0;
+
+stimulus.angBase = [0 pi];
+stimulus.angSigma = pi/4;
 
 %% Full Setup
 % Initialize task (note phase == 1)
@@ -304,13 +308,22 @@ else
     stimulus.live.targetIdxs = find(stimulus.live.targets>0);
 end
 
+% pick the colors
+stimulus.live.colors = zeros(size(stimulus.live.grid));
+for yi = 1:size(stimulus.live.grid,1)
+    for xi = 1:size(stimulus.live.grid,2)
+        if stimulus.live.grid(yi,xi)>0
+            stimulus.live.colors(yi,xi) = mod(stimulus.angBase(stimulus.live.grid(yi,xi))+stimulus.angSigma*randn,2*pi);
+        end
+    end
+end
+
 % pick the target
 task.thistrial.target = randsample(intersect(stimulus.live.sideIdxs,stimulus.live.targetIdxs),1);
-task.thistrial.targetAngle = 0;
 task.thistrial.respAngle = rand*2*pi;
-
 stimulus.live.target = zeros(size(stimulus.live.grid));
 stimulus.live.target(task.thistrial.target) = 1;
+task.thistrial.targetAngle = stimulus.live.colors(logical(stimulus.live.target));
 
 disp(sprintf('(afcom) Starting trial %i. Attending %s %s',task.trialnum,sideOpts{task.thistrial.attend+1},colorOpts{task.thistrial.color+1}));
 
@@ -324,6 +337,12 @@ global stimulus
 stimulus.grid(:,:,stimulus.gridCount) = stimulus.live.grid;
 stimulus.gridCount = stimulus.gridCount + 1;
 
+if isnan(task.thistrial.respDistance)
+    task.thistrial.respDistance = abs(mod(task.thistrial.respAngle,pi) - mod(task.thistrial.targetAngle,pi));
+    disp(sprintf('Recorded no-response - angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
+end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -334,7 +353,8 @@ global stimulus
 
 disp(task.thistrial.thisseg)
 
-if task.thistrial.thisseg == stimulus.seg.cue
+switch task.thistrial.thisseg
+    case stimulus.seg.cue
         % fixation
         mglClearScreen(0.5);
         drawFix(task);
@@ -342,7 +362,7 @@ if task.thistrial.thisseg == stimulus.seg.cue
         mglClearScreen(0.5);
         drawFix(task);
         mglFlush;
-elseif task.thistrial.thisseg == stimulus.seg.stim
+    case stimulus.seg.stim
         mglClearScreen(0.5);
         drawStim();
         drawFix(task,stimulus.colors.black);
@@ -351,7 +371,7 @@ elseif task.thistrial.thisseg == stimulus.seg.stim
         drawStim();
         drawFix(task,stimulus.colors.black);
         mglFlush;
-elseif task.thistrial.thisseg == stimulus.seg.delay
+    case stimulus.seg.delay
         mglClearScreen(0.5);
         drawFix(task,stimulus.colors.black);
         mglFlush;
@@ -359,10 +379,21 @@ elseif task.thistrial.thisseg == stimulus.seg.delay
         drawFix(task,stimulus.colors.black);
         mglFlush;
         
-elseif task.thistrial.thisseg == stimulus.seg.resp
+    case stimulus.seg.resp
         % drawing happens in updateScreen
         
-elseif task.thistrial.thisseg == stimulus.seg.iti
+    case stimulus.seg.feedback
+        trueColor = ang2rgb(task.thistrial.targetAngle)/255;
+        mglClearScreen(0.5);
+        mglFillOval(0,0,repmat(stimulus.fixWidth,1,2),trueColor);
+        drawFix(task,stimulus.colors.black);
+        mglFlush;
+        mglClearScreen(0.5);
+        mglFillOval(0,0,repmat(stimulus.fixWidth,1,2),trueColor);
+        drawFix(task,stimulus.colors.black);
+        mglFlush;
+        
+    case stimulus.seg.iti
         mglClearScreen(0.5);
         drawFix(task,stimulus.colors.black);
         mglFlush;
@@ -375,12 +406,10 @@ function drawStim()
 
 global stimulus
 
-colors = {'red','green'};
-
 for yi = 1:size(stimulus.live.grid,1)
     for xi = 1:size(stimulus.live.grid,2)
         if stimulus.live.grid(yi,xi)>0
-            mglFillRect(stimulus.gridX(xi),stimulus.gridY(yi),repmat(stimulus.probeWidth,1,2),stimulus.colors.(colors{stimulus.live.grid(yi,xi)}));
+            mglFillRect(stimulus.gridX(xi),stimulus.gridY(yi),repmat(stimulus.probeWidth,1,2),ang2rgb(stimulus.live.colors(yi,xi))/255);
         end
     end
 end
@@ -417,7 +446,7 @@ else
     mglFixationCross(stimulus.fixWidth,1,color);
 end
 
-function col = angle2rgb(ang)
+function col = ang2rgb(ang)
 
 global stimulus
 
@@ -431,33 +460,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 
-if (task.thistrial.thisseg==stimulus.seg.resp)
-    for yi = 1:size(stimulus.live.grid,1)
-        for xi = 1:size(stimulus.live.grid,2)
-            if stimulus.live.target(yi,xi)>0
-                mglFillRect(stimulus.gridX(xi),stimulus.gridY(yi),repmat(stimulus.probeWidth,1,2),stimulus.colors.white);
-            end
-        end
-    end
-
-    % Draw the color picker
-    for theta = 0:10:359
-        mglGluPartialDisk(0,0,1,1.25,theta-5,10,angle2rgb(pi/180*theta)/255);
-    end
-    
-    cColor = angle2rgb(task.thistrial.respAngle)/255;
-
-    % Draw the current angle
-    mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle-pi/16),22.5,cColor);
-
-    % Draw the current color
-    mglFillOval(0,0,repmat(stimulus.fixWidth,1,2),cColor);
-
-    % Fixation on top
-    drawFix(task,stimulus.colors.black);
-
-end
-
 if (task.thistrial.thisseg==stimulus.seg.resp) && stimulus.powerwheel
     mInfo = mglGetMouse(myscreen.screenNumber);
     curPos = -mInfo.x/90;
@@ -467,10 +469,38 @@ elseif task.thistrial.thisseg==stimulus.seg.resp
     mInfo = mglGetMouse(myscreen.screenNumber);
     degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-    task.thistrial.respAngle = -atan2(degy,degx)+pi/2;
+    task.thistrial.respAngle = mod(-atan2(degy,degx)+pi/2,2*pi);
 end
 
+if (task.thistrial.thisseg==stimulus.seg.resp)
+    mglClearScreen(0.5);
+    
+    if task.thistrial.gotResponse==0
+        for yi = 1:size(stimulus.live.grid,1)
+            for xi = 1:size(stimulus.live.grid,2)
+                if stimulus.live.target(yi,xi)>0
+                    mglFillRect(stimulus.gridX(xi),stimulus.gridY(yi),repmat(stimulus.probeWidth,1,2),stimulus.colors.white);
+                end
+            end
+        end
 
+        % Draw the color picker
+        for theta = 0:10:359
+            mglGluPartialDisk(0,0,1,1.25,theta-5,10,ang2rgb(pi/180*theta)/255);
+        end
+
+        cColor = ang2rgb(task.thistrial.respAngle)/255;
+
+        % Draw the current angle
+        mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle)-2.51,5,[0.75 0.75 0.75]);
+
+        % Draw the current color
+        mglFillOval(0,0,repmat(stimulus.fixWidth,1,2),cColor);
+
+        % Fixation on top
+        drawFix(task,stimulus.colors.black);
+    end
+end
 
 % if ~stimulus.replay
 %     drawFix(myscreen);
@@ -532,10 +562,11 @@ else
 end
 
 if validResponse
-    if stimulus.live.gotResponse==0
-        disp(sprintf('Received response angle of %i',stimulus.live.angle));
+    if task.thistrial.gotResponse==0
+        task.thistrial.respDistance = abs(mod(task.thistrial.respAngle,pi) - mod(task.thistrial.targetAngle,pi));
+        disp(sprintf('Received response angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
     else
-        disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
+        disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse));
     end
-    stimulus.live.gotResponse=stimulus.live.gotResponse+1;
+    task.thistrial.gotResponse=task.thistrial.gotResponse+1;
 end
