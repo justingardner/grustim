@@ -238,8 +238,13 @@ mglStencilCreateBegin(1);
 for li = 1:locations
     mglFillOval(stimulus.locations{li}.xcenter,stimulus.locations{li}.ycenter,[stimulus.targetWidth, stimulus.targetWidth],[1 1 1]);
 end
+mglFillOval(0,0,[stimulus.targetWidth stimulus.targetWidth],[1 1 1]);
 mglFlush;
 mglStencilCreateEnd;
+
+%% Create the cue patch
+
+stimulus.cueDots = initDots(dots);
 
 %% Setup Probe Task
 
@@ -356,16 +361,13 @@ global stimulus
 
 % choose where the patches will be located
 locationOpts = 1:length(stimulus.locations);
-stimulus.live.locationsOn = locationOpts(randperm(length(locationOpts)));
+stimulus.live.locationsOn = locationOpts(randperm(6));
 for i=1:6
     task.thistrial.(sprintf('lOn%i',i)) = stimulus.live.locationsOn(i);
 end
 
-disp(stimulus.live.locationsOn);
-
 % choose the targets
-targetOpts = 1:length(stimulus.patches);
-stimulus.live.targetNums = randsample(targetOpts(randperm(length(targetOpts))),task.thistrial.targets);
+stimulus.live.targetNums = randsample(stimulus.live.locationsOn,task.thistrial.targets);
 for i = 1:3
     task.thistrial.(sprintf('target%i',i)) = stimulus.live.targetNums(i);
 end
@@ -460,9 +462,18 @@ if task.thistrial.trialType==1
     end
 else
     % feature - draw a half circle indicating motion direction
-    theta = task.thistrial.targetDir-pi/2;
+%     theta = task.thistrial.targetDir-pi/2;
+%     
+%     mglGluPartialDisk(0,0,stimulus.fixWidth,stimulus.fixWidth+0.05,180/pi*(theta-pi/2),180,[1 1 1]);
+
+    % cue dots version
+    stimulus.cueDots = updateDots(stimulus.cueDots,1,false);
+    stimulus.cueDots.dir = task.thistrial.targetDir;
     
-    mglGluPartialDisk(0,0,stimulus.fixWidth,stimulus.fixWidth+0.05,180/pi*(theta-pi/2),180,[1 1 1]);
+    mglStencilSelect(1);
+    mglPoints2(stimulus.cueDots.x-stimulus.cueDots.maxX/2,stimulus.cueDots.y-stimulus.cueDots.maxY/2,stimulus.dotScale,[1 1 1]);
+    mglStencilSelect(0);
+    
 end
 
 function drawStim(~,grayscale)
