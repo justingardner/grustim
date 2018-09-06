@@ -360,8 +360,8 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
 % choose where the patches will be located
-locationOpts = 1:length(stimulus.locations);
-stimulus.live.locationsOn = locationOpts(randperm(6));
+locationOpts = randperm(length(stimulus.locations));
+stimulus.live.locationsOn = locationOpts(1:6);
 for i=1:6
     task.thistrial.(sprintf('lOn%i',i)) = stimulus.live.locationsOn(i);
 end
