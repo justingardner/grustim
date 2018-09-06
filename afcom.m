@@ -89,32 +89,33 @@ end
 % end
 
 %% Open Old Stimfile
-if ~stimulus.replay
-    stimulus.counter = 1;
-    
-    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom/%s',mglGetSID))
-        % Directory exists, check for a stimefile
-        files = dir(sprintf('~/data/afcom/%s/1*mat',mglGetSID));
-        
-        if length(files) >= 1
-            fname = files(end).name;
-            
-            s = load(sprintf('~/data/afcom/%s/%s',mglGetSID,fname));
-            % copy staircases and run numbers
-            stimulus.counter = s.stimulus.counter + 1;
-            stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
-            if s.stimulus.attend ~= stimulus.attend
-                error('(afcom) Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
-            end
-            clear s;
-            disp(sprintf('(afcom) Data file: %s loaded.',fname));
-        else
-            warning('(afcom) Unable to load previous data files. If this is *not* the first run there is something wrong.');
-        end
-    end
-end
+% if ~stimulus.replay
+%     stimulus.counter = 1;
+%     
+%     if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom/%s',mglGetSID))
+%         % Directory exists, check for a stimefile
+%         files = dir(sprintf('~/data/afcom/%s/1*mat',mglGetSID));
+%         
+%         if length(files) >= 1
+%             fname = files(end).name;
+%             
+%             s = load(sprintf('~/data/afcom/%s/%s',mglGetSID,fname));
+%             % copy staircases and run numbers
+%             stimulus.counter = s.stimulus.counter + 1;
+%             stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
+%             if s.stimulus.attend ~= stimulus.attend
+%                 error('(afcom) Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
+%             end
+%             clear s;
+%             disp(sprintf('(afcom) Data file: %s loaded.',fname));
+%         else
+%             warning('(afcom) Unable to load previous data files. If this is *not* the first run there is something wrong.');
+%         end
+%     end
+% end
 
 %% Display run info
+stimulus.counter = -1;
 if ~stimulus.replay
     disp('*************************');
     disp(sprintf('(afcom) This is scan #%i',stimulus.counter));
@@ -178,6 +179,7 @@ for ti = 1:length(stimulus.colorwheel.thetas)
     b = D*sin(theta)+stimulus.colorwheel.bcenter;
     
     rgb = lab2rgb([stimulus.backgroundLab(1) a b],'ColorSpace','adobe-rgb-1998');
+%     rgb = lab2rgb([stimulus.backgroundLab(1) a b]);
     stimulus.colorwheel.rgb(ti,:) = rgb;
 end
 
@@ -242,6 +244,9 @@ mglFillOval(0,0,[stimulus.targetWidth stimulus.targetWidth],[1 1 1]);
 mglFlush;
 mglStencilCreateEnd;
 
+%% Extra stuff
+stimulus.live.trackingAngle = 0;
+
 %% Create the cue patch
 
 stimulus.cueDots = initDots(dots);
@@ -258,10 +263,13 @@ stimulus.seg.delay = 5;
 stimulus.seg.resp = 6;
 stimulus.seg.feedback = 7;
 
-% task{1}{1}.segmin = [0.5 0.5 1 2 2.5 0.5 2];
-% task{1}{1}.segmax = [0.5 0.5 1 2 2.5 0.5 8];
-task{1}{1}.segmin = [1 1 1 1 1 2.5 0.5];
-task{1}{1}.segmax = [1 1 1 1 1 2.5 0.5];
+task{1}{1}.segmin = [0.5 0.5 1 2 2.5 0.5 2];
+task{1}{1}.segmax = [0.5 0.5 1 2 2.5 0.5 8];
+
+if stimulus.debug
+    task{1}{1}.segmin = [1 2 1 2 1 5 0.5];
+    task{1}{1}.segmax = [1 2 1 2 1 5 0.5];
+end
 
 task{1}{1}.waitForBacktick = 1;
 
@@ -358,6 +366,12 @@ end
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
+
+mglSetMousePosition(960,540,1);
+
+if stimulus.powerwheel
+    task.thistrial.respAngle = rand*2*pi;
+end
 
 % choose where the patches will be located
 locationOpts = randperm(length(stimulus.locations));
@@ -558,7 +572,7 @@ mglClearScreen();
 if (task.thistrial.thisseg==stimulus.seg.resp) && stimulus.powerwheel
     mInfo = mglGetMouse(myscreen.screenNumber);
     curPos = -mInfo.x/90;
-    task.thistrial.respAngle = task.thistrial.respAngle + curPos-stimulus.live.trackingAngle;
+    task.thistrial.respAngle = mod(task.thistrial.respAngle + curPos-stimulus.live.trackingAngle,2*pi);
     stimulus.live.trackingAngle = curPos;
 elseif task.thistrial.thisseg==stimulus.seg.resp
     mInfo = mglGetMouse(myscreen.screenNumber);
