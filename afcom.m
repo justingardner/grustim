@@ -162,12 +162,7 @@ stimulus.colorwheel.bcenter = stimulus.backgroundLab(3);
 % compute the ranges around 0 and pi for the colorwheel
 theta_ = pi/64; % increment size
 stimulus.colorwheel.thetaInc = theta_;
-stimulus.colorwheel.thetaRange1 = 0 + (-pi/4:theta_:pi/4);
-stimulus.colorwheel.thetaRange2 = pi + (-pi/4:theta_:pi/4);
-stimulus.colorwheel.thetas = mod([stimulus.colorwheel.thetaRange1 stimulus.colorwheel.thetaRange2],2*pi);
-% stimulus.colorwheel.dispThetas = 
-stimulus.colorwheel.range1 = logical([ones(size(stimulus.colorwheel.thetaRange1)) zeros(size(stimulus.colorwheel.thetaRange2))]);
-stimulus.colorwheel.range2 = ~stimulus.colorwheel.range1;
+stimulus.colorwheel.thetas = 0:theta_:2*pi;
 
 D = 70;
 stimulus.colorwheel.distanceLab = D;
@@ -185,25 +180,22 @@ end
 
 %% Sizes
 stimulus.fixWidth = 0.5;
-stimulus.targetWidth = 1;
-
-%% Setup patch colors
-stimulus.patchcolors = stimulus.colorwheel.rgb(11:11:66,:);
+stimulus.targetWidth = 5;
+patches = 4;
+patchEcc = 5;
 
 %% Setup patches and stencils
 
 % there will be 12 possible locations where we can show dots. We will use 6
 % patches of dots 
 
-patches = 6;
-patchEcc = 5;
 
-stimulus.dotScale = 2;
+stimulus.dotScale = 3;
 stimulus.dotDirs = [0.5 1.5]*pi;
  
 dots = struct;
 
-dots.density = 21;
+dots.density = 5;
 dots.speed = 3;
 dots.maxX = stimulus.targetWidth;
 dots.maxY = stimulus.targetWidth;
@@ -213,20 +205,19 @@ for di = 1:patches
     
     % patch dots
     stimulus.patches{di}.dots = initDots(dots);
-    
+
     % color
     stimulus.patches{di}.color = [1 1 1];
 end
 
 % setup the locations
 
-locations = 12;
+locations = 4;
 
 for li = 1:locations
     stimulus.locations{li} = struct;
     % patch location
     stimulus.locations{li}.theta = (li-1)/locations*2*pi;
-    disp(stimulus.locations{li}.theta)
     stimulus.locations{li}.ecc = patchEcc;
     
     % x/y
@@ -240,7 +231,7 @@ mglStencilCreateBegin(1);
 for li = 1:locations
     mglFillOval(stimulus.locations{li}.xcenter,stimulus.locations{li}.ycenter,[stimulus.targetWidth, stimulus.targetWidth],[1 1 1]);
 end
-mglFillOval(0,0,[stimulus.targetWidth stimulus.targetWidth],[1 1 1]);
+mglFillOval(0,0,[stimulus.targetWidth stimulus.targetWidth]/2,[1 1 1]);
 mglFlush;
 mglStencilCreateEnd;
 
@@ -274,7 +265,7 @@ end
 task{1}{1}.waitForBacktick = 1;
 
 task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
-task{1}{1}.getResponse(stimulus.seg.resp) = 1;
+% task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 task{1}{1}.numTrials = Inf;
 
@@ -294,13 +285,13 @@ task{1}{1}.randVars.calculated.lOn1 = nan;
 task{1}{1}.randVars.calculated.lOn2 = nan;
 task{1}{1}.randVars.calculated.lOn3 = nan;
 task{1}{1}.randVars.calculated.lOn4 = nan;
-task{1}{1}.randVars.calculated.lOn5 = nan;
-task{1}{1}.randVars.calculated.lOn6 = nan;
+% task{1}{1}.randVars.calculated.lOn5 = nan;
+% task{1}{1}.randVars.calculated.lOn6 = nan;
 
 % attention targets
 task{1}{1}.randVars.calculated.target1 = nan;
 task{1}{1}.randVars.calculated.target2 = nan;
-task{1}{1}.randVars.calculated.target3 = nan;
+% task{1}{1}.randVars.calculated.target3 = nan;
 
 % feature target
 task{1}{1}.randVars.calculated.dead = nan;
@@ -375,48 +366,47 @@ end
 
 % choose where the patches will be located
 locationOpts = randperm(length(stimulus.locations));
-stimulus.live.locationsOn = locationOpts(1:6);
-for i=1:6
+stimulus.live.locationsOn = locationOpts(1:4);
+for i=1:4
     task.thistrial.(sprintf('lOn%i',i)) = stimulus.live.locationsOn(i);
 end
 
 % choose the targets
 stimulus.live.targetNums = randsample(stimulus.live.locationsOn,task.thistrial.targets);
-for i = 1:3
+for i = 1:2
     task.thistrial.(sprintf('target%i',i)) = stimulus.live.targetNums(i);
 end
 
 % choose the true target
 task.thistrial.targetNum = randsample(stimulus.live.targetNums,1);
 
-% set the target colors randomly
-colorOpts = [zeros(1,length(stimulus.patches)/2) ones(1,length(stimulus.patches)/2)];
-colors = colorOpts(randperm(length(colorOpts)));
 
 % set the colors of the patches
 for di = 1:length(stimulus.patches)
-    if colors(di)
-        ctheta = randsample(stimulus.colorwheel.thetas(stimulus.colorwheel.range1),1);
-    else
-        ctheta = randsample(stimulus.colorwheel.thetas(stimulus.colorwheel.range2),1);
-    end
+    ctheta = randsample(stimulus.colorwheel.thetas,1);
+    
     if stimulus.live.locationsOn(di)==task.thistrial.targetNum
         task.thistrial.targetAngle = ctheta;
     end
+    
     stimulus.patches{di}.color = ang2rgb(ctheta);
 end
 
 if task.thistrial.trialType==1
     % if this is a spatial trial we need to set the directions randomly
     
+    dirs = repmat(stimulus.dotDirs,1,2);
+    dirs = dirs(randperm(length(dirs)));
+    
     for di = 1:length(stimulus.patches)
-        stimulus.patches{di}.dots.dir = randsample(stimulus.dotDirs,1);
+        stimulus.patches{di}.dots.dir = dirs(di);
     end
 else
     % if this is a motion trial we need to set the directions to be the
     % same for the targets
     task.thistrial.targetDir = randsample(stimulus.dotDirs,1);
     offDir = mod(task.thistrial.targetDir+pi,2*pi);
+    stimulus.cueDots.dir = task.thistrial.targetDir;
     
     for di = 1:length(stimulus.patches)
         if any(stimulus.live.targetNums==di)
@@ -439,10 +429,10 @@ stimulus.live.eyeCount=0;
 
 function [task, myscreen] = endTrialCallback(task,myscreen)
 
-% if isnan(task.thistrial.respDistance)
-%     task.thistrial.respDistance = abs(mod(task.thistrial.respAngle,pi) - mod(task.thistrial.targetAngle,pi));
-%     disp(sprintf('Recorded no-response - angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
-% end
+if isnan(task.thistrial.respDistance)
+    task.thistrial.respDistance = abs(mod(task.thistrial.respAngle,pi) - mod(task.thistrial.targetAngle,pi));
+    disp(sprintf('Recorded no-response - angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -482,7 +472,6 @@ else
 
     % cue dots version
     stimulus.cueDots = updateDots(stimulus.cueDots,1,false);
-    stimulus.cueDots.dir = task.thistrial.targetDir;
     
     mglStencilSelect(1);
     mglPoints2(stimulus.cueDots.x-stimulus.cueDots.maxX/2,stimulus.cueDots.y-stimulus.cueDots.maxY/2,stimulus.dotScale,[1 1 1]);
@@ -532,13 +521,28 @@ else
     mglFixationCross(stimulus.fixWidth,1,color);
 end
 
+function drawBorder(x,y,r,c)
+
+for t = 0:pi/4:2*pi
+    mglGluPartialDisk(x,y,r,r+0.05,(180/pi)*(t-pi/16),22.5,c);
+end
+
+function drawAllBorders(locations,r)
+
+% draw the borders
+for li = 1:length(locations)
+    drawBorder(locations{li}.xcenter,locations{li}.ycenter,r,[0.2 0.2 0.2]);
+end
+
 function drawTarget(task)
 
 global stimulus
 
-mglStencilSelect(1);
-mglFillRect(stimulus.locations{task.thistrial.targetNum}.xcenter,stimulus.locations{task.thistrial.targetNum}.ycenter,repmat(stimulus.targetWidth,1,2),stimulus.colors.white);
-mglStencilSelect(0);
+drawBorder(stimulus.locations{task.thistrial.targetNum}.xcenter,stimulus.locations{task.thistrial.targetNum}.ycenter,stimulus.targetWidth/2,[1 1 1]);
+
+% mglStencilSelect(1);
+% mglFillRect(stimulus.locations{task.thistrial.targetNum}.xcenter,stimulus.locations{task.thistrial.targetNum}.ycenter,repmat(stimulus.targetWidth,1,2),stimulus.colors.white);
+% mglStencilSelect(0);
 
 function drawPicker(task)
 
@@ -581,37 +585,43 @@ elseif task.thistrial.thisseg==stimulus.seg.resp
     task.thistrial.respAngle = mod(-atan2(degy,degx)+pi/2,2*pi);
 end
 
-
 switch task.thistrial.thisseg
     case stimulus.seg.cue
         % fixation
         drawStim(task,true);
         drawCue(task);
+        drawAllBorders(stimulus.locations,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.isi
         drawStim(task,true);
+        drawAllBorders(stimulus.locations,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.stim
         drawStim(task,false);
+        drawAllBorders(stimulus.locations,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.delay
+        drawAllBorders(stimulus.locations,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.resp
+        drawAllBorders(stimulus.locations,stimulus.targetWidth/2);
         drawTarget(task);
         drawPicker(task);
         drawResp(task.thistrial.respAngle);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.feedback
+        drawAllBorders(stimulus.locations,stimulus.targetWidth/2);
         drawResp(task.thistrial.targetAngle);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.iti
         drawStim(task,true);
+        drawAllBorders(stimulus.locations,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
 end
 
@@ -668,21 +678,21 @@ global stimulus
 
 if task.thistrial.dead, return; end
 
-if stimulus.powerwheel
-    validResponse = task.thistrial.mouseButton == 1;
-else
-    validResponse = task.thistrial.whichButton == stimulus.responseKeys(1);
-end
-
-if validResponse
-    if task.thistrial.gotResponse==0
-        task.thistrial.respDistance = abs(mod(task.thistrial.respAngle,pi) - mod(task.thistrial.targetAngle,pi));
-        disp(sprintf('Received response angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
-    else
-        disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse));
-    end
-    task.thistrial.gotResponse=task.thistrial.gotResponse+1;
-end
+% if stimulus.powerwheel
+%     validResponse = task.thistrial.mouseButton == 1;
+% else
+%     validResponse = task.thistrial.whichButton == stimulus.responseKeys(1);
+% end
+% 
+% if validResponse
+%     if task.thistrial.gotResponse==0
+%         task.thistrial.respDistance = abs(mod(task.thistrial.respAngle,pi) - mod(task.thistrial.targetAngle,pi));
+%         disp(sprintf('Received response angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
+%     else
+%         disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse));
+%     end
+%     task.thistrial.gotResponse=task.thistrial.gotResponse+1;
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % helpers
