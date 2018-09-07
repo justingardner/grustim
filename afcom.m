@@ -531,7 +531,7 @@ function drawAllBorders(locations,r)
 
 % draw the borders
 for li = 1:length(locations)
-    drawBorder(locations{li}.xcenter,locations{li}.ycenter,r,[0.2 0.2 0.2]);
+    drawBorder(locations{li}.xcenter,locations{li}.ycenter,r,[0.05 0.05 0.05]);
 end
 
 function drawTarget(task)
@@ -575,7 +575,7 @@ mglClearScreen();
 
 if (task.thistrial.thisseg==stimulus.seg.resp) && stimulus.powerwheel
     mInfo = mglGetMouse(myscreen.screenNumber);
-    curPos = -mInfo.x/90;
+    curPos = mInfo.x/90;
     task.thistrial.respAngle = mod(task.thistrial.respAngle + curPos-stimulus.live.trackingAngle,2*pi);
     stimulus.live.trackingAngle = curPos;
 elseif task.thistrial.thisseg==stimulus.seg.resp
