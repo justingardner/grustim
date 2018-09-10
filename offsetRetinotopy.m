@@ -197,11 +197,19 @@ end
 %   stimulusTaskNum = 1;
 %   stimulus.fixColor = [1 1 1];
 %   % draw the fixation cross
-  mglGluDisk(0,0,fixStimulus.diskSize*[1 1],myscreen.background,60);
-  mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,[0 0 0],[0 0]);
-  mglFlush;
-  mglGluDisk(0,0,fixStimulus.diskSize*[1 1],myscreen.background,60);
-  mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,[0 0 0],[0 0]);
+
+xy = [[0 0];[-5 0];[5 0]];
+
+for ai = 0:2
+    if stimulus.attend~=ai
+        pos = xy(ai+1,:);
+        mglGluDisk(pos(1),pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+        mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,[0 0 0],pos);
+        mglFlush
+        mglGluDisk(pos(1),pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+        mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,[0 0 0],pos);
+    end
+end
 % end
 
 % set the number and length of the stimulus cycles
@@ -355,6 +363,8 @@ if any(stimulus.stimulusType == [3 4 5])
   task{stimulusTaskNum}{1}.parameter.barAngle = barAngle;
   task{stimulusTaskNum}{1}.random = 0;
 end
+
+task{stimulusTaskNum}{1}.attend = stimulus.attend;
 
 % if bars-FixationTask, load the latest stimfile
 if stimulus.stimulusType == 5
@@ -735,10 +745,14 @@ else
     stimulus = updateRetinotopyStimulus(stimulus,myscreen);
 end
 
-if stimulus.attend>0
-    % add a fixation cross
-    mglGluDisk(0,0,fixStimulus.diskSize*[1 1],myscreen.background,60);
-    mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,[0 0 0],[0 0]);
+xy = [[0 0];[-5 0];[5 0]];
+
+for ai = 0:2
+    if stimulus.attend~=ai
+        pos = xy(ai+1,:);
+        mglGluDisk(pos(1),pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+        mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,[0 0 0],pos);
+    end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
