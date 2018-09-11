@@ -188,18 +188,19 @@ stimulus.patchEcc = 8;
 % there will be 12 possible locations where we can show dots. We will use 6
 % patches of dots 
 
+ppd = myscreen.screenWidth/myscreen.imageWidth;
 
-stimulus.dotScale = 4;
-stimulus.cueScale = stimulus.dotScale/4;
+stimulus.dotScale = round(ppd * 0.3);
+stimulus.cueScale = round(stimulus.dotScale/4);
 
 % stimulus.dotDirs = [0.75 1.25 0.75 1.25]*pi;
 stimulus.dotDirs = [0.5 1.5 0.5 1.5]*pi;
  
 dots = struct;
 
-dots.density = 0.5;
+dots.density = 0.2;
 dots.speed = 3;
-dots.maxAlive = myscreen.framesPerSecond/5;
+dots.maxAlive = myscreen.framesPerSecond/6;
 dots.maxX = stimulus.targetWidth;
 dots.maxY = stimulus.targetWidth;
 
