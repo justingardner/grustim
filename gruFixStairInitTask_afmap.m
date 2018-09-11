@@ -109,6 +109,7 @@ task.thistrial.sigInterval = 1+(rand > 0.5);
 if fixStimulus.verbose
   disp(sprintf('sigint = %i threshold = %0.2f',task.thistrial.sigInterval,fixStimulus.threshold));
 end
+[fixStimulus.threshold, fixStimulus.staircase] = doStaircase('testValue',fixStimulus.staircase);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
@@ -167,16 +168,16 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = fixDrawStimulusCallback(task, myscreen)
 
-% global fixStimulus;
-% 
-% if fixStimulus.trainingMode,mglClearScreen;end
-% 
-% if ~isempty(fixStimulus.displayText)
-%   mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
-% end
-% mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
-% 
-% mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
+global fixStimulus;
+
+if fixStimulus.trainingMode,mglClearScreen;end
+
+if ~isempty(fixStimulus.displayText)
+  mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
+end
+mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+
+mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called when subject responds
@@ -221,4 +222,3 @@ disp(sprintf('(fixtask) Subject pressed %i, %s',find(task.thistrial.buttonState)
 
 % update staircase
 fixStimulus.staircase = doStaircase('update',fixStimulus.staircase,response);
-[fixStimulus.threshold, fixStimulus.staircase] = doStaircase('testValue',fixStimulus.staircase);
