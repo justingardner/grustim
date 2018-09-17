@@ -6,12 +6,6 @@ function [ myscreen ] = afcom( varargin )
 %
 %   Map the effects of spatial attention and attention to specific colors 
 
-%% Check version
-
-if matlabVersionNumber<8.4
-    error('rgb2lab and lab2rgb are not supported in this version of MATLAB -- upgrade to 2014b');
-end
-
 %%
 
 global stimulus fixStimulus
@@ -52,67 +46,29 @@ if stimulus.scan
     stimulus.eyewindow=0;
 end
 
-%% Replay mode
-% if any(replay>0)
-%     if ischar(replay)
-%         % a file was called for, load it
-%         loaded = load(replay);
-%         stimulus = loaded.stimulus;
-%         % check that this is actually an afmap file
-%         if isempty(strfind(loaded.task{1}{1}.taskFilename,'afmap'))
-%             disp(sprintf('File %s is not an afmap run.',replay));
-%             return
-%         end
-%         % get the task parameters so that you can sync the replay correctly
-%         disp('GET TASK PARAMETERS');
-%         e = getTaskParameters(loaded.myscreen,loaded.task);
-%         e1 = e{1};
-%         % pull out the trial volumes
-%         stimulus.tVolumes = e{1}.trialVolume;
-%         disp('Stimulus volumes were found at:');
-%         disp(stimulus.tVolumes);
-%         
-%         stimulus.replayFile = strcat(replay(1:(strfind(replay,'.mat')-1)),'_replay.mat');
-%         stimulus.replay = true;
-%     else
-%         % do an entire subject
-%         disp('Replay mode initiated');
-%         folder = input('What folder would you like to replay? [Folder]: ');
-%         files = dir(fullfile(folder,'*.mat'));
-%         for fi = 1:length(files)
-%             if isempty(strfind(files(fi).name,'replay')) && isempty(strfind(files(fi).name,'original'))
-%                 afmap(sprintf('replay=%s/%s',folder,files(fi).name));
-%             end
-%         end
-%         return;
-%     end
-% end
-
 %% Open Old Stimfile
-% if ~stimulus.replay
-%     stimulus.counter = 1;
-%     
-%     if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom/%s',mglGetSID))
-%         % Directory exists, check for a stimefile
-%         files = dir(sprintf('~/data/afcom/%s/1*mat',mglGetSID));
-%         
-%         if length(files) >= 1
-%             fname = files(end).name;
-%             
-%             s = load(sprintf('~/data/afcom/%s/%s',mglGetSID,fname));
-%             % copy staircases and run numbers
-%             stimulus.counter = s.stimulus.counter + 1;
-%             stimulus.live.attend = mod(s.stimulus.live.attend+1,3);
-%             if s.stimulus.attend ~= stimulus.attend
-%                 error('(afcom) Cannot continue: stimfile parameters were generated with a different attention mode than you requested. You need to save the existing stimfiles into a backup folder');
-%             end
-%             clear s;
-%             disp(sprintf('(afcom) Data file: %s loaded.',fname));
-%         else
-%             warning('(afcom) Unable to load previous data files. If this is *not* the first run there is something wrong.');
-%         end
-%     end
-% end
+if ~stimulus.replay
+    stimulus.counter = 1;
+    
+    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom/%s',mglGetSID))
+        % Directory exists, check for a stimefile
+        files = dir(sprintf('~/data/afcom/%s/1*mat',mglGetSID));
+        
+        if length(files) >= 1
+            fname = files(end).name;
+            
+            s = load(sprintf('~/data/afcom/%s/%s',mglGetSID,fname));
+            % copy staircases and run numbers
+            stimulus.counter = s.stimulus.counter + 1;
+            stimulus.colors = s.stimulus.colors;
+            stimulus.colorwheel = s.stimulus.colorwheel;
+            clear s;
+            disp(sprintf('(afcom) Data file: %s loaded.',fname));
+        else
+            warning('(afcom) Unable to load previous data files. If this is *not* the first run there is something wrong.');
+        end
+    end
+end
 
 %% Display run info
 stimulus.counter = -1;
@@ -148,34 +104,46 @@ else
     localInitStimulus();
 end
 
+%% load the calib
+calib = load(fullfile(myscreen.calibFullFilename));
+stimulus.calib = calib.calib;
+
 %% Colors
-stimulus.colors.white = [1 1 1]; stimulus.colors.red = [1 0 0];
-stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
+if ~isfield(stimulus,'colors')
+    stimulus.colors.white = [1 1 1]; stimulus.colors.red = [1 0 0];
+    stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
+end
 
-% get the lab space rgb values
-stimulus.backgroundLab = rgb2lab([0.5 0.5 0.5]);
+if ~isfield(stimulus,'colorwheel')
+    % get the lab space rgb values
+    stimulus.backgroundLab = rgb2lab([0.5 0.5 0.5]);
 
-% setup color wheel
-stimulus.colorwheel.acenter = stimulus.backgroundLab(2);
-stimulus.colorwheel.bcenter = stimulus.backgroundLab(3);
+    % setup color wheel
+    stimulus.colorwheel.acenter = stimulus.backgroundLab(2);
+    stimulus.colorwheel.bcenter = stimulus.backgroundLab(3);
 
-% compute the ranges around 0 and pi for the colorwheel
-theta_ = pi/64; % increment size
-stimulus.colorwheel.thetaInc = theta_;
-stimulus.colorwheel.thetas = 0:theta_:2*pi;
+    % compute the ranges around 0 and pi for the colorwheel
+    theta_ = pi/64; % increment size
+    stimulus.colorwheel.thetaInc = theta_;
+    stimulus.colorwheel.thetas = 0:theta_:2*pi;
 
-D = 70;
-stimulus.colorwheel.distanceLab = D;
+    D = 60;
+    stimulus.colorwheel.distanceLab = D;
 
-for ti = 1:length(stimulus.colorwheel.thetas)
-    theta = stimulus.colorwheel.thetas(ti);
-    
-    a = D*cos(theta)+stimulus.colorwheel.acenter;
-    b = D*sin(theta)+stimulus.colorwheel.bcenter;
-    
-    rgb = lab2rgb([stimulus.backgroundLab(1) a b],'ColorSpace','adobe-rgb-1998');
-%     rgb = lab2rgb([stimulus.backgroundLab(1) a b]);
-    stimulus.colorwheel.rgb(ti,:) = rgb;
+    for ti = 1:length(stimulus.colorwheel.thetas)
+        theta = stimulus.colorwheel.thetas(ti);
+
+        a = D*cos(theta)+stimulus.colorwheel.acenter;
+        b = D*sin(theta)+stimulus.colorwheel.bcenter;
+
+        rgb = mglLab2rgb([stimulus.backgroundLab(1) a b],stimulus.calib);
+    %     rgb = lab2rgb([stimulus.backgroundLab(1) a b]);
+        stimulus.colorwheel.rgb(ti,:) = rgb;
+    end
+
+    % if any values are outside RGB space just cut them off
+    stimulus.colorwheel.rgb(stimulus.colorwheel.rgb<0) = 0;
+    stimulus.colorwheel.rgb(stimulus.colorwheel.rgb>1) = 1;
 end
 
 %% Sizes
@@ -190,8 +158,8 @@ stimulus.patchEcc = 8;
 
 ppd = myscreen.screenWidth/myscreen.imageWidth;
 
-stimulus.dotScale = round(ppd * 0.3);
-stimulus.cueScale = round(stimulus.dotScale/4);
+stimulus.dotScale = 0.6; %round(ppd * 0.3);
+stimulus.cueScale = 0.15; %round(stimulus.dotScale/4);
 
 % stimulus.dotDirs = [0.75 1.25 0.75 1.25]*pi;
 stimulus.dotDirs = [0.5 1.5 0.5 1.5]*pi;
@@ -270,7 +238,11 @@ task{1}{1}.waitForBacktick = 1;
 task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
 % task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
-task{1}{1}.numTrials = Inf;
+if stimulus.scan==1
+    task{1}{1}.numTrials = Inf;
+else
+    task{1}{1}.numTrials = 32;
+end
 
 task{1}{1}.random = 1;
 
@@ -285,7 +257,13 @@ end
 % feature target
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetDir = nan;
-task{1}{1}.randVars.calculated.targetAngle = nan;
+task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
+task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
+task{1}{1}.randVars.claculated.distractor = nan;
+task{1}{1}.randVars.calculated.angle1 = nan;
+task{1}{1}.randVars.calculated.angle2 = nan;
+task{1}{1}.randVars.calculated.angle3 = nan;
+task{1}{1}.randVars.calculated.angle4 = nan;
 task{1}{1}.randVars.calculated.respAngle = nan;
 task{1}{1}.randVars.calculated.respDistance = nan;
 task{1}{1}.randVars.calculated.cwOffset = nan; % colorwheel offset rotation
@@ -347,6 +325,17 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
+function dispInfo(stimulus)
+%%
+files = dir(fullfile('~/data/afcom/',mglGetSID,'*.mat'));
+
+for fi = 1:length(files)
+    load(fullfile('~/data/afcom/',mglGetSID,files(fi).name));
+    exp = getTaskParameters(myscreen,task);
+    e{fi} = exp{1};
+end
+
+stop = 1;
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
@@ -359,6 +348,13 @@ end
 
 stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
 
+if task.thistrial.trialType==1
+    distractors = [2 1 4 3];
+else
+    distractors = [3 4 1 2];
+end
+task.thistrial.distractor = distractors(task.thistrial.target);
+
 % set the colors of the patches
 for di = 1:length(stimulus.patches)
     ctheta = randsample(stimulus.colorwheel.thetas,1);
@@ -366,9 +362,18 @@ for di = 1:length(stimulus.patches)
     if di==task.thistrial.target
         task.thistrial.targetAngle = ctheta;
     end
+    if di==task.thistrial.distractor
+        task.thistrial.distractorAngle = ctheta;
+    end
     
     stimulus.patches{di}.color = ang2rgb(ctheta);
+    
+    task.thistrial.(sprintf('angle%i',di)) = ctheta;
 end
+
+
+task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
+task{1}{1}.randVars.claculated.distractor = nan;
 
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
@@ -388,6 +393,7 @@ function [task, myscreen] = endTrialCallback(task,myscreen)
 
 if isnan(task.thistrial.respDistance)
     task.thistrial.respDistance = mod(abs(task.thistrial.respAngle - task.thistrial.targetAngle),2*pi);
+    task.thistrial.distDistance = mod(abs(task.thistrial.respAngle - task.thistrial.distractorAngle),2*pi);
     disp(sprintf('Recorded no-response - angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
 end
 
@@ -426,7 +432,7 @@ else
     stimulus.cueDots = updateDots(stimulus.cueDots,1,false);
     
     mglStencilSelect(1);
-    mglPoints2(stimulus.cueDots.x-stimulus.cueDots.maxX/2,stimulus.cueDots.y-stimulus.cueDots.maxY/2,stimulus.cueScale,[1 1 1]);
+    afPoints(stimulus.cueDots.x-stimulus.cueDots.maxX/2,stimulus.cueDots.y-stimulus.cueDots.maxY/2,stimulus.cueScale,[1 1 1]);
     mglStencilSelect(0);
 end
 
@@ -463,9 +469,24 @@ end
 perm = randperm(length(x));
 x = x(perm); y = y(perm); r = r(perm); g = g(perm); b = b(perm);
 
+afPoints(x,y,stimulus.dotScale,[r' g' b']);
+
 % draw all the dots at once
-mglPoints2c(x,y,stimulus.dotScale,r,g,b);
+% mglPoints2c(x,y,stimulus.dotScale,r,g,b);
+
 mglStencilSelect(0);
+
+function afPoints(x,y,scale,c)
+
+cFlag = size(c,1)==1;
+% draw the dots one at a time with mglGluDisk
+for di = 1:length(x)
+    if cFlag
+        mglGluDisk(x(di),y(di),scale,c);
+    else
+        mglGluDisk(x(di),y(di),scale,c(di,:));
+    end
+end
 
 
 function drawFix(task,color)
@@ -502,7 +523,7 @@ offX = stimulus.patches{task.thistrial.target}.xcenter - stimulus.patches{task.t
 offY = stimulus.patches{task.thistrial.target}.ycenter - stimulus.patches{task.thistrial.target}.dots.maxY/2;
 
 mglStencilSelect(1);
-mglPoints2(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
+afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
 mglStencilSelect(0);
 
 function drawPicker(task)
