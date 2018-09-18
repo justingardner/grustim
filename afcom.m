@@ -256,10 +256,9 @@ end
 
 % feature target
 task{1}{1}.randVars.calculated.dead = nan;
-task{1}{1}.randVars.calculated.targetDir = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
 task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
-task{1}{1}.randVars.claculated.distractor = nan;
+task{1}{1}.randVars.calculated.distractor = nan;
 task{1}{1}.randVars.calculated.angle1 = nan;
 task{1}{1}.randVars.calculated.angle2 = nan;
 task{1}{1}.randVars.calculated.angle3 = nan;
@@ -334,6 +333,29 @@ for fi = 1:length(files)
     load(fullfile('~/data/afcom/',mglGetSID,files(fi).name));
     exp = getTaskParameters(myscreen,task);
     e{fi} = exp{1};
+end
+
+%% concatenate all trials
+pvars = {'target','trialType'};
+rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
+    'angle4','respAngle','respDistance','distDistance'};
+runs = [];
+
+for pi = 1:length(pvars)
+    eval(sprintf('%s = [];',pvars{pi}));
+end
+for ri = 1:length(rvars)
+    eval(sprintf('%s = [];',rvars{ri}));
+end
+
+for run = 1:length(e)
+    runs = [runs ones(1,length(e{fi}.parameter.target))];
+    for pi = 1:length(pvars)
+        eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pi},pvars{pi},pvars{pi}));
+    end
+    for ri = 1:length(rvars)
+        eval(sprintf('%s = [%s e{run}.randVars.%s];',pvars{pi},pvars{pi},pvars{pi}));
+    end
 end
 
 stop = 1;
