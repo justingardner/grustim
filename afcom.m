@@ -27,7 +27,7 @@ eyewindow=0;
 mouse=0; 
 practice=0; 
 
-getArgs(varargin,{'scan=0','plots=0','noeye=0','powerwheel=0','eyewindow=1.5','practice=0','debug=0','replay=0','attend=1','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','plots=0','noeye=0','powerwheel=1','eyewindow=1.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -229,14 +229,14 @@ task{1}{1}.segmin = [1 0.5 0.5 1 1.5 4 0.75];
 task{1}{1}.segmax = [1 0.5 0.5 1 1.5 4 0.75];
 
 if stimulus.debug
-    task{1}{1}.segmin = [1 2 0.1 1.5 1 4 0.5];
-    task{1}{1}.segmax = [1 2 0.1 1.5 1 4 0.5];
+    task{1}{1}.segmin = [1 2 0.1 1.5 1 inf 0.5];
+    task{1}{1}.segmax = [1 2 0.1 1.5 1 inf 0.5];
 end
 
 task{1}{1}.waitForBacktick = 1;
 
 task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
-% task{1}{1}.getResponse(stimulus.seg.resp) = 1;
+task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 if stimulus.scan==1
     task{1}{1}.numTrials = Inf;
@@ -266,6 +266,7 @@ task{1}{1}.randVars.calculated.angle3 = nan;
 task{1}{1}.randVars.calculated.angle4 = nan;
 task{1}{1}.randVars.calculated.respAngle = nan;
 task{1}{1}.randVars.calculated.respDistance = nan;
+task{1}{1}.randVars.calculated.distDistance = nan;
 task{1}{1}.randVars.calculated.cwOffset = nan; % colorwheel offset rotation
 
 %% Mouse movement storage data
@@ -371,10 +372,6 @@ for di = 1:length(stimulus.patches)
     task.thistrial.(sprintf('angle%i',di)) = ctheta;
 end
 
-
-task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
-task{1}{1}.randVars.claculated.distractor = nan;
-
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
 task.thistrial.respAngle = -task.thistrial.cwOffset;
@@ -390,6 +387,8 @@ stimulus.live.eyeCount=0;
 stimulus.data.mouseTick = 1;
 
 function [task, myscreen] = endTrialCallback(task,myscreen)
+
+if task.thistrial.dead, return; end
 
 if isnan(task.thistrial.respDistance)
     task.thistrial.respDistance = circDist(task.thistrial.respAngle,task.thistrial.targetAngle);
@@ -682,21 +681,10 @@ global stimulus
 
 if task.thistrial.dead, return; end
 
-% if stimulus.powerwheel
-%     validResponse = task.thistrial.mouseButton == 1;
-% else
-%     validResponse = task.thistrial.whichButton == stimulus.responseKeys(1);
-% end
-% 
-% if validResponse
-%     if task.thistrial.gotResponse==0
-%         task.thistrial.respDistance = abs(mod(task.thistrial.respAngle,pi) - mod(task.thistrial.targetAngle,pi));
-%         disp(sprintf('Received response angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
-%     else
-%         disp(sprintf('Subject responded multiple times: %i',task.thistrial.gotResponse));
-%     end
-%     task.thistrial.gotResponse=task.thistrial.gotResponse+1;
-% end
+if task.thistrial.gotResponse==0
+    % jump to the feedback segment
+    task = jumpSegment(task);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % helpers
