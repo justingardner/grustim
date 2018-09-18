@@ -99,9 +99,12 @@ end
 if ~stimulus.replay
     myscreen.stimulusNames{1} = 'stimulus';
     
-    stimulus.responseKeys = [1 2]; % left right
+    if stimulus.powerwheel
+        stimulus.responseKeys = 1;
+    else
+        stimulus.responseKeys = [1 2]; % left right
+    end
 else
-    localInitStimulus();
 end
 
 %% load the calib
@@ -156,18 +159,15 @@ stimulus.patchEcc = 8;
 % there will be 12 possible locations where we can show dots. We will use 6
 % patches of dots 
 
-ppd = myscreen.screenWidth/myscreen.imageWidth;
+stimulus.dotScale = 0.6;
+stimulus.cueScale = 0.15;
 
-stimulus.dotScale = 0.6; %round(ppd * 0.3);
-stimulus.cueScale = 0.15; %round(stimulus.dotScale/4);
-
-% stimulus.dotDirs = [0.75 1.25 0.75 1.25]*pi;
 stimulus.dotDirs = [0.5 1.5 0.5 1.5]*pi;
  
 dots = struct;
 
-dots.density = 0.2;
-dots.speed = 3;
+dots.density = 0.1;
+dots.speed = 4;
 dots.maxAlive = myscreen.framesPerSecond/6;
 dots.maxX = stimulus.targetWidth;
 dots.maxY = stimulus.targetWidth;
