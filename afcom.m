@@ -392,15 +392,32 @@ stimulus.data.mouseTick = 1;
 function [task, myscreen] = endTrialCallback(task,myscreen)
 
 if isnan(task.thistrial.respDistance)
-    task.thistrial.respDistance = mod(abs(task.thistrial.respAngle - task.thistrial.targetAngle),2*pi);
-    task.thistrial.distDistance = mod(abs(task.thistrial.respAngle - task.thistrial.distractorAngle),2*pi);
+    task.thistrial.respDistance = circDist(task.thistrial.respAngle,task.thistrial.targetAngle);
+    task.thistrial.distDistance = circDist(task.thistrial.respAngle,task.thistrial.distractorAngle);
     disp(sprintf('Recorded no-response - angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
+end
+
+function d = circDist(t1,t2)
+if length(t1)>1 || length(t2)>1
+    warning('Circle distance only works on numbers not arrays');
+    d = [];
+    return
+end
+% circular distance
+t1 = mod(t1,2*pi);
+t2 = mod(t2,2*pi);
+if t1>t2
+    d = t1-t2;
+else
+    d = t2-t1;
+end
+if d>pi
+    d = 2*pi-d;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 function [task, myscreen] = startSegmentCallback(task,myscreen)
 %%
 % global stimulus
