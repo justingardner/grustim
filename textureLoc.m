@@ -136,7 +136,7 @@ task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.numTrials = 20;
 
 if stimulus.scan
-  task{1}{1}.synchToVol(nSegs) = 1;
+  task{1}{1}.synchToVol(end) = 1;
   % Shorten the last segment to account for synchtovol
   task{1}{1}.segmin(end) = 8.800;
   task{1}{1}.segmax(end) = 8.800;
@@ -257,7 +257,7 @@ global stimulus
 % Select which stimulus to display as a function of time since seg start
 timeSinceSegStart = mglGetSecs(task.thistrial.tSegStart(task.thistrial.thisseg));
 
-stimIdx = ceil(timeSinceSegStart / stimulus.smpLen);
+stimIdx = min(ceil(timeSinceSegStart / stimulus.smpLen), length(task.thistrial.whichStimVersions));
 smp = sprintf('smp%i', task.thistrial.whichStimVersions(stimIdx));
 thisTex = stimulus.live.thisTex.(smp);
 
