@@ -137,8 +137,12 @@ else
 end
 
 %% load the calib
-calib = load(fullfile(myscreen.calibFullFilename));
-stimulus.calib = calib.calib;
+if isfield(myscreen,'calibFullFilename')
+    calib = load(fullfile(myscreen.calibFullFilename));
+    stimulus.calib = calib.calib;
+else
+    stimulus.calib = []; % need this so that mglLab2rgb doesn't fail
+end
 
 %% Colors
 if ~isfield(stimulus,'colors')
@@ -212,13 +216,14 @@ for di = 1:4
     
     % patch dots
     stimulus.patches{di}.dots = initDots(dots);
-    stimulus.patches{di}.dots.dir = stimulus.dotDirs(di);
 
     % color
     if stimulus.cue==1
         stimulus.patches{di}.color = [1 1 1];
+        stimulus.patches{di}.dots.dir = stimulus.dotDirs(di);
     else
         stimulus.patches{di}.color = ang2rgb(stimulus.dotColors(di));
+        stimulus.patches{di}.dots.dir = 0;
     end
     
     % location
@@ -645,13 +650,13 @@ if stimulus.cue==1
     % When we cue spatial/direction we need to draw the color picker
     for ti = 1:length(stimulus.thetas)
         theta = stimulus.thetas(ti) + task.thistrial.cwOffset;
-        mglGluPartialDisk(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
+        mglGluPartialDisk_(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
     end
     % Also draw a little marker to indicate the current rotation
-    mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
+    mglGluPartialDisk_(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
 else
     % Don't rotate the marker using cwOffset
-    mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle)-2.5,5,[0.75 0.75 0.75]);
+    mglGluPartialDisk_(0,0,1,1.25,180/pi*(task.thistrial.respAngle)-2.5,5,[0.75 0.75 0.75]);
 end
 
 function drawResp(angle)
@@ -661,8 +666,15 @@ global stimulus
 if stimulus.cue==1
     mglFillOval(0,0,stimulus.fixWidth*[1 1],ang2rgb(angle));
 else
-    mglGluPartialDisk(0,0,1,1.25,180/pi*angle-2.5,5,[0.75 0.75 0.75]);
+    mglGluPartialDisk_(0,0,1,1.25,180/pi*angle-2.5,5,[0.75 0.75 0.75]);
 end
+
+function mglGluPartialDisk_(x,y,isize,osize,sangle,sweep,color)
+% just a wrapper around mglGluPartialDisk which converst from REAL angles
+% to MGL angles. I absolutely hate this aspect of MGL which I assume is
+% inherited from OpenGL...
+sangle = 90-sangle; % this sets 0 to be vertical and all coordinates go clockwise
+mglGluPartialDisk(x,y,isize,osize,sangle,sweep,color);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -697,7 +709,13 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-        task.thistrial.respAngle = mod(-atan2(degy,degx)+pi/2 - task.thistrial.cwOffset,2*pi);
+        if stimulus.cue==1
+            % note that this is in MGL angles!! 0 is up and goes
+            % clockwise... stupidest feature of mgl
+            task.thistrial.respAngle = mod(atan2(degy,degx) - task.thistrial.cwOffset,2*pi);
+        else
+            task.thistrial.respAngle = mod(atan2(degy,degx),2*pi);
+        end
     end
     
     stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
