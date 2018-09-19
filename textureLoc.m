@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 scan = 0;
 run = 0;
-getArgs(varargin,{'scan=1', 'run=1'});
+getArgs(varargin,{'scan=0', 'run=1'});
 stimulus.scan = scan;
 stimulus.run = run;
 clear scan run;
@@ -78,7 +78,7 @@ stimulus.smpLen = 1.0 / stimRate; % seconds
 nSegs = stimRate * blockLen;
 
 % Task important variables
-a = {13, 18, 23, 30, 327, 336, 38, 393, 402, 48, 52, 56, 60, 71, 99};
+a = {13, 71, 52, 48, 60, 18, 23, 30, 327, 336, 38, 393, 402, 56, 99};
 stimulus.imNames = cellfun(@(x) sprintf('im%i', x), a, 'UniformOutput', 0);
 stimulus.layerNames = {'ps', 'pool2', 'pool4'};
 stimulus.rfNames = {'1x1'};
@@ -235,7 +235,7 @@ else
   stimulus.live.thisTex = stimulus.live.noise;
   task.thistrial.noiseOrTex{task.thistrial.thisseg} = 'noise';
 end  
-disp(sprintf('%s block', task.thistrial.noiseOrTex{task.thistrial.thisseg}));
+disp(sprintf('%i: %s block', task.trialnum, task.thistrial.noiseOrTex{task.thistrial.thisseg}));
 % Save segment start time;
 task.thistrial.tSegStart(task.thistrial.thisseg) = mglGetSecs;
 
