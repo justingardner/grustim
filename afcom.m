@@ -119,7 +119,7 @@ myscreen.background = 0;
 
 %% Plot and return
 if stimulus.plots==2
-    dispInfo(stimulus);
+    dispInfo;
     return
 end
 
@@ -289,7 +289,7 @@ end
 
 task{1}{1}.random = 1;
 
-task{1}{1}.parameter.trialType = [1 1 1 1 2 2 2 2 0 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
+task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
@@ -380,7 +380,7 @@ for fi = 1:length(files)
 end
 
 %% concatenate all trials
-pvars = {'target','trialType'};
+pvars = {'target','trialType','cue'};
 rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
     'angle4','respAngle','respDistance','distDistance'};
 runs = [];
@@ -392,8 +392,10 @@ for ri = 1:length(rvars)
     eval(sprintf('%s = [];',rvars{ri}));
 end
 
+runcount = [0 0];
 for run = 1:length(e)
-    runs = [runs ones(1,length(e{fi}.parameter.target))];
+    runs = [runs ones(1,e{run}.nTrials)];
+    runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
     for pi = 1:length(pvars)
         eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pi},pvars{pi},pvars{pi}));
     end
@@ -403,17 +405,41 @@ for run = 1:length(e)
 end
 
 %% create one giant matrix, but just of a few variables that matter
-data = [runs' trialType' respDistance' distDistance'];
+data = [cue' runs' trialType' respDistance' distDistance'];
 data = data(~any(isnan(data),2),:);
+
+%% print out information
+disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
+disp(sprintf('Trials so far: %i cue direction (cue=1), %i cue color (cue=2)',sum(data(:,1)==1),sum(data(:,1)==2)));
 %% plot
 
-% select out the spatial 
-spatial = data(data(:,2)==1,:);
-motion = data(data(:,2)==2,:);
+% build one figure for each task
+titles = {'Cue direction','Cue color'};
+bins = pi/32:pi/16:pi;
+blabels = {};
+for bi = 0:(length(bins)-1)
+    blabels{bi+1} = sprintf('%i/16',bi);
+end
 
-figure;
-subplot(211); % spatial
-histfit(spatial(:,3));
+for cue = 1:2
+    cdata = data(data(:,1)==cue,:);
+    
+    spatial = cdata(cdata(:,3)==1,:);
+    feature = cdata(cdata(:,3)==2,:);
+
+    figure;
+
+    s_h = hist(spatial(:,4),bins);
+    f_h = hist(feature(:,4),bins);
+    bar(bins,[s_h' f_h']);
+    legend({'Spatial','Feature'});
+    xlabel('Response distance from target (target=0');
+    set(gca,'XTick',bins,'XTickLabel',blabels);
+    title(titles{cue});
+    drawPublishAxis;
+end
+
+%%
 
 stop = 1;
 
@@ -702,7 +728,7 @@ end
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        curPos = mInfo.x/90;
+        curPos = -mInfo.x/90;
         task.thistrial.respAngle = mod(task.thistrial.respAngle + curPos-stimulus.live.trackingAngle,2*pi);
         stimulus.live.trackingAngle = curPos;
     else
