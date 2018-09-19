@@ -205,7 +205,7 @@ dots.maxAlive = myscreen.framesPerSecond/4;
 dots.maxX = stimulus.targetWidth;
 dots.maxY = stimulus.targetWidth;
 
-thetas = [0 0 pi pi];
+stimulus.dotThetas = [0 0 pi pi];
 
 for di = 1:4
     stimulus.patches{di} = struct;
@@ -222,7 +222,7 @@ for di = 1:4
     end
     
     % location
-    stimulus.patches{di}.theta = thetas(di);
+    stimulus.patches{di}.theta = stimulus.dotThetas(di);
     stimulus.patches{di}.ecc = stimulus.patchEcc;
     stimulus.patches{di}.xcenter = stimulus.patches{di}.ecc * cos(stimulus.patches{di}.theta);
     stimulus.patches{di}.ycenter = stimulus.patches{di}.ecc * sin(stimulus.patches{di}.theta);
@@ -286,6 +286,7 @@ task{1}{1}.random = 1;
 
 task{1}{1}.parameter.trialType = [1 1 1 1 2 2 2 2 0 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
+task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 if ~stimulus.replay && stimulus.scan
     task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
@@ -363,7 +364,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
-function dispInfo(stimulus)
+function dispInfo()
 %%
 files = dir(fullfile('~/data/afcom/',mglGetSID,'*.mat'));
 
@@ -457,7 +458,9 @@ for di = 1:length(stimulus.patches)
     end
     
     task.thistrial.(sprintf('angle%i',di)) = ctheta;
+    disp(sprintf('Angle %i: %0.2f',di,ctheta));
 end
+disp(sprintf('Target %i',task.thistrial.target));
 
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
@@ -481,29 +484,15 @@ function [task, myscreen] = endTrialCallback(task,myscreen)
 
 if task.thistrial.dead, return; end
 
+respType = {'timeout','click','multiclick','multiclick','multiclick'};
 if isnan(task.thistrial.respDistance)
-    task.thistrial.respDistance = circDist(task.thistrial.respAngle,task.thistrial.targetAngle);
-    task.thistrial.distDistance = circDist(task.thistrial.respAngle,task.thistrial.distractorAngle);
-    disp(sprintf('Recorded no-response - angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
+    task.thistrial.respDistance = angdist(task.thistrial.respAngle,task.thistrial.targetAngle);
+    task.thistrial.distDistance = angdist(task.thistrial.respAngle,task.thistrial.distractorAngle);
+    disp(sprintf('Recorded: %s. angle of %1.2f true %1.2f: %1.2f distance',respType{task.thistrial.gotResponse+1},task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
 end
 
-function d = circDist(t1,t2)
-if length(t1)>1 || length(t2)>1
-    warning('Circle distance only works on numbers not arrays');
-    d = [];
-    return
-end
-% circular distance
-t1 = mod(t1,2*pi);
-t2 = mod(t2,2*pi);
-if t1>t2
-    d = t1-t2;
-else
-    d = t2-t1;
-end
-if d>pi
-    d = 2*pi-d;
-end
+function d = angdist(t1,t2)
+d = acos(cos(t1)*cos(t2)+sin(t1)*sin(t2));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
@@ -522,18 +511,18 @@ global stimulus
 
 switch task.thistrial.trialType
     case 0
-        cues = [0];
+        cues = 0;
     case 1
-        cues = [1];
+        cues = 1;
     case 2
-        cues = [2];
+        cues = 2;
     case 3
         cues = [1 2];
 end
 
 if any(cues==0)
     % draw lines to both sides
-    dotDirs = unique(stimulus.dotDirs);
+    dotDirs = unique(stimulus.dotThetas);
     for di = 1:length(dotDirs)
         x = 1.5*stimulus.fixWidth * cos(dotDirs(di));
         y = 1.5*stimulus.fixWidth * sin(dotDirs(di));
@@ -626,50 +615,24 @@ for di = 1:length(x)
     end
 end
 
-
-function drawFix(task,color)
-
-global stimulus;
-
-if task.thistrial.dead
-    mglGluDisk(0,0,[1 1],stimulus.colors.red,60);
-else
-    mglFixationCross(stimulus.fixWidth,1,color);
-end
-
-function drawBorder(x,y,r,c)
-
-for t = 0:pi/4:2*pi
-    mglGluPartialDisk(x,y,r,r+0.05,(180/pi)*(t-pi/16),22.5,c);
-end
-
-function drawAllBorders(locations,r)
-
-% draw the borders
-for li = 1:length(locations)
-    drawBorder(locations{li}.xcenter,locations{li}.ycenter,r,[0.2 0.2 0.2]);
-end
-
 function drawTarget(task)
 
 global stimulus
 
 if stimulus.cue==1
     stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
+    color = [1 1 1];
 else
     % if we we cued color set the coherence to zero so that there's no
     % direction information
     stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,0,false);
+    color = ang2rgb(stimulus.dotColors(task.thistrial.target));
 end
+% compute the offset position
 offX = stimulus.patches{task.thistrial.target}.xcenter - stimulus.patches{task.thistrial.target}.dots.maxX/2;
 offY = stimulus.patches{task.thistrial.target}.ycenter - stimulus.patches{task.thistrial.target}.dots.maxY/2;
 
-if stimulus.cue==1
-    color = [1 1 1];
-else
-    color = ang2rgb(stimulus.dotColors(task.thistrial.target));
-end
-
+% draw the actual points
 mglStencilSelect(1);
 afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
 mglStencilSelect(0);
@@ -745,46 +708,42 @@ switch task.thistrial.thisseg
         
     case stimulus.seg.iti
         drawStim(1:4,false);
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
         % fixation
         drawStim(1:4,false);
-        if task.thistrial.trialType>0
-            drawCue(task);
-        end
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
+        drawCue(task);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.isi
         drawStim(1:4,false);
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.stim
         drawStim(1:4,true);
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.delay
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.resp
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawTarget(task);
         drawPicker(task);
         if stimulus.cue==1
+            % only draw the chosen color at fixation if we're doing cued
+            % direction
             drawResp(task.thistrial.respAngle);
         end
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.feedback
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawResp(task.thistrial.targetAngle);
         drawFix(task,stimulus.colors.white);
+        
 end
+
+drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
 
 % do eye position tracking, but only during some segments
 if any(task.thistrial.thisseg==[stimulus.seg.cue stimulus.seg.stim stimulus.seg.resp])
@@ -827,6 +786,29 @@ if task.thistrial.dead, return; end
 if task.thistrial.gotResponse==0
     % jump to the feedback segment
     task = jumpSegment(task);
+end
+
+function drawFix(task,color)
+
+global stimulus;
+
+if task.thistrial.dead
+    mglGluDisk(0,0,[1 1],stimulus.colors.red,60);
+else
+    mglFixationCross(stimulus.fixWidth,1,color);
+end
+
+function drawBorder(x,y,r,c)
+
+for t = 0:pi/4:2*pi
+    mglGluPartialDisk(x,y,r,r+0.05,(180/pi)*(t-pi/16),22.5,c);
+end
+
+function drawAllBorders(locations,r)
+
+% draw the borders
+for li = 1:length(locations)
+    drawBorder(locations{li}.xcenter,locations{li}.ycenter,r,[0.05 0.05 0.05]);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
