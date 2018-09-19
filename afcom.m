@@ -1,11 +1,38 @@
 function [ myscreen ] = afcom( varargin )
-% ***scan info: 736 TRs (6 minute * 120 + 16)***
+% AFCOM (attention field color mapping)
 % *** set 'noeye=1' to turn of the eye tracker***
 %
-%Attention field and color mapping (afcom)
+%   This is code for a psychophysics experiment interested in finding a
+%   measure that can be compared across spatial and feature-based cueing.
+%   We do this by having a shared report (either color angle or motion
+%   direction) that is cued by either space or the other feature (motion
+%   direction, or color angle, respectively). 
 %
-%   Map the effects of spatial attention and attention to specific colors 
+%   The stimuli are two pairs of overlapped dot patches on the left and
+%   right of fixation. The pairs share feature-cues which allows us to
+%   either cue one side of the screen or one feature, and then post-cue to
+%   resolve down to one patch. Observers always report about a single patch
+%   of dots, reporting either the motion direction or the color.
+%
+%   Control conditions: there are two types of control trials which are
+%   presented 10% of the time each. The first control is a double cue, i.e.
+%   we directly cue the dot patch that will need to be reported. The second
+%   control is no-cue, i.e. observers have to remember all four dot
+%   patches. 
+%
+%   We expect to see that feature cueing is not as powerful as spatial
+%   cueing and that the sum of feature/spatial cueing is more than the
+%   individuals. We also expect to see weird effects when you are asked to
+%   remember two similar features, vs. remembering two dissimilar features.
+%
+%   Scanning version: in the scanner we expect to see that any cueing
+%   condition causes tuning shifts, because of selection. E.g. a V4 or MT
+%   response to color/motion is a post-selection response, hence there are
+%   apparent tuning shifts.
 
+% TODO:
+ % - add the color cue report direction variation
+ % - add control conditions
 %%
 
 global stimulus fixStimulus
@@ -26,11 +53,13 @@ run = 0;
 eyewindow=0; 
 mouse=0; 
 practice=0; 
+cue=0;
 
-getArgs(varargin,{'scan=0','plots=0','noeye=0','powerwheel=1','eyewindow=1.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=1.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.cue = cue; % cue = 1 means direction, cue = 2 means color
 stimulus.practice = practice;
 stimulus.mousedebug = mouse;
 stimulus.powerwheel = powerwheel;
@@ -39,7 +68,7 @@ stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
 
-clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice powerwheel
+clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice powerwheel cue
 
 if stimulus.scan
     warning('Disabling eyewindow');
@@ -117,24 +146,25 @@ if ~isfield(stimulus,'colors')
     stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
 end
 
+% available range of color/direction increments
+stimulus.theta_ = pi/128; % increment size
+stimulus.thetas = 0:stimulus.theta_:2*pi;
+    
 if ~isfield(stimulus,'colorwheel')
     % get the lab space rgb values
     stimulus.backgroundLab = rgb2lab([0.5 0.5 0.5]);
 
     % setup color wheel
-    stimulus.colorwheel.acenter = stimulus.backgroundLab(2);
-    stimulus.colorwheel.bcenter = stimulus.backgroundLab(3);
+    stimulus.colorwheel.acenter = 0;%stimulus.backgroundLab(2);
+    stimulus.colorwheel.bcenter = 0;%stimulus.backgroundLab(3);
 
     % compute the ranges around 0 and pi for the colorwheel
-    theta_ = pi/64; % increment size
-    stimulus.colorwheel.thetaInc = theta_;
-    stimulus.colorwheel.thetas = 0:theta_:2*pi;
 
     D = 60;
     stimulus.colorwheel.distanceLab = D;
 
-    for ti = 1:length(stimulus.colorwheel.thetas)
-        theta = stimulus.colorwheel.thetas(ti);
+    for ti = 1:length(stimulus.thetas)
+        theta = stimulus.thetas(ti);
 
         a = D*cos(theta)+stimulus.colorwheel.acenter;
         b = D*sin(theta)+stimulus.colorwheel.bcenter;
@@ -159,16 +189,19 @@ stimulus.patchEcc = 8;
 % there will be 12 possible locations where we can show dots. We will use 6
 % patches of dots 
 
-stimulus.dotScale = 0.6;
-stimulus.cueScale = 0.15;
+stimulus.dotScale = 0.3;
+stimulus.cueScale = 0.1;
 
-stimulus.dotDirs = [0.5 1.5 0.5 1.5]*pi;
+stimulus.dotDirs = [0.5 1.5 0.5 1.5]*pi; % when cue=1 we use these to set the dot directions
+stimulus.dotColors = [0.5 1.5 0.5 1.5]*pi; % when cue=2 we use these to set the color
+% horizontal directions:
+% stimulus.dotDirs = [0 1 0 1]*pi;
  
 dots = struct;
 
-dots.density = 0.1;
-dots.speed = 4;
-dots.maxAlive = myscreen.framesPerSecond/6;
+dots.density = 0.2;
+dots.speed = 3.5;
+dots.maxAlive = myscreen.framesPerSecond/4;
 dots.maxX = stimulus.targetWidth;
 dots.maxY = stimulus.targetWidth;
 
@@ -182,7 +215,11 @@ for di = 1:4
     stimulus.patches{di}.dots.dir = stimulus.dotDirs(di);
 
     % color
-    stimulus.patches{di}.color = [1 1 1];
+    if stimulus.cue==1
+        stimulus.patches{di}.color = [1 1 1];
+    else
+        stimulus.patches{di}.color = ang2rgb(stimulus.dotColors(di));
+    end
     
     % location
     stimulus.patches{di}.theta = thetas(di);
@@ -203,6 +240,7 @@ mglStencilCreateEnd;
 
 %% Extra stuff
 stimulus.live.trackingAngle = 0;
+stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur when for 300 ms someone moves out of the fixation region
 
 %% Create the cue patch
 
@@ -225,12 +263,12 @@ stimulus.seg.delay = 5;
 stimulus.seg.resp = 6;
 stimulus.seg.feedback = 7;
 
-task{1}{1}.segmin = [1 0.5 0.5 1 1.5 4 0.75];
-task{1}{1}.segmax = [1 0.5 0.5 1 1.5 4 0.75];
+task{1}{1}.segmin = [0.5 0.5 0.5 1 1 4 0.75];
+task{1}{1}.segmax = [2.5 0.5 0.5 1 1 4 0.75];
 
-if stimulus.debug
-    task{1}{1}.segmin = [1 2 0.1 1.5 1 inf 0.5];
-    task{1}{1}.segmax = [1 2 0.1 1.5 1 inf 0.5];
+if stimulus.practice
+    task{1}{1}.segmin = [1 2 1 4 1 inf 2];
+    task{1}{1}.segmax = [2 2 1 4 1 inf 2];
 end
 
 task{1}{1}.waitForBacktick = 1;
@@ -246,7 +284,7 @@ end
 
 task{1}{1}.random = 1;
 
-task{1}{1}.parameter.trialType = [1 2]; % 1 = spatial, 2 = feature
+task{1}{1}.parameter.trialType = [1 1 1 1 2 2 2 2 0 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
 
 if ~stimulus.replay && stimulus.scan
@@ -283,7 +321,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if ~stimulus.replay
+if ~stimulus.replay && ~stimulus.noeye
     myscreen = eyeCalibDisp(myscreen);
     
     % let the user know
@@ -354,9 +392,22 @@ for run = 1:length(e)
         eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pi},pvars{pi},pvars{pi}));
     end
     for ri = 1:length(rvars)
-        eval(sprintf('%s = [%s e{run}.randVars.%s];',pvars{pi},pvars{pi},pvars{pi}));
+        eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
     end
 end
+
+%% create one giant matrix, but just of a few variables that matter
+data = [runs' trialType' respDistance' distDistance'];
+data = data(~any(isnan(data),2),:);
+%% plot
+
+% select out the spatial 
+spatial = data(data(:,2)==1,:);
+motion = data(data(:,2)==2,:);
+
+figure;
+subplot(211); % spatial
+histfit(spatial(:,3));
 
 stop = 1;
 
@@ -369,18 +420,26 @@ else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
 end
 
-stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
-
-if task.thistrial.trialType==1
-    distractors = [2 1 4 3];
+if stimulus.cue==1
+    stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
 else
-    distractors = [3 4 1 2];
+    stimulus.cueDots.dir = 0; % doesn't matter, dots are incoherent
 end
-task.thistrial.distractor = distractors(task.thistrial.target);
 
-% set the colors of the patches
+if task.thistrial.trialType==0
+    task.thistrial.distractor = nan; % no cue, so everything is a potential distractor
+else
+    if task.thistrial.trialType==2
+        distractors = [3 4 1 2];
+    else % this could be trial type 1 or 3, but in both cases this is a spatial distractor
+        distractors = [2 1 4 3];
+    end
+    task.thistrial.distractor = distractors(task.thistrial.target);
+end
+
+% set the angles of the patches
 for di = 1:length(stimulus.patches)
-    ctheta = randsample(stimulus.colorwheel.thetas,1);
+    ctheta = randsample(stimulus.thetas,1);
     
     if di==task.thistrial.target
         task.thistrial.targetAngle = ctheta;
@@ -389,7 +448,13 @@ for di = 1:length(stimulus.patches)
         task.thistrial.distractorAngle = ctheta;
     end
     
-    stimulus.patches{di}.color = ang2rgb(ctheta);
+    if stimulus.cue==1
+        % direction cue, so set the colors to be different
+        stimulus.patches{di}.color = ang2rgb(ctheta);
+    else
+        % color cue, so set the directions to be different
+        stimulus.patches{di}.dots.dir = ctheta;
+    end
     
     task.thistrial.(sprintf('angle%i',di)) = ctheta;
 end
@@ -398,8 +463,12 @@ end
 task.thistrial.cwOffset = rand*2*pi;
 task.thistrial.respAngle = -task.thistrial.cwOffset;
 
-trialTypes = {'locations','colors'};
-disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.trialType}));
+if stimulus.cue==1
+    trialTypes = {'nocue','spatial','direction','target'};
+else
+    trialTypes = {'nocue','spatial','color','target'};
+end
+disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.trialType+1}));
 
 % eye tracking 
 task.thistrial.dead = 0;
@@ -443,8 +512,6 @@ function [task, myscreen] = startSegmentCallback(task,myscreen)
 %%
 % global stimulus
 
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Drawing functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -453,28 +520,54 @@ function drawCue(task)
 
 global stimulus
 
-if task.thistrial.trialType==1
+switch task.thistrial.trialType
+    case 0
+        cues = [0];
+    case 1
+        cues = [1];
+    case 2
+        cues = [2];
+    case 3
+        cues = [1 2];
+end
+
+if any(cues==0)
+    % draw lines to both sides
+    dotDirs = unique(stimulus.dotDirs);
+    for di = 1:length(dotDirs)
+        x = 1.5*stimulus.fixWidth * cos(dotDirs(di));
+        y = 1.5*stimulus.fixWidth * sin(dotDirs(di));
+        mglLines2(x,y,2*x,2*y,2,[1 1 1]);    
+    end
+end
+
+if any(cues==1)
     % spatial - draw lines to attended locations
         
     % draw the line from fixWidth to 2*fixWidth
-    x = stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target}.theta);
-    y = stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target}.theta);
-    mglLines2(x,y,2*x,2*y,1,[1 1 1]);
-else
-    % feature - draw a half circle indicating motion direction
-%     theta = task.thistrial.targetDir-pi/2;
-%     
-%     mglGluPartialDisk(0,0,stimulus.fixWidth,stimulus.fixWidth+0.05,180/pi*(theta-pi/2),180,[1 1 1]);
+    x = 1.5*stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target}.theta);
+    y = 1.5*stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target}.theta);
+    mglLines2(x,y,2*x,2*y,2,[1 1 1]);
+end
+if any(cues==2)
+    % feature - draw the motion direction or the color
 
+    if stimulus.cue==1
+        coherence = 1;
+        color = [1 1 1];
+    elseif stimulus.cue==2
+        coherence = 0;
+        color = ang2rgb(stimulus.dotColors(task.thistrial.target));
+    end
     % cue dots version
-    stimulus.cueDots = updateDots(stimulus.cueDots,1,false);
+    stimulus.cueDots = updateDots(stimulus.cueDots,coherence,false);
     
     mglStencilSelect(1);
-    afPoints(stimulus.cueDots.x-stimulus.cueDots.maxX/2,stimulus.cueDots.y-stimulus.cueDots.maxY/2,stimulus.cueScale,[1 1 1]);
+    afPoints(stimulus.cueDots.x-stimulus.cueDots.maxX/2,stimulus.cueDots.y-stimulus.cueDots.maxY/2,stimulus.cueScale,color);
     mglStencilSelect(0);
 end
 
-function drawStim(~,grayscale)
+function drawStim(~,stimSeg)
 
 global stimulus
 
@@ -489,14 +582,21 @@ g = r;
 b = r;
 
 for di = 1:length(stimulus.patches)
-    stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,1,false);
+    if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
+        % if this is the actual stim seg and using motion, update
+        % coherently
+        stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,1,false);
+    else
+        % otherwise use incoherent motion
+        stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,0,false);
+    end
     
     offX = stimulus.patches{di}.xcenter - stimulus.patches{di}.dots.maxX/2;
     offY = stimulus.patches{di}.ycenter - stimulus.patches{di}.dots.maxY/2;
     
     x(((di-1)*n+1):(di*n)) = offX + stimulus.patches{di}.dots.x;
     y(((di-1)*n+1):(di*n)) = offY + stimulus.patches{di}.dots.y;
-    if ~grayscale
+    if stimulus.cue==2 || (stimulus.cue==1 && stimSeg) % if this is the actual stimulus segment and we are using color, show the colors
         r(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(1);
         g(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(2);
         b(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(3);
@@ -554,11 +654,21 @@ function drawTarget(task)
 
 global stimulus
 
-color = ang2rgb(task.thistrial.respAngle);
-
-stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
+if stimulus.cue==1
+    stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
+else
+    % if we we cued color set the coherence to zero so that there's no
+    % direction information
+    stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,0,false);
+end
 offX = stimulus.patches{task.thistrial.target}.xcenter - stimulus.patches{task.thistrial.target}.dots.maxX/2;
 offY = stimulus.patches{task.thistrial.target}.ycenter - stimulus.patches{task.thistrial.target}.dots.maxY/2;
+
+if stimulus.cue==1
+    color = [1 1 1];
+else
+    color = ang2rgb(stimulus.dotColors(task.thistrial.target));
+end
 
 mglStencilSelect(1);
 afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
@@ -568,19 +678,28 @@ function drawPicker(task)
 
 global stimulus
 
-% Draw the color picker
-for ti = 1:length(stimulus.colorwheel.thetas)
-    theta = stimulus.colorwheel.thetas(ti) + task.thistrial.cwOffset;
-    mglGluPartialDisk(0,0,1,1.25,180/pi*(theta-stimulus.colorwheel.thetaInc/2),180/pi*stimulus.colorwheel.thetaInc,stimulus.colorwheel.rgb(ti,:));
+if stimulus.cue==1
+    % When we cue spatial/direction we need to draw the color picker
+    for ti = 1:length(stimulus.thetas)
+        theta = stimulus.thetas(ti) + task.thistrial.cwOffset;
+        mglGluPartialDisk(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
+    end
+    % Also draw a little marker to indicate the current rotation
+    mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
+else
+    % Don't rotate the marker using cwOffset
+    mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle)-2.5,5,[0.75 0.75 0.75]);
 end
-mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
 
 function drawResp(angle)
 
 global stimulus
 % Draw the chosen color as a backgroundc ircle
-
-mglFillOval(0,0,stimulus.fixWidth*[1 1],ang2rgb(angle));
+if stimulus.cue==1
+    mglFillOval(0,0,stimulus.fixWidth*[1 1],ang2rgb(angle));
+else
+    mglGluPartialDisk(0,0,1,1.25,180/pi*angle-2.5,5,[0.75 0.75 0.75]);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -591,6 +710,19 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
 mglClearScreen();
+
+if task.thistrial.dead && mglGetSecs(stimulus.live.deadTime)>1
+    task = jumpSegment(task,inf);
+end
+
+% skip screen updates if you are already dead
+if task.thistrial.dead
+    if task.thistrial.dead
+        mglTextSet([],32,stimulus.colors.red);
+        mglTextDraw('Eye Movement Detected',[0 0]);
+    end
+    return
+end
 
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
@@ -612,24 +744,26 @@ end
 switch task.thistrial.thisseg
         
     case stimulus.seg.iti
-        drawStim(1:4,true);
+        drawStim(1:4,false);
         drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
         % fixation
-        drawStim(1:4,true);
-        drawCue(task);
+        drawStim(1:4,false);
+        if task.thistrial.trialType>0
+            drawCue(task);
+        end
         drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.isi
-        drawStim(1:4,true);
+        drawStim(1:4,false);
         drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.stim
-        drawStim(1:4,false);
+        drawStim(1:4,true);
         drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
@@ -641,7 +775,9 @@ switch task.thistrial.thisseg
         drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawTarget(task);
         drawPicker(task);
-        drawResp(task.thistrial.respAngle);
+        if stimulus.cue==1
+            drawResp(task.thistrial.respAngle);
+        end
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.feedback
@@ -650,56 +786,41 @@ switch task.thistrial.thisseg
         drawFix(task,stimulus.colors.white);
 end
 
-% if ~stimulus.replay
-%     drawFix(myscreen);
-% 
-%     % check eye pos
-%     if (~stimulus.noeye) && (stimulus.eyewindow>0)
-% 
-% 
-%         % mouse version for testing with no eyetracker
-%         if stimulus.mousedebug
-%             mInfo = mglGetMouse(myscreen.screenNumber);
-%             degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-%             degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-% 
-%             pos = [degx, degy];
-%         else
-%             [pos,~] = mglEyelinkGetCurrentEyePos;
-%         end
-% 
-%         if stimulus.debug > 0
-%             if stimulus.debug >= 10
-%                 disp(sprintf('Mouse position: %1.1f %1.1f',pos(1),pos(2)));
-%                 stimulus.debug = 1;
-%             else
-%                 stimulus.debug = stimulus.debug+1;
-%             end
-%         end
-% 
-% 
-%         % compute distance
-%         dist = hypot(pos(1),pos(2));
-%     end
-% 
-%     % Eye movement detection code
-%     if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~task.thistrial.dead
-%         if ~any(isnan(pos))
-% 
-%             if dist > stimulus.eyewindow && stimulus.live.eyeCount > 40
-%                 disp('Eye movement detected!!!!');
-%                 task.thistrial.dead = 1;
-%                 return
-%             elseif dist > stimulus.eyewindow
-%                 stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
-%             end
-%         end
-%     end
-% end
+% do eye position tracking, but only during some segments
+if any(task.thistrial.thisseg==[stimulus.seg.cue stimulus.seg.stim stimulus.seg.resp])
+    % check eye pos
+    if (~stimulus.noeye) && (stimulus.eyewindow>0)
+
+        % mouse version for testing with no eyetracker
+        if stimulus.mousedebug
+            mInfo = mglGetMouse(myscreen.screenNumber);
+            degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+            degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+
+            pos = [degx, degy];
+        else
+            [pos,~] = mglEyelinkGetCurrentEyePos;
+        end
+        % compute distance
+        dist = hypot(pos(1),pos(2));
+    end
+
+    % Eye movement detection code
+    if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~task.thistrial.dead
+        if ~any(isnan(pos))
+            if dist > stimulus.eyewindow && stimulus.live.eyeCount > stimulus.eyeFrames
+                disp('Eye movement detected!!!!');
+                stimulus.live.deadTime = mglGetSecs;
+                task.thistrial.dead = 1;
+                return
+            elseif dist > stimulus.eyewindow
+                stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+            end
+        end
+    end
+end
 
 function [task, myscreen] = getResponseCallback(task, myscreen)
-
-global stimulus
 
 if task.thistrial.dead, return; end
 
@@ -715,7 +836,7 @@ function col = ang2rgb(ang)
 
 global stimulus
 
-col = interp1(stimulus.colorwheel.thetas',stimulus.colorwheel.rgb,ang);
+col = interp1(stimulus.thetas',stimulus.colorwheel.rgb,ang);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for horizontal motion
