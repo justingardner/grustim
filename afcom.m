@@ -119,7 +119,7 @@ myscreen.background = 0;
 
 %% Plot and return
 if stimulus.plots==2
-    dispInfo(stimulus);
+    dispInfo;
     return
 end
 
@@ -137,8 +137,12 @@ else
 end
 
 %% load the calib
-calib = load(fullfile(myscreen.calibFullFilename));
-stimulus.calib = calib.calib;
+if isfield(myscreen,'calibFullFilename')
+    calib = load(fullfile(myscreen.calibFullFilename));
+    stimulus.calib = calib.calib;
+else
+    stimulus.calib = []; % need this so that mglLab2rgb doesn't fail
+end
 
 %% Colors
 if ~isfield(stimulus,'colors')
@@ -205,24 +209,25 @@ dots.maxAlive = myscreen.framesPerSecond/4;
 dots.maxX = stimulus.targetWidth;
 dots.maxY = stimulus.targetWidth;
 
-thetas = [0 0 pi pi];
+stimulus.dotThetas = [0 0 pi pi];
 
 for di = 1:4
     stimulus.patches{di} = struct;
     
     % patch dots
     stimulus.patches{di}.dots = initDots(dots);
-    stimulus.patches{di}.dots.dir = stimulus.dotDirs(di);
 
     % color
     if stimulus.cue==1
         stimulus.patches{di}.color = [1 1 1];
+        stimulus.patches{di}.dots.dir = stimulus.dotDirs(di);
     else
         stimulus.patches{di}.color = ang2rgb(stimulus.dotColors(di));
+        stimulus.patches{di}.dots.dir = 0;
     end
     
     % location
-    stimulus.patches{di}.theta = thetas(di);
+    stimulus.patches{di}.theta = stimulus.dotThetas(di);
     stimulus.patches{di}.ecc = stimulus.patchEcc;
     stimulus.patches{di}.xcenter = stimulus.patches{di}.ecc * cos(stimulus.patches{di}.theta);
     stimulus.patches{di}.ycenter = stimulus.patches{di}.ecc * sin(stimulus.patches{di}.theta);
@@ -284,8 +289,9 @@ end
 
 task{1}{1}.random = 1;
 
-task{1}{1}.parameter.trialType = [1 1 1 1 2 2 2 2 0 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
+task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
+task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 if ~stimulus.replay && stimulus.scan
     task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
@@ -363,7 +369,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
-function dispInfo(stimulus)
+function dispInfo()
 %%
 files = dir(fullfile('~/data/afcom/',mglGetSID,'*.mat'));
 
@@ -374,7 +380,7 @@ for fi = 1:length(files)
 end
 
 %% concatenate all trials
-pvars = {'target','trialType'};
+pvars = {'target','trialType','cue'};
 rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
     'angle4','respAngle','respDistance','distDistance'};
 runs = [];
@@ -386,8 +392,10 @@ for ri = 1:length(rvars)
     eval(sprintf('%s = [];',rvars{ri}));
 end
 
+runcount = [0 0];
 for run = 1:length(e)
-    runs = [runs ones(1,length(e{fi}.parameter.target))];
+    runs = [runs ones(1,e{run}.nTrials)];
+    runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
     for pi = 1:length(pvars)
         eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pi},pvars{pi},pvars{pi}));
     end
@@ -397,17 +405,41 @@ for run = 1:length(e)
 end
 
 %% create one giant matrix, but just of a few variables that matter
-data = [runs' trialType' respDistance' distDistance'];
+data = [cue' runs' trialType' respDistance' distDistance'];
 data = data(~any(isnan(data),2),:);
+
+%% print out information
+disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
+disp(sprintf('Trials so far: %i cue direction (cue=1), %i cue color (cue=2)',sum(data(:,1)==1),sum(data(:,1)==2)));
 %% plot
 
-% select out the spatial 
-spatial = data(data(:,2)==1,:);
-motion = data(data(:,2)==2,:);
+% build one figure for each task
+titles = {'Cue direction','Cue color'};
+bins = pi/32:pi/16:pi;
+blabels = {};
+for bi = 0:(length(bins)-1)
+    blabels{bi+1} = sprintf('%i/16',bi);
+end
 
-figure;
-subplot(211); % spatial
-histfit(spatial(:,3));
+for cue = 1:2
+    cdata = data(data(:,1)==cue,:);
+    
+    spatial = cdata(cdata(:,3)==1,:);
+    feature = cdata(cdata(:,3)==2,:);
+
+    figure;
+
+    s_h = hist(spatial(:,4),bins);
+    f_h = hist(feature(:,4),bins);
+    bar(bins,[s_h' f_h']);
+    legend({'Spatial','Feature'});
+    xlabel('Response distance from target (target=0');
+    set(gca,'XTick',bins,'XTickLabel',blabels);
+    title(titles{cue});
+    drawPublishAxis;
+end
+
+%%
 
 stop = 1;
 
@@ -457,7 +489,9 @@ for di = 1:length(stimulus.patches)
     end
     
     task.thistrial.(sprintf('angle%i',di)) = ctheta;
+    disp(sprintf('Angle %i: %0.2f',di,ctheta));
 end
+disp(sprintf('Target %i',task.thistrial.target));
 
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
@@ -481,29 +515,15 @@ function [task, myscreen] = endTrialCallback(task,myscreen)
 
 if task.thistrial.dead, return; end
 
+respType = {'timeout','click','multiclick','multiclick','multiclick'};
 if isnan(task.thistrial.respDistance)
-    task.thistrial.respDistance = circDist(task.thistrial.respAngle,task.thistrial.targetAngle);
-    task.thistrial.distDistance = circDist(task.thistrial.respAngle,task.thistrial.distractorAngle);
-    disp(sprintf('Recorded no-response - angle of %1.2f true %1.2f: %1.2f distance',task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
+    task.thistrial.respDistance = angdist(task.thistrial.respAngle,task.thistrial.targetAngle);
+    task.thistrial.distDistance = angdist(task.thistrial.respAngle,task.thistrial.distractorAngle);
+    disp(sprintf('Recorded: %s. angle of %1.2f true %1.2f: %1.2f distance',respType{task.thistrial.gotResponse+1},task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
 end
 
-function d = circDist(t1,t2)
-if length(t1)>1 || length(t2)>1
-    warning('Circle distance only works on numbers not arrays');
-    d = [];
-    return
-end
-% circular distance
-t1 = mod(t1,2*pi);
-t2 = mod(t2,2*pi);
-if t1>t2
-    d = t1-t2;
-else
-    d = t2-t1;
-end
-if d>pi
-    d = 2*pi-d;
-end
+function d = angdist(t1,t2)
+d = acos(cos(t1)*cos(t2)+sin(t1)*sin(t2));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Trial %%%%%%%%%%%%%%%%%%
@@ -522,18 +542,18 @@ global stimulus
 
 switch task.thistrial.trialType
     case 0
-        cues = [0];
+        cues = 0;
     case 1
-        cues = [1];
+        cues = 1;
     case 2
-        cues = [2];
+        cues = 2;
     case 3
         cues = [1 2];
 end
 
 if any(cues==0)
     % draw lines to both sides
-    dotDirs = unique(stimulus.dotDirs);
+    dotDirs = unique(stimulus.dotThetas);
     for di = 1:length(dotDirs)
         x = 1.5*stimulus.fixWidth * cos(dotDirs(di));
         y = 1.5*stimulus.fixWidth * sin(dotDirs(di));
@@ -626,50 +646,24 @@ for di = 1:length(x)
     end
 end
 
-
-function drawFix(task,color)
-
-global stimulus;
-
-if task.thistrial.dead
-    mglGluDisk(0,0,[1 1],stimulus.colors.red,60);
-else
-    mglFixationCross(stimulus.fixWidth,1,color);
-end
-
-function drawBorder(x,y,r,c)
-
-for t = 0:pi/4:2*pi
-    mglGluPartialDisk(x,y,r,r+0.05,(180/pi)*(t-pi/16),22.5,c);
-end
-
-function drawAllBorders(locations,r)
-
-% draw the borders
-for li = 1:length(locations)
-    drawBorder(locations{li}.xcenter,locations{li}.ycenter,r,[0.2 0.2 0.2]);
-end
-
 function drawTarget(task)
 
 global stimulus
 
 if stimulus.cue==1
     stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
+    color = [1 1 1];
 else
     % if we we cued color set the coherence to zero so that there's no
     % direction information
     stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,0,false);
+    color = ang2rgb(stimulus.dotColors(task.thistrial.target));
 end
+% compute the offset position
 offX = stimulus.patches{task.thistrial.target}.xcenter - stimulus.patches{task.thistrial.target}.dots.maxX/2;
 offY = stimulus.patches{task.thistrial.target}.ycenter - stimulus.patches{task.thistrial.target}.dots.maxY/2;
 
-if stimulus.cue==1
-    color = [1 1 1];
-else
-    color = ang2rgb(stimulus.dotColors(task.thistrial.target));
-end
-
+% draw the actual points
 mglStencilSelect(1);
 afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
 mglStencilSelect(0);
@@ -682,13 +676,13 @@ if stimulus.cue==1
     % When we cue spatial/direction we need to draw the color picker
     for ti = 1:length(stimulus.thetas)
         theta = stimulus.thetas(ti) + task.thistrial.cwOffset;
-        mglGluPartialDisk(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
+        mglGluPartialDisk_(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
     end
     % Also draw a little marker to indicate the current rotation
-    mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
+    mglGluPartialDisk_(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
 else
     % Don't rotate the marker using cwOffset
-    mglGluPartialDisk(0,0,1,1.25,180/pi*(task.thistrial.respAngle)-2.5,5,[0.75 0.75 0.75]);
+    mglGluPartialDisk_(0,0,1,1.25,180/pi*(task.thistrial.respAngle)-2.5,5,[0.75 0.75 0.75]);
 end
 
 function drawResp(angle)
@@ -698,8 +692,15 @@ global stimulus
 if stimulus.cue==1
     mglFillOval(0,0,stimulus.fixWidth*[1 1],ang2rgb(angle));
 else
-    mglGluPartialDisk(0,0,1,1.25,180/pi*angle-2.5,5,[0.75 0.75 0.75]);
+    mglGluPartialDisk_(0,0,1,1.25,180/pi*angle-2.5,5,[0.75 0.75 0.75]);
 end
+
+function mglGluPartialDisk_(x,y,isize,osize,sangle,sweep,color)
+% just a wrapper around mglGluPartialDisk which converst from REAL angles
+% to MGL angles. I absolutely hate this aspect of MGL which I assume is
+% inherited from OpenGL...
+sangle = 90-sangle; % this sets 0 to be vertical and all coordinates go clockwise
+mglGluPartialDisk(x,y,isize,osize,sangle,sweep,color);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -727,14 +728,20 @@ end
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        curPos = mInfo.x/90;
+        curPos = -mInfo.x/90;
         task.thistrial.respAngle = mod(task.thistrial.respAngle + curPos-stimulus.live.trackingAngle,2*pi);
         stimulus.live.trackingAngle = curPos;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-        task.thistrial.respAngle = mod(-atan2(degy,degx)+pi/2 - task.thistrial.cwOffset,2*pi);
+        if stimulus.cue==1
+            % note that this is in MGL angles!! 0 is up and goes
+            % clockwise... stupidest feature of mgl
+            task.thistrial.respAngle = mod(atan2(degy,degx) - task.thistrial.cwOffset,2*pi);
+        else
+            task.thistrial.respAngle = mod(atan2(degy,degx),2*pi);
+        end
     end
     
     stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
@@ -745,46 +752,42 @@ switch task.thistrial.thisseg
         
     case stimulus.seg.iti
         drawStim(1:4,false);
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
         % fixation
         drawStim(1:4,false);
-        if task.thistrial.trialType>0
-            drawCue(task);
-        end
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
+        drawCue(task);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.isi
         drawStim(1:4,false);
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.stim
         drawStim(1:4,true);
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.delay
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.resp
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawTarget(task);
         drawPicker(task);
         if stimulus.cue==1
+            % only draw the chosen color at fixation if we're doing cued
+            % direction
             drawResp(task.thistrial.respAngle);
         end
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.feedback
-        drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
         drawResp(task.thistrial.targetAngle);
         drawFix(task,stimulus.colors.white);
+        
 end
+
+drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
 
 % do eye position tracking, but only during some segments
 if any(task.thistrial.thisseg==[stimulus.seg.cue stimulus.seg.stim stimulus.seg.resp])
@@ -827,6 +830,29 @@ if task.thistrial.dead, return; end
 if task.thistrial.gotResponse==0
     % jump to the feedback segment
     task = jumpSegment(task);
+end
+
+function drawFix(task,color)
+
+global stimulus;
+
+if task.thistrial.dead
+    mglGluDisk(0,0,[1 1],stimulus.colors.red,60);
+else
+    mglFixationCross(stimulus.fixWidth,1,color);
+end
+
+function drawBorder(x,y,r,c)
+
+for t = 0:pi/4:2*pi
+    mglGluPartialDisk(x,y,r,r+0.05,(180/pi)*(t-pi/16),22.5,c);
+end
+
+function drawAllBorders(locations,r)
+
+% draw the borders
+for li = 1:length(locations)
+    drawBorder(locations{li}.xcenter,locations{li}.ycenter,r,[0.05 0.05 0.05]);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
