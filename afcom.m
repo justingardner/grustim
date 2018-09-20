@@ -151,10 +151,10 @@ if ~isfield(stimulus,'colors')
 end
 
 % available range of color/direction increments
-stimulus.theta_ = pi/128; % increment size
+stimulus.theta_ = pi/64; % increment size
 stimulus.thetas = 0:stimulus.theta_:2*pi;
     
-if ~isfield(stimulus,'colorwheel')
+if 1 %~isfield(stimulus,'colorwheel')
     % get the lab space rgb values
     stimulus.backgroundLab = rgb2lab([0.5 0.5 0.5]);
 
@@ -314,7 +314,9 @@ task{1}{1}.randVars.calculated.cwOffset = nan; % colorwheel offset rotation
 
 %% Mouse movement storage data
 
-stimulus.data.mouseTrack = zeros(50,200);
+% average reaction time is ~300, so to save space we can try to make
+% mouseTrack only n*300 size
+stimulus.data.mouseTrack = nan(min(task{1}{1}.numTrials,50),300);
 stimulus.data.mouseTick = 1;
 
 %% Full Setup
@@ -373,10 +375,13 @@ function dispInfo()
 %%
 files = dir(fullfile('~/data/afcom/',mglGetSID,'*.mat'));
 
+maxTrackLength = 0;
 for fi = 1:length(files)
     load(fullfile('~/data/afcom/',mglGetSID,files(fi).name));
     exp = getTaskParameters(myscreen,task);
     e{fi} = exp{1};
+    mt{fi} = stimulus.data.mouseTrack(1:e{fi}.nTrials,:);
+    maxTrackLength = max(maxTrackLength,size(mt{fi},2));
 end
 
 %% concatenate all trials
@@ -404,13 +409,32 @@ for run = 1:length(e)
     end
 end
 
+%% concatenate mouse tracks
+amt = nan(length(target),maxTrackLength);
+start = 1;
+for run = 1:length(e)
+    stop = (start+e{run}.nTrials-1);
+    amt(start:stop,1:size(mt{run},2)) = mt{run};
+    start = stop + 1;
+end
+
 %% create one giant matrix, but just of a few variables that matter
 data = [cue' runs' trialType' respDistance' distDistance'];
-data = data(~any(isnan(data(:,4)),2),:);
+keepIdxs = ~any(isnan(data(:,4)),2);
+data = data(keepIdxs,:);
+amt = amt(keepIdxs,:);
 
 %% print out information
 disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
 disp(sprintf('Trials so far: %i cue direction (cue=1), %i cue color (cue=2)',sum(data(:,1)==1),sum(data(:,1)==2)));
+
+%% plot mousetracks
+% step 1: rotate mousetracks so that they are relative to the target
+amt_ = amt - repmat(targetAngle(keepIdxs)',1,size(amt,2));
+% test plot the average mousetrack
+figure;
+plot(amt_');
+
 %% plot
 
 % build one figure for each task
@@ -496,9 +520,7 @@ for di = 1:length(stimulus.patches)
     end
     
     task.thistrial.(sprintf('angle%i',di)) = ctheta;
-    disp(sprintf('Angle %i: %0.2f',di,ctheta));
 end
-disp(sprintf('Target %i',task.thistrial.target));
 
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
@@ -736,23 +758,30 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
         curPos = -mInfo.x/90;
-        task.thistrial.respAngle = mod(task.thistrial.respAngle + curPos-stimulus.live.trackingAngle,2*pi);
+        task.thistrial.respAngle = task.thistrial.respAngle + curPos-stimulus.live.trackingAngle;
         stimulus.live.trackingAngle = curPos;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
         if stimulus.cue==1
-            % note that this is in MGL angles!! 0 is up and goes
-            % clockwise... stupidest feature of mgl
-            task.thistrial.respAngle = mod(atan2(degy,degx) - task.thistrial.cwOffset,2*pi);
+            task.thistrial.respAngle = atan2(degy,degx) - task.thistrial.cwOffset;
         else
-            task.thistrial.respAngle = mod(atan2(degy,degx),2*pi);
+            task.thistrial.respAngle = atan2(degy,degx);
         end
     end
     
     stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
+    
+    % do the mod last, so that the actual respAngle is recorded as a
+    % continuous change, otherwise the mouseTrack code doesn't work
+    % properly
+    task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
+    % also note that respAngle is stored in *real* angles -- so that it
+    % corresponds correctly to the direction task. This means that when you
+    % transform into visual space you need to flip into MGL angles, see
+    % mglGluDiskAnnulus_ which does this step
 end
 
 switch task.thistrial.thisseg
