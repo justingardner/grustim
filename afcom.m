@@ -152,7 +152,7 @@ end
 
 % available range of color/direction increments
 stimulus.theta_ = pi/64; % increment size
-stimulus.thetas = 0:stimulus.theta_:2*pi;
+stimulus.thetas = 0:stimulus.theta_:(2*pi);
     
 if 1 %~isfield(stimulus,'colorwheel')
     % get the lab space rgb values
@@ -167,6 +167,7 @@ if 1 %~isfield(stimulus,'colorwheel')
     D = 60;
     stimulus.colorwheel.distanceLab = D;
 
+    stimulus.colorwheel.rgb = zeros(length(stimulus.thetas),3);
     for ti = 1:length(stimulus.thetas)
         theta = stimulus.thetas(ti);
 
@@ -314,9 +315,9 @@ task{1}{1}.randVars.calculated.cwOffset = nan; % colorwheel offset rotation
 
 %% Mouse movement storage data
 
-% average reaction time is ~300, so to save space we can try to make
-% mouseTrack only n*300 size
-stimulus.data.mouseTrack = nan(min(task{1}{1}.numTrials,50),300);
+% average reaction time is ~300, but the matrix will get filled with zeros
+% (bad) if we don't pre-fill it with nan
+stimulus.data.mouseTrack = nan(min(task{1}{1}.numTrials,50),500);
 stimulus.data.mouseTick = 1;
 
 %% Full Setup
@@ -381,6 +382,7 @@ for fi = 1:length(files)
     exp = getTaskParameters(myscreen,task);
     e{fi} = exp{1};
     mt{fi} = stimulus.data.mouseTrack(1:e{fi}.nTrials,:);
+    mt{fi}(mt{fi}==0) = nan;
     maxTrackLength = max(maxTrackLength,size(mt{fi},2));
 end
 
@@ -390,8 +392,8 @@ rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
     'angle4','respAngle','respDistance','distDistance'};
 runs = [];
 
-for pi = 1:length(pvars)
-    eval(sprintf('%s = [];',pvars{pi}));
+for pii = 1:length(pvars)
+    eval(sprintf('%s = [];',pvars{pii}));
 end
 for ri = 1:length(rvars)
     eval(sprintf('%s = [];',rvars{ri}));
@@ -401,8 +403,8 @@ runcount = [0 0];
 for run = 1:length(e)
     runs = [runs ones(1,e{run}.nTrials)];
     runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
-    for pi = 1:length(pvars)
-        eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pi},pvars{pi},pvars{pi}));
+    for pii = 1:length(pvars)
+        eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
     end
     for ri = 1:length(rvars)
         eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
@@ -417,6 +419,28 @@ for run = 1:length(e)
     amt(start:stop,1:size(mt{run},2)) = mt{run};
     start = stop + 1;
 end
+
+%% go backward through mouseTracks and fix jumps
+% assume that you end near zero, so if you jump -pi you need to -pi the
+% earlier section, etc
+amt = fliplr(amt);
+for ai = 1:size(amt,1)
+    track = amt(ai,:);
+    dtrack = diff(track);
+    posidx = find(dtrack>5);
+    negidx = find(dtrack<-5);
+    for pii = 1:length(posidx)
+        idx = posidx(pii)+1;
+        track(idx:end) = track(idx:end)-2*pi;
+    end
+    for nii = 1:length(negidx)
+        idx = negidx(nii)+1;
+        track(idx:end) = track(idx:end)+2*pi;
+    end
+    dtrack = diff(track);
+    amt(ai,:) = track;
+end
+amt = fliplr(amt);
 
 %% create one giant matrix, but just of a few variables that matter
 data = [cue' runs' trialType' respDistance' distDistance'];
@@ -770,15 +794,12 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
             task.thistrial.respAngle = atan2(degy,degx);
         end
     end
+    task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
     stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
     
-    % do the mod last, so that the actual respAngle is recorded as a
-    % continuous change, otherwise the mouseTrack code doesn't work
-    % properly
-    task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
-    % also note that respAngle is stored in *real* angles -- so that it
+    % note that respAngle is stored in *real* angles -- so that it
     % corresponds correctly to the direction task. This means that when you
     % transform into visual space you need to flip into MGL angles, see
     % mglGluDiskAnnulus_ which does this step
