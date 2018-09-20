@@ -406,7 +406,7 @@ end
 
 %% create one giant matrix, but just of a few variables that matter
 data = [cue' runs' trialType' respDistance' distDistance'];
-data = data(~any(isnan(data),2),:);
+data = data(~any(isnan(data(:,4)),2),:);
 
 %% print out information
 disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
@@ -424,24 +424,31 @@ end
 for cue = 1:2
     cdata = data(data(:,1)==cue,:);
     
+    all = cdata(cdata(:,3)==0,:);
     spatial = cdata(cdata(:,3)==1,:);
     feature = cdata(cdata(:,3)==2,:);
+    target = cdata(cdata(:,3)==3,:);
 
     figure;
 
+    a_h = hist(all(:,4),bins);
     s_h = hist(spatial(:,4),bins);
     f_h = hist(feature(:,4),bins);
-    bar(bins,[s_h' f_h']);
-    legend({'Spatial','Feature'});
+    t_h = hist(target(:,4),bins);
+    % normalize
+    a_h = a_h/sum(a_h);
+    s_h = s_h/sum(s_h);
+    f_h = f_h/sum(f_h);
+    t_h = t_h/sum(t_h);
+    
+    bar(bins,[a_h' s_h' f_h' t_h']);
+    legend({'All','Spatial','Feature','Target'});
+    ylabel('Proportion (%)');
     xlabel('Response distance from target (target=0');
     set(gca,'XTick',bins,'XTickLabel',blabels);
     title(titles{cue});
     drawPublishAxis;
 end
-
-%%
-
-stop = 1;
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
