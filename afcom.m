@@ -456,8 +456,12 @@ disp(sprintf('Trials so far: %i cue direction (cue=1), %i cue color (cue=2)',sum
 % step 1: rotate mousetracks so that they are relative to the target
 amt_ = amt - repmat(targetAngle(keepIdxs)',1,size(amt,2));
 % test plot the average mousetrack
-figure;
-plot(amt_');
+figure; hold on
+plot(amt_','-k');
+hline(0,'--r');
+xlabel('Time from response window start');
+ylabel('Rotation (rad)');
+drawPublishAxis;
 
 %% plot
 
