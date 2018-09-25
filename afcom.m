@@ -450,7 +450,6 @@ amt = amt(keepIdxs,:);
 
 %% print out information
 disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
-disp(sprintf('Trials so far: %i cue direction (cue=1), %i cue color (cue=2)',sum(data(:,1)==1),sum(data(:,1)==2)));
 
 %% plot mousetracks
 % step 1: rotate mousetracks so that they are relative to the target
@@ -476,11 +475,18 @@ end
 for cue = 1:2
     cdata = data(data(:,1)==cue,:);
     
+    disp(sprintf('Trials of: %s so far %i',titles{cue},size(cdata,1)));
+    
     all = cdata(cdata(:,3)==0,:);
+    disp(sprintf('Type all: %i',size(all,1)));
     spatial = cdata(cdata(:,3)==1,:);
+    disp(sprintf('Type spatial: %i',size(spatial,1)));
     feature = cdata(cdata(:,3)==2,:);
+    disp(sprintf('Type feature: %i',size(feature,1)));
     target = cdata(cdata(:,3)==3,:);
+    disp(sprintf('Type target: %i',size(target,1)));
     base = cdata(cdata(:,3)==4,:);
+    disp(sprintf('Type baseline: %i',size(base,1)));
 
     figure;
 
@@ -664,7 +670,7 @@ g = r;
 b = r;
 
 for di = 1:length(stimulus.patches)
-    if task.thistrial.trialType~=4 || (stimSeg && (di==task.thistrial.target))
+    if task.thistrial.trialType~=4 || ~stimSeg || (stimSeg && (di==task.thistrial.target))
         if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
             % if this is the actual stim seg and using motion, update
             % coherently
