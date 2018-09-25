@@ -285,12 +285,12 @@ task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 if stimulus.scan==1
     task{1}{1}.numTrials = Inf;
 else
-    task{1}{1}.numTrials = 32;
+    task{1}{1}.numTrials = 40;
 end
 
 task{1}{1}.random = 1;
 
-task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
+task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
@@ -480,6 +480,7 @@ for cue = 1:2
     spatial = cdata(cdata(:,3)==1,:);
     feature = cdata(cdata(:,3)==2,:);
     target = cdata(cdata(:,3)==3,:);
+    base = cdata(cdata(:,3)==4,:);
 
     figure;
 
@@ -487,14 +488,16 @@ for cue = 1:2
     s_h = hist(spatial(:,4),bins);
     f_h = hist(feature(:,4),bins);
     t_h = hist(target(:,4),bins);
+    b_h = hist(base(:,4),bins);
     % normalize
     a_h = a_h/sum(a_h);
     s_h = s_h/sum(s_h);
     f_h = f_h/sum(f_h);
     t_h = t_h/sum(t_h);
+    b_h = b_h/sum(b_h);
     
-    bar(bins,[a_h' s_h' f_h' t_h']);
-    legend({'All','Spatial','Feature','Target'});
+    bar(bins,[a_h' s_h' f_h' t_h' b_h']);
+    legend({'All','Spatial','Feature','Target','Baseline'});
     ylabel('Proportion (%)');
     xlabel('Response distance from target (target=0');
     set(gca,'XTick',bins,'XTickLabel',blabels);
@@ -517,7 +520,7 @@ else
     stimulus.cueDots.dir = 0; % doesn't matter, dots are incoherent
 end
 
-if task.thistrial.trialType==0
+if (task.thistrial.trialType==0) || (task.thistrial.trialType==4)
     task.thistrial.distractor = nan; % no cue, so everything is a potential distractor
 else
     if task.thistrial.trialType==2
@@ -555,9 +558,9 @@ task.thistrial.cwOffset = rand*2*pi;
 task.thistrial.respAngle = -task.thistrial.cwOffset;
 
 if stimulus.cue==1
-    trialTypes = {'nocue','spatial','direction','target'};
+    trialTypes = {'nocue','spatial','direction','target','baseline'};
 else
-    trialTypes = {'nocue','spatial','color','target'};
+    trialTypes = {'nocue','spatial','color','target','baseline'};
 end
 disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.trialType+1}));
 
@@ -606,6 +609,8 @@ switch task.thistrial.trialType
         cues = 2;
     case 3
         cues = [1 2];
+    case 4
+        cues = [1 2];
 end
 
 if any(cues==0)
@@ -644,7 +649,7 @@ if any(cues==2)
     mglStencilSelect(0);
 end
 
-function drawStim(~,stimSeg)
+function drawStim(task,stimSeg)
 
 global stimulus
 
@@ -652,32 +657,43 @@ mglStencilSelect(1);
 % update and collapse x/y coordinates for drawing
 n = stimulus.patches{1}.dots.n;
 
-x = zeros(1,n*length(stimulus.patches));
+x = nan(1,n*length(stimulus.patches));
 y = x;
 r = ones(1,n*length(stimulus.patches));
 g = r;
 b = r;
 
 for di = 1:length(stimulus.patches)
-    if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
-        % if this is the actual stim seg and using motion, update
-        % coherently
-        stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,1,false);
-    else
-        % otherwise use incoherent motion
-        stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,0,false);
+    if task.thistrial.trialType~=4 || (stimSeg && (di==task.thistrial.target))
+        if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
+            % if this is the actual stim seg and using motion, update
+            % coherently
+            stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,1,false);
+        else
+            % otherwise use incoherent motion
+            stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,0,false);
+        end
+
+        offX = stimulus.patches{di}.xcenter - stimulus.patches{di}.dots.maxX/2;
+        offY = stimulus.patches{di}.ycenter - stimulus.patches{di}.dots.maxY/2;
+
+        x(((di-1)*n+1):(di*n)) = offX + stimulus.patches{di}.dots.x;
+        y(((di-1)*n+1):(di*n)) = offY + stimulus.patches{di}.dots.y;
+        if stimulus.cue==2 || (stimulus.cue==1 && stimSeg) % if this is the actual stimulus segment and we are using color, show the colors
+            r(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(1);
+            g(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(2);
+            b(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(3);
+        end
     end
-    
-    offX = stimulus.patches{di}.xcenter - stimulus.patches{di}.dots.maxX/2;
-    offY = stimulus.patches{di}.ycenter - stimulus.patches{di}.dots.maxY/2;
-    
-    x(((di-1)*n+1):(di*n)) = offX + stimulus.patches{di}.dots.x;
-    y(((di-1)*n+1):(di*n)) = offY + stimulus.patches{di}.dots.y;
-    if stimulus.cue==2 || (stimulus.cue==1 && stimSeg) % if this is the actual stimulus segment and we are using color, show the colors
-        r(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(1);
-        g(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(2);
-        b(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(3);
-    end
+end
+
+drop = isnan(x);
+if any(drop)
+    x = x(~drop);
+    y = y(~drop);
+    r = r(~drop);
+    g = g(~drop);
+    b = b(~drop);
 end
 
 % randomly sort x/y/r/g/b so that overlapping patches render correctly
@@ -812,21 +828,21 @@ end
 switch task.thistrial.thisseg
         
     case stimulus.seg.iti
-        drawStim(1:4,false);
+        drawStim(task,false);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
         % fixation
-        drawStim(1:4,false);
+        drawStim(task,false);
         drawCue(task);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.isi
-        drawStim(1:4,false);
+        drawStim(task,false);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.stim
-        drawStim(1:4,true);
+        drawStim(task,true);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.delay
