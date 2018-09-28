@@ -151,10 +151,10 @@ if ~isfield(stimulus,'colors')
 end
 
 % available range of color/direction increments
-stimulus.theta_ = pi/128; % increment size
-stimulus.thetas = 0:stimulus.theta_:2*pi;
+stimulus.theta_ = pi/64; % increment size
+stimulus.thetas = 0:stimulus.theta_:(2*pi);
     
-if ~isfield(stimulus,'colorwheel')
+if 1 %~isfield(stimulus,'colorwheel')
     % get the lab space rgb values
     stimulus.backgroundLab = rgb2lab([0.5 0.5 0.5]);
 
@@ -167,6 +167,7 @@ if ~isfield(stimulus,'colorwheel')
     D = 60;
     stimulus.colorwheel.distanceLab = D;
 
+    stimulus.colorwheel.rgb = zeros(length(stimulus.thetas),3);
     for ti = 1:length(stimulus.thetas)
         theta = stimulus.thetas(ti);
 
@@ -284,12 +285,12 @@ task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 if stimulus.scan==1
     task{1}{1}.numTrials = Inf;
 else
-    task{1}{1}.numTrials = 32;
+    task{1}{1}.numTrials = 40;
 end
 
 task{1}{1}.random = 1;
 
-task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2)
+task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
@@ -314,7 +315,9 @@ task{1}{1}.randVars.calculated.cwOffset = nan; % colorwheel offset rotation
 
 %% Mouse movement storage data
 
-stimulus.data.mouseTrack = zeros(50,200);
+% average reaction time is ~300, but the matrix will get filled with zeros
+% (bad) if we don't pre-fill it with nan
+stimulus.data.mouseTrack = nan(min(task{1}{1}.numTrials,50),500);
 stimulus.data.mouseTick = 1;
 
 %% Full Setup
@@ -373,10 +376,14 @@ function dispInfo()
 %%
 files = dir(fullfile('~/data/afcom/',mglGetSID,'*.mat'));
 
+maxTrackLength = 0;
 for fi = 1:length(files)
     load(fullfile('~/data/afcom/',mglGetSID,files(fi).name));
     exp = getTaskParameters(myscreen,task);
     e{fi} = exp{1};
+    mt{fi} = stimulus.data.mouseTrack(1:e{fi}.nTrials,:);
+    mt{fi}(mt{fi}==0) = nan;
+    maxTrackLength = max(maxTrackLength,size(mt{fi},2));
 end
 
 %% concatenate all trials
@@ -385,8 +392,8 @@ rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
     'angle4','respAngle','respDistance','distDistance'};
 runs = [];
 
-for pi = 1:length(pvars)
-    eval(sprintf('%s = [];',pvars{pi}));
+for pii = 1:length(pvars)
+    eval(sprintf('%s = [];',pvars{pii}));
 end
 for ri = 1:length(rvars)
     eval(sprintf('%s = [];',rvars{ri}));
@@ -396,21 +403,65 @@ runcount = [0 0];
 for run = 1:length(e)
     runs = [runs ones(1,e{run}.nTrials)];
     runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
-    for pi = 1:length(pvars)
-        eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pi},pvars{pi},pvars{pi}));
+    for pii = 1:length(pvars)
+        eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
     end
     for ri = 1:length(rvars)
         eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
     end
 end
 
+%% concatenate mouse tracks
+amt = nan(length(target),maxTrackLength);
+start = 1;
+for run = 1:length(e)
+    stop = (start+e{run}.nTrials-1);
+    amt(start:stop,1:size(mt{run},2)) = mt{run};
+    start = stop + 1;
+end
+
+%% go backward through mouseTracks and fix jumps
+% assume that you end near zero, so if you jump -pi you need to -pi the
+% earlier section, etc
+amt = fliplr(amt);
+for ai = 1:size(amt,1)
+    track = amt(ai,:);
+    dtrack = diff(track);
+    posidx = find(dtrack>5);
+    negidx = find(dtrack<-5);
+    for pii = 1:length(posidx)
+        idx = posidx(pii)+1;
+        track(idx:end) = track(idx:end)-2*pi;
+    end
+    for nii = 1:length(negidx)
+        idx = negidx(nii)+1;
+        track(idx:end) = track(idx:end)+2*pi;
+    end
+    dtrack = diff(track);
+    amt(ai,:) = track;
+end
+amt = fliplr(amt);
+
 %% create one giant matrix, but just of a few variables that matter
 data = [cue' runs' trialType' respDistance' distDistance'];
-data = data(~any(isnan(data),2),:);
+keepIdxs = ~any(isnan(data(:,4)),2);
+data = data(keepIdxs,:);
+amt = amt(keepIdxs,:);
 
 %% print out information
 disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
-disp(sprintf('Trials so far: %i cue direction (cue=1), %i cue color (cue=2)',sum(data(:,1)==1),sum(data(:,1)==2)));
+
+%% plot mousetracks
+% step 1: rotate mousetracks so that they are relative to the target
+amt_ = amt - repmat(targetAngle(keepIdxs)',1,size(amt,2));
+% test plot the average mousetrack
+figure; hold on
+plot(amt_','-k');
+hline(0,'--r');
+xlabel('Time from response window start');
+ylabel('Rotation (rad)');
+drawPublishAxis;
+
 %% plot
 
 % build one figure for each task
@@ -424,24 +475,41 @@ end
 for cue = 1:2
     cdata = data(data(:,1)==cue,:);
     
+    disp(sprintf('Trials of: %s so far %i',titles{cue},size(cdata,1)));
+    
+    all = cdata(cdata(:,3)==0,:);
+    disp(sprintf('Type all: %i',size(all,1)));
     spatial = cdata(cdata(:,3)==1,:);
+    disp(sprintf('Type spatial: %i',size(spatial,1)));
     feature = cdata(cdata(:,3)==2,:);
+    disp(sprintf('Type feature: %i',size(feature,1)));
+    target = cdata(cdata(:,3)==3,:);
+    disp(sprintf('Type target: %i',size(target,1)));
+    base = cdata(cdata(:,3)==4,:);
+    disp(sprintf('Type baseline: %i',size(base,1)));
 
     figure;
 
+    a_h = hist(all(:,4),bins);
     s_h = hist(spatial(:,4),bins);
     f_h = hist(feature(:,4),bins);
-    bar(bins,[s_h' f_h']);
-    legend({'Spatial','Feature'});
+    t_h = hist(target(:,4),bins);
+    b_h = hist(base(:,4),bins);
+    % normalize
+    a_h = a_h/sum(a_h);
+    s_h = s_h/sum(s_h);
+    f_h = f_h/sum(f_h);
+    t_h = t_h/sum(t_h);
+    b_h = b_h/sum(b_h);
+    
+    bar(bins,[a_h' s_h' f_h' t_h' b_h']);
+    legend({'All','Spatial','Feature','Target','Baseline'});
+    ylabel('Proportion (%)');
     xlabel('Response distance from target (target=0');
     set(gca,'XTick',bins,'XTickLabel',blabels);
     title(titles{cue});
     drawPublishAxis;
 end
-
-%%
-
-stop = 1;
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
@@ -458,7 +526,7 @@ else
     stimulus.cueDots.dir = 0; % doesn't matter, dots are incoherent
 end
 
-if task.thistrial.trialType==0
+if (task.thistrial.trialType==0) || (task.thistrial.trialType==4)
     task.thistrial.distractor = nan; % no cue, so everything is a potential distractor
 else
     if task.thistrial.trialType==2
@@ -489,18 +557,16 @@ for di = 1:length(stimulus.patches)
     end
     
     task.thistrial.(sprintf('angle%i',di)) = ctheta;
-    disp(sprintf('Angle %i: %0.2f',di,ctheta));
 end
-disp(sprintf('Target %i',task.thistrial.target));
 
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
 task.thistrial.respAngle = -task.thistrial.cwOffset;
 
 if stimulus.cue==1
-    trialTypes = {'nocue','spatial','direction','target'};
+    trialTypes = {'nocue','spatial','direction','target','baseline'};
 else
-    trialTypes = {'nocue','spatial','color','target'};
+    trialTypes = {'nocue','spatial','color','target','baseline'};
 end
 disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.trialType+1}));
 
@@ -549,6 +615,8 @@ switch task.thistrial.trialType
         cues = 2;
     case 3
         cues = [1 2];
+    case 4
+        cues = [1 2];
 end
 
 if any(cues==0)
@@ -587,7 +655,7 @@ if any(cues==2)
     mglStencilSelect(0);
 end
 
-function drawStim(~,stimSeg)
+function drawStim(task,stimSeg)
 
 global stimulus
 
@@ -595,32 +663,43 @@ mglStencilSelect(1);
 % update and collapse x/y coordinates for drawing
 n = stimulus.patches{1}.dots.n;
 
-x = zeros(1,n*length(stimulus.patches));
+x = nan(1,n*length(stimulus.patches));
 y = x;
 r = ones(1,n*length(stimulus.patches));
 g = r;
 b = r;
 
 for di = 1:length(stimulus.patches)
-    if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
-        % if this is the actual stim seg and using motion, update
-        % coherently
-        stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,1,false);
-    else
-        % otherwise use incoherent motion
-        stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,0,false);
+    if task.thistrial.trialType~=4 || ~stimSeg || (stimSeg && (di==task.thistrial.target))
+        if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
+            % if this is the actual stim seg and using motion, update
+            % coherently
+            stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,1,false);
+        else
+            % otherwise use incoherent motion
+            stimulus.patches{di}.dots = updateDots(stimulus.patches{di}.dots,0,false);
+        end
+
+        offX = stimulus.patches{di}.xcenter - stimulus.patches{di}.dots.maxX/2;
+        offY = stimulus.patches{di}.ycenter - stimulus.patches{di}.dots.maxY/2;
+
+        x(((di-1)*n+1):(di*n)) = offX + stimulus.patches{di}.dots.x;
+        y(((di-1)*n+1):(di*n)) = offY + stimulus.patches{di}.dots.y;
+        if stimulus.cue==2 || (stimulus.cue==1 && stimSeg) % if this is the actual stimulus segment and we are using color, show the colors
+            r(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(1);
+            g(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(2);
+            b(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(3);
+        end
     end
-    
-    offX = stimulus.patches{di}.xcenter - stimulus.patches{di}.dots.maxX/2;
-    offY = stimulus.patches{di}.ycenter - stimulus.patches{di}.dots.maxY/2;
-    
-    x(((di-1)*n+1):(di*n)) = offX + stimulus.patches{di}.dots.x;
-    y(((di-1)*n+1):(di*n)) = offY + stimulus.patches{di}.dots.y;
-    if stimulus.cue==2 || (stimulus.cue==1 && stimSeg) % if this is the actual stimulus segment and we are using color, show the colors
-        r(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(1);
-        g(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(2);
-        b(((di-1)*n+1):(di*n)) = stimulus.patches{di}.color(3);
-    end
+end
+
+drop = isnan(x);
+if any(drop)
+    x = x(~drop);
+    y = y(~drop);
+    r = r(~drop);
+    g = g(~drop);
+    b = b(~drop);
 end
 
 % randomly sort x/y/r/g/b so that overlapping patches render correctly
@@ -729,43 +808,47 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
         curPos = -mInfo.x/90;
-        task.thistrial.respAngle = mod(task.thistrial.respAngle + curPos-stimulus.live.trackingAngle,2*pi);
+        task.thistrial.respAngle = task.thistrial.respAngle + curPos-stimulus.live.trackingAngle;
         stimulus.live.trackingAngle = curPos;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
         if stimulus.cue==1
-            % note that this is in MGL angles!! 0 is up and goes
-            % clockwise... stupidest feature of mgl
-            task.thistrial.respAngle = mod(atan2(degy,degx) - task.thistrial.cwOffset,2*pi);
+            task.thistrial.respAngle = atan2(degy,degx) - task.thistrial.cwOffset;
         else
-            task.thistrial.respAngle = mod(atan2(degy,degx),2*pi);
+            task.thistrial.respAngle = atan2(degy,degx);
         end
     end
+    task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
     stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
+    
+    % note that respAngle is stored in *real* angles -- so that it
+    % corresponds correctly to the direction task. This means that when you
+    % transform into visual space you need to flip into MGL angles, see
+    % mglGluDiskAnnulus_ which does this step
 end
 
 switch task.thistrial.thisseg
         
     case stimulus.seg.iti
-        drawStim(1:4,false);
+        drawStim(task,false);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
         % fixation
-        drawStim(1:4,false);
+        drawStim(task,false);
         drawCue(task);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.isi
-        drawStim(1:4,false);
+        drawStim(task,false);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.stim
-        drawStim(1:4,true);
+        drawStim(task,true);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.delay
