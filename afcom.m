@@ -146,7 +146,7 @@ end
 
 %% Colors
 if ~isfield(stimulus,'colors')
-    stimulus.colors.white = [1 1 1]; stimulus.colors.red = [1 0 0];
+    stimulus.colors.white = [0.8 0.8 0.8]; stimulus.colors.red = [0.8 0 0];
     stimulus.colors.green = [0 1 0]; stimulus.colors.black = [0 0 0];
 end
 
@@ -170,11 +170,7 @@ if 1 %~isfield(stimulus,'colorwheel')
     stimulus.colorwheel.rgb = zeros(length(stimulus.thetas),3);
     for ti = 1:length(stimulus.thetas)
         theta = stimulus.thetas(ti);
-
-        a = D*cos(theta)+stimulus.colorwheel.acenter;
-        b = D*sin(theta)+stimulus.colorwheel.bcenter;
-
-        rgb = mglLab2rgb([stimulus.backgroundLab(1) a b],stimulus.calib);
+        rgb = ang2rgb(theta);
     %     rgb = lab2rgb([stimulus.backgroundLab(1) a b]);
         stimulus.colorwheel.rgb(ti,:) = rgb;
     end
@@ -183,6 +179,8 @@ if 1 %~isfield(stimulus,'colorwheel')
     stimulus.colorwheel.rgb(stimulus.colorwheel.rgb<0) = 0;
     stimulus.colorwheel.rgb(stimulus.colorwheel.rgb>1) = 1;
 end
+
+stimulus.colors.mean = [1 1 1]*mean(stimulus.colorwheel.rgb(:));
 
 %% Sizes
 stimulus.fixWidth = 0.5;
@@ -220,7 +218,7 @@ for di = 1:4
 
     % color
     if stimulus.cue==1
-        stimulus.patches{di}.color = [1 1 1];
+        stimulus.patches{di}.color = stimulus.colors.mean;
         stimulus.patches{di}.dots.dir = stimulus.dotDirs(di);
     else
         stimulus.patches{di}.color = ang2rgb(stimulus.dotColors(di));
@@ -625,7 +623,7 @@ if any(cues==0)
     for di = 1:length(dotDirs)
         x = 1.5*stimulus.fixWidth * cos(dotDirs(di));
         y = 1.5*stimulus.fixWidth * sin(dotDirs(di));
-        mglLines2(x,y,2*x,2*y,2,[1 1 1]);    
+        mglLines2(x,y,2*x,2*y,2,stimulus.colors.white);    
     end
 end
 
@@ -635,14 +633,14 @@ if any(cues==1)
     % draw the line from fixWidth to 2*fixWidth
     x = 1.5*stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target}.theta);
     y = 1.5*stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target}.theta);
-    mglLines2(x,y,2*x,2*y,2,[1 1 1]);
+    mglLines2(x,y,2*x,2*y,2,stimulus.colors.white);
 end
 if any(cues==2)
     % feature - draw the motion direction or the color
 
     if stimulus.cue==1
         coherence = 1;
-        color = [1 1 1];
+        color = stimulus.colors.white;
     elseif stimulus.cue==2
         coherence = 0;
         color = ang2rgb(stimulus.dotColors(task.thistrial.target));
@@ -665,7 +663,7 @@ n = stimulus.patches{1}.dots.n;
 
 x = nan(1,n*length(stimulus.patches));
 y = x;
-r = ones(1,n*length(stimulus.patches));
+r = stimulus.colors.mean(1)*ones(1,n*length(stimulus.patches));
 g = r;
 b = r;
 
@@ -731,7 +729,7 @@ global stimulus
 
 if stimulus.cue==1
     stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
-    color = [1 1 1];
+    color = stimulus.colors.mean;
 else
     % if we we cued color set the coherence to zero so that there's no
     % direction information
@@ -941,11 +939,14 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % helpers
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function col = ang2rgb(ang)
+function rgb = ang2rgb(ang)
 
 global stimulus
 
-col = interp1(stimulus.thetas',stimulus.colorwheel.rgb,ang);
+a = stimulus.colorwheel.distanceLab*cos(ang)+stimulus.colorwheel.acenter;
+b = stimulus.colorwheel.distanceLab*sin(ang)+stimulus.colorwheel.bcenter;
+
+rgb = mglLab2rgb([stimulus.backgroundLab(1) a b],stimulus.calib);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % create dots for horizontal motion
