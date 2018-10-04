@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=0'});
+getArgs(varargin,{'plots=0','noeye=1'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 clear noeye plots
@@ -79,14 +79,16 @@ task{1}.waitForBacktick = 1;
 %         and name of each segment
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % Define stimulus timing
-task{1}.segmin = [inf, 0.2, 0.5, 1.00, .200];
-task{1}.segmax = [inf, 0.2, 0.5, 1.00, .200];
+task{1}.segmin = [inf, 1.0, 0.6, 0.2, 0.6, 0.4, 1.2];
+task{1}.segmax = [inf, 1.0, 0.6, 0.2, 0.6, 0.4, 1.2];
 stimulus.seg = {};
 stimulus.seg.fix = 1;
-stimulus.seg.target = 2;
-stimulus.seg.isi = 3;
-stimulus.seg.search = 4;
-stimulus.seg.feedback = 5;
+stimulus.seg.cue = 2;
+stimulus.seg.stim1 = 3;
+stimulus.seg.ISI = 4;
+stimulus.seg.stim2 = 5;
+stimulus.seg.blank = 6;
+stimulus.seg.feedback = 7;
 
 if stimulus.noeye==1
   task{1}.segmin(1) = 0.5;
@@ -101,11 +103,12 @@ end
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 % Task important variables
-stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', 'crowd', 'dahlias', 'fireworks', 'leaves', 'noodles', 'rocks', 'tulips', 'worms', 'zebras', 'bananas', 'bark', 'bison', 'blossoms', 'blotch', 'braids', 'bricks', 'bubbly', 'bumpy', 'crystals', 'dalmatians', 'ducks', 'face', 'frills', 'fur', 'galaxy', 'gourds', 'grass', 'honeycomb', 'lace', 'marbled', 'marbles', 'monarchs', 'paisley', 'pears', 'phlox', 'rorschach', 'spiky', 'splotchy', 'stars', 'succulent', 'tiles'};
+stimulus.imNames = {'im13', 'im18', 'im23', 'im30', 'im38', 'im48', 'im52', 'im56', 'im60', 'im71', 'im99', 'im327', 'im336', 'im393', 'im402'};
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/rf_stim';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/fzs/tex';
 stimulus.imSize = 6;
 stimulus.eccentricity = 10;
+stimulus.cueEcc = 2;
 
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -122,9 +125,9 @@ task{1}.parameter.layer = 1:length(stimulus.layerNames);
 
 task{1}.synchToVol = zeros(size(task{1}.segmin));
 task{1}.getResponse = zeros(size(task{1}.segmin));
-task{1}.getResponse(stimulus.seg.search)=1;
+task{1}.getResponse(stimulus.seg.feedback)=1;
 
-task{1}.numTrials = 144;
+task{1}.numTrials = 144; %where does this number come from?
 task{1}.random = 1;
 
 
@@ -135,6 +138,8 @@ task{1}.random = 1;
 %       - or to keep track of what the response of the subject is.
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % Task variables to be calculated later
+task{1}.randVars.calculated.cueLoc = NaN;
+task{1}.randVars.calculated.isCueFocal = NaN;
 task{1}.randVars.calculated.targetPosition = NaN;
 task{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}.randVars.calculated.dead = 0;
@@ -159,9 +164,9 @@ mglClearScreen(0.5);
 upFix(stimulus);
 
 phaseNum = 1;
-while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
+while (phaseNum <= length(=task)) && ~myscreen.userHitEsc
   % update the task
-  [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
+  [task, myscreen, phaseNum] = updateTask(task,myscreen,phaseNum);
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -195,8 +200,6 @@ task.thistrial.response = 0;
 stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
-keyboard
-
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % [akshay] (5) Modify the code below to specify the directories from which we will be loading images.
 %       - This is where we will preload all 8 images (4 images x 2 intervals) at the start of each trial.
@@ -205,21 +208,46 @@ keyboard
 %
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % directories
-targetDir = '~/proj/TextureSynthesis/stimuli/orig_ims';
-distDir = stimulus.stimDir;
+texDir = stimulus.stimDir;
 
-% Select image
-task.thistrial.targIm = randi(length(stimulus.imNames),1);
-
-%% Load all 4 images for this trial
-imName = stimulus.imNames{task.thistrial.targIm};
+%% Load all 8 images for this trial
+imName = stimulus.imNames{task.thistrial.imgFam};
 layer = stimulus.layerNames{task.thistrial.layer};
-rfSz = stimulus.rfNames{task.thistrial.rfSize};
+%rfSz = stimulus.rfNames{task.thistrial.rfSize};
 
-stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s.jpg', targetDir, imName)));
-stimulus.live.d1 = genTexFromIm(imread(sprintf('%s/s1/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
-stimulus.live.d2 = genTexFromIm(imread(sprintf('%s/s2/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
-stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/s3/%s_%s_%s_step_10000.jpg', distDir, rfSz, layer, imName)));
+% Randomly select 4 images to display on this trial.
+smpls = randi(15,1,8);
+%isSame = rand(1,4) < 0.25;
+isSame = randi([0,1], 1, 4);
+
+% first stimulus frame
+stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(1))));
+stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(2))));
+stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(3))));
+stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(4))));
+
+% images for the second stimulus frame
+if isSame(1)
+  stimulus.live.cued_image = stimulus.live.target_image;
+else
+  stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(5))));
+end
+if isSame(2)
+  stimulus.live.d21 = stimulus.live.d11;
+else
+  stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(6))));
+end
+if isSame(3)
+  stimulus.live.d22 = stimulus.live.d12;
+else
+  stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(7))));
+end
+if isSame(4)
+  stimulus.live.d23 = stimulus.live.d13;
+else
+  stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(8))));
+end
+
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % [akshay] (6) Edit and add code below to set the values of the randVars.calculated variables which you had defined above.
@@ -228,15 +256,13 @@ stimulus.live.d3 = genTexFromIm(imread(sprintf('%s/s3/%s_%s_%s_step_10000.jpg', 
 %
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % Select target position and target size.
-task.thistrial.targetPosition = randi(4, 1);
 
-
-
-
+task.thistrial.cueLoc = randi(4);
+task.thistrial.isCueFocal = randi([0, 1]);
 
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image %s, Layer %s', task.trialnum, imName, layer));
+disp(sprintf('Trial %d - Image %s, Layer %s, CueLocation: %i, isCueFocal: %i', task.trialnum, imName, layer, task.thistrial.cueLoc, task.thistrial.isCueFocal));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -259,8 +285,11 @@ stimulus.live.eyeDead = 0;
 % Select image parameters: size, eccentricity, and location
 imSz = stimulus.imSize; % Size in Degrees of Visual Angle to display image
 ecc = stimulus.eccentricity; % Eccentricity to display image at
+cueX = stimulus.cueEcc/sqrt(2);
 locations = [-ecc ecc; ecc ecc; ecc -ecc; -ecc -ecc];
-distLocations = setdiff(1:4, task.thistrial.targetPosition);
+
+targetLoc = locations(task.thistrial.cueLoc,:);
+distLocations = setdiff(1:4, task.thistrial.cueLoc);
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % [akshay] (6) Edit the code below to specify what to draw onto the screen at the start of each segment
@@ -269,33 +298,61 @@ distLocations = setdiff(1:4, task.thistrial.targetPosition);
 %
 %
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+if task.thistrial.isCueFocal == 1 || task.thistrial.thisseg == stimulus.seg.feedback
+  stimulus.live.draw4 = 0;
+else
+  stimulus.live.draw4 = 1;
+end
+
+cueXLocs = [cueX, cueX, cueX-1; -cueX, -cueX, -cueX+1; -cueX, -cueX, -cueX+1; cueX-1 cueX, cueX];
+cueYLocs = [cueX, cueX-1, cueX; cueX, cueX-1, cueX; -cueX+1, -cueX, -cueX; -cueX, -cueX, -cueX+1];
+
 for i = 1:2
   mglClearScreen(0.5);
-  if task.thistrial.thisseg == stimulus.seg.target
-    mglBltTexture(stimulus.live.target_image, [0 0 imSz imSz]);
-  elseif task.thistrial.thisseg == stimulus.seg.search
-    mglBltTexture(stimulus.live.d1, [locations(distLocations(1), :), imSz, imSz]);
-    mglBltTexture(stimulus.live.d2, [locations(distLocations(2), :), imSz, imSz]);
-    mglBltTexture(stimulus.live.d3, [locations(distLocations(3), :), imSz, imSz]);
-    mglBltTexture(stimulus.live.target_image, [locations(task.thistrial.targetPosition,:), imSz, imSz]);
+  if task.thistrial.thisseg == stimulus.seg.stim1
+    mglBltTexture(stimulus.live.target_image, [targetLoc(1) targetLoc(2) imSz imSz]);
+    mglBltTexture(stimulus.live.d11, [locations(distLocations(1), :) imSz imSz]);
+    mglBltTexture(stimulus.live.d12, [locations(distLocations(2), :) imSz imSz]);
+    mglBltTexture(stimulus.live.d13, [locations(distLocations(3), :) imSz imSz]);
+
+  elseif task.thistrial.thisseg == stimulus.seg.stim2
+    mglBltTexture(stimulus.live.cued_image, [targetLoc(1) targetLoc(2) imSz imSz]);
+    mglBltTexture(stimulus.live.d21, [locations(distLocations(1), :) imSz imSz]);
+    mglBltTexture(stimulus.live.d22, [locations(distLocations(2), :) imSz imSz]);
+    mglBltTexture(stimulus.live.d23, [locations(distLocations(3), :) imSz imSz]);
   end
 
-  % If in feedback segment, change the color of the cross to green or red.
-  if task.thistrial.thisseg == stimulus.seg.feedback
-    if task.thistrial.response == task.thistrial.targetPosition
-      if i == 1
-        disp(sprintf('Correct! You responded: %i, Correct answer: %i', task.thistrial.response, task.thistrial.targetPosition));
-      end
-      upFix(stimulus, stimulus.colors.green);
-    else
-      if i == 1
-        disp(sprintf('Incorrect! You responded: %i, correct was: %i', task.thistrial.response, task.thistrial.targetPosition));
-      end
-      upFix(stimulus, stimulus.colors.red);
-    end
-  else % If not in feedback segment, just draw a blue fixation cross.
-    upFix(stimulus, stimulus.colors.blue);
+  if stimulus.live.draw4
+    %draw 4 triangles
+    mglPolygon(cueXLocs(1,:), cueYLocs(1,:), stimulus.colors.black);
+    mglPolygon(cueXLocs(2,:), cueYLocs(2,:), stimulus.colors.black);
+    mglPolygon(cueXLocs(3,:), cueYLocs(3,:), stimulus.colors.black);
+    mglPolygon(cueXLocs(4,:), cueYLocs(4,:), stimulus.colors.black);
+    
+  else 
+    %draw 1 triangle
+    mglPolygon(cueXLocs(task.thistrial.cueLoc,:), cueYLocs(task.thistrial.cueLoc,:), stimulus.colors.black);
   end
+    
+
+
+%   % If in feedback segment, change the color of the cross to green or red.
+%   if task.thistrial.thisseg == stimulus.seg.feedback
+%     if task.thistrial.response == task.thistrial.targetPosition
+%       if i == 1
+%         disp(sprintf('Correct! You responded: %i, Correct answer: %i', task.thistrial.response, task.thistrial.targetPosition));
+%       end
+%       upFix(stimulus, stimulus.colors.green);
+%     else
+%       if i == 1
+%         disp(sprintf('Incorrect! You responded: %i, correct was: %i', task.thistrial.response, task.thistrial.targetPosition));
+%       end
+%       upFix(stimulus, stimulus.colors.red);
+%     end
+%   else % If not in feedback segment, just draw a blue fixation cross.
+%     upFix(stimulus, stimulus.colors.blue);
+%   end
 
   mglFlush
 end
