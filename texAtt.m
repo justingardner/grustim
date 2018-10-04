@@ -59,6 +59,7 @@ localInitStimulus();
   
 % Set response keys
 stimulus.responseKeys = [11 12 13 14];
+stimulus.responseKeys = [1 2];
 
 % set colors
 stimulus.colors.white = [1 1 1];
@@ -79,8 +80,8 @@ task{1}.waitForBacktick = 1;
 %         and name of each segment
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % Define stimulus timing
-task{1}.segmin = [inf, 1.0, 0.6, 0.2, 0.6, 0.4, 1.2];
-task{1}.segmax = [inf, 1.0, 0.6, 0.2, 0.6, 0.4, 1.2];
+task{1}.segmin = [inf, 1.0, 0.6, 0.2, 0.6, 0.4, 1.2, .2];
+task{1}.segmax = [inf, 1.0, 0.6, 0.2, 0.6, 0.4, 1.2, .2];
 stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.cue = 2;
@@ -88,11 +89,12 @@ stimulus.seg.stim1 = 3;
 stimulus.seg.ISI = 4;
 stimulus.seg.stim2 = 5;
 stimulus.seg.blank = 6;
-stimulus.seg.feedback = 7;
+stimulus.seg.response = 7;
+stimulus.seg.feedback = 8;
 
 if stimulus.noeye==1
-  task{1}.segmin(1) = 0.5;
-  task{1}.segmax(1) = 0.5;
+  task{1}.segmin(1) = 0.1;
+  task{1}.segmax(1) = 0.1;
 end
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -107,8 +109,9 @@ stimulus.imNames = {'im13', 'im18', 'im23', 'im30', 'im38', 'im48', 'im52', 'im5
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
 stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/fzs/tex';
 stimulus.imSize = 6;
-stimulus.eccentricity = 10;
-stimulus.cueEcc = 2;
+stimulus.eccentricity = 6;
+stimulus.cueEcc = 4;
+stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -125,7 +128,7 @@ task{1}.parameter.layer = 1:length(stimulus.layerNames);
 
 task{1}.synchToVol = zeros(size(task{1}.segmin));
 task{1}.getResponse = zeros(size(task{1}.segmin));
-task{1}.getResponse(stimulus.seg.feedback)=1;
+task{1}.getResponse(stimulus.seg.response)=1;
 
 task{1}.numTrials = 144; %where does this number come from?
 task{1}.random = 1;
@@ -144,6 +147,8 @@ task{1}.randVars.calculated.targetPosition = NaN;
 task{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}.randVars.calculated.dead = 0;
 task{1}.randVars.calculated.visible = 1;
+task{1}.randVars.calculated.correct = NaN;
+task{1}.randVars.calculated.isTargetSame = NaN;
 
 %%%%%%%%%%%%%%%% MGL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% Initialize task and begin update loop
@@ -164,7 +169,7 @@ mglClearScreen(0.5);
 upFix(stimulus);
 
 phaseNum = 1;
-while (phaseNum <= length(=task)) && ~myscreen.userHitEsc
+while (phaseNum <= length(task)) && ~myscreen.userHitEsc
   % update the task
   [task, myscreen, phaseNum] = updateTask(task,myscreen,phaseNum);
   % flip screen
@@ -195,7 +200,7 @@ global stimulus
 task.thistrial.dead = 0;
 task.thistrial.detected = 0;
 task.thistrial.visible = 1;
-task.thistrial.response = 0;
+task.thistrial.response = NaN;
 
 stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
@@ -213,39 +218,37 @@ texDir = stimulus.stimDir;
 %% Load all 8 images for this trial
 imName = stimulus.imNames{task.thistrial.imgFam};
 layer = stimulus.layerNames{task.thistrial.layer};
-%rfSz = stimulus.rfNames{task.thistrial.rfSize};
 
 % Randomly select 4 images to display on this trial.
-smpls = randi(15,1,8);
-%isSame = rand(1,4) < 0.25;
+smpls = randperm(15,8);
 isSame = randi([0,1], 1, 4);
 
 % first stimulus frame
-stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(1))));
-stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(2))));
-stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(3))));
-stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(4))));
+stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(1))), stimulus.live.mask);
+stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(2))), stimulus.live.mask);
+stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(3))), stimulus.live.mask);
+stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(4))), stimulus.live.mask);
 
 % images for the second stimulus frame
 if isSame(1)
   stimulus.live.cued_image = stimulus.live.target_image;
 else
-  stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(5))));
+  stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(5))), stimulus.live.mask);
 end
 if isSame(2)
   stimulus.live.d21 = stimulus.live.d11;
 else
-  stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(6))));
+  stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(6))), stimulus.live.mask);
 end
 if isSame(3)
   stimulus.live.d22 = stimulus.live.d12;
 else
-  stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(7))));
+  stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(7))), stimulus.live.mask);
 end
 if isSame(4)
   stimulus.live.d23 = stimulus.live.d13;
 else
-  stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(8))));
+  stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(8))), stimulus.live.mask);
 end
 
 
@@ -256,14 +259,15 @@ end
 %
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % Select target position and target size.
-
+task.thistrial.isTargetSame = isSame(1);
 task.thistrial.cueLoc = randi(4);
 task.thistrial.isCueFocal = randi([0, 1]);
 
-
 % Disp trial parameters each trial
 disp(sprintf('Trial %d - Image %s, Layer %s, CueLocation: %i, isCueFocal: %i', task.trialnum, imName, layer, task.thistrial.cueLoc, task.thistrial.isCueFocal));
-
+if task.trialnum > 1
+    disp(sprintf('--CueSame on Last trial?: %g, Response on last trial: %g, LastTrialCorrect?: %g', task.lasttrial.isTargetSame, task.lasttrial.response, task.lasttrial.correct));
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -282,11 +286,20 @@ end
 
 stimulus.live.eyeDead = 0;
 
+% If in feedback segment, change the color of the cross to green or red.
+if task.thistrial.thisseg == stimulus.seg.feedback
+  if mod(task.thistrial.response, 2) == task.thistrial.isTargetSame
+    task.thistrial.correct = 1;
+  else
+    task.thistrial.correct = 0;
+  end
+end
+
 % Select image parameters: size, eccentricity, and location
 imSz = stimulus.imSize; % Size in Degrees of Visual Angle to display image
 ecc = stimulus.eccentricity; % Eccentricity to display image at
 cueX = stimulus.cueEcc/sqrt(2);
-locations = [-ecc ecc; ecc ecc; ecc -ecc; -ecc -ecc];
+locations = [ecc ecc; -ecc ecc; -ecc -ecc; ecc -ecc];
 
 targetLoc = locations(task.thistrial.cueLoc,:);
 distLocations = setdiff(1:4, task.thistrial.cueLoc);
@@ -294,13 +307,26 @@ distLocations = setdiff(1:4, task.thistrial.cueLoc);
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % [akshay] (6) Edit the code below to specify what to draw onto the screen at the start of each segment
 %          - Recall that MGL has a front buffer and a back buffer, so the code below loops through
-%
-%
+%          both buffers, clears whatever was on the screen from the last segment, and draws something else.
+%          - There may be some things that you want to draw on every segment (eg fixation cross), and other 
+%          things that you may want to draw only on some segments (e.g. attentional focal/distributed cue),
+%          and other things you may only want to draw on one segment (e.g. interval 1/2 stimuli).
 %
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-if task.thistrial.isCueFocal == 1 || task.thistrial.thisseg == stimulus.seg.feedback
+if task.thistrial.isCueFocal == 1 || task.thistrial.thisseg == stimulus.seg.feedback || task.thistrial.thisseg == stimulus.seg.response
   stimulus.live.draw4 = 0;
+  if task.thistrial.thisseg == stimulus.seg.response
+      trialColor = stimulus.colors.blue;
+  elseif task.thistrial.thisseg == stimulus.seg.feedback
+      if task.thistrial.correct
+        trialColor = stimulus.colors.green;
+      else
+        trialColor = stimulus.colors.red;
+      end
+  else
+      trialColor = stimulus.colors.black;
+  end
 else
   stimulus.live.draw4 = 1;
 end
@@ -308,6 +334,8 @@ end
 cueXLocs = [cueX, cueX, cueX-1; -cueX, -cueX, -cueX+1; -cueX, -cueX, -cueX+1; cueX-1 cueX, cueX];
 cueYLocs = [cueX, cueX-1, cueX; cueX, cueX-1, cueX; -cueX+1, -cueX, -cueX; -cueX, -cueX, -cueX+1];
 
+stimulus.live.cueXLocs = cueXLocs;
+stimulus.live.cueYLocs = cueYLocs;
 for i = 1:2
   mglClearScreen(0.5);
   if task.thistrial.thisseg == stimulus.seg.stim1
@@ -315,12 +343,15 @@ for i = 1:2
     mglBltTexture(stimulus.live.d11, [locations(distLocations(1), :) imSz imSz]);
     mglBltTexture(stimulus.live.d12, [locations(distLocations(2), :) imSz imSz]);
     mglBltTexture(stimulus.live.d13, [locations(distLocations(3), :) imSz imSz]);
-
+    upFix(stimulus, stimulus.colors.white);
   elseif task.thistrial.thisseg == stimulus.seg.stim2
     mglBltTexture(stimulus.live.cued_image, [targetLoc(1) targetLoc(2) imSz imSz]);
     mglBltTexture(stimulus.live.d21, [locations(distLocations(1), :) imSz imSz]);
     mglBltTexture(stimulus.live.d22, [locations(distLocations(2), :) imSz imSz]);
     mglBltTexture(stimulus.live.d23, [locations(distLocations(3), :) imSz imSz]);
+    upFix(stimulus, stimulus.colors.white);
+  else
+    upFix(stimulus, stimulus.colors.black);
   end
 
   if stimulus.live.draw4
@@ -329,33 +360,15 @@ for i = 1:2
     mglPolygon(cueXLocs(2,:), cueYLocs(2,:), stimulus.colors.black);
     mglPolygon(cueXLocs(3,:), cueYLocs(3,:), stimulus.colors.black);
     mglPolygon(cueXLocs(4,:), cueYLocs(4,:), stimulus.colors.black);
-    
   else 
     %draw 1 triangle
-    mglPolygon(cueXLocs(task.thistrial.cueLoc,:), cueYLocs(task.thistrial.cueLoc,:), stimulus.colors.black);
+    mglPolygon(cueXLocs(task.thistrial.cueLoc,:), cueYLocs(task.thistrial.cueLoc,:), trialColor);
   end
+  
     
-
-
-%   % If in feedback segment, change the color of the cross to green or red.
-%   if task.thistrial.thisseg == stimulus.seg.feedback
-%     if task.thistrial.response == task.thistrial.targetPosition
-%       if i == 1
-%         disp(sprintf('Correct! You responded: %i, Correct answer: %i', task.thistrial.response, task.thistrial.targetPosition));
-%       end
-%       upFix(stimulus, stimulus.colors.green);
-%     else
-%       if i == 1
-%         disp(sprintf('Incorrect! You responded: %i, correct was: %i', task.thistrial.response, task.thistrial.targetPosition));
-%       end
-%       upFix(stimulus, stimulus.colors.red);
-%     end
-%   else % If not in feedback segment, just draw a blue fixation cross.
-%     upFix(stimulus, stimulus.colors.blue);
-%   end
-
   mglFlush
 end
+stimulus.live.firstTime = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -429,15 +442,15 @@ global stimulus
 if task.thistrial.dead, return; end
 
 validResponse = any(task.thistrial.whichButton == stimulus.responseKeys);
-
 if validResponse
   if stimulus.live.gotResponse==0
     task.thistrial.detected = 1;
-    task.thistrial.response = task.thistrial.whichButton - 10;
+    task.thistrial.response = task.thistrial.whichButton;
     stimulus.live.fix = 0;
   else
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
   end
+  disp('jumping segment');
   stimulus.live.gotResponse=stimulus.live.gotResponse+1;
   task = jumpSegment(task);
 else
@@ -464,393 +477,30 @@ mglFixationCross(1,1,fixColor);
 function drawCue(x,y, stimulus)
 mglGluAnnulus(x,y, 0.75, 0.8, stimulus.live.cueColor, 64);
 
-%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Turns image into a texture
-function tex = genTexFromIm(im)
+function tex = genTexFromIm(im, mask)
 r = flipud(im);
-r(:,:,4) = 255;
+
+% Resize images to 256
+if size(r,1) ~= 256;
+  r = imresize(r, 256/size(r,1));
+end
+
+% Make sure they have 3 dimensions (even if grayscale)
+if size(r,3) == 1
+  r = cat(3, r, r, r);
+end
+
+% If a mask is passed in, apply as an alpha mask.
+if ieNotDefined('mask')
+  r(:,:,4) = 255;
+else
+  r(:,:,4) = mask(:,:,1);
+end
+% mgl requires the first dimension to be the RGBA dimension
 rP = permute(r, [3 2 1]);
-tex = mglCreateTexture(rP);  
-
-function [trials] = totalTrials()
-%%
-% Counts trials + estimates the threshold based on the last 500 trials
-% get the files list
-files = dir(fullfile(sprintf('~/data/texAtt/%s/18*stim*.mat',mglGetSID)));
-trials = 0;
-
-for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/texAtt/%s/%s',mglGetSID,files(fi).name)));
-    e = getTaskParameters(myscreen,task);
-    e = e{1}; % why?!
-    trials = trials + e.nTrials;
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%
-%       getTrialData       %
-%%%%%%%%%%%%%%%%%%%%%%%
-function data = getTrialData(rstimulus)
-%%
-files = dir(fullfile(sprintf('~/data/texAtt/%s/18*stim*.mat',mglGetSID)));
-data = struct('subjResp', [], 'corrResp', [], 'scaling', [], 'image', [], 'synthPairs', [], 'whichRun', [], 'nTrials', []);
-data.nRuns = length(files);
-scaleIdx = [NaN NaN 1 2 3 4 5 NaN NaN 6];
-
-for fi = 1:length(files)
-  load(fullfile(sprintf('~/data/texAtt/%s/%s',mglGetSID,files(fi).name)));
-  e = getTaskParameters(myscreen,task);
-  if e{1}.nTrials>1
-    % Set data for all trials
-    data.subjResp = [data.subjResp e{1}.response];
-    data.corrResp = [data.corrResp e{1}.parameter.correctResponse];
-    data.synthPairs = [data.synthPairs e{1}.parameter.synthPair];
-    data.whichRun = [data.whichRun fi*ones(1,e{1}.nTrials)];
-    data.nTrials = [data.nTrials e{1}.nTrials];
-    % Remap images
-    im = e{1}.parameter.image;
-    im(im==0) = 1; im(im==5) = 4;
-    data.image = [data.image im];
-    % Remap scalings
-    data.scaling = [data.scaling scaleIdx(e{1}.parameter.scaling)];
-  end
-end
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%% plot Eye Traces %%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function plotEyetraces(stimulus)
-
-cdir = pwd;
-
-cd(sprintf('~/data/texAtt/%s', mglGetSID));
-
-% get files list
-files = dir(fullfile(sprintf('~/data/texAtt/%s/18*.mat', mglGetSID)));
-
-idata = struct('xPos', {}, 'yPos', {}, 'pupil', {}, 'time', {}, 'isVal', [], 'respLoc', [], 'imLoc', []);
-idata(1).xPos{1} = 0;
-
-for fi = 1:length(files)
-  fnm = files(fi).name(1:end-4);
-
-  trace = getTaskEyeTraces(fnm);
-
-  %idata.xPos = [idata.xPos; trace.eye.xPos];
-  %idata.yPos = [idata.yPos; trace.eye.yPos];
-  idata.xPos{fi} = trace.eye.xPos;
-  idata.yPos{fi} = trace.eye.yPos;
-  idata.pupil{fi} = trace.eye.pupil;
-  idata.time{fi} = trace.eye.time;
-  
-  %idata.pupil = [idata.pupil; trace.eye.pupil];
-  %idata.time = [idata.time; trace.eye.time];
-
-  idata.isVal = [idata.isVal; ~isnan(trace.response)];
-
-  idata.respLoc = [idata.respLoc; trace.response-10];
-  idata.imLoc = [idata.imLoc; trace.randVars.targetPosition];
-
-end
-
-% Now, plot the eye traces by condition maybe?
-
-keyboard
-
-%%
-midX = nan(120, length(files));
-midY = nan(120, length(files));
-
-for ri = 1:length(files)
-  respLocs = idata.respLoc(ri,:);
-  imLocs = idata.imLoc(ri,:);
-
-  midX(:,ri) = median(idata.xPos{ri}, 2);
-  midY(:,ri) = median(idata.yPos{ri}, 2);
-end
-
-
-%%%%%%%%%%%%%%%%%%%%%%%
-%    dispInfo    %
-%%%%%%%%%%%%%%%%%%%%%%%
-function data = dispInfo(rstimulus)
-%%
-
-% get the files list
-files = dir(fullfile(sprintf('~/data/texAtt/%s/18*stim*.mat',mglGetSID)));
-
-count = 1; 
-data = struct('nTrials', 0, 'subj_resp', [], 'corr_resp', [], 'corr_trials', [],...
-              'image', [], 'layer', [], 'ecc', [], 'reaction_time', [], 'nValTrials', 0, 'rf_size', [], 'imSz', [], 'accByRuns', []);
-
-for fi = 1:length(files)
-  load(fullfile(sprintf('~/data/texAtt/%s/%s',mglGetSID,files(fi).name)));
-  
-  e = getTaskParameters(myscreen,task);
-  if e{1}.nTrials>1
-    
-    subj_resp = e{1}.response-10;
-    corr_resp = e{1}.randVars.targetPosition;
-    data.run = stimulus.counter;
-    data.subj_resp = [data.subj_resp subj_resp];
-    data.corr_resp = [data.corr_resp corr_resp];
-    data.corr_trials = [data.corr_trials subj_resp==corr_resp];
-    data.reaction_time = [data.reaction_time e{1}.reactionTime];
-    data.nTrials = data.nTrials + e{1}.nTrials;
-    data.imSz = [data.imSz e{1}.randVars.imSz];
-    % Calculate number of valid trials by excluding eye movements and pool5
-    data.nValTrials = data.nValTrials + sum(~isnan(e{1}.response)) - sum(e{1}.parameter.layer == 5);
-    
-    data.image = [data.image e{1}.randVars.targIm];
-    data.layer = [data.layer e{1}.parameter.layer];
-    data.rf_size = [data.rf_size e{1}.parameter.rfSize];
-    data.ecc = [data.ecc e{1}.parameter.eccentricity];
-    
-    data.accByRuns = [data.accByRuns nanmean(subj_resp==corr_resp)];
-        
-  end
-  count = count + 1;
-end
-
-% fitline function
-fitLine = @(x,y) polyval(polyfit(x,y,1),x);
-
-%% Plot performance by runs
-figure; plot(data.accByRuns, '.', 'MarkerSize', 25); hold on;
-plot(1:length(data.accByRuns), fitLine(1:length(data.accByRuns), data.accByRuns), '-');
-title(sprintf('%s: Performance across runs', mglGetSID), 'FontSize', 18); 
-ylabel('Accuracy', 'FontSize', 16); xlabel('Run Number', 'FontSize', 16);
-
-%% Plot accuracy and reaction time as a function of distractor layer & RF Size
-figure;
-set(gcf, 'Position', [436, 460, 1038, 624]);
-
-all_eccs = unique(data.ecc);
-all_RFs = unique(data.rf_size);
-all_layers = unique(data.layer);
-
-nLayers = length(unique(data.layer));
-x1 = 1:nLayers;
-
-ct = data.corr_trials;
-
-colors = brewermap(length(all_RFs), 'Dark2');
-for k = 1:length(all_eccs)
-  subplot(2,3,k);
-  y = [];
-  for i = 1:length(all_RFs)
-    ei = all_RFs(i);
-    for j = 1:nLayers
-        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == j & data.ecc==all_eccs(k)));
-    end
-    plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
-  end
-
-  h = findobj(gca, 'Type', 'line');
-  legend(h(length(h)-1:-2:1), stimulus.rfNames, 'Location', 'southwest');
-  nTr = sum(~isnan(ct(data.ecc==all_eccs(k))));
-  if k ~= 1
-    title(sprintf('Ecc=%i deg. nTrials=%i', all_eccs(k), nTr), 'FontSize', 18);
-  else
-    title(sprintf('%s: Ecc = %i deg.', mglGetSID, all_eccs(k)), 'FontSize', 18);
-  end
-  xlim([0 nLayers+1]); xlabel('CNN Layer', 'FontSize', 16);
-  ylim([0 1]); ylabel('Identification Accuracy', 'FontSize', 16);
-  hline(0.25, ':');
-  set(gca, 'FontSize', 14);
-  set(gca, 'XTick', 1:nLayers); set(gca, 'XTickLabel', stimulus.layerNames);
-end
-
-% calculate RF size in degrees
-all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
-
-colors = brewermap(length(all_layers), 'Dark2');
-for k = 1:length(all_eccs)
-  subplot(2,3,k+length(all_eccs));
-  y = [];
-  for i = 1:length(all_layers)
-      li = all_layers(i);
-      for j = 1:length(all_RFs)
-          ei = all_RFs(j);
-          y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.ecc==all_eccs(k)));
-      end
-      plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-      plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:)); hold on;
-  end
-
-  h = findobj(gca, 'Type', 'line');
-  legend(h(length(h)-1:-2:1), stimulus.layerNames, 'Location', 'southeast');
-
-  xlim([0 max(all_RF_deg)+1]); ylim([0 1]);
-  xlabel('Gram RF Size (dva)', 'FontSize', 16);
-  ylabel('Accuracy', 'FontSize', 16);
-  if k~=1
-    title(sprintf('RF Size vs Accuracy - Ecc=%i deg', all_eccs(k)), 'FontSize', 18);
-  else
-    title(sprintf('Ecc = %i deg', all_eccs(k)), 'FontSize', 18);
-  end
-  hline(0.25, ':');
-  set(gca, 'FontSize', 14);
-end
-
-%saveas(gcf, sprintf('~/proj/TextureSynthesis/Figures/%s_results.png', mglGetSID));
-
-%% Eccentricity Plots
-figure; set(gcf, 'Position', [974, 344, 389, 738]);
-subplot(2,1,1);
-
-%  First plot all RF Sizes
-y = []; colors = brewermap(length(all_RFs), 'Dark2');
-for i = 1:length(all_RFs)
-  for j = 1:length(all_eccs)
-    y(i,j) = nanmean(ct(data.rf_size==all_RFs(i) & data.ecc==all_eccs(j)));
-  end
-  plot(all_eccs, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-  plot(all_eccs, fitLine(all_eccs, y(i,:)), '-', 'Color', colors(i,:));
-end
-h = findobj(gca, 'Type', 'line');
-legend(h(length(h)-1:-2:1), stimulus.rfNames, 'Location', 'southeast');
-xlim([min(all_eccs)-1, max(all_eccs)+1]); ylim([0 1]);
-xlabel('Eccentricity (degs)', 'FontSize', 16);
-ylabel('Accuracy', 'FontSize', 16);
-title(sprintf('%s: Pooling Region Size', mglGetSID), 'FontSize', 18);
-hline(0.25, ':');
-set(gca, 'FontSize', 14);
-
-subplot(2,1,2);
-
-%  Then, plot Sizes
-y = []; colors = brewermap(length(all_layers), 'Dark2');
-for i = 1:length(all_layers)
-  for j = 1:length(all_eccs)
-    y(i,j) = nanmean(ct(data.layer==all_layers(i) & data.ecc==all_eccs(j)));
-  end
-  plot(all_eccs, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-  plot(all_eccs, fitLine(all_eccs, y(i,:)), '-', 'Color', colors(i,:));
-end
-h = findobj(gca, 'Type', 'line');
-legend(h(length(h)-1:-2:1), stimulus.layerNames, 'Location', 'southeast');
-xlim([min(all_eccs)-1, max(all_eccs)+1]); ylim([0 1]);
-xlabel('Eccentricity (degs)', 'FontSize', 16);
-ylabel('Accuracy', 'FontSize', 16);
-title(sprintf('Feature Complexity'), 'FontSize', 18);
-hline(0.25, ':');
-set(gca, 'FontSize', 14);
-
-
-
-%%
-keyboard
-%% Plot individual images -- Accuracy vs Gram RF Size
-figure;
-set(gcf, 'Position', [680, 268, 1005, 830]);
-all_ims = unique(data.image);
-imnames = stimulus.imNames;
-
-% Calculate image slopes
-imslopes = nan(length(all_ims), length(all_layers));
-
-all_RFs = unique(data.rf_size);
-all_layers = unique(data.layer);
-ct = data.corr_trials;
-colors = brewermap(length(all_layers), 'Dark2');
-
-% Labels for x axis and legend
-xLabels = stimulus.rfNames;
-lnLabels = stimulus.layerNames;
-
-% calculate RF size in degrees
-all_RF_deg = data.imSz(1) ./ cellfun(@(x) str2num(x(1)), stimulus.rfNames);
-
-for imi = 1:length(all_ims)
-  im = all_ims(imi);
-  subplot(7,7,imi);
-
-  y = [];
-  for i = 1:length(all_layers)
-    li = all_layers(i);
-    for j = 1:length(all_RFs)
-        ei = all_RFs(j);
-        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == li & data.image == im));
-    end
-    plot(all_RF_deg, y(i,:), '.', 'MarkerSize', 15, 'Color', colors(i,:)); hold on;
-    plot(all_RF_deg, fitLine(all_RF_deg, y(i,:)), '-', 'Color', colors(i,:));
-
-    p = polyfit(all_RF_deg, y(i,:), 1);
-    imslopes(imi,i) = p(1);
-  end
-
-  nTrials = sum(~isnan(data.subj_resp(data.image==im)));
-  if imi == length(all_ims)
-    h = findobj(gca, 'Type', 'line');
-    legend(h(length(h)-1:-2:1), lnLabels, 'Location', 'bestoutside');
-  end
-  title(sprintf('%s: nTrials=%i', imnames{imi}, nTrials), 'FontSize', 16);
-  xlim([0 max(all_RF_deg)+1]);ylim([0 1]);
-  xlabel('Gram RF Size (degrees)', 'FontSize', 12);
-  ylabel('Accuracy', 'FontSize', 12);
-  hline(0.25, ':');
-  set(gca, 'FontSize', 12);
-
-end
-
-%slopes.imnames = stimulus.imnames; 
-%slopes.imslopes = imslopes;
-%save('~/proj/TextureSynthesis/tmp/imslopes.mat', '-struct', 'slopes');
-
-%% Plot individual images -- Accuracy vs Layer
-figure; 
-set(gcf, 'Position', [680, 268, 1005, 830]);
-
-% Calculate image slopes
-imslopes_layer = nan(length(all_ims), length(all_layers));
-
-for imi = 1:length(all_ims)
-  im = all_ims(imi);
-  subplot(4,4,imi);
-
-  all_RFs = unique(data.rf_size);
-  nLayers = length(unique(data.layer));
-  ct = data.corr_trials;
-  colors = brewermap(length(all_RFs), 'Dark2');
-  x1 = 1:nLayers;
-  y = [];
-  for i = 1:length(all_RFs)
-    ei = all_RFs(i);
-    for j = 1:nLayers
-        y(i,j) = nanmean(ct(data.rf_size==ei & data.layer == j & data.image ==im));
-    end
-    plot(x1, y(i,:), '.', x1, fitLine(x1, y(i,:)), '-', 'Color', colors(i,:)); hold on;
-    p = polyfit(x1, y(i,:), 1);
-    imslopes_layer(imi,i) = p(1);
-  end
-  %plot(1:4, nanmean(y,1), '.k', 'MarkerSize', 20);
-
-  if imi == length(all_ims) 
-    h = findobj(gca, 'Type', 'line');
-    legend(h(length(h)-1:-2:1), stimulus.rfNames, 'Location', 'bestoutside');
-  end
-  
-  title(sprintf('%s: nTrials=%i', stimulus.imNames{imi}, data.nValTrials), 'FontSize', 16);
-  xlim([0 nLayers+1]);ylim([0 1]);
-  xlabel('CNN Layer Matched', 'FontSize', 12);
-  ylabel('Identification Accuracy', 'FontSize', 12);
-  hline(0.25, ':');
-  set(gca, 'FontSize', 12);
-  set(gca, 'XTick', 1:nLayers);
-  set(gca, 'XTickLabel', stimulus.layerNames);
-end
-
-slopes = struct();
-slopes.layernames = stimulus.layerNames;
-slopes.imnames = stimulus.imNames; 
-slopes.imslopes = imslopes_layer;
-%save('~/proj/TextureSynthesis/tmp/imslopes_layer.mat', '-struct', 'slopes');
-
-%%
-keyboard
-return
+tex = mglCreateTexture(rP); 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
