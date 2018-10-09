@@ -267,8 +267,8 @@ stimulus.seg.delay = 5;
 stimulus.seg.resp = 6;
 stimulus.seg.feedback = 7;
 
-task{1}{1}.segmin = [0.5 0.5 0.5 1 1 4 0.75];
-task{1}{1}.segmax = [2.5 0.5 0.5 1 1 4 0.75];
+task{1}{1}.segmin = [0.5 0.5 0.5 inf 1 4 0.75];
+task{1}{1}.segmax = [2.5 0.5 0.5 inf 1 4 0.75];
 
 if stimulus.practice
     task{1}{1}.segmin = [1 2 1 4 1 inf 2];
@@ -290,6 +290,7 @@ task{1}{1}.random = 1;
 
 task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
+task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 if ~stimulus.replay && stimulus.scan
@@ -302,6 +303,9 @@ task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
 task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
 task{1}{1}.randVars.calculated.distractor = nan;
+task{1}{1}.randVars.calculated.featdist = nan; % number of the matched feature
+task{1}{1}.randVars.calculated.sidedist = nan; % number of the matched side
+task{1}{1}.randVars.calculated.distdist = nan; % number of the one you ignored (not matched side or matched feature)
 task{1}{1}.randVars.calculated.angle1 = nan;
 task{1}{1}.randVars.calculated.angle2 = nan;
 task{1}{1}.randVars.calculated.angle3 = nan;
@@ -511,6 +515,9 @@ end
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
+
+% swap seglen in
+task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
 if stimulus.powerwheel
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,1);
