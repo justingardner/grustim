@@ -290,7 +290,9 @@ task{1}{1}.random = 1;
 
 task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
-task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+task{1}{1}.parameter.duration = [0.25];% 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+warning('Reset to 0.25/1.0'); 
+
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 if ~stimulus.replay && stimulus.scan
