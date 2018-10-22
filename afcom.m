@@ -9,7 +9,7 @@ function [ myscreen ] = afcom( varargin )
 %   direction, or color angle, respectively). 
 %
 %   The stimuli are two pairs of overlapped dot patches on the left and
-%   right of fixation. The pairs share feature-cues which allows us to
+%   right of fixation. The pairs share feature-cues which allows us to 
 %   either cue one side of the screen or one feature, and then post-cue to
 %   resolve down to one patch. Observers always report about a single patch
 %   of dots, reporting either the motion direction or the color.
