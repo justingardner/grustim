@@ -390,8 +390,16 @@ for fi = 1:length(files)
     maxTrackLength = max(maxTrackLength,size(mt{fi},2));
 end
 
+clear duration
+warning('adding duration = 1 if missing');
+for ei = 1:length(e)
+    if ~isfield(e{ei}.parameter,'duration')
+        e{ei}.parameter.duration = ones(size(e{ei}.parameter.trialType));
+    end
+end
+
 %% concatenate all trials
-pvars = {'target','trialType','cue'};
+pvars = {'target','trialType','cue','duration'};
 rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
     'angle4','respAngle','respDistance','distDistance'};
 runs = [];
@@ -414,6 +422,8 @@ for run = 1:length(e)
         eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
     end
 end
+
+eval('dur = duration;');
 
 %% concatenate mouse tracks
 amt = nan(length(target),maxTrackLength);
@@ -447,7 +457,7 @@ end
 amt = fliplr(amt);
 
 %% create one giant matrix, but just of a few variables that matter
-data = [cue' runs' trialType' respDistance' distDistance'];
+data = [cue' runs' trialType' respDistance' dur'];
 keepIdxs = ~any(isnan(data(:,4)),2);
 data = data(keepIdxs,:);
 amt = amt(keepIdxs,:);
@@ -467,6 +477,15 @@ ylabel('Rotation (rad)');
 drawPublishAxis;
 
 %% plot
+
+% split data by difficulty
+edata = data(data(:,5)==1,:);
+hdata = data(data(:,5)==0.25,:);
+
+dispInfoFigures(edata);
+dispInfoFigures(hdata);
+
+function dispInfoFigures(data)
 
 % build one figure for each task
 titles = {'Cue direction','Cue color'};
@@ -514,6 +533,7 @@ for cue = 1:2
     title(titles{cue});
     drawPublishAxis;
 end
+
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
@@ -814,9 +834,7 @@ end
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        curPos = -mInfo.x/90;
-        task.thistrial.respAngle = task.thistrial.respAngle + curPos-stimulus.live.trackingAngle;
-        stimulus.live.trackingAngle = curPos;
+        task.thistrial.respAngle = -mInfo.x/90;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
