@@ -547,6 +547,10 @@ else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
 end
 
+% get the current mouse position:
+mInfo = mglGetMouse(myscreen.screenNumber);
+stimulus.live.mouseStart = -mInfo.x/90;
+
 if stimulus.cue==1
     stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
 else
@@ -835,6 +839,7 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
         task.thistrial.respAngle = -mInfo.x/90;
+        warning('Set this to start at zero!!');
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
@@ -847,7 +852,7 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     end
     task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
-    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
+    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle-stimulus.live.mouseStart;
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
     
     % note that respAngle is stored in *real* angles -- so that it
