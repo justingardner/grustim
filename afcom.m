@@ -55,7 +55,7 @@ mouse=0;
 practice=0; 
 cue=0;
 
-getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=1.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
