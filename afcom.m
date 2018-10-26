@@ -260,15 +260,16 @@ stimulus.cueDots = initDots(dots);
 task{1}{1} = struct;
 % task waits for fixation on first segment
 stimulus.seg.iti = 1;
-stimulus.seg.cue = 2;
-stimulus.seg.isi = 3;
-stimulus.seg.stim = 4;
-stimulus.seg.delay = 5;
-stimulus.seg.resp = 6;
-stimulus.seg.feedback = 7;
+stimulus.seg.fix = 2;
+stimulus.seg.cue = 3;
+stimulus.seg.isi = 4;
+stimulus.seg.stim = 5;
+stimulus.seg.delay = 6;
+stimulus.seg.resp = 7;
+stimulus.seg.feedback = 8;
 
-task{1}{1}.segmin = [0.5 0.5 0.5 inf 1 4 0.75];
-task{1}{1}.segmax = [2.5 0.5 0.5 inf 1 4 0.75];
+task{1}{1}.segmin = [0 inf 0.5 0.5 inf 1 4 0.75];
+task{1}{1}.segmax = [2 inf 0.5 0.5 inf 1 4 0.75];
 
 if stimulus.practice
     task{1}{1}.segmin = [1 2 1 4 1 inf 2];
@@ -604,6 +605,7 @@ disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{
 % eye tracking 
 task.thistrial.dead = 0;
 stimulus.live.eyeCount=0;
+stimulus.live.fixCount = 0;
 
 % mouse tracking
 stimulus.data.mouseTick = 1;
@@ -866,6 +868,9 @@ switch task.thistrial.thisseg
     case stimulus.seg.iti
         drawStim(task,false);
         drawFix(task,stimulus.colors.white);
+    case stimulus.seg.fix % same as for ITI
+        drawStim(task,false);
+        drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
         % fixation
@@ -903,7 +908,7 @@ end
 drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
 
 % do eye position tracking, but only during some segments
-if any(task.thistrial.thisseg==[stimulus.seg.cue stimulus.seg.stim stimulus.seg.resp])
+if any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim stimulus.seg.resp])
     % check eye pos
     if (~stimulus.noeye) && (stimulus.eyewindow>0)
 
@@ -920,20 +925,33 @@ if any(task.thistrial.thisseg==[stimulus.seg.cue stimulus.seg.stim stimulus.seg.
         % compute distance
         dist = hypot(pos(1),pos(2));
     end
-
-    % Eye movement detection code
-    if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~task.thistrial.dead
-        if ~any(isnan(pos))
-            if dist > stimulus.eyewindow && stimulus.live.eyeCount > stimulus.eyeFrames
-                disp('Eye movement detected!!!!');
-                stimulus.live.deadTime = mglGetSecs;
-                task.thistrial.dead = 1;
-                return
-            elseif dist > stimulus.eyewindow
-                stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+    
+    if task.thistrial.thisseg==stimulus.seg.fix
+        if stimulus.live.fixCount > stimulus.eyeFrames
+            task = jumpSegment(task);
+        elseif ~any(isnan(pos))
+            if dist < stimulus.eyewindow
+                stimulus.live.fixCount = stimulus.live.fixCount + 1;
+            else
+                stimulus.live.fixCount = 0;
+            end
+        end
+    else
+        % Eye movement detection code
+        if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~task.thistrial.dead
+            if ~any(isnan(pos))
+                if dist > stimulus.eyewindow && stimulus.live.eyeCount > stimulus.eyeFrames
+                    disp('Eye movement detected!!!!');
+                    stimulus.live.deadTime = mglGetSecs;
+                    task.thistrial.dead = 1;
+                    return
+                elseif dist > stimulus.eyewindow
+                    stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+                end
             end
         end
     end
+
 end
 
 function [task, myscreen] = getResponseCallback(task, myscreen)
