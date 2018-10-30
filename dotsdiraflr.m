@@ -5,6 +5,7 @@
 %       date: 10/22/2018
 %    purpose: Compare motion direction in left or right patches of dots. 
 %
+% Uses staircase. 
 
 function myscreen = dotsdiraflr(varargin)
 
@@ -24,22 +25,23 @@ myscreen = initScreen(myscreen);
 % S3: repsonse period (5s)
 task{1}{1}.segmin = [1 1 2];
 task{1}{1}.segmax = [6 1 2];
-task{1}{1}.numBlocks = 1;
+%task{1}{1}.numBlocks = 1;
 task{1}{1}.numTrials = 2000;
 %task{1}{1}.synchToVol = [1 0 0]; %segment to fMRI volume ??? why fixation?
 %What happens if I put this at stimulus onset? Anticipation effect? This
 %seems to be causing some problems.
 task{1}{1}.getResponse = [0 0 1]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
-task{1}{1}.random = 1; %randomize order of parameter presentation. 
+%task{1}{1}.random = 1; %randomize order of parameter presentation. 
 
 %task parameters
-coherence = [1 0.8 0.6];
-dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];
-directions = [0:1:359]; %direction to be presented on the left side. 
-task{1}{1}.parameter.coherence = coherence;
-task{1}{1}.parameter.dirDiff = dirDiff;
-task{1}{1}.randVars.block.direction = directions; %"non-crucial" variables, block randomized. 
+%coherence = [1 0.8 0.6];
+%dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];
+%task{1}{1}.parameter.coherence = coherence;
+%task{1}{1}.parameter.dirDiff = dirDiff;
+task{1}{1}.randVars.calcalated.direction = nan; %"non-crucial" variables, block randomized. 
+task{1}{1}.randVars.calculated.coherence = 1;
+task{1}{1}.randVars.calculated.dirDiff = nan;
 task{1}{1}.randVars.calculated.correctIncorrect = nan; %store values calculated during the task. 
 task{1}{1}.randVars.calculated.leftDir = nan;
 task{1}{1}.randVars.calculated.righttDir = nan;
@@ -52,8 +54,42 @@ task{1}{1}.randVars.calculated.cohPres = nan; %??? does it not save the paramete
 % initialize stimulus
 global stimulus;
 stimulus = [];
+stimulus.stairUp = 1;
+stimulus.stairDown = 2;
+stimulus.stairStepSize = 0.25;
+stimulus.stairUseLevitt = 1;
+stimulus.stairUsePest = 0;
+stimulus.threshold(1) = 30;
+stimulus.threshold(2) = 30;
+
+% set up left and right staircase
+if stimulus.stairUseLevitt
+    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
+        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0,'maxThreshold',45); % maximum has to be 45. 
+    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0,'maxThreshold',45); % maximum has to be 45. 
+elseif stimulus.stairUsePest
+    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
+        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
+    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
+else
+    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
+        'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
+    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+        'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
+end
+
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
+directions = [0:1:359]; %direction to be presented on the left side. 
+stimulus.directions = directions;
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -68,6 +104,8 @@ end
 %% Initialize task 
 function [task myscreen] = initTrialCallback(task, myscreen)
 global stimulus
+[stimulus.threshold(1) stimulus.staircase(1)] = doStaircase('testValue',stimulus.staircase(1)); %left threshold
+[stimulus.threshold(2) stimulus.staircase(2)] = doStaircase('testValue',stimulus.staircase(2)); %right threshold
 end
 
 %% Start segment
@@ -81,6 +119,9 @@ global stimulus
 %change stimulus accordingly
 if task.thistrial.thisseg == 2
     stimulus.fixColor = stimulus.fixColors.stim;
+    stimulus.right = (rand(1)<0.5); %is the correct side on the right?
+    task.thistrial.direction = stimulus.directions(randperm(length(stimulus.directions),1));
+    task.thistrial.dirDiff = (1-2*(stimulus.right))*stimulus.threshold(stimulus.right+1);
 elseif task.thistrial.thisseg == 3
     stimulus.fixColor = stimulus.fixColors.response;
 else %any(task.thistrial.thisseg == [1,3])
@@ -98,10 +139,10 @@ global stimulus % call stimulus
 % draw dots
 if task.thistrial.thisseg == 2   
     % get variables for this task
+    coherence = task.thistrial.coherence; %task.thistrial.coherence; 
     direction = task.thistrial.direction;
     dirDiff = task.thistrial.dirDiff;
-    coherence = task.thistrial.coherence; 
-    
+
     % choose stencil with L/R holes
     mglStencilSelect(1);
     
@@ -156,10 +197,14 @@ elseif task.thistrial.whichButton == 2, respSide = 'right'; end
 if correctIncorrect == 0, corrString = 'incorrect';
 elseif correctIncorrect == 1, corrString = 'correct';
 else, corrString = 'no response'; end
-    
+
+stimulus.staircase(stimulus.right+1) = doStaircase('update',stimulus.staircase(stimulus.right+1),correctIncorrect);
+[stimulus.threshold(stimulus.right+1), stimulus.staircase(stimulus.right+1)] = doStaircase('testValue',stimulus.staircase(stimulus.right+1));
+
 disp(['Coherence: ' num2str(task.thistrial.coherence) '; ' ...
-    'Directions: ' num2str(task.thistrial.leftDir) ' (l) vs ' ...
-    num2str(task.thistrial.righttDir) ' (r); response: ' respSide '; ' corrString])
+    'Directions: ' num2str(task.thistrial.leftDir) ' (l) vs ' num2str(task.thistrial.righttDir) ' (r); ' ...
+    'Difference: ' num2str(task.thistrial.dirDiff) '; '... 
+    'Response: ' respSide '; ' corrString])
 
 end
 
