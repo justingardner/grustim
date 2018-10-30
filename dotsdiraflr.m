@@ -24,7 +24,7 @@ myscreen = initScreen(myscreen);
 % S2: stimulus period (1s)
 % S3: repsonse period (5s)
 task{1}{1}.segmin = [1 1 2];
-task{1}{1}.segmax = [6 1 2];
+task{1}{1}.segmax = [3 1 2];
 %task{1}{1}.numBlocks = 1;
 task{1}{1}.numTrials = 2000;
 %task{1}{1}.synchToVol = [1 0 0]; %segment to fMRI volume ??? why fixation?
@@ -59,8 +59,8 @@ stimulus.stairDown = 2;
 stimulus.stairStepSize = 0.25;
 stimulus.stairUseLevitt = 1;
 stimulus.stairUsePest = 0;
-stimulus.threshold(1) = 30;
-stimulus.threshold(2) = 30;
+stimulus.threshold(1) = 10;
+stimulus.threshold(2) = 10;
 
 % set up left and right staircase
 if stimulus.stairUseLevitt
@@ -98,6 +98,7 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
 end
 
 myscreen = endTask(myscreen,task);
+mglClose;
 end
 
 
