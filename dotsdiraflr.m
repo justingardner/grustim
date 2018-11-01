@@ -287,7 +287,7 @@ function dots = initDots(myscreen,dots)
     if ~isfield(dots,'dotsize'), dots.dotsize = 4;,end
     if ~isfield(dots,'density'), dots.density = 5;,end
     if ~isfield(dots,'coherence'), dots.coherence = 1;,end
-    if ~isfield(dots,'speed'), dots.speed = 10;,end
+    if ~isfield(dots,'speed'), dots.speed = 6;,end
     if ~isfield(dots,'dir'), dots.dir = 0;,end
 
     % define a square patch
