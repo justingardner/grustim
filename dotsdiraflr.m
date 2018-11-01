@@ -54,7 +54,6 @@ global stimulus;
 stimulus = [];
 stimulus.stairUp = 1;
 stimulus.stairDown = 2;
-<<<<<<< HEAD
 stimulus.stairStepSize = 2;
 stimulus.stairUseLevitt = 0;
 stimulus.stairUsePest = 1;
