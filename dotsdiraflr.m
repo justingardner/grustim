@@ -24,13 +24,8 @@ myscreen = initScreen(myscreen);
 % S1: random period of fixation (1~11s)
 % S2: stimulus period (1s)
 % S3: repsonse period (5s)
-<<<<<<< HEAD
 task{1}{1}.segmin = [1 0.5 2];
 task{1}{1}.segmax = [3 0.5 2];
-=======
-task{1}{1}.segmin = [1 1 2];
-task{1}{1}.segmax = [3 1 2];
->>>>>>> origin/master
 %task{1}{1}.numBlocks = 1;
 task{1}{1}.numTrials = 1000;
 task{1}{1}.getResponse = [0 0 1]; %segment to get response.
@@ -91,7 +86,10 @@ stimulus.stairUseLevitt = 1;
 stimulus.stairUsePest = 0;
 stimulus.threshold(1) = 10;
 stimulus.threshold(2) = 10;
+<<<<<<< HEAD
 >>>>>>> origin/master
+=======
+>>>>>>> 01d39a286fe722912232dc95d80457017195bb0b
 
 % set up left and right staircase
 if stimulus.stairUseLevitt
@@ -132,7 +130,10 @@ end
 
 myscreen = endTask(myscreen,task);
 mglClose;
+<<<<<<< HEAD
 >>>>>>> origin/master
+=======
+>>>>>>> 01d39a286fe722912232dc95d80457017195bb0b
 end
 
 
