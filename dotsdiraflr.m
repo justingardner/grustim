@@ -6,6 +6,7 @@
 %    purpose: Compare motion direction in left or right patches of dots. 
 %
 % Uses staircase. 
+% staircase termination might overlap. 
 
 function myscreen = dotsdiraflr(varargin)
 
@@ -23,13 +24,15 @@ myscreen = initScreen(myscreen);
 % S1: random period of fixation (1~11s)
 % S2: stimulus period (1s)
 % S3: repsonse period (5s)
+<<<<<<< HEAD
+task{1}{1}.segmin = [1 0.5 2];
+task{1}{1}.segmax = [3 0.5 2];
+=======
 task{1}{1}.segmin = [1 1 2];
-task{1}{1}.segmax = [6 1 2];
+task{1}{1}.segmax = [3 1 2];
+>>>>>>> origin/master
 %task{1}{1}.numBlocks = 1;
-task{1}{1}.numTrials = 2000;
-%task{1}{1}.synchToVol = [1 0 0]; %segment to fMRI volume ??? why fixation?
-%What happens if I put this at stimulus onset? Anticipation effect? This
-%seems to be causing some problems.
+task{1}{1}.numTrials = 1000;
 task{1}{1}.getResponse = [0 0 1]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 %task{1}{1}.random = 1; %randomize order of parameter presentation. 
@@ -39,7 +42,7 @@ task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial
 %dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];
 %task{1}{1}.parameter.coherence = coherence;
 %task{1}{1}.parameter.dirDiff = dirDiff;
-task{1}{1}.randVars.calcalated.direction = nan; %"non-crucial" variables, block randomized. 
+task{1}{1}.randVars.calculated.direction = nan; %"non-crucial" variables, block randomized. 
 task{1}{1}.randVars.calculated.coherence = 1;
 task{1}{1}.randVars.calculated.dirDiff = nan;
 task{1}{1}.randVars.calculated.correctIncorrect = nan; %store values calculated during the task. 
@@ -56,35 +59,16 @@ global stimulus;
 stimulus = [];
 stimulus.stairUp = 1;
 stimulus.stairDown = 2;
-stimulus.stairStepSize = 0.25;
-stimulus.stairUseLevitt = 1;
-stimulus.stairUsePest = 0;
-stimulus.threshold(1) = 30;
-stimulus.threshold(2) = 30;
+<<<<<<< HEAD
+stimulus.stairStepSize = 2;
+stimulus.stairUseLevitt = 0;
+stimulus.stairUsePest = 1;
+stimulus.stairRep = 200; %repeat staircase every [stairRep] trials
+stimulus.stairN = 0; %keeps track of how many staircases they did
+stimulus.threshold(1) = 10;
+stimulus.threshold(2) = 10;
 
-% set up left and right staircase
-if stimulus.stairUseLevitt
-    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
-        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0,'maxThreshold',45); % maximum has to be 45. 
-    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
-        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0,'maxThreshold',45); % maximum has to be 45. 
-elseif stimulus.stairUsePest
-    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
-        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
-    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
-        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
-else
-    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
-        'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
-    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
-        'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
-end
+%stimulus = initStaircase(stimulus); %initialize staircase. 
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
@@ -100,12 +84,69 @@ end
 myscreen = endTask(myscreen,task);
 end
 
+function stimulus = initStaircase(stimulus)
+=======
+stimulus.stairStepSize = 0.25;
+stimulus.stairUseLevitt = 1;
+stimulus.stairUsePest = 0;
+stimulus.threshold(1) = 10;
+stimulus.threshold(2) = 10;
+>>>>>>> origin/master
 
-%% Initialize task 
+% set up left and right staircase
+if stimulus.stairUseLevitt
+    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
+        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0.1,'maxThreshold',45); % maximum has to be 45. 
+    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0.1,'maxThreshold',45); % maximum has to be 45. 
+elseif stimulus.stairUsePest
+    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
+        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
+    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
+else
+    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
+        'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
+    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+        'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
+end
+<<<<<<< HEAD
+=======
+
+myscreen = initStimulus('stimulus',myscreen); % what does this do???
+stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
+directions = [0:1:359]; %direction to be presented on the left side. 
+stimulus.directions = directions;
+
+phaseNum = 1;
+while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
+    [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
+    myscreen = tickScreen(myscreen,task);     % flip screen
+end
+
+myscreen = endTask(myscreen,task);
+mglClose;
+>>>>>>> origin/master
+end
+
+
+%% Initialize trials 
 function [task myscreen] = initTrialCallback(task, myscreen)
-global stimulus
-[stimulus.threshold(1) stimulus.staircase(1)] = doStaircase('testValue',stimulus.staircase(1)); %left threshold
-[stimulus.threshold(2) stimulus.staircase(2)] = doStaircase('testValue',stimulus.staircase(2)); %right threshold
+    global stimulus
+    
+    %initialize staircase. 
+    if mod(stimulus.stairN, stimulus.stairRep) == 0
+        stimulus = initStaircase(stimulus);
+    end
+    
+    [stimulus.threshold(1) stimulus.staircase(1)] = doStaircase('testValue',stimulus.staircase(1)); %left threshold
+    [stimulus.threshold(2) stimulus.staircase(2)] = doStaircase('testValue',stimulus.staircase(2)); %right threshold
 end
 
 %% Start segment
@@ -118,10 +159,21 @@ global stimulus
 
 %change stimulus accordingly
 if task.thistrial.thisseg == 2
-    stimulus.fixColor = stimulus.fixColors.stim;
-    stimulus.right = (rand(1)<0.5); %is the correct side on the right?
+    % decide if left side is correct
+    stimulus.leftcorrect = (rand(1)<0.5); %1 if correct side is on the left. 0 if left. 
+    
+    % alternate between the two threshold values
+    stimulus.whichthreshold = (rand(1)<0.5)+1;
+    
+    % choose orientation of left stimulus
     task.thistrial.direction = stimulus.directions(randperm(length(stimulus.directions),1));
-    task.thistrial.dirDiff = (1-2*(stimulus.right))*stimulus.threshold(stimulus.right+1);
+    
+    % choose orientation of right stimulus, relative to the left stimulus. 
+    task.thistrial.dirDiff = (1-2*(stimulus.leftcorrect))*stimulus.threshold(stimulus.whichthreshold);
+    
+    %fixation color
+    stimulus.fixColor = stimulus.fixColors.stim;
+        
 elseif task.thistrial.thisseg == 3
     stimulus.fixColor = stimulus.fixColors.response;
 else %any(task.thistrial.thisseg == [1,3])
@@ -169,9 +221,9 @@ global stimulus
 
 % record responses. correct/incorrect
 if any(task.thistrial.whichButton == [1 2])
-    stimIsLeft = (task.thistrial.dirDiff <= 0); %1 if left stimulus is the one of interest
     resIsLeft = (task.thistrial.whichButton == 1); %1 if the subject chose left
-    correctIncorrect = (stimIsLeft == resIsLeft); %1 if correct
+    correctIncorrect = (stimulus.leftcorrect == resIsLeft); %1 if correct
+    stimulus.stairN = stimulus.stairN+1; %count how many times 
 else
     stimIsLeft = nan; resIsLeft = nan; correctIncorrect = nan;
 end
@@ -198,8 +250,8 @@ if correctIncorrect == 0, corrString = 'incorrect';
 elseif correctIncorrect == 1, corrString = 'correct';
 else, corrString = 'no response'; end
 
-stimulus.staircase(stimulus.right+1) = doStaircase('update',stimulus.staircase(stimulus.right+1),correctIncorrect);
-[stimulus.threshold(stimulus.right+1), stimulus.staircase(stimulus.right+1)] = doStaircase('testValue',stimulus.staircase(stimulus.right+1));
+stimulus.staircase(stimulus.leftcorrect+1) = doStaircase('update',stimulus.staircase(stimulus.leftcorrect+1),correctIncorrect,abs(task.thistrial.dirDiff));
+[stimulus.threshold(stimulus.leftcorrect+1), stimulus.staircase(stimulus.leftcorrect+1)] = doStaircase('testValue',stimulus.staircase(stimulus.leftcorrect+1));
 
 disp(['Coherence: ' num2str(task.thistrial.coherence) '; ' ...
     'Directions: ' num2str(task.thistrial.leftDir) ' (l) vs ' num2str(task.thistrial.righttDir) ' (r); ' ...
