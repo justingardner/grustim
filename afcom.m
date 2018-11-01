@@ -268,8 +268,13 @@ stimulus.seg.delay = 6;
 stimulus.seg.resp = 7;
 stimulus.seg.feedback = 8;
 
-task{1}{1}.segmin = [0 inf 0.5 0.5 inf 1 4 0.75];
-task{1}{1}.segmax = [2 inf 0.5 0.5 inf 1 4 0.75];
+task{1}{1}.segmin = [0 inf 0.5 0.75 inf 1 4 0.75];
+task{1}{1}.segmax = [2 inf 0.5 0.75 inf 1 4 0.75];
+
+if stimulus.noeye
+    task{1}{1}.segmin(stimulus.seg.fix) = 0;
+    task{1}{1}.segmax(stimulus.seg.fix) = 0;
+end
 
 if stimulus.practice
     task{1}{1}.segmin = [1 2 1 4 1 inf 2];
@@ -482,20 +487,23 @@ drawPublishAxis;
 edata = data(data(:,5)==1,:);
 hdata = data(data(:,5)==0.25,:);
 
-dispInfoFigures(edata);
-dispInfoFigures(hdata);
+dispInfoFigures(edata,'easy');
+dispInfoFigures(hdata,'hard');
 
-function dispInfoFigures(data)
+function dispInfoFigures(data,diff)
 
 % build one figure for each task
-titles = {'Cue direction','Cue color'};
+titles = {'Cue direction: ','Cue color: '};
 bins = pi/32:pi/16:pi;
 blabels = {};
 for bi = 0:(length(bins)-1)
     blabels{bi+1} = sprintf('%i/16',bi);
 end
 
+cmap = brewermap(5,'Dark2');
+
 for cue = 1:2
+    disp(sprintf('%s cue %s',diff,titles{cue}));
     cdata = data(data(:,1)==cue,:);
     
     disp(sprintf('Trials of: %s so far %i',titles{cue},size(cdata,1)));
@@ -512,29 +520,27 @@ for cue = 1:2
     disp(sprintf('Type baseline: %i',size(base,1)));
 
     figure;
-
-    a_h = hist(all(:,4),bins);
-    s_h = hist(spatial(:,4),bins);
-    f_h = hist(feature(:,4),bins);
-    t_h = hist(target(:,4),bins);
-    b_h = hist(base(:,4),bins);
-    % normalize
-    a_h = a_h/sum(a_h);
-    s_h = s_h/sum(s_h);
-    f_h = f_h/sum(f_h);
-    t_h = t_h/sum(t_h);
-    b_h = b_h/sum(b_h);
     
-    bar(bins,[a_h' s_h' f_h' t_h' b_h']);
-    legend({'All','Spatial','Feature','Target','Baseline'});
-    ylabel('Proportion (%)');
-    xlabel('Response distance from target (target=0');
-    set(gca,'XTick',bins,'XTickLabel',blabels);
-    title(titles{cue});
-    drawPublishAxis;
+    group = {'all','spatial','feature','target','base'};
+    legends = {'All','Spatial','Feature','Target','Baseline'};
+    
+    for s = 1:5
+        cdat = eval(sprintf('%s(:,4)',group{s}));
+        his = hist(cdat,bins);
+        his = his/sum(his);
+        
+        subplot(5,1,s); hold on
+        b = bar(bins,his,pi/8);
+        set(b,'FaceColor',cmap(s,:),'EdgeColor','w');
+        vline(nanmedian(cdat),'--k');
+        legend(legends{s});
+        ylabel('Proportion (%)');
+        xlabel('Response distance from target (target=0');
+        set(gca,'XTick',bins,'XTickLabel',blabels);
+        drawPublishAxis;
+    end
 end
-
-
+%%
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
@@ -542,7 +548,7 @@ global stimulus
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
 if stimulus.powerwheel
-    mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,1);
+    mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*90-pi*90,myscreen.screenHeight/2,1);
 else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
 end
@@ -840,7 +846,6 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
         task.thistrial.respAngle = -mInfo.x/90;
-        warning('Set this to start at zero!!');
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
@@ -907,7 +912,7 @@ end
 drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
 
 % do eye position tracking, but only during some segments
-if any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim stimulus.seg.resp])
+if (~stimulus.noeye) && any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim])
     % check eye pos
     if (~stimulus.noeye) && (stimulus.eyewindow>0)
 
