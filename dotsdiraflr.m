@@ -76,20 +76,10 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
 end
 
 myscreen = endTask(myscreen,task);
+mglClose
 end
 
 function stimulus = initStaircase(stimulus)
-=======
-stimulus.stairStepSize = 0.25;
-stimulus.stairUseLevitt = 1;
-stimulus.stairUsePest = 0;
-stimulus.threshold(1) = 10;
-stimulus.threshold(2) = 10;
-<<<<<<< HEAD
->>>>>>> origin/master
-=======
->>>>>>> 01d39a286fe722912232dc95d80457017195bb0b
-
 % set up left and right staircase
 if stimulus.stairUseLevitt
     stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
@@ -113,26 +103,7 @@ else
         'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
         'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
 end
-<<<<<<< HEAD
-=======
 
-myscreen = initStimulus('stimulus',myscreen); % what does this do???
-stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
-directions = [0:1:359]; %direction to be presented on the left side. 
-stimulus.directions = directions;
-
-phaseNum = 1;
-while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
-    [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
-    myscreen = tickScreen(myscreen,task);     % flip screen
-end
-
-myscreen = endTask(myscreen,task);
-mglClose;
-<<<<<<< HEAD
->>>>>>> origin/master
-=======
->>>>>>> 01d39a286fe722912232dc95d80457017195bb0b
 end
 
 
@@ -316,7 +287,7 @@ function dots = initDots(myscreen,dots)
     if ~isfield(dots,'dotsize'), dots.dotsize = 4;,end
     if ~isfield(dots,'density'), dots.density = 5;,end
     if ~isfield(dots,'coherence'), dots.coherence = 1;,end
-    if ~isfield(dots,'speed'), dots.speed = 6;,end
+    if ~isfield(dots,'speed'), dots.speed = 10;,end
     if ~isfield(dots,'dir'), dots.dir = 0;,end
 
     % define a square patch
