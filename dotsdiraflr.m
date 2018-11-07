@@ -12,7 +12,7 @@ function myscreen = dotsdiraflr(varargin)
 
 % set input arguments
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'});
-getArgs(varargin,{'centerX=10','centerY=0','diameter=16'});
+getArgs(varargin,{'subjectID=-1','centerX=10','centerY=0','diameter=16'});
 
 % set up screen
 myscreen.subjectID = subjectID;
@@ -27,26 +27,28 @@ myscreen = initScreen(myscreen);
 task{1}{1}.segmin = [1 0.5 2];
 task{1}{1}.segmax = [3 0.5 2];
 %task{1}{1}.numBlocks = 1;
-task{1}{1}.numTrials = 1000;
+task{1}{1}.numTrials = 300;
 task{1}{1}.getResponse = [0 0 1]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 %task{1}{1}.random = 1; %randomize order of parameter presentation. 
 
 %task parameters
-%coherence = [1 0.8 0.6];
 %dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];
-%task{1}{1}.parameter.coherence = coherence;
 %task{1}{1}.parameter.dirDiff = dirDiff;
 task{1}{1}.randVars.calculated.direction = nan; %"non-crucial" variables, block randomized. 
-task{1}{1}.randVars.calculated.coherence = 1;
+%task{1}{1}.randVars.calculated.coherence = 1;
 task{1}{1}.randVars.calculated.dirDiff = nan;
 task{1}{1}.randVars.calculated.correctIncorrect = nan; %store values calculated during the task. 
 task{1}{1}.randVars.calculated.leftDir = nan;
 task{1}{1}.randVars.calculated.righttDir = nan;
 task{1}{1}.randVars.calculated.cohPres = nan; %??? does it not save the parameters of interest automatically? 
 
-%initialize task 
-[task{1}{1} myscreen] = initTask(task{1}{1},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+coherence = [1 0.8 0.6 0.4];
+for phaseN = 1:length(coherence)
+task{1}{phaseN} = task{1}{1};
+task{1}{phaseN}.parameter.coherence = coherence(phaseN);
+[task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+end
 % task{1}{1} = task; % do we need to do this ??? 
 
 % initialize stimulus
@@ -54,14 +56,13 @@ global stimulus;
 stimulus = [];
 stimulus.stairUp = 1;
 stimulus.stairDown = 2;
-stimulus.stairStepSize = 2;
+stimulus.stairStepSize = 0.2;
 stimulus.stairUseLevitt = 0;
 stimulus.stairUsePest = 1;
-stimulus.stairRep = 200; %repeat staircase every [stairRep] trials
+stimulus.stairRep = 100; %repeat staircase every [stairRep] trials
 stimulus.stairN = 0; %keeps track of how many staircases they did
-stimulus.threshold(1) = 10;
-stimulus.threshold(2) = 10;
-
+stimulus.threshold = 8;
+%stimulus.threshold(2) = 8;
 %stimulus = initStaircase(stimulus); %initialize staircase. 
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
@@ -82,26 +83,26 @@ end
 function stimulus = initStaircase(stimulus)
 % set up left and right staircase
 if stimulus.stairUseLevitt
-    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
-        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0.1,'maxThreshold',45); % maximum has to be 45. 
-    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
-        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',0.1,'maxThreshold',45); % maximum has to be 45. 
+    stimulus.staircase = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold,...
+        'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',stimulus.stairStepSize,'maxThreshold',45); % maximum has to be 45. 
+%     stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+%         'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+%         'initialStepsize',stimulus.stairStepSize,'testType=levitt','minThreshold',stimulus.stairStepSize,'maxThreshold',45); % maximum has to be 45. 
 elseif stimulus.stairUsePest
-    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
-        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
-    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
-        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',0,'maxThreshold',45);
+    stimulus.staircase = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold,...
+        'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',stimulus.stairStepSize,'maxThreshold',45);
+%     stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+%         'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+%         'initialStepsize',stimulus.stairStepSize,'testType=pest','minThreshold',stimulus.stairStepSize,'maxThreshold',45);
 else
-    stimulus.staircase(1) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(1),...
+    stimulus.staircase = doStaircase('init','upDown','nup',stimulus.stairUp,...
+        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold,...
         'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
-    stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
-        'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
-        'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
+%     stimulus.staircase(2) = doStaircase('init','upDown','nup',stimulus.stairUp,...
+%         'ndown',stimulus.stairDown,'initialThreshold',stimulus.threshold(2),...
+%         'initialStepsize',stimulus.stairStepSize,'minThreshold',0,'maxThreshold',45);
 end
 
 end
@@ -110,14 +111,17 @@ end
 %% Initialize trials 
 function [task myscreen] = initTrialCallback(task, myscreen)
     global stimulus
+    if task.trialnum == 1 %does the task 
+        stimulus.stairN = 0;
+    end
     
     %initialize staircase. 
     if mod(stimulus.stairN, stimulus.stairRep) == 0
         stimulus = initStaircase(stimulus);
     end
     
-    [stimulus.threshold(1) stimulus.staircase(1)] = doStaircase('testValue',stimulus.staircase(1)); %left threshold
-    [stimulus.threshold(2) stimulus.staircase(2)] = doStaircase('testValue',stimulus.staircase(2)); %right threshold
+    [stimulus.threshold stimulus.staircase] = doStaircase('testValue',stimulus.staircase); %left threshold
+%     [stimulus.threshold(2) stimulus.staircase(2)] = doStaircase('testValue',stimulus.staircase(2)); %right threshold
 end
 
 %% Start segment
@@ -134,7 +138,7 @@ if task.thistrial.thisseg == 2
     stimulus.leftcorrect = (rand(1)<0.5); %1 if correct side is on the left. 0 if left. 
     
     % alternate between the two threshold values
-    stimulus.whichthreshold = (rand(1)<0.5)+1;
+    stimulus.whichthreshold = 1; %(rand(1)<0.5)+1;
     
     % choose orientation of left stimulus
     task.thistrial.direction = stimulus.directions(randperm(length(stimulus.directions),1));
@@ -182,7 +186,10 @@ if task.thistrial.thisseg == 2
 end
 
 % draw fixation
-mglFixationCross(1,2,stimulus.fixColor);
+%mglFixationCross(1,2,stimulus.fixColor);
+mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+%mglFlush
+%mglClearScreen
 end
 
 %% Get response 
@@ -221,8 +228,10 @@ if correctIncorrect == 0, corrString = 'incorrect';
 elseif correctIncorrect == 1, corrString = 'correct';
 else, corrString = 'no response'; end
 
-stimulus.staircase(stimulus.leftcorrect+1) = doStaircase('update',stimulus.staircase(stimulus.leftcorrect+1),correctIncorrect,abs(task.thistrial.dirDiff));
-[stimulus.threshold(stimulus.leftcorrect+1), stimulus.staircase(stimulus.leftcorrect+1)] = doStaircase('testValue',stimulus.staircase(stimulus.leftcorrect+1));
+%stimulus.staircase(stimulus.leftcorrect+1) = doStaircase('update',stimulus.staircase(stimulus.leftcorrect+1),correctIncorrect,abs(task.thistrial.dirDiff));
+%[stimulus.threshold(stimulus.leftcorrect+1), stimulus.staircase(stimulus.leftcorrect+1)] = doStaircase('testValue',stimulus.staircase(stimulus.leftcorrect+1));
+stimulus.staircase = doStaircase('update',stimulus.staircase,correctIncorrect,abs(task.thistrial.dirDiff));
+[stimulus.threshold, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 
 disp(['Coherence: ' num2str(task.thistrial.coherence) '; ' ...
     'Directions: ' num2str(task.thistrial.leftDir) ' (l) vs ' num2str(task.thistrial.righttDir) ' (r); ' ...
