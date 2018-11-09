@@ -9,7 +9,7 @@ function [ myscreen ] = afcom( varargin )
 %   direction, or color angle, respectively). 
 %
 %   The stimuli are two pairs of overlapped dot patches on the left and
-%   right of fixation. The pairs share feature-cues which allows us to
+%   right of fixation. The pairs share feature-cues which allows us to 
 %   either cue one side of the screen or one feature, and then post-cue to
 %   resolve down to one patch. Observers always report about a single patch
 %   of dots, reporting either the motion direction or the color.
@@ -55,7 +55,7 @@ mouse=0;
 practice=0; 
 cue=0;
 
-getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=1.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -260,15 +260,21 @@ stimulus.cueDots = initDots(dots);
 task{1}{1} = struct;
 % task waits for fixation on first segment
 stimulus.seg.iti = 1;
-stimulus.seg.cue = 2;
-stimulus.seg.isi = 3;
-stimulus.seg.stim = 4;
-stimulus.seg.delay = 5;
-stimulus.seg.resp = 6;
-stimulus.seg.feedback = 7;
+stimulus.seg.fix = 2;
+stimulus.seg.cue = 3;
+stimulus.seg.isi = 4;
+stimulus.seg.stim = 5;
+stimulus.seg.delay = 6;
+stimulus.seg.resp = 7;
+stimulus.seg.feedback = 8;
 
-task{1}{1}.segmin = [0.5 0.5 0.5 1 1 4 0.75];
-task{1}{1}.segmax = [2.5 0.5 0.5 1 1 4 0.75];
+task{1}{1}.segmin = [0 inf 0.5 0.75 inf 1 4 0.75];
+task{1}{1}.segmax = [2 inf 0.5 0.75 inf 1 4 0.75];
+
+if stimulus.noeye
+    task{1}{1}.segmin(stimulus.seg.fix) = 0;
+    task{1}{1}.segmax(stimulus.seg.fix) = 0;
+end
 
 if stimulus.practice
     task{1}{1}.segmin = [1 2 1 4 1 inf 2];
@@ -290,6 +296,8 @@ task{1}{1}.random = 1;
 
 task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
+task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 if ~stimulus.replay && stimulus.scan
@@ -302,6 +310,9 @@ task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
 task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
 task{1}{1}.randVars.calculated.distractor = nan;
+task{1}{1}.randVars.calculated.featdist = nan; % number of the matched feature
+task{1}{1}.randVars.calculated.sidedist = nan; % number of the matched side
+task{1}{1}.randVars.calculated.distdist = nan; % number of the one you ignored (not matched side or matched feature)
 task{1}{1}.randVars.calculated.angle1 = nan;
 task{1}{1}.randVars.calculated.angle2 = nan;
 task{1}{1}.randVars.calculated.angle3 = nan;
@@ -384,8 +395,16 @@ for fi = 1:length(files)
     maxTrackLength = max(maxTrackLength,size(mt{fi},2));
 end
 
+clear duration
+warning('adding duration = 1 if missing');
+for ei = 1:length(e)
+    if ~isfield(e{ei}.parameter,'duration')
+        e{ei}.parameter.duration = ones(size(e{ei}.parameter.trialType));
+    end
+end
+
 %% concatenate all trials
-pvars = {'target','trialType','cue'};
+pvars = {'target','trialType','cue','duration'};
 rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
     'angle4','respAngle','respDistance','distDistance'};
 runs = [];
@@ -408,6 +427,8 @@ for run = 1:length(e)
         eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
     end
 end
+
+eval('dur = duration;');
 
 %% concatenate mouse tracks
 amt = nan(length(target),maxTrackLength);
@@ -441,7 +462,7 @@ end
 amt = fliplr(amt);
 
 %% create one giant matrix, but just of a few variables that matter
-data = [cue' runs' trialType' respDistance' distDistance'];
+data = [cue' runs' trialType' respDistance' dur'];
 keepIdxs = ~any(isnan(data(:,4)),2);
 data = data(keepIdxs,:);
 amt = amt(keepIdxs,:);
@@ -462,15 +483,27 @@ drawPublishAxis;
 
 %% plot
 
+% split data by difficulty
+edata = data(data(:,5)==1,:);
+hdata = data(data(:,5)==0.25,:);
+
+dispInfoFigures(edata,'easy');
+dispInfoFigures(hdata,'hard');
+
+function dispInfoFigures(data,diff)
+
 % build one figure for each task
-titles = {'Cue direction','Cue color'};
+titles = {'Cue direction: ','Cue color: '};
 bins = pi/32:pi/16:pi;
 blabels = {};
 for bi = 0:(length(bins)-1)
     blabels{bi+1} = sprintf('%i/16',bi);
 end
 
+cmap = brewermap(5,'Dark2');
+
 for cue = 1:2
+    disp(sprintf('%s cue %s',diff,titles{cue}));
     cdata = data(data(:,1)==cue,:);
     
     disp(sprintf('Trials of: %s so far %i',titles{cue},size(cdata,1)));
@@ -487,36 +520,42 @@ for cue = 1:2
     disp(sprintf('Type baseline: %i',size(base,1)));
 
     figure;
-
-    a_h = hist(all(:,4),bins);
-    s_h = hist(spatial(:,4),bins);
-    f_h = hist(feature(:,4),bins);
-    t_h = hist(target(:,4),bins);
-    b_h = hist(base(:,4),bins);
-    % normalize
-    a_h = a_h/sum(a_h);
-    s_h = s_h/sum(s_h);
-    f_h = f_h/sum(f_h);
-    t_h = t_h/sum(t_h);
-    b_h = b_h/sum(b_h);
     
-    bar(bins,[a_h' s_h' f_h' t_h' b_h']);
-    legend({'All','Spatial','Feature','Target','Baseline'});
-    ylabel('Proportion (%)');
-    xlabel('Response distance from target (target=0');
-    set(gca,'XTick',bins,'XTickLabel',blabels);
-    title(titles{cue});
-    drawPublishAxis;
+    group = {'all','spatial','feature','target','base'};
+    legends = {'All','Spatial','Feature','Target','Baseline'};
+    
+    for s = 1:5
+        cdat = eval(sprintf('%s(:,4)',group{s}));
+        his = hist(cdat,bins);
+        his = his/sum(his);
+        
+        subplot(5,1,s); hold on
+        b = bar(bins,his,pi/8);
+        set(b,'FaceColor',cmap(s,:),'EdgeColor','w');
+        vline(nanmedian(cdat),'--k');
+        legend(legends{s});
+        ylabel('Proportion (%)');
+        xlabel('Response distance from target (target=0');
+        set(gca,'XTick',bins,'XTickLabel',blabels);
+        drawPublishAxis;
+    end
 end
-
+%%
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
+% swap seglen in
+task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
+
 if stimulus.powerwheel
-    mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,1);
+    mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*90-pi*90,myscreen.screenHeight/2,1);
 else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
 end
+
+% get the current mouse position:
+mInfo = mglGetMouse(myscreen.screenNumber);
+stimulus.live.mouseStart = -mInfo.x/90;
 
 if stimulus.cue==1
     stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
@@ -571,6 +610,7 @@ disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{
 % eye tracking 
 task.thistrial.dead = 0;
 stimulus.live.eyeCount=0;
+stimulus.live.fixCount = 0;
 
 % mouse tracking
 stimulus.data.mouseTick = 1;
@@ -805,9 +845,7 @@ end
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        curPos = -mInfo.x/90;
-        task.thistrial.respAngle = task.thistrial.respAngle + curPos-stimulus.live.trackingAngle;
-        stimulus.live.trackingAngle = curPos;
+        task.thistrial.respAngle = -mInfo.x/90;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
@@ -820,7 +858,7 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     end
     task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
-    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
+    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle-stimulus.live.mouseStart;
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
     
     % note that respAngle is stored in *real* angles -- so that it
@@ -832,6 +870,9 @@ end
 switch task.thistrial.thisseg
         
     case stimulus.seg.iti
+        drawStim(task,false);
+        drawFix(task,stimulus.colors.white);
+    case stimulus.seg.fix % same as for ITI
         drawStim(task,false);
         drawFix(task,stimulus.colors.white);
         
@@ -871,7 +912,7 @@ end
 drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
 
 % do eye position tracking, but only during some segments
-if any(task.thistrial.thisseg==[stimulus.seg.cue stimulus.seg.stim stimulus.seg.resp])
+if (~stimulus.noeye) && any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim])
     % check eye pos
     if (~stimulus.noeye) && (stimulus.eyewindow>0)
 
@@ -888,20 +929,33 @@ if any(task.thistrial.thisseg==[stimulus.seg.cue stimulus.seg.stim stimulus.seg.
         % compute distance
         dist = hypot(pos(1),pos(2));
     end
-
-    % Eye movement detection code
-    if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~task.thistrial.dead
-        if ~any(isnan(pos))
-            if dist > stimulus.eyewindow && stimulus.live.eyeCount > stimulus.eyeFrames
-                disp('Eye movement detected!!!!');
-                stimulus.live.deadTime = mglGetSecs;
-                task.thistrial.dead = 1;
-                return
-            elseif dist > stimulus.eyewindow
-                stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+    
+    if task.thistrial.thisseg==stimulus.seg.fix
+        if stimulus.live.fixCount > stimulus.eyeFrames
+            task = jumpSegment(task);
+        elseif ~any(isnan(pos))
+            if dist < stimulus.eyewindow
+                stimulus.live.fixCount = stimulus.live.fixCount + 1;
+            else
+                stimulus.live.fixCount = 0;
+            end
+        end
+    else
+        % Eye movement detection code
+        if (~stimulus.noeye) && (stimulus.eyewindow>0) && ~task.thistrial.dead
+            if ~any(isnan(pos))
+                if dist > stimulus.eyewindow && stimulus.live.eyeCount > stimulus.eyeFrames
+                    disp('Eye movement detected!!!!');
+                    stimulus.live.deadTime = mglGetSecs;
+                    task.thistrial.dead = 1;
+                    return
+                elseif dist > stimulus.eyewindow
+                    stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+                end
             end
         end
     end
+
 end
 
 function [task, myscreen] = getResponseCallback(task, myscreen)

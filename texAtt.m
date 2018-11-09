@@ -130,11 +130,12 @@ task{1}.synchToVol = zeros(size(task{1}.segmin));
 task{1}.getResponse = zeros(size(task{1}.segmin));
 task{1}.getResponse(stimulus.seg.response)=1;
 
+% Make numTrials some multiple of number of TrialTypes (in this case, # of attentional conditions x # of layers).
 task{1}.numTrials = 144; %where does this number come from?
 task{1}.random = 1;
 
 
-%!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+%!!!!!!!!!!!!!!!!!!!!!!!!!/!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % [akshay] (4) Edit the code below to define and initialize variables that you may want to 
 %          calculate later on (e.g. in startTrialCallback or startSegmentCallback).
 %       - you may want to create a variable here to keep track of which location is the cued location.
@@ -331,8 +332,11 @@ else
   stimulus.live.draw4 = 1;
 end
 
-cueXLocs = [cueX, cueX, cueX-1; -cueX, -cueX, -cueX+1; -cueX, -cueX, -cueX+1; cueX-1 cueX, cueX];
-cueYLocs = [cueX, cueX-1, cueX; cueX, cueX-1, cueX; -cueX+1, -cueX, -cueX; -cueX, -cueX, -cueX+1];
+% cueXLocs = [cueX, cueX, cueX-1; -cueX, -cueX, -cueX+1; -cueX, -cueX, -cueX+1; cueX-1 cueX, cueX];
+% cueYLocs = [cueX, cueX-1, cueX; cueX, cueX-1, cueX; -cueX+1, -cueX, -cueX; -cueX, -cueX, -cueX+1];
+
+cueXLocs = [cueX, cueX-.25, cueX-.75; -cueX, -cueX+.25, -cueX+.75; -cueX+.25, -cueX, -cueX+.75; cueX-.75 cueX, cueX-.25];
+cueYLocs = [cueX, cueX-.75, cueX-.25; cueX, cueX-.75, cueX-.25; -cueX+.75, -cueX, -cueX+.25; -cueX+.25, -cueX, -cueX+.75];
 
 stimulus.live.cueXLocs = cueXLocs;
 stimulus.live.cueYLocs = cueYLocs;
