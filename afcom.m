@@ -53,14 +53,16 @@ run = 0;
 eyewindow=0; 
 mouse=0; 
 practice=0; 
+practiceType=0;
 cue=0;
 
-getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','practiceType=0','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.cue = cue; % cue = 1 means direction, cue = 2 means color
 stimulus.practice = practice;
+stimulus.practiceType = practiceType;
 stimulus.mousedebug = mouse;
 stimulus.powerwheel = powerwheel;
 stimulus.eyewindow = eyewindow;
@@ -276,9 +278,24 @@ if stimulus.noeye
     task{1}{1}.segmax(stimulus.seg.fix) = 0;
 end
 
-if stimulus.practice
-    task{1}{1}.segmin = [1 2 1 4 1 inf 2];
-    task{1}{1}.segmax = [2 2 1 4 1 inf 2];
+if stimulus.practice==1
+    task{1}{1}.segmin(stimulus.seg.cue) = 1;
+    task{1}{1}.segmax(stimulus.seg.cue) = 1;
+    task{1}{1}.segmin(stimulus.seg.isi) = 1;
+    task{1}{1}.segmax(stimulus.seg.isi) = 1;
+    task{1}{1}.segmin(stimulus.seg.resp) = 6;
+    task{1}{1}.segmax(stimulus.seg.resp) = 6;
+    task{1}{1}.segmin(stimulus.seg.feedback) = 1.5;
+    task{1}{1}.segmax(stimulus.seg.feedback) = 1.5;
+elseif stimulus.practice==2
+    task{1}{1}.segmin(stimulus.seg.cue) = 1;
+    task{1}{1}.segmax(stimulus.seg.cue) = 1;
+    task{1}{1}.segmin(stimulus.seg.isi) = 1;
+    task{1}{1}.segmax(stimulus.seg.isi) = 1;
+    task{1}{1}.segmin(stimulus.seg.resp) = 4;
+    task{1}{1}.segmax(stimulus.seg.resp) = 4;
+    task{1}{1}.segmin(stimulus.seg.feedback) = 0.75;
+    task{1}{1}.segmax(stimulus.seg.feedback) = 0.75;
 end
 
 task{1}{1}.waitForBacktick = 1;
@@ -294,9 +311,17 @@ end
 
 task{1}{1}.random = 1;
 
-task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
+task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
 task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+
+if stimulus.practice==1
+    task{1}{1}.parameter.duration = 2.0;
+end
+
+if stimulus.practiceType
+    task{1}{1}.parameter.trialType= stimulus.practiceType;
+end
 
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
