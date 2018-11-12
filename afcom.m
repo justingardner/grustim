@@ -371,13 +371,20 @@ if ~stimulus.replay && ~stimulus.noeye
     disp(sprintf('(afcom) Starting run number: %i.',stimulus.counter));
 end
 
-%% Main Task Loop
+%% Draw the cue type to the screen
+for i= 1:2
+    mglClearScreen;
+    if stimulus.cue==1
+%         mglTextDraw('Cue: direction',[0 1]);
+        mglTextDraw('Report: color',[0 0]);
+    else
+%         mglTextDraw('Cue: color',[0 1]);
+        mglTextDraw('Report: direction',[0 0]);
+    end
+    mglFlush
+end
 
-% setGammaTable(1);
-mglClearScreen;
-mglFlush;
-mglClearScreen;
-mglFlush;
+%% Main Task Loop
 
 phaseNum = 1;
 % Again, only one phase.
