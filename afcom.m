@@ -53,10 +53,10 @@ run = 0;
 eyewindow=0; 
 mouse=0; 
 practice=0; 
-practiceType=0;
+practiceType=-1;
 cue=0;
 
-getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','practiceType=0','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -316,10 +316,10 @@ task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
 task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
 
 if stimulus.practice==1
-    task{1}{1}.parameter.duration = 2.0;
+    task{1}{1}.parameter.duration = 1.0;
 end
 
-if stimulus.practiceType
+if stimulus.practiceType>=0
     task{1}{1}.parameter.trialType= stimulus.practiceType;
 end
 
