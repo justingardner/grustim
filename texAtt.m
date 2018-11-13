@@ -107,9 +107,10 @@ end
 % Task important variables
 stimulus.imNames = {'im13', 'im18', 'im23', 'im30', 'im38', 'im48', 'im52', 'im56', 'im60', 'im71', 'im99', 'im327', 'im336', 'im393', 'im402'};
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/fzs/tex';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/textures/tex_bw';
 stimulus.imSize = 6;
 stimulus.eccentricity = 6;
+stimulus.poolSizes = {'1x1', '2x2'};
 stimulus.cueEcc = 4;
 stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
@@ -125,6 +126,7 @@ stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 % Trial parameters
 task{1}.parameter.imgFam = 1:length(stimulus.imNames);
 task{1}.parameter.layer = 1:length(stimulus.layerNames);
+task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
 
 task{1}.synchToVol = zeros(size(task{1}.segmin));
 task{1}.getResponse = zeros(size(task{1}.segmin));
@@ -219,37 +221,39 @@ texDir = stimulus.stimDir;
 %% Load all 8 images for this trial
 imName = stimulus.imNames{task.thistrial.imgFam};
 layer = stimulus.layerNames{task.thistrial.layer};
+poolSize = stimulus.poolSizes{task.thistrial.poolSize};
 
 % Randomly select 4 images to display on this trial.
-smpls = randperm(15,8);
+%smpls = randperm(15,8);
+smpls = randperm(10,8);
 isSame = randi([0,1], 1, 4);
 
 % first stimulus frame
-stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(1))), stimulus.live.mask);
-stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(2))), stimulus.live.mask);
-stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(3))), stimulus.live.mask);
-stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(4))), stimulus.live.mask);
+stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(1))), stimulus.live.mask);
+stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(2))), stimulus.live.mask);
+stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(3))), stimulus.live.mask);
+stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(4))), stimulus.live.mask);
 
 % images for the second stimulus frame
 if isSame(1)
   stimulus.live.cued_image = stimulus.live.target_image;
 else
-  stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(5))), stimulus.live.mask);
+  stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(5))), stimulus.live.mask);
 end
 if isSame(2)
   stimulus.live.d21 = stimulus.live.d11;
 else
-  stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(6))), stimulus.live.mask);
+  stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(6))), stimulus.live.mask);
 end
 if isSame(3)
   stimulus.live.d22 = stimulus.live.d12;
 else
-  stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(7))), stimulus.live.mask);
+  stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(7))), stimulus.live.mask);
 end
 if isSame(4)
   stimulus.live.d23 = stimulus.live.d13;
 else
-  stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s_%s_smp%i.png', texDir, layer, imName, smpls(8))), stimulus.live.mask);
+  stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(8))), stimulus.live.mask);
 end
 
 
