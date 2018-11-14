@@ -893,7 +893,6 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
     stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
-    disp(stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick));
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
     
     % note that respAngle is stored in *real* angles -- so that it
