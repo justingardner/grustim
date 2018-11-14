@@ -427,13 +427,13 @@ for fi = 1:length(files)
     maxTrackLength = max(maxTrackLength,size(mt{fi},2));
 end
 
-clear duration
-warning('adding duration = 1 if missing');
-for ei = 1:length(e)
-    if ~isfield(e{ei}.parameter,'duration')
-        e{ei}.parameter.duration = ones(size(e{ei}.parameter.trialType));
-    end
-end
+% clear duration
+% warning('adding duration = 1 if missing');
+% for ei = 1:length(e)
+%     if ~isfield(e{ei}.parameter,'duration')
+%         e{ei}.parameter.duration = ones(size(e{ei}.parameter.trialType));
+%     end
+% end
 
 %% concatenate all trials
 pvars = {'target','trialType','cue','duration'};
@@ -450,13 +450,15 @@ end
 
 runcount = [0 0];
 for run = 1:length(e)
-    runs = [runs ones(1,e{run}.nTrials)];
-    runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
-    for pii = 1:length(pvars)
-        eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
-    end
-    for ri = 1:length(rvars)
-        eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
+    if e{run}.nTrials>0
+        runs = [runs ones(1,e{run}.nTrials)];
+        runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
+        for pii = 1:length(pvars)
+            eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
+        end
+        for ri = 1:length(rvars)
+            eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
+        end
     end
 end
 
@@ -877,7 +879,7 @@ end
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        task.thistrial.respAngle = -mInfo.x/90;
+        task.thistrial.respAngle = -(mInfo.x-myscreen.screenWidth/2)/90;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
@@ -890,7 +892,8 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     end
     task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
-    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle-stimulus.live.mouseStart;
+    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
+    disp(stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick));
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
     
     % note that respAngle is stored in *real* angles -- so that it
@@ -944,24 +947,22 @@ end
 drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
 
 % do eye position tracking, but only during some segments
-if (~stimulus.noeye) && any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim])
+if (~stimulus.noeye) && (stimulus.eyewindow>0) && any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim])
     % check eye pos
-    if (~stimulus.noeye) && (stimulus.eyewindow>0)
 
-        % mouse version for testing with no eyetracker
-        if stimulus.mousedebug
-            mInfo = mglGetMouse(myscreen.screenNumber);
-            degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-            degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+    % mouse version for testing with no eyetracker
+    if stimulus.mousedebug
+        mInfo = mglGetMouse(myscreen.screenNumber);
+        degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+        degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
 
-            pos = [degx, degy];
-        else
-            [pos,~] = mglEyelinkGetCurrentEyePos;
-        end
-        % compute distance
-        dist = hypot(pos(1),pos(2));
+        pos = [degx, degy];
+    else
+        [pos,~] = mglEyelinkGetCurrentEyePos;
     end
-    
+    % compute distance
+    dist = hypot(pos(1),pos(2));
+
     if task.thistrial.thisseg==stimulus.seg.fix
         if stimulus.live.fixCount > stimulus.eyeFrames
             task = jumpSegment(task);
