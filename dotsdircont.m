@@ -15,7 +15,8 @@ getArgs(varargin,{'subjectID=-1','centerX=10','centerY=0','diameter=16'});
 % set up screen
 myscreen.subjectID = subjectID;
 myscreen.saveData = 1;
-myscreen.displayName = 'screen1';
+%myscreen.displayName = 'screen1';
+myscreen.displayName = 'test';
 myscreen = initScreen(myscreen);
 
 % Go straight to task.
@@ -101,9 +102,9 @@ elseif task.thistrial.thisseg == 4
     stimulus.fixColor = stimulus.fixColors.response;    
     % set mouse position to the middle. 
     if stimulus.powerwheel
-        theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);   
-        x = 5*cos(theta);
-        mglSetMousePosition(x,myscreen.screenHeight/2);
+        %nextrespangle = (mInfo.x/2)*2*pi/360; %(in radians)
+        %theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);
+        mglSetMousePosition(myscreen.screenWidth/2+task.thistrial.respAngle*2,myscreen.screenHeight/2);
     else
         theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);   
         x_img = 5*cos(theta); y_img = 5*sin(theta);
@@ -225,9 +226,13 @@ end
 function [task myscreen]  = getTurnResponse(task, myscreen)
 global stimulus % call stimulus        
     if stimulus.powerwheel
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        nextrespangle = -mInfo.x/90*2*pi/360; %(in radians)
-        %what happens if we move offscreen???
+        mInfo = mglGetMouse(myscreen.screenNumber); %each movement by x=1 moves the  cursor 1/2 degrees
+        nextrespangle = (mInfo.x-myscreen.screenWidth/2)/2*2*pi/360; %(in radians)
+        if mInfo.x == 0
+            x = mod(mInfo.x-myscreen.screenWidth/2,720)+myscreen.screenWidth/2;
+        elseif mInfo.x == myscreen.screenWidth
+            x = mod(mInfo.x-myscreen.screenWidth/2,720)+myscreen.screenWidth/2;
+        end
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         distx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
