@@ -102,8 +102,8 @@ elseif task.thistrial.thisseg == 4
     % set mouse position to the middle. 
     if stimulus.powerwheel
         theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);   
-        x = 5*cos(theta); y = 5*sin(theta);
-        mglSetMousePosition(x,y);
+        x = 5*cos(theta);
+        mglSetMousePosition(x,myscreen.screenHeight/2);
     else
         theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);   
         x_img = 5*cos(theta); y_img = 5*sin(theta);
@@ -226,7 +226,7 @@ function [task myscreen]  = getTurnResponse(task, myscreen)
 global stimulus % call stimulus        
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        nextrespangle = -mInfo.x/90; 
+        nextrespangle = -mInfo.x/90*2*pi/360; %(in radians)
         %what happens if we move offscreen???
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
