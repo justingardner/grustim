@@ -15,8 +15,8 @@ getArgs(varargin,{'subjectID=-1','centerX=10','centerY=0','diameter=16'});
 % set up screen
 myscreen.subjectID = subjectID;
 myscreen.saveData = 1;
-%myscreen.displayName = 'screen1';
-myscreen.displayName = 'test';
+myscreen.displayName = 'screen1';
+%myscreen.displayName = 'test'; myscreen.screenNumber = 1;
 myscreen = initScreen(myscreen);
 
 % Go straight to task.
@@ -34,7 +34,7 @@ task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial
 %task{1}{1}.random = 1; %randomize order of parameter presentation. 
 
 %task parameters
-%dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];`
+%dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];
 %task{1}{1}.parameter.dirDiff = dirDiff;
 %task{1}{1}.randVars.calculated.direction = nan; %"non-crucial" variables, block randomized. 
 %task{1}{1}.randVars.calculated.coherence = 1;
@@ -69,7 +69,7 @@ stimulus = [];
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
-stimulus.powerwheel = 0; % powerwheel (1)  or mouse (0)
+stimulus.powerwheel = 1; % powerwheel (1)  or mouse (0)
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
