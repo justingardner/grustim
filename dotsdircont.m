@@ -49,7 +49,7 @@ task{1}{1}.randVars.calculated.respStable = nan;
 %task{1}{1}.randVars.calculated.mouseStart = struct(); %how do we save not preallocated randVars???
 
 task{1}{1}.randVars.uniform.direction = [0:1:359];
-task{1}{1}.randVars.uniform.dirDiff = [-45:0.25:45];
+task{1}{1}.randVars.uniform.dirDiff = [-25:0.25:25];
 task{1}{1}.randVars.uniform.respAngle = [0:1:359];
 
 task{1}{1}.parameter.distAttention = [0 1]; % cue both sides?
@@ -69,7 +69,7 @@ stimulus = [];
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
-stimulus.powerwheel = 1; % powerwheel (1)  or mouse (0)
+stimulus.powerwheel = 0; %1; % powerwheel (1)  or mouse (0)
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -98,20 +98,33 @@ global stimulus
 %change stimulus accordingly
 if any(task.thistrial.thisseg == [1 2])
     stimulus.fixColor = stimulus.fixColors.stim;
-elseif task.thistrial.thisseg == 4
+elseif task.thistrial.thisseg == 3
     stimulus.fixColor = stimulus.fixColors.response;    
     % set mouse position to the middle. 
     if stimulus.powerwheel
-        %nextrespangle = (mInfo.x/2)*2*pi/360; %(in radians)
-        %theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);
-        mglSetMousePosition(myscreen.screenWidth/2+task.thistrial.respAngle*2,myscreen.screenHeight/2);
+        %each x movement (1 unit) counts as 1/2 degree turn (note the
+        %screensize when doing this)
+        x_screen = ceil(myscreen.screenWidth/2+task.thistrial.respAngle*2);
+        mglSetMousePosition(x_screen,floor(myscreen.screenHeight/2));
+        
+        %correct the angle by the set mouse position
+        task.thistrial.respAngle = (x_screen-myscreen.screenWidth/2)/2; %(in degrees)
     else
         theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);   
         x_img = 5*cos(theta); y_img = 5*sin(theta);
         x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
         y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-        mglSetMousePosition(x_screen,y_screen); %identify main screen?
+        mglSetMousePosition(ceil(x_screen),floor(y_screen)); %identify main screen?
+        
+        % note that the mouse position is an approximation of the initial angle
+        % it is the top left grid point from the circle of radius 5, with
+        % the given angle.
+        % thus we correct the angle here: 
+        distx = (ceil(x_screen)-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+        disty = (floor(y_screen)-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight; % what is imagewidth???
+        task.thistrial.respAngle = atan2(disty,distx)/(2*pi)*360;
     end
+    
 else %intertrial interval or feedback
     stimulus.fixColor = stimulus.fixColors.interStim;
 end    
@@ -157,17 +170,20 @@ elseif task.thistrial.thisseg == 2 % [stimulus period] draw dots
 elseif (task.thistrial.thisseg==3) %[response segment] move the response bar. 
     [task, myscreen] = getTurnResponse(task, myscreen);
     [task myscreen] = drawCenterCue(task,myscreen,0);
-elseif (task.thistrial.thisseg== 4) %[feedback segment] move the response bar. 
+    
+elseif (task.thistrial.thisseg== 4) %[feedback segment]
+    
+    % draw response 
     theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);
     mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,stimulus.fixColors.response)
     
+    % draw actual direction
     if task.thistrial.respSide
         theta = task.thistrial.direction*2*pi/360;
     else
         theta = (task.thistrial.direction+task.thistrial.dirDiff)*2*pi/360;
     end
-    
-    mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,[1 0 0 ])
+        mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,[1 0 0 ])
     
     % draw fixation
     [task myscreen] = drawCenterCue(task,myscreen,0);
@@ -234,6 +250,7 @@ global stimulus % call stimulus
             x = mod(mInfo.x-myscreen.screenWidth/2,720)+myscreen.screenWidth/2;
         end
     else
+        % mglSetMousePosition(ceil(x_screen),floor(y_screen)); %identify main screen?
         mInfo = mglGetMouse(myscreen.screenNumber);
         distx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         disty = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight; % what is imagewidth???
@@ -251,10 +268,14 @@ global stimulus % call stimulus
     % transform into visual space you need to flip into MGL angles, see
     % mglGluDiskAnnulus_ which does this step
 
-    if (task.thistrial.respAngle - nextrespangle_deg) < 1e-10
-        task.thistrial.respStable = task.thistrial.respStable + 1;
-    else
-        task.thistrial.respStable = 0;
+    if abs(task.thistrial.respAngle - nextrespangle_deg) > 1e-10
+        task.thistrial.respStable = 0; % the subject is moving the bar. 
+    else %subject not moving the bar.
+        if isnan(task.thistrial.respStable)
+            task.thistrial.respStable = nan; %subject has not started moving the bar. 
+        else % subject moved the bar and stopped.
+            task.thistrial.respStable = task.thistrial.respStable + 1;
+        end
     end
     
     task.thistrial.respAngle = nextrespangle_deg;
