@@ -16,6 +16,7 @@ getArgs(varargin,{'subjectID=-1','centerX=10','centerY=0','diameter=16'});
 myscreen.subjectID = subjectID;
 myscreen.saveData = 1;
 myscreen.displayName = 'screen1';
+%myscreen.displayName = 'testVpixx';
 %myscreen.displayName = 'test'; myscreen.screenNumber = 1;
 myscreen = initScreen(myscreen);
 
@@ -69,7 +70,7 @@ stimulus = [];
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
-stimulus.powerwheel = 0; %1; % powerwheel (1)  or mouse (0)
+stimulus.powerwheel = 1; %1; % powerwheel (1)  or mouse (0)
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -79,6 +80,7 @@ end
 
 myscreen = endTask(myscreen,task);
 mglClose
+mglDisplayCursor(1)
 end
 
 %% Initialize trials 
@@ -102,19 +104,19 @@ elseif task.thistrial.thisseg == 3
     stimulus.fixColor = stimulus.fixColors.response;    
     % set mouse position to the middle. 
     if stimulus.powerwheel
-        %each x movement (1 unit) counts as 1/2 degree turn (note the
+        %each x movement (+1 unit) counts as -1/2 degree turn (note the
         %screensize when doing this)
-        x_screen = ceil(myscreen.screenWidth/2+task.thistrial.respAngle*2);
-        mglSetMousePosition(x_screen,floor(myscreen.screenHeight/2));
+        x_screen = ceil(myscreen.screenWidth/2-task.thistrial.respAngle*2);
+        mglSetMousePosition(x_screen,floor(myscreen.screenHeight/2), myscreen.screenNumber);
         
         %correct the angle by the set mouse position
-        task.thistrial.respAngle = (x_screen-myscreen.screenWidth/2)/2; %(in degrees)
+        task.thistrial.respAngle = mod(-(x_screen-myscreen.screenWidth/2)/2,360); %(in degrees)
     else
         theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);   
         x_img = 5*cos(theta); y_img = 5*sin(theta);
         x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
         y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-        mglSetMousePosition(ceil(x_screen),floor(y_screen)); %identify main screen?
+        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); %identify main screen?
         
         % note that the mouse position is an approximation of the initial angle
         % it is the top left grid point from the circle of radius 5, with
@@ -124,6 +126,7 @@ elseif task.thistrial.thisseg == 3
         disty = (floor(y_screen)-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight; % what is imagewidth???
         task.thistrial.respAngle = atan2(disty,distx)/(2*pi)*360;
     end
+    mglDisplayCursor(0) %hide cursor
     
 else %intertrial interval or feedback
     stimulus.fixColor = stimulus.fixColors.interStim;
@@ -243,11 +246,13 @@ function [task myscreen]  = getTurnResponse(task, myscreen)
 global stimulus % call stimulus        
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber); %each movement by x=1 moves the  cursor 1/2 degrees
-        nextrespangle = (mInfo.x-myscreen.screenWidth/2)/2*2*pi/360; %(in radians)
-        if mInfo.x == 0
-            x = mod(mInfo.x-myscreen.screenWidth/2,720)+myscreen.screenWidth/2;
-        elseif mInfo.x == myscreen.screenWidth
-            x = mod(mInfo.x-myscreen.screenWidth/2,720)+myscreen.screenWidth/2;
+        nextrespangle = -(mInfo.x-myscreen.screenWidth/2)/2*2*pi/360; %(in radians)
+        nextrespangle_rad = mod(nextrespangle,2*pi);
+        nextrespangle_deg = mod(nextrespangle_rad/(2*pi)*360,360);
+        
+        if mInfo.x < 0 || mInfo.x > myscreen.screenWidth
+            mglSetMousePosition(ceil(myscreen.screenWidth/2 - nextrespangle_deg*2),floor(myscreen.screenHeight/2), myscreen.screenNumber);
+            mglDisplayCursor(0)% hide cursor
         end
     else
         % mglSetMousePosition(ceil(x_screen),floor(y_screen)); %identify main screen?
@@ -255,10 +260,9 @@ global stimulus % call stimulus
         distx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         disty = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight; % what is imagewidth???
         nextrespangle = atan2(disty,distx);
+        nextrespangle_rad = mod(nextrespangle,2*pi);
+        nextrespangle_deg = mod(nextrespangle_rad/(2*pi)*360,360);
     end
-    
-    nextrespangle_rad = mod(nextrespangle,2*pi);
-    nextrespangle_deg = mod(nextrespangle_rad/(2*pi)*360,360);
     
     %task.thistrial.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle-stimulus.live.mouseStart;
     %task.thistrial.mouseTick = stimulus.data.mouseTick + 1;
