@@ -56,7 +56,7 @@ practice=0;
 practiceType=-1;
 cue=0;
 
-getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -292,10 +292,6 @@ elseif stimulus.practice==2
     task{1}{1}.segmax(stimulus.seg.cue) = 1;
     task{1}{1}.segmin(stimulus.seg.isi) = 1;
     task{1}{1}.segmax(stimulus.seg.isi) = 1;
-    task{1}{1}.segmin(stimulus.seg.resp) = 4;
-    task{1}{1}.segmax(stimulus.seg.resp) = 4;
-    task{1}{1}.segmin(stimulus.seg.feedback) = 0.75;
-    task{1}{1}.segmax(stimulus.seg.feedback) = 0.75;
 end
 
 task{1}{1}.waitForBacktick = 1;
