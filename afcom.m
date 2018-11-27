@@ -497,6 +497,8 @@ keepIdxs = ~any(isnan(data(:,4)),2);
 data = data(keepIdxs,:);
 amt = amt(keepIdxs,:);
 
+disp(sprintf('Total trials: %i',size(data,1)));
+
 %% print out information
 disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
 
