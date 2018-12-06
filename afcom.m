@@ -40,6 +40,8 @@ global stimulus fixStimulus
 stimulus = struct;
 fixStimulus = struct;
 
+stimulus.rotSpd = 90;
+
 %% Initialize Variables
 
 % add arguments later
@@ -582,14 +584,14 @@ global stimulus
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
 if stimulus.powerwheel
-    mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*90-pi*90,myscreen.screenHeight/2,1);
+    mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*stimulus.rotSpd-pi*stimulus.rotSpd,myscreen.screenHeight/2,1);
 else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
 end
 
 % get the current mouse position:
 mInfo = mglGetMouse(myscreen.screenNumber);
-stimulus.live.mouseStart = -mInfo.x/90;
+stimulus.live.mouseStart = -mInfo.x/stimulus.rotSpd;
 
 if stimulus.cue==1
     stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
@@ -879,7 +881,7 @@ end
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        task.thistrial.respAngle = -(mInfo.x-myscreen.screenWidth/2)/90;
+        task.thistrial.respAngle = -(mInfo.x-myscreen.screenWidth/2)/stimulus.rotSpd;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
