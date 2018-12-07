@@ -24,30 +24,19 @@ myscreen = initScreen(myscreen);
 % S1: stimulus cue period (1.5s)
 % S2: stimulus period (0.5s)
 % S3: repsonse period (infs)
-% S4: feedback period (1.5s)
+% S4: feedback period (1s)
 % S5: random period of fixation (1~3s)
-task{1}{1}.segmin = [1.5 0.5 inf 1.5 1];
-task{1}{1}.segmax = [1.5 0.5 inf 1.5 3];
-%task{1}{1}.numBlocks = 1;
-task{1}{1}.numTrials = 300;
+task{1}{1}.segmin = [1.5 0.5 inf 1 1];
+task{1}{1}.segmax = [1.5 0.5 inf 1 3];
+task{1}{1}.numTrials = 100;
 task{1}{1}.getResponse = [0 0 0 0 1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
-%task{1}{1}.random = 1; %randomize order of parameter presentation. 
 
 %task parameters
-%dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];
-%task{1}{1}.parameter.dirDiff = dirDiff;
-%task{1}{1}.randVars.calculated.direction = nan; %"non-crucial" variables, block randomized. 
-%task{1}{1}.randVars.calculated.coherence = 1;
-% task{1}{1}.randVars.calculated.dirDiff = nan; having same randVars as
-% parameters creates an infinite loop in calculatedRandomization.m??
-% task{1}{1}.randVars.calculated.correctIncorrect = nan; %store values calculated during the task. 
 task{1}{1}.randVars.calculated.leftDir = nan;
 task{1}{1}.randVars.calculated.righttDir = nan;
-% task{1}{1}.randVars.calculated.cohPres = nan; %??? does it not save the parameters of interest automatically? 
 task{1}{1}.randVars.calculated.respAngle = nan; %response angle
 task{1}{1}.randVars.calculated.respStable = nan;
-%task{1}{1}.randVars.calculated.mouseStart = struct(); %how do we save not preallocated randVars???
 
 task{1}{1}.randVars.uniform.direction = [0:1:359];
 task{1}{1}.randVars.uniform.dirDiff = [-25:0.25:25];
@@ -55,14 +44,16 @@ task{1}{1}.randVars.uniform.respAngle = [0:1:359];
 
 task{1}{1}.parameter.distAttention = [0 1]; % cue both sides?
 task{1}{1}.parameter.respSide = [0 1]; %Is the response side left? (1) or right (0)
-%task{1}{1}.directions = [0:1:359]; %direction to be presented on the left side. 
-%task{1}{1}.dirDiff = [-45:0.25:45]; %direction to be presented on the right, relative to the left. 
-task{1}{1}.parameter.coherence = [1 0.8 0.6 0.4];
 
-[task{1}{1} myscreen] = initTask(task{1}{1},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+coherence = [1 0.4];
+for phaseN = 1:length(coherence)
+    task{1}{phaseN} = task{1}{1};
+    task{1}{phaseN}.parameter.coherence = coherence(phaseN);
+    [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+end
 
 % add a trace for the mouse position ??
-[task{1}{1} myscreen] = addTraces(task{1}{1},myscreen,'mouseTrack');
+% [task{1}{1} myscreen] = addTraces(task{1}{1},myscreen,'mouseTrack');
 
 % initialize stimulus
 global stimulus;
@@ -70,7 +61,13 @@ stimulus = [];
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
-stimulus.powerwheel = 1; %1; % powerwheel (1)  or mouse (0)
+stimulus.powerwheel = 0; %1; % powerwheel (1)  or mouse (0)
+
+stimulus.grabframe = 0; %save frames into matrices
+if stimulus.grabframe
+    global frame
+    frame = {};
+end
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -81,6 +78,11 @@ end
 myscreen = endTask(myscreen,task);
 mglClose
 mglDisplayCursor(1)
+
+if stimulus.grabframe
+    save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/dotsdircont/frame.mat', 'frame')
+end
+
 end
 
 %% Initialize trials 
@@ -93,7 +95,7 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 % S1: stimulus cue period (1.5s)
 % S2: stimulus period (0.5s)
 % S3: repsonse period (infs)
-% S4: feedback period (1.5s)
+% S4: feedback period (1s)
 % S5: random period of fixation (1~3s)
 global stimulus 
 
@@ -139,7 +141,7 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 % S1: stimulus cue period (1.5s)
 % S2: stimulus period (0.5s)
 % S3: repsonse period (infs)
-% S4: feedback period (1.5s)
+% S4: feedback period (1s)
 % S5: random period of fixation (1~3s)
 
 mglClearScreen % clear screen
@@ -186,7 +188,8 @@ elseif (task.thistrial.thisseg== 4) %[feedback segment]
     else
         theta = (task.thistrial.direction+task.thistrial.dirDiff)*2*pi/360;
     end
-        mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,[1 0 0 ])
+    
+    mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,[1 0 0 ])
     
     % draw fixation
     [task myscreen] = drawCenterCue(task,myscreen,0);
@@ -200,23 +203,21 @@ mglGluAnnulus(-stimulus.centerX,stimulus.centerY,...
     stimulus.circleSize(1)/2,stimulus.circleSize(1)/2+0.1,[1 1 1],100,1)
 mglGluAnnulus(stimulus.centerX,stimulus.centerY,...
     stimulus.circleSize(1)/2,stimulus.circleSize(1)/2+0.1,[1 1 1],100,1)
+
+if stimulus.grabframe
+    global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
+end
+
 end
 
 function [task myscreen] = drawCenterCue(task,myscreen,isStim)
 global stimulus     
 
-
 if isStim
     colors = [stimulus.fixColors.interStim', stimulus.fixColors.stim'];
     if task.thistrial.distAttention
-%         mglLines2(0.9, 0, 1.4, 0, 10,stimulus.fixColors.stim)
-%         mglLines2(-0.9, 0, -1.4, 0, 10,stimulus.fixColors.stim)
-
         mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
     else
-    %         mglLines2(0.9*(1-2*task.thistrial.respSide), 0, ...
-    %             1.4*(1-2*task.thistrial.respSide), 0,...
-    %             10,stimulus.fixColors.stim)
         startAngles = [0; 180];
 
         if ~(task.thistrial.respSide) %if the stimulus is on the right side.
@@ -227,10 +228,6 @@ if isStim
     end
 else %for response cue
     colors = [stimulus.fixColors.interStim', stimulus.fixColors.response'];
-
-%         mglLines2(0.9*(1-2*task.thistrial.respSide), 0, ...
-%             1.4*(1-2*task.thistrial.respSide), 0,...
-%             10,stimulus.fixColors.stim)
     startAngles = [0; 180];
 
     if ~(task.thistrial.respSide) %if the stimulus is on the right side.
@@ -263,10 +260,7 @@ global stimulus % call stimulus
         nextrespangle_rad = mod(nextrespangle,2*pi);
         nextrespangle_deg = mod(nextrespangle_rad/(2*pi)*360,360);
     end
-    
-    %task.thistrial.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle-stimulus.live.mouseStart;
-    %task.thistrial.mouseTick = stimulus.data.mouseTick + 1;
-    
+       
     % note that respAngle is stored in *real* angles -- so that it
     % corresponds correctly to the direction task. This means that when you
     % transform into visual space you need to flip into MGL angles, see
@@ -366,7 +360,7 @@ function dots = initDots(myscreen,dots)
 
     % convert the passed in parameters to real units
     if ~isfield(dots,'type'), dots.type = 'Linear';,end
-    if ~isfield(dots,'rmax'), dots.rmax = max(myscreen.imageWidth,myscreen.imageHeight)/2;,end %radius to fill the entire screen
+    if ~isfield(dots,'rmax'), dots.rmax = max(myscreen.imageWidth,myscreen.imageHeight)/2;,end %radius to fill the entire screen unit of imagewidth?
     if ~isfield(dots,'xcenter'), dots.xcenter = 0;,end %define centers 
     if ~isfield(dots,'ycenter'), dots.ycenter = 0;,end
     if ~isfield(dots,'dotsize'), dots.dotsize = 4;,end

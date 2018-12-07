@@ -2,11 +2,13 @@
 %        $Id: $
 %      usage: dotsdiraflr
 %         by: Josh Ryu
-%       date: 10/22/2018
-%    purpose: Compare motion direction in left or right patches of dots. 
+%       date: 11/08/2018
+%    purpose: Compares motion direction in left or right patches of dots. 
 %
-% Uses staircase. 
-% staircase termination might overlap. 
+% Uses staircase procedures. 
+% S1: stimulus period (0.5s)
+% S2: repsonse period (2s)
+% S3: random period of fixation (1~3s)
 
 function myscreen = dotsdiraflr(varargin)
 
@@ -21,22 +23,17 @@ myscreen.displayName = 'screen1';
 myscreen = initScreen(myscreen);
 
 % Go straight to task.
-% S1: random period of fixation (1~11s)
-% S2: stimulus period (1s)
-% S3: repsonse period (5s)
-task{1}{1}.segmin = [1 0.5 2];
-task{1}{1}.segmax = [3 0.5 2];
-%task{1}{1}.numBlocks = 1;
+% S1: stimulus period (0.5s)
+% S2: repsonse period (2s)
+% S3: random period of fixation (1~3s)
+task{1}{1}.segmin = [0.5 2 1];
+task{1}{1}.segmax = [0.5 2 3];
 task{1}{1}.numTrials = 300;
-task{1}{1}.getResponse = [0 0 1]; %segment to get response.
+task{1}{1}.getResponse = [0 1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
-%task{1}{1}.random = 1; %randomize order of parameter presentation. 
 
 %task parameters
-%dirDiff = [0, 1, 5, 10]; dirDiff = [dirDiff -dirDiff(2:end)];
-%task{1}{1}.parameter.dirDiff = dirDiff;
 task{1}{1}.randVars.calculated.direction = nan; %"non-crucial" variables, block randomized. 
-%task{1}{1}.randVars.calculated.coherence = 1;
 task{1}{1}.randVars.calculated.dirDiff = nan;
 task{1}{1}.randVars.calculated.correctIncorrect = nan; %store values calculated during the task. 
 task{1}{1}.randVars.calculated.leftDir = nan;
@@ -49,7 +46,6 @@ task{1}{phaseN} = task{1}{1};
 task{1}{phaseN}.parameter.coherence = coherence(phaseN);
 [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
 end
-% task{1}{1} = task; % do we need to do this ??? 
 
 % initialize stimulus
 global stimulus;
@@ -62,13 +58,14 @@ stimulus.stairUsePest = 1;
 stimulus.stairRep = 100; %repeat staircase every [stairRep] trials
 stimulus.stairN = 0; %keeps track of how many staircases they did
 stimulus.threshold = 8;
-%stimulus.threshold(2) = 8;
-%stimulus = initStaircase(stimulus); %initialize staircase. 
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
 directions = [0:1:359]; %direction to be presented on the left side. 
 stimulus.directions = directions;
+
+stimulus.grabframe = 0; %save frames into matrices
+if stimulus.grabframe, global frame; frame = {};, end
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -78,6 +75,10 @@ end
 
 myscreen = endTask(myscreen,task);
 mglClose
+
+if stimulus.grabframe
+    save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/dotsdiraflr/frame.mat', 'frame')
+end
 end
 
 function stimulus = initStaircase(stimulus)
@@ -126,14 +127,13 @@ end
 
 %% Start segment
 function [task myscreen] = startSegmentCallback(task, myscreen)
-% S1: random period of fixation (1~11s)
-% S2: stimulus period (1s)
-% S3: repsonse period (5s)
-% S4: feedback period (1s)
+% S1: stimulus period (0.5s)
+% S2: repsonse period (2s)
+% S3: random period of fixation (1~3s)
 global stimulus 
 
 %change stimulus accordingly
-if task.thistrial.thisseg == 2
+if task.thistrial.thisseg == 1
     % decide if left side is correct
     stimulus.leftcorrect = (rand(1)<0.5); %1 if correct side is on the left. 0 if left. 
     
@@ -149,7 +149,7 @@ if task.thistrial.thisseg == 2
     %fixation color
     stimulus.fixColor = stimulus.fixColors.stim;
         
-elseif task.thistrial.thisseg == 3
+elseif task.thistrial.thisseg == 2
     stimulus.fixColor = stimulus.fixColors.response;
 else %any(task.thistrial.thisseg == [1,3])
     stimulus.fixColor = stimulus.fixColors.interStim;
@@ -162,9 +162,8 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 mglClearScreen % clear screen
 
 global stimulus % call stimulus
-
 % draw dots
-if task.thistrial.thisseg == 2   
+if task.thistrial.thisseg == 1   
     % get variables for this task
     coherence = task.thistrial.coherence; %task.thistrial.coherence; 
     direction = task.thistrial.direction;
@@ -188,8 +187,19 @@ end
 % draw fixation
 %mglFixationCross(1,2,stimulus.fixColor);
 mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+
+% draw circle for stimulus patches
+mglGluAnnulus(-stimulus.centerX,stimulus.centerY,...
+    stimulus.circleSize(1)/2,stimulus.circleSize(1)/2+0.1,[1 1 1],100,1)
+mglGluAnnulus(stimulus.centerX,stimulus.centerY,...
+    stimulus.circleSize(1)/2,stimulus.circleSize(1)/2+0.1,[1 1 1],100,1)
+
 %mglFlush
 %mglClearScreen
+
+if stimulus.grabframe
+    global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
+end
 end
 
 %% Get response 
@@ -256,6 +266,7 @@ function stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diamet
   if ~isempty(diameter), circleSize = diameter;   % select circle size
   else circleSize = (myscreen.imageWidth/2) - fixDiskSize - distFromEdge; end  
   circleSize = [circleSize circleSize];
+  stimulus.circleSize = circleSize;
   
   if ~isempty(centerX), stimulus.centerX = centerX; %select X center (pass on to stimulus struct)
   else stimulus.centerX = fixDiskSize+circleSize/2; end
