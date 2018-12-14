@@ -108,6 +108,8 @@ end
 stimulus.imNames = {'im13', 'im18', 'im23', 'im30', 'im38', 'im48', 'im52', 'im56', 'im60', 'im71', 'im99', 'im327', 'im336', 'im393', 'im402'};
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
 stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/textures/tex_bw';
+% Tess 12-13-18
+stimulus.origDir = '~/proj/TextureSynthesis/stimuli/textures/orig_bw';
 stimulus.imSize = 6;
 stimulus.eccentricity = 6;
 stimulus.poolSizes = {'1x1', '2x2', '3x3', '4x4'};
@@ -217,6 +219,7 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % directories
 texDir = stimulus.stimDir;
+origDir = stimulus.origDir;
 
 %% Load all 8 images for this trial
 imName = stimulus.imNames{task.thistrial.imgFam};
@@ -225,31 +228,64 @@ poolSize = stimulus.poolSizes{task.thistrial.poolSize};
 
 % Randomly select 4 images to display on this trial.
 %smpls = randperm(15,8);
-smpls = randperm(10,8);
+% smpls = randperm(10,8);
+smpls = randperm(10,4);
 isSame = randi([0,1], 1, 4);
+numCircles = 4;
 
 % at each location, randomize whether the first interval is a texture or
 % noise.
 isInt1Tex = randi([0,1], 1, 4);
 
+
 % first stimulus frame
-% 50-50 chance of target being phase scrambled vs. original image
+
+ % target image circle 
 if isInt1Tex(1)
   stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(1))), stimulus.live.mask);
 else
-  stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/noise_%s_%s_%s_smp%i.png', noiseDir, poolSize, layer, imName, smpls(1))), stimulus.live.mask);
+  stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
 end
 
-stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(2))), stimulus.live.mask);
-stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(3))), stimulus.live.mask);
-stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(4))), stimulus.live.mask);
+% rest of circles
+% for i = 2:numCircles
+%     if isInt1Tex(i)
+%         stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(i))), stimulus.live.mask);
+%     else
+%         stimulus.live.target_image = genTexFromIm(imread(sprintf('%s/noise_%s_%s_%s_smp%i.png', noiseDir, poolSize, layer, imName, smpls(i))), stimulus.live.mask);
+%     end
+% end
+% 
+% stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(2))), stimulus.live.mask);
+% stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(3))), stimulus.live.mask);
+% stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(4))), stimulus.live.mask);
+if isInt1Tex(2)
+  stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(2))), stimulus.live.mask);
+else
+  stimulus.live.d11 = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
+end
+if isInt1Tex(3)
+  stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(3))), stimulus.live.mask);
+else
+  stimulus.live.d12 = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
+end
+if isInt1Tex(4)
+  stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(4))), stimulus.live.mask);
+else
+  stimulus.live.d13 = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
+end
+
+% for i = 1:4
+%     a = stimulus.live.(sprintf('d1%i', i));
+% end
+
 
 % images for the second stimulus frame
 if isSame(1)
   stimulus.live.cued_image = stimulus.live.target_image;
 else
   if isInt1Tex(1)
-    stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/noise_%s_%s_%s_smp%i.png', noiseDir, poolSize, layer, imName, smpls(1))), stimulus.live.mask);
+    stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
   else
     stimulus.live.cued_image = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(1))), stimulus.live.mask);
   end
@@ -257,17 +293,29 @@ end
 if isSame(2)
   stimulus.live.d21 = stimulus.live.d11;
 else
-  stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(6))), stimulus.live.mask);
+    if isInt1Tex(2)
+        stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
+    else
+        stimulus.live.d21 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(2))), stimulus.live.mask);
+    end    
 end
 if isSame(3)
   stimulus.live.d22 = stimulus.live.d12;
 else
-  stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(7))), stimulus.live.mask);
+    if isInt1Tex(3)
+        stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
+    else
+        stimulus.live.d22 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(3))), stimulus.live.mask);
+    end
 end
 if isSame(4)
   stimulus.live.d23 = stimulus.live.d13;
 else
-  stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(8))), stimulus.live.mask);
+    if isInt1Tex(4)
+        stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
+    else
+        stimulus.live.d23 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(4))), stimulus.live.mask);
+    end
 end
 
 
@@ -283,7 +331,7 @@ task.thistrial.cueLoc = randi(4);
 task.thistrial.isCueFocal = randi([0, 1]);
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image %s, Layer %s, CueLocation: %i, isCueFocal: %i', task.trialnum, imName, layer, task.thistrial.cueLoc, task.thistrial.isCueFocal));
+disp(sprintf('Trial %d - Image %s, Layer %s, Pooling Region Size: %s, CueLocation: %i, isCueFocal: %i', task.trialnum, imName, layer,poolSize, task.thistrial.cueLoc, task.thistrial.isCueFocal));
 if task.trialnum > 1
     disp(sprintf('--CueSame on Last trial?: %g, Response on last trial: %g, LastTrialCorrect?: %g', task.lasttrial.isTargetSame, task.lasttrial.response, task.lasttrial.correct));
 end
