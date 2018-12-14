@@ -40,6 +40,8 @@ global stimulus fixStimulus
 stimulus = struct;
 fixStimulus = struct;
 
+stimulus.rotSpd = 90;
+
 %% Initialize Variables
 
 % add arguments later
@@ -56,7 +58,7 @@ practice=0;
 practiceType=-1;
 cue=0;
 
-getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=2.5','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -292,10 +294,6 @@ elseif stimulus.practice==2
     task{1}{1}.segmax(stimulus.seg.cue) = 1;
     task{1}{1}.segmin(stimulus.seg.isi) = 1;
     task{1}{1}.segmax(stimulus.seg.isi) = 1;
-    task{1}{1}.segmin(stimulus.seg.resp) = 4;
-    task{1}{1}.segmax(stimulus.seg.resp) = 4;
-    task{1}{1}.segmin(stimulus.seg.feedback) = 0.75;
-    task{1}{1}.segmax(stimulus.seg.feedback) = 0.75;
 end
 
 task{1}{1}.waitForBacktick = 1;
@@ -427,13 +425,13 @@ for fi = 1:length(files)
     maxTrackLength = max(maxTrackLength,size(mt{fi},2));
 end
 
-clear duration
-warning('adding duration = 1 if missing');
-for ei = 1:length(e)
-    if ~isfield(e{ei}.parameter,'duration')
-        e{ei}.parameter.duration = ones(size(e{ei}.parameter.trialType));
-    end
-end
+% clear duration
+% warning('adding duration = 1 if missing');
+% for ei = 1:length(e)
+%     if ~isfield(e{ei}.parameter,'duration')
+%         e{ei}.parameter.duration = ones(size(e{ei}.parameter.trialType));
+%     end
+% end
 
 %% concatenate all trials
 pvars = {'target','trialType','cue','duration'};
@@ -450,13 +448,15 @@ end
 
 runcount = [0 0];
 for run = 1:length(e)
-    runs = [runs ones(1,e{run}.nTrials)];
-    runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
-    for pii = 1:length(pvars)
-        eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
-    end
-    for ri = 1:length(rvars)
-        eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
+    if e{run}.nTrials>0
+        runs = [runs ones(1,e{run}.nTrials)];
+        runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
+        for pii = 1:length(pvars)
+            eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
+        end
+        for ri = 1:length(rvars)
+            eval(sprintf('%s = [%s e{run}.randVars.%s];',rvars{ri},rvars{ri},rvars{ri}));
+        end
     end
 end
 
@@ -498,6 +498,8 @@ data = [cue' runs' trialType' respDistance' dur'];
 keepIdxs = ~any(isnan(data(:,4)),2);
 data = data(keepIdxs,:);
 amt = amt(keepIdxs,:);
+
+disp(sprintf('Total trials: %i',size(data,1)));
 
 %% print out information
 disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
@@ -576,18 +578,21 @@ end
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
+warning('sidedist not set');
+warning('featdist not set');
+warning('
 % swap seglen in
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
 if stimulus.powerwheel
-    mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*90-pi*90,myscreen.screenHeight/2,1);
+    mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*stimulus.rotSpd-pi*stimulus.rotSpd,myscreen.screenHeight/2,1);
 else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
 end
 
 % get the current mouse position:
 mInfo = mglGetMouse(myscreen.screenNumber);
-stimulus.live.mouseStart = -mInfo.x/90;
+stimulus.live.mouseStart = -mInfo.x/stimulus.rotSpd;
 
 if stimulus.cue==1
     stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
@@ -877,7 +882,7 @@ end
 if (task.thistrial.thisseg==stimulus.seg.resp)
     if stimulus.powerwheel
         mInfo = mglGetMouse(myscreen.screenNumber);
-        task.thistrial.respAngle = -mInfo.x/90;
+        task.thistrial.respAngle = -(mInfo.x-myscreen.screenWidth/2)/stimulus.rotSpd;
     else
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
@@ -890,7 +895,7 @@ if (task.thistrial.thisseg==stimulus.seg.resp)
     end
     task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
-    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle-stimulus.live.mouseStart;
+    stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
     
     % note that respAngle is stored in *real* angles -- so that it
@@ -944,24 +949,22 @@ end
 drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
 
 % do eye position tracking, but only during some segments
-if (~stimulus.noeye) && any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim])
+if (~stimulus.noeye) && (stimulus.eyewindow>0) && any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.cue stimulus.seg.stim])
     % check eye pos
-    if (~stimulus.noeye) && (stimulus.eyewindow>0)
 
-        % mouse version for testing with no eyetracker
-        if stimulus.mousedebug
-            mInfo = mglGetMouse(myscreen.screenNumber);
-            degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-            degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+    % mouse version for testing with no eyetracker
+    if stimulus.mousedebug
+        mInfo = mglGetMouse(myscreen.screenNumber);
+        degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+        degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
 
-            pos = [degx, degy];
-        else
-            [pos,~] = mglEyelinkGetCurrentEyePos;
-        end
-        % compute distance
-        dist = hypot(pos(1),pos(2));
+        pos = [degx, degy];
+    else
+        [pos,~] = mglEyelinkGetCurrentEyePos;
     end
-    
+    % compute distance
+    dist = hypot(pos(1),pos(2));
+
     if task.thistrial.thisseg==stimulus.seg.fix
         if stimulus.live.fixCount > stimulus.eyeFrames
             task = jumpSegment(task);
