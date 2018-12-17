@@ -578,6 +578,9 @@ end
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
+warning('sidedist not set');
+warning('featdist not set');
+warning('
 % swap seglen in
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
