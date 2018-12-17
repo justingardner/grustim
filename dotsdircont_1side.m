@@ -43,7 +43,7 @@ task{1}{1}.randVars.uniform.direction = [0:1:359];
 task{1}{1}.randVars.uniform.dirDiff = [-25:0.25:25];
 task{1}{1}.randVars.uniform.respAngle = [0:1:359];
 
-task{1}{1}.parameter.distAttention = [0 1]; % cue both sides?
+task{1}{1}.parameter.distAttention = [0]; % cue both sides?
 task{1}{1}.parameter.respSide = [0 1]; %Is the response side left? (1) or right (0)
 
 coherence = [1 0.4];
@@ -161,14 +161,15 @@ elseif task.thistrial.thisseg == 2 % [stimulus period] draw dots
     % choose stencil with L/R holes
     mglStencilSelect(1);
     
+    if task.thistrial.respSide == 1
     % draw the left patch
     stimulus.dots{1}.dir = direction;
     stimulus.dots{1} = updateDots(stimulus.dots{1},coherence,myscreen);
-  
+    else
     % draw the right patch
     stimulus.dots{2}.dir = mod(direction+dirDiff,360);
     stimulus.dots{2} = updateDots(stimulus.dots{2},coherence,myscreen);
-  
+    end
     % return to unstenciled drawing
     mglStencilSelect(0);
     

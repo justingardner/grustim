@@ -7,7 +7,7 @@
 % Cues to one side, two side or both sides
 % check resolution of the responses (is it 0.5?)
 
-function myscreen = dotsdircont(varargin)
+function myscreen = dotsdircont_dist(varargin)
 
 % set input arguments
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'});
@@ -22,13 +22,12 @@ myscreen.displayName = 'screen1';
 myscreen = initScreen(myscreen);
 
 % Go straight to task.
-% S1: stimulus cue period (1.5s)
-% S2: stimulus period (0.5s)
-% S3: repsonse period (infs)
-% S4: feedback period (1s)
-% S5: random period of fixation (1~3s)
-task{1}{1}.segmin = [1.5 0.5 inf 1 1];
-task{1}{1}.segmax = [1.5 0.5 inf 1 3];
+% S1: stimulus period (0.5s)
+% S2: repsonse period (infs)
+% S3: feedback period (1s)
+% S4: random period of fixation (1~3s)
+task{1}{1}.segmin = [0.5 inf 1 1];
+task{1}{1}.segmax = [0.5 inf 1 3];
 task{1}{1}.numTrials = 100;
 task{1}{1}.getResponse = [0 0 0 0 1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
@@ -43,7 +42,7 @@ task{1}{1}.randVars.uniform.direction = [0:1:359];
 task{1}{1}.randVars.uniform.dirDiff = [-25:0.25:25];
 task{1}{1}.randVars.uniform.respAngle = [0:1:359];
 
-task{1}{1}.parameter.distAttention = [0 1]; % cue both sides?
+task{1}{1}.parameter.distAttention = [1]; % cue both sides?
 task{1}{1}.parameter.respSide = [0 1]; %Is the response side left? (1) or right (0)
 
 coherence = [1 0.4];
@@ -93,17 +92,17 @@ end
 
 %% Start segment
 function [task myscreen] = startSegmentCallback(task, myscreen)
-% S1: stimulus cue period (1.5s)
-% S2: stimulus period (0.5s)
-% S3: repsonse period (infs)
-% S4: feedback period (1s)
-% S5: random period of fixation (1~3s)
+% S1: stimulus period (0.5s)
+% S2: repsonse period (infs)
+% S3: feedback period (1s)
+% S4: random period of fixation (1~3s)
+
 global stimulus 
 
 %change stimulus accordingly
-if any(task.thistrial.thisseg == [1 2])
+if any(task.thistrial.thisseg == [1])
     stimulus.fixColor = stimulus.fixColors.stim;
-elseif task.thistrial.thisseg == 3
+elseif task.thistrial.thisseg == 2
     stimulus.fixColor = stimulus.fixColors.response;    
     % set mouse position to the middle. 
     if stimulus.powerwheel
@@ -149,10 +148,7 @@ mglClearScreen % clear screen
 
 global stimulus % call stimulus
 
-if task.thistrial.thisseg == 1 %[cue period] draw cue  
-    [task myscreen] = drawCenterCue(task,myscreen,1);
-
-elseif task.thistrial.thisseg == 2 % [stimulus period] draw dots   
+if task.thistrial.thisseg == 1 % [stimulus period] draw dots   
     % get variables for this task
     coherence = task.thistrial.coherence; %task.thistrial.coherence; 
     direction = task.thistrial.direction;
@@ -173,11 +169,11 @@ elseif task.thistrial.thisseg == 2 % [stimulus period] draw dots
     mglStencilSelect(0);
     
     [task myscreen] = drawCenterCue(task,myscreen,1);
-elseif (task.thistrial.thisseg==3) %[response segment] move the response bar. 
+elseif (task.thistrial.thisseg==2) %[response segment] move the response bar. 
     [task, myscreen] = getTurnResponse(task, myscreen);
     [task myscreen] = drawCenterCue(task,myscreen,0);
     
-elseif (task.thistrial.thisseg== 4) %[feedback segment]
+elseif (task.thistrial.thisseg==3) %[feedback segment]
     
     % draw response 
     theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);
