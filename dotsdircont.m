@@ -16,8 +16,8 @@ getArgs(varargin,{'subjectID=-1','centerX=10','centerY=0','diameter=16'});
 % set up screen
 myscreen.subjectID = subjectID;
 myscreen.saveData = 1;
-myscreen.displayName = 'screen1';
-%myscreen.displayName = 'testVpixx';
+%myscreen.displayName = 'screen1';
+myscreen.displayName = 'VPixx';
 %myscreen.displayName = 'test'; myscreen.screenNumber = 1;
 myscreen = initScreen(myscreen);
 
