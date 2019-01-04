@@ -40,7 +40,7 @@ task{1}{1}.randVars.calculated.leftDir = nan;
 task{1}{1}.randVars.calculated.righttDir = nan;
 task{1}{1}.randVars.calculated.cohPres = nan; %??? does it not save the parameters of interest automatically? 
 
-coherence = [1 0.8 0.6 0.4];
+coherence = [0.3 0.2 0.1];
 for phaseN = 1:length(coherence)
 task{1}{phaseN} = task{1}{1};
 task{1}{phaseN}.parameter.coherence = coherence(phaseN);
