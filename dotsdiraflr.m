@@ -65,15 +65,15 @@ else % run fixed intervals (set the values here)
     %coherence(end+1) = 0.8; 
     %dirdiffs{end+1} = linspace(1,10,8);
     coherence(end+1) = 0.6; 
-    dirdiffs{end+1} = linspace(4,16,8);
+    dirdiffs{end+1} = linspace(4,32,8);
     coherence(end+1) = 0.4; 
-    dirdiffs{end+1} = linspace(4,16,8);
+    dirdiffs{end+1} = linspace(4,32,8);
     coherence(end+1) = 0.3; 
-    dirdiffs{end+1} = linspace(4,16,8);
+    dirdiffs{end+1} = linspace(4,32,8);
     coherence(end+1) = 0.2; 
-    dirdiffs{end+1} = linspace(4,16,8);
+    dirdiffs{end+1} = linspace(4,32,8);
     coherence(end+1) = 0.1; 
-    dirdiffs{end+1} = linspace(4,16,8);
+    dirdiffs{end+1} = linspace(4,32,8);
 end
 
 for phaseN = 1:length(coherence)
