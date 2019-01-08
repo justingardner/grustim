@@ -16,8 +16,8 @@ getArgs(varargin,{'subjectID=-1','centerX=10','centerY=0','diameter=16'});
 % set up screen
 myscreen.subjectID = subjectID;
 myscreen.saveData = 1;
-myscreen.displayName = 'screen1';
-%myscreen.displayName = 'testVpixx';
+%myscreen.displayName = 'screen1';
+myscreen.displayName = 'VPixx';
 %myscreen.displayName = 'test'; myscreen.screenNumber = 1;
 myscreen = initScreen(myscreen);
 
@@ -30,7 +30,7 @@ myscreen = initScreen(myscreen);
 task{1}{1}.segmin = [1.5 0.5 inf 1 1];
 task{1}{1}.segmax = [1.5 0.5 inf 1 3];
 task{1}{1}.numTrials = 100;
-task{1}{1}.getResponse = [0 0 0 0 1 0]; %segment to get response.
+task{1}{1}.getResponse = [0 0 0 1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
 %task parameters
