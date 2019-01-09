@@ -257,7 +257,10 @@ global stimulus
 if any(task.thistrial.whichButton == [1 2])
     resIsLeft = (task.thistrial.whichButton == 1); %1 if the subject chose left
     correctIncorrect = (stimulus.leftcorrect == resIsLeft); %1 if correct
-    stimulus.stairN = stimulus.stairN+1; %count how many times 
+    
+    if task.runfixedint == 0
+        stimulus.stairN = stimulus.stairN+1; %count how many times 
+    end
 else
     stimIsLeft = nan; resIsLeft = nan; correctIncorrect = nan;
 end
@@ -287,7 +290,7 @@ else, corrString = 'no response'; end
 %stimulus.staircase(stimulus.leftcorrect+1) = doStaircase('update',stimulus.staircase(stimulus.leftcorrect+1),correctIncorrect,abs(task.thistrial.dirDiff));
 %[stimulus.threshold(stimulus.leftcorrect+1), stimulus.staircase(stimulus.leftcorrect+1)] = doStaircase('testValue',stimulus.staircase(stimulus.leftcorrect+1));
 
-if task.runfixedint
+if task.runfixedint == 0
     stimulus.staircase = doStaircase('update',stimulus.staircase,correctIncorrect,abs(task.thistrial.dirDiff));
     [stimulus.threshold, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
 end
