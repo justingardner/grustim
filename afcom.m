@@ -82,6 +82,7 @@ end
 %% Open Old Stimfile
 if ~stimulus.replay
     stimulus.counter = 1;
+    stimulus.scanCounter = 1;
     
     if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom/%s',mglGetSID))
         % Directory exists, check for a stimefile
@@ -95,6 +96,7 @@ if ~stimulus.replay
             stimulus.counter = s.stimulus.counter + 1;
             stimulus.colors = s.stimulus.colors;
             stimulus.colorwheel = s.stimulus.colorwheel;
+            stimulus.scanCounter = s.stimulus.scanCounter + 1;
             clear s;
             disp(sprintf('(afcom) Data file: %s loaded.',fname));
         else
@@ -104,16 +106,21 @@ if ~stimulus.replay
 end
 
 %% Display run info
-stimulus.counter = -1;
 if ~stimulus.replay
     disp('*************************');
-    disp(sprintf('(afcom) This is scan #%i',stimulus.counter));
+    if stimulus.scan
+        disp(sprintf('(afcom) This is scan #%i',stimulus.scanCounter));
+    else
+        disp(sprintf('(afcom) This is run #%i',stimulus.counter));
+    end
     disp('*************************');
 end
 
 %% Setup Screen
 if stimulus.replay
     myscreen = initScreen('replayScreen');
+elseif stimulus.scan
+    myscreen = initScreen('fMRIproj32');
 else
     myscreen = initScreen('VPixx');
 end
@@ -185,6 +192,24 @@ if 1 %~isfield(stimulus,'colorwheel')
 end
 
 stimulus.colors.mean = [1 1 1]*mean(stimulus.colorwheel.rgb(:));
+
+%% Draw the colorwheel to screen and then save it
+mglClearScreen;
+
+% When we cue spatial/direction we need to draw the color picker
+for ti = 1:length(stimulus.thetas)
+    theta = stimulus.thetas(ti);
+    mglGluPartialDisk_(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
+end
+% outer size is 1.25 degrees
+pixPerDeg = myscreen.screenWidth/myscreen.imageWidth;
+boxRad = ceil(pixPerDeg*1.25);
+
+% frame grab from the screen
+frame = mglFrameGrab([myscreen.screenWidth/2-boxRad,myscreen.screenHeight/2-boxRad,boxRad*2,boxRad*2]);
+
+% create a texture
+stimulus.pickerTex = mglCreateTexture(double(frame*255));
 
 %% Sizes
 stimulus.fixWidth = 0.5;
@@ -272,8 +297,8 @@ stimulus.seg.delay = 6;
 stimulus.seg.resp = 7;
 stimulus.seg.feedback = 8;
 
-task{1}{1}.segmin = [0 inf 0.5 0.75 inf 1 4 0.75];
-task{1}{1}.segmax = [2 inf 0.5 0.75 inf 1 4 0.75];
+task{1}{1}.segmin = [0 inf 0.75 0.75 inf 1 inf 0.75];
+task{1}{1}.segmax = [2 inf 0.75 0.75 inf 1 inf 0.75];
 
 if stimulus.noeye
     task{1}{1}.segmin(stimulus.seg.fix) = 0;
@@ -580,7 +605,8 @@ global stimulus
 
 warning('sidedist not set');
 warning('featdist not set');
-warning('
+warning('distdist not set');
+
 % swap seglen in
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
@@ -700,7 +726,7 @@ if any(cues==0)
     for di = 1:length(dotDirs)
         x = 1.5*stimulus.fixWidth * cos(dotDirs(di));
         y = 1.5*stimulus.fixWidth * sin(dotDirs(di));
-        mglLines2(x,y,2*x,2*y,2,stimulus.colors.white);    
+        mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);    
     end
 end
 
@@ -710,7 +736,7 @@ if any(cues==1)
     % draw the line from fixWidth to 2*fixWidth
     x = 1.5*stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target}.theta);
     y = 1.5*stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target}.theta);
-    mglLines2(x,y,2*x,2*y,2,stimulus.colors.white);
+    mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);
 end
 if any(cues==2)
     % feature - draw the motion direction or the color
@@ -828,10 +854,11 @@ global stimulus
 
 if stimulus.cue==1
     % When we cue spatial/direction we need to draw the color picker
-    for ti = 1:length(stimulus.thetas)
-        theta = stimulus.thetas(ti) + task.thistrial.cwOffset;
-        mglGluPartialDisk_(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
-    end
+%     for ti = 1:length(stimulus.thetas)
+%         theta = stimulus.thetas(ti) + task.thistrial.cwOffset;
+%         mglGluPartialDisk_(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
+%     end
+    mglBltTexture(stimulus.pickerTex,[0 0],0,0,task.thistrial.cwOffset*180/pi);
     % Also draw a little marker to indicate the current rotation
     mglGluPartialDisk_(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
 else
