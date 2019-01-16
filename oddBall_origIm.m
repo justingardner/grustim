@@ -58,8 +58,8 @@ myscreen = initStimulus('stimulus',myscreen);
 localInitStimulus();
   
 % Set response keys
-stimulus.responseKeys = [11 12 13 14];
-stimulus.responseKeys = [1 2 3];
+% stimulus.responseKeys = [11 12 13 14];
+stimulus.responseKeys = [11 12 13];
 
 % set colors
 stimulus.colors.white = [1 1 1];
@@ -451,7 +451,7 @@ validResponse = any(task.thistrial.whichButton == stimulus.responseKeys);
 if validResponse
   if stimulus.live.gotResponse==0
     task.thistrial.detected = 1;
-    task.thistrial.response = task.thistrial.whichButton;
+    task.thistrial.response = task.thistrial.whichButton-10;
     stimulus.live.fix = 0;
   else
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
