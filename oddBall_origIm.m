@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=1'});
+getArgs(varargin,{'plots=0','noeye=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 clear noeye plots
@@ -81,15 +81,14 @@ task{1}.waitForBacktick = 1;
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % Define stimulus timing
 % inf, Cue, Stimulus, Pause, Response, Feedback
-task{1}.segmin = [inf, 1.0, 0.6, 0.4, 1.2, .2];
-task{1}.segmax = [inf, 1.0, 0.6, 0.4, 1.2, .2];
+task{1}.segmin = [inf, 1.0, 0.6, 1.2, .2];
+task{1}.segmax = [inf, 1.0, 0.6, 1.2, .2];
 stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.cue = 2;
 stimulus.seg.stim = 3;
-stimulus.seg.blank = 4;
-stimulus.seg.response = 5;
-stimulus.seg.feedback = 6;
+stimulus.seg.response = 4;
+stimulus.seg.feedback = 5;
 
 if stimulus.noeye==1
   task{1}.segmin(1) = 0.1;
@@ -110,7 +109,7 @@ stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/textures/tex_bw';
 % Tess 12-13-18
 stimulus.origDir = '~/proj/TextureSynthesis/stimuli/textures/orig_bw';
 stimulus.imSize = 6;
-stimulus.eccentricity = 8;
+stimulus.eccentricity = 12;
 stimulus.poolSizes = {'1x1', '2x2', '3x3', '4x4'};
 stimulus.cueEcc = 4;
 stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
@@ -145,6 +144,8 @@ task{1}.random = 1;
 %       - or to keep track of what the response of the subject is.
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % Task variables to be calculated later
+task{1}.randVars.calculated.distractorLayer = NaN;
+task{1}.randVars.calculated.distractorPoolSize = NaN;
 task{1}.randVars.calculated.targetSide = NaN;
 task{1}.randVars.calculated.isCueFocal = NaN;
 task{1}.randVars.calculated.targetPosition = NaN;
@@ -225,6 +226,11 @@ imName = stimulus.imNames{task.thistrial.imgFam};
 layer = stimulus.layerNames{task.thistrial.layer};
 poolSize = stimulus.poolSizes{task.thistrial.poolSize};
 
+task.thistrial.distractorLayer = randi(length(stimulus.layerNames));
+task.thistrial.distractorPoolSize = randi(length(stimulus.poolSizes));
+distLayer = stimulus.layerNames{task.thistrial.distractorLayer};
+distPoolSz = stimulus.poolSizes{task.thistrial.distractorPoolSize};
+
 % Randomly select 4 images to display on this trial.
 %smpls = randperm(15,8);
 % smpls = randperm(10,8);
@@ -233,14 +239,13 @@ smpls = randperm(10,4);
 
 
 stimulus.live.left_oddball = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
-stimulus.live.right_oddball = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
+stimulus.live.right_oddball = stimulus.live.left_oddball;
+%stimulus.live.right_oddball = genTexFromIm(imread(sprintf('%s/%s.png', origDir, imName)), stimulus.live.mask);
 
-stimulus.live.dl1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(1))), stimulus.live.mask);
-stimulus.live.dl2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(2))), stimulus.live.mask);
-stimulus.live.dr1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(3))), stimulus.live.mask);
-stimulus.live.dr2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(4))), stimulus.live.mask);
-
-
+stimulus.live.dt1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(1))), stimulus.live.mask);
+stimulus.live.dt2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, poolSize, layer, imName, smpls(2))), stimulus.live.mask);
+stimulus.live.dd1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, distPoolSz, distLayer, imName, smpls(3))), stimulus.live.mask);
+stimulus.live.dd2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.png', texDir, distPoolSz, distLayer, imName, smpls(4))), stimulus.live.mask);
 
 %!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 % [akshay] (6) Edit and add code below to set the values of the randVars.calculated variables which you had defined above.
@@ -276,7 +281,7 @@ if any(task.thistrial.thisseg==[stimulus.seg.fix])
   stimulus.live.triggerTime = 0;
   stimulus.live.lastTrigger = -1;
 end
-
+stimulus.live.eyeCount = 0;
 stimulus.live.eyeDead = 0;
 
 % If in feedback segment, change the color of the cross to green or red.
@@ -292,21 +297,30 @@ end
 imSz = stimulus.imSize; % Size in Degrees of Visual Angle to display image
 ecc = stimulus.eccentricity; % Eccentricity to display image at
 cueX = stimulus.cueEcc/sqrt(2);
-locations = [-ecc ecc; -ecc 0; -ecc -ecc; ecc ecc; ecc 0; ecc -ecc];
-% locations = [ecc ecc; -ecc ecc; -ecc -ecc; ecc -ecc];
+locations = [-ecc/sqrt(2) ecc/sqrt(2); -ecc 0; -ecc/sqrt(2) -ecc/sqrt(2); ecc/sqrt(2) ecc/sqrt(2); ecc 0; ecc/sqrt(2) -ecc/sqrt(2)];
 
-% if cue is left
-if task.thistrial.targetSide == 1
-    % left
-    leftOddPos = task.thistrial.targetLoc; %targetLoc is left
-    rightOddPos = task.thistrial.otherOddLoc+3;
-elseif task.thistrial.targetSide == 2
-    % right
-    rightOddPos = task.thistrial.targetLoc + 3; %shift targetLoc by 3
-    leftOddPos = task.thistrial.otherOddLoc;   
+if task.thistrial.thisseg == stimulus.seg.stim
+  % if cue is left
+  if task.thistrial.targetSide == 1
+      % left
+      leftOddPos = task.thistrial.targetLoc; %targetLoc is left
+      rightOddPos = task.thistrial.otherOddLoc+3;
+      stimulus.live.dl1 = stimulus.live.dt1;
+      stimulus.live.dl2 = stimulus.live.dt2;
+      stimulus.live.dr1 = stimulus.live.dd1;
+      stimulus.live.dr2 = stimulus.live.dd2;
+  elseif task.thistrial.targetSide == 2
+      % right
+      rightOddPos = task.thistrial.targetLoc + 3; %shift targetLoc by 3
+      leftOddPos = task.thistrial.otherOddLoc;   
+      stimulus.live.dr1 = stimulus.live.dt1;
+      stimulus.live.dr2 = stimulus.live.dt2;
+      stimulus.live.dl1 = stimulus.live.dd1;
+      stimulus.live.dl2 = stimulus.live.dd2;
+  end
+
+  distLocations = setdiff(1:6, [rightOddPos, leftOddPos]);
 end
-
-distLocations = setdiff(1:6, [rightOddPos, leftOddPos]);
 
 
 
@@ -331,17 +345,12 @@ if task.thistrial.isCueFocal == 1 || task.thistrial.thisseg == stimulus.seg.feed
         trialColor = stimulus.colors.red;
       end
   else
-      trialColor = stimulus.colors.black;
+      trialColor = stimulus.colors;
   end
 else
   stimulus.live.draw4 = 1;
 end
 
-% cueXLocs = [cueX, cueX, cueX-1; -cueX, -cueX, -cueX+1; -cueX, -cueX, -cueX+1; cueX-1 cueX, cueX];
-% cueYLocs = [cueX, cueX-1, cueX; cueX, cueX-1, cueX; -cueX+1, -cueX, -cueX; -cueX, -cueX, -cueX+1];
-
-% cueXLocs = [cueX, cueX-.25, cueX-.75; -cueX, -cueX+.25, -cueX+.75; -cueX+.25, -cueX, -cueX+.75; cueX-.75 cueX, cueX-.25];
-% cueYLocs = [cueX, cueX-.75, cueX-.25; cueX, cueX-.75, cueX-.25; -cueX+.75, -cueX, -cueX+.25; -cueX+.25, -cueX, -cueX+.75];
 
 cueXLocs = [-cueX, -cueX, -cueX-1; cueX, cueX, cueX+1];
 cueYLocs = [-.25, .25, 0; -.25, .25, 0];
@@ -392,7 +401,7 @@ end
 
 % skip screen updates if you are already dead
 if task.thistrial.dead
-  if task.thistrial.dead && stimulus.live.eyeDead
+  if stimulus.live.eyeDead
     mglTextSet([],32,stimulus.colors.red);
     mglTextDraw('Eye Movement Detected',[0 0]);
   end
@@ -456,7 +465,6 @@ if validResponse
   else
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
   end
-  disp('jumping segment');
   stimulus.live.gotResponse=stimulus.live.gotResponse+1;
   task = jumpSegment(task);
 else
