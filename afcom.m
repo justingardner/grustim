@@ -300,9 +300,21 @@ stimulus.seg.feedback = 8;
 task{1}{1}.segmin = [0 inf 0.75 0.75 inf 1 inf 0.75];
 task{1}{1}.segmax = [2 inf 0.75 0.75 inf 1 inf 0.75];
 
+if stimulus.scan
+    % eye tracking is probably off, but put the dots up for one second
+    % before the cue period
+    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 inf 0.75];
+    task{1}{1}.segmax = [8 inf 0.75 0.75 inf 6 inf 0.75];
+end
+
 if stimulus.noeye
     task{1}{1}.segmin(stimulus.seg.fix) = 0;
     task{1}{1}.segmax(stimulus.seg.fix) = 0;
+end
+
+if stimulus.scan
+    task{1}{1}.segmin(stimulus.seg.fix) = 2;
+    task{1}{1}.segmax(stimulus.seg.fix) = 2;
 end
 
 if stimulus.practice==1
@@ -337,6 +349,11 @@ task{1}{1}.random = 1;
 task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
 task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
 task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+
+if stimulus.scan
+    task{1}{1}.parameter.trialType = [1 2 0];
+    task{1}{1}.parameter.duration = 1;
+end
 
 if stimulus.practice==1
     task{1}{1}.parameter.duration = 1.0;
@@ -739,18 +756,21 @@ if any(cues==1)
     mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);
 end
 if any(cues==2)
-    % feature - draw the motion direction or the color
+    % feature - draw the motion direction (vertical line) or the color
 
     if stimulus.cue==1
         coherence = 1;
         color = stimulus.colors.white;
+%         x = 1.5*stimulus.fixWidth * cos(stimulus.cueDots.dir);
+%         y = 1.5*stimulus.fixWidth * sin(stimulus.cueDots.dir);
+%         mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);
     elseif stimulus.cue==2
         coherence = 0;
         color = ang2rgb(stimulus.dotColors(task.thistrial.target));
     end
     % cue dots version
     stimulus.cueDots = updateDots(stimulus.cueDots,coherence,false);
-    
+
     mglStencilSelect(1);
     afPoints(stimulus.cueDots.x-stimulus.cueDots.maxX/2,stimulus.cueDots.y-stimulus.cueDots.maxY/2,stimulus.cueScale,color);
     mglStencilSelect(0);
@@ -858,7 +878,7 @@ if stimulus.cue==1
 %         theta = stimulus.thetas(ti) + task.thistrial.cwOffset;
 %         mglGluPartialDisk_(0,0,1,1.25,180/pi*(theta-stimulus.theta_/2),180/pi*stimulus.theta_,stimulus.colorwheel.rgb(ti,:));
 %     end
-    mglBltTexture(stimulus.pickerTex,[0 0],0,0,task.thistrial.cwOffset*180/pi);
+    mglBltTexture(stimulus.pickerTex,[0 0],0,0,task.thistrial.cwOffset*180/pi-90);
     % Also draw a little marker to indicate the current rotation
     mglGluPartialDisk_(0,0,1,1.25,180/pi*(task.thistrial.respAngle+task.thistrial.cwOffset)-2.5,5,[0.75 0.75 0.75]);
 else
@@ -934,7 +954,9 @@ end
 switch task.thistrial.thisseg
         
     case stimulus.seg.iti
-        drawStim(task,false);
+        if ~stimulus.scan
+            drawStim(task,false);
+        end
         drawFix(task,stimulus.colors.white);
     case stimulus.seg.fix % same as for ITI
         drawStim(task,false);
