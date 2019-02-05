@@ -57,8 +57,9 @@ mouse=0;
 practice=0; 
 practiceType=-1;
 cue=0;
+session=1;
 
-getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
+getArgs(varargin,{'scan=0','cue=1','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0','session=1'});
 stimulus.scan = scan;
 stimulus.plots = plots;
 stimulus.noeye = noeye;
@@ -71,8 +72,9 @@ stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
+stimulus.session = session;
 
-clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice powerwheel cue
+clear localizer invisible scan noeye task test2 attend build eyewindow mouse practice powerwheel cue session
 
 if stimulus.scan
     warning('Disabling eyewindow');
@@ -139,12 +141,68 @@ end
 if ~stimulus.replay
     myscreen.stimulusNames{1} = 'stimulus';
     
-    if stimulus.powerwheel
+    if stimulus.powerwheel==1
         stimulus.responseKeys = 1;
     else
-        stimulus.responseKeys = [1 2]; % left right
+        stimulus.responseKeys = [1 2 3]; % left right and submit answer (for scanning)
     end
 else
+end
+
+%% Block coding for scans
+if ~isfield(stimulus,'blocks')
+    stimulus.blocks = {};
+end
+
+if stimulus.session>length(stimulus.blocks)
+    % build blocks for this session
+    
+    % each scan session should consist of ~56 minutes of scanning total,
+    % which corresponds to some numbers of blocks. A "block" is a repeat of
+    % the exact same set of angles for the three different cueing
+    % conditions (no cue, spatial, feature) for each of the four possible
+    % responses. So 12 trials total.
+    
+    % Note that the uncued trials are identical in terms of stimulus, while
+    % the cued trials are in pairs of two. This means we can do a (small)
+    % amount of noise reduction by averaging over each pair. 
+    
+    % Each "run" should consist of roughly 7 minutes, so 28 trials, or ~228 
+    % per scan session. This is 19 blocks, which will be interleaved.
+    
+    % Note that a session is therefore useless if you don't scan all 228
+    % trials!! So if a scan fails, that run must be repeated. 
+    
+    block = struct;
+    
+    % build the block -- first create 19 sets of random directions
+    for i = 1:19
+        group = struct;
+        
+        group.dirs = [rand rand rand rand]*2*pi;
+        
+        block.group{i} = group;
+    end
+    
+    % re-build into the trial order
+    target = [ones(1,19*3) ones(1,19*3)*2 ones(1,19*3)*3 ones(1,19*3)*4];
+    trialType = repmat([ones(1,19) ones(1,19)*2 zeros(1,19)],1,4);
+    groups = repmat(1:19,1,12);
+    
+    block.groups = groups;
+    block.target = target;
+    block.trialType = trialType;
+    block.trial = 1;
+    
+    stimulus.blocks{end+1} = block;
+end
+
+%% If scan is on output the block/session info and how many trials remain to be completed
+if stimulus.scan
+    block = stimulus.blocks{stimulus.session};
+    
+    disp(sprintf('You are scanning! You are on trial #%i in block %i',block.trial,length(stimulus.blocks)));
+    disp(sprintf('There are %i trials remaining in this block',length(block.groups)-block.trial));
 end
 
 %% load the calib
@@ -303,8 +361,8 @@ task{1}{1}.segmax = [2 inf 0.75 0.75 inf 1 inf 0.75];
 if stimulus.scan
     % eye tracking is probably off, but put the dots up for one second
     % before the cue period
-    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 inf 0.75];
-    task{1}{1}.segmax = [8 inf 0.75 0.75 inf 6 inf 0.75];
+    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 2.5];
+    task{1}{1}.segmax = [8 inf 0.75 0.75 inf 6 2.5];
 end
 
 if stimulus.noeye
@@ -313,8 +371,8 @@ if stimulus.noeye
 end
 
 if stimulus.scan
-    task{1}{1}.segmin(stimulus.seg.fix) = 2;
-    task{1}{1}.segmax(stimulus.seg.fix) = 2;
+    task{1}{1}.segmin(stimulus.seg.fix) = 0;
+    task{1}{1}.segmax(stimulus.seg.fix) = 0;
 end
 
 if stimulus.practice==1
@@ -346,13 +404,14 @@ end
 
 task{1}{1}.random = 1;
 
-task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
-task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
-task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
-
 if stimulus.scan
-    task{1}{1}.parameter.trialType = [1 2 0];
+    task{1}{1}.parameter.trialType = -1;
     task{1}{1}.parameter.duration = 1;
+    task{1}{1}.parameter.target = -1;
+else
+    task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
+    task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
+    task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
 end
 
 if stimulus.practice==1
@@ -367,7 +426,7 @@ task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues
 
 if ~stimulus.replay && stimulus.scan
     task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
-    task{1}{1}.synchToVol(end) = 1;
+    task{1}{1}.synchToVol(stimulus.seg.iti) = 1;
 end
 
 % feature target
@@ -624,10 +683,17 @@ warning('sidedist not set');
 warning('featdist not set');
 warning('distdist not set');
 
+if stimulus.scan
+    % set trial type from current block
+    t = stimulus.blocks{end}.trial;
+    task.thistrial.trialType = stimulus.blocks{end}.trialType(t);
+    task.thistrial.target = stimulus.blocks{end}.target(t);
+end
+
 % swap seglen in
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
-if stimulus.powerwheel
+if stimulus.powerwheel>0
     mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*stimulus.rotSpd-pi*stimulus.rotSpd,myscreen.screenHeight/2,1);
 else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
@@ -656,7 +722,14 @@ end
 
 % set the angles of the patches
 for di = 1:length(stimulus.patches)
-    ctheta = randsample(stimulus.thetas,1);
+    if stimulus.scan
+        g = stimulus.blocks{end}.groups(t);
+        dirs = stimulus.blocks{end}.group{g};
+        ctheta = dirs(di);
+    else
+        ctheta = randsample(stimulus.thetas,1);
+
+    end
     
     if di==task.thistrial.target
         task.thistrial.targetAngle = ctheta;
@@ -664,7 +737,6 @@ for di = 1:length(stimulus.patches)
     if di==task.thistrial.distractor
         task.thistrial.distractorAngle = ctheta;
     end
-    
     if stimulus.cue==1
         % direction cue, so set the colors to be different
         stimulus.patches{di}.color = ang2rgb(ctheta);
@@ -696,6 +768,7 @@ stimulus.live.fixCount = 0;
 stimulus.data.mouseTick = 1;
 
 function [task, myscreen] = endTrialCallback(task,myscreen)
+global stimulus
 
 if task.thistrial.dead, return; end
 
@@ -704,6 +777,16 @@ if isnan(task.thistrial.respDistance)
     task.thistrial.respDistance = angdist(task.thistrial.respAngle,task.thistrial.targetAngle);
     task.thistrial.distDistance = angdist(task.thistrial.respAngle,task.thistrial.distractorAngle);
     disp(sprintf('Recorded: %s. angle of %1.2f true %1.2f: %1.2f distance',respType{task.thistrial.gotResponse+1},task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
+end
+
+if stimulus.scan
+    stimulus.blocks{end}.trial = stimulus.blocks{end}.trial + 1;
+    left = length(stimulus.blocks{end}.group)-stimulus.blocks{end}.trial;
+    if left>0
+        disp('There are %i trials remaining in this scan block',left);
+    else
+        disp('This is the final trial in this scan session');
+    end
 end
 
 function d = angdist(t1,t2)
@@ -927,20 +1010,22 @@ if task.thistrial.dead
 end
 
 if (task.thistrial.thisseg==stimulus.seg.resp)
-    if stimulus.powerwheel
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        task.thistrial.respAngle = -(mInfo.x-myscreen.screenWidth/2)/stimulus.rotSpd;
-    else
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-        degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-        if stimulus.cue==1
-            task.thistrial.respAngle = atan2(degy,degx) - task.thistrial.cwOffset;
+    if stimulus.powerwheel<2
+        if stimulus.powerwheel
+            mInfo = mglGetMouse(myscreen.screenNumber);
+            task.thistrial.respAngle = -(mInfo.x-myscreen.screenWidth/2)/stimulus.rotSpd;
         else
-            task.thistrial.respAngle = atan2(degy,degx);
+            mInfo = mglGetMouse(myscreen.screenNumber);
+            degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+            degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+            if stimulus.cue==1
+                task.thistrial.respAngle = atan2(degy,degx) - task.thistrial.cwOffset;
+            else
+                task.thistrial.respAngle = atan2(degy,degx);
+            end
         end
+        task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     end
-    task.thistrial.respAngle = mod(task.thistrial.respAngle,2*pi);
     
     stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle;
     stimulus.data.mouseTick = stimulus.data.mouseTick + 1;
@@ -1043,17 +1128,30 @@ if (~stimulus.noeye) && (stimulus.eyewindow>0) && any(task.thistrial.thisseg==[s
 end
 
 function [task, myscreen] = getResponseCallback(task, myscreen)
+global stimulus
 
 if task.thistrial.dead, return; end
 
-if task.thistrial.gotResponse==0
-    % jump to the feedback segment
-    task = jumpSegment(task);
+if ~stimulus.scan
+    if task.thistrial.gotResponse==0
+        % jump to the feedback segment
+        task = jumpSegment(task);
+    end
+else
+    if stimulus.powerwheel==2
+        if task.thistrial.whichButton==1
+            task.thistrial.respAngle = mod(task.thistrial.respAngle-pi/32,2*pi);
+        elseif task.thistrial.whichButton==2
+            task.thistrial.respAngle = mod(task.thistrial.respAngle+pi/32,2*pi);
+        else
+            task = jumpSegment(task);
+        end 
+    end
 end
 
 function drawFix(task,color)
 
-global stimulus;
+global stimulus
 
 if task.thistrial.dead
     mglGluDisk(0,0,[1 1],stimulus.colors.red,60);
