@@ -99,6 +99,7 @@ if ~stimulus.replay
             stimulus.colors = s.stimulus.colors;
             stimulus.colorwheel = s.stimulus.colorwheel;
             stimulus.scanCounter = s.stimulus.scanCounter + 1;
+            stimulus.blocks = s.stimulus.blocks;
             clear s;
             disp(sprintf('(afcom) Data file: %s loaded.',fname));
         else
@@ -361,18 +362,18 @@ task{1}{1}.segmax = [2 inf 0.75 0.75 inf 1 inf 0.75];
 if stimulus.scan
     % eye tracking is probably off, but put the dots up for one second
     % before the cue period
-    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 2.5];
-    task{1}{1}.segmax = [8 inf 0.75 0.75 inf 6 2.5];
+    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 4];
+    task{1}{1}.segmax = [8 inf 0.75 0.75 inf 6 4];
 end
 
 if stimulus.noeye
     task{1}{1}.segmin(stimulus.seg.fix) = 0;
     task{1}{1}.segmax(stimulus.seg.fix) = 0;
-end
 
-if stimulus.scan
-    task{1}{1}.segmin(stimulus.seg.fix) = 0;
-    task{1}{1}.segmax(stimulus.seg.fix) = 0;
+    if stimulus.scan
+        task{1}{1}.segmin(stimulus.seg.fix) = 1;
+        task{1}{1}.segmax(stimulus.seg.fix) = 1;
+    end
 end
 
 if stimulus.practice==1
@@ -720,12 +721,31 @@ else
     task.thistrial.distractor = distractors(task.thistrial.target);
 end
 
+% set the numbers of the distractors
+switch task.thistrial.target
+    case 1
+        task.thistrial.sidedist = 2;
+        task.thistrial.featdist = 3;
+        task.thistrial.distdist = 4;
+    case 2
+        task.thistrial.sidedist = 1;
+        task.thistrial.featdist = 4;
+        task.thistrial.distdist = 3;
+    case 3
+        task.thistrial.sidedist = 4;
+        task.thistrial.featdist = 1;
+        task.thistrial.distdist = 2;
+    case 4
+        task.thistrial.sidedist = 3;
+        task.thistrial.featdist = 2;
+        task.thistrail.distdist = 1;
+end
+
 % set the angles of the patches
 for di = 1:length(stimulus.patches)
     if stimulus.scan
         g = stimulus.blocks{end}.groups(t);
-        dirs = stimulus.blocks{end}.group{g};
-        ctheta = dirs(di);
+        ctheta = stimulus.blocks{end}.group{g}.dirs(di);
     else
         ctheta = randsample(stimulus.thetas,1);
 
@@ -783,7 +803,7 @@ if stimulus.scan
     stimulus.blocks{end}.trial = stimulus.blocks{end}.trial + 1;
     left = length(stimulus.blocks{end}.group)-stimulus.blocks{end}.trial;
     if left>0
-        disp('There are %i trials remaining in this scan block',left);
+        disp(sprintf('There are %i trials remaining in this scan block',left));
     else
         disp('This is the final trial in this scan session');
     end
@@ -1140,12 +1160,13 @@ if ~stimulus.scan
 else
     if stimulus.powerwheel==2
         if task.thistrial.whichButton==1
-            task.thistrial.respAngle = mod(task.thistrial.respAngle-pi/32,2*pi);
+            task.thistrial.respAngle = mod(task.thistrial.respAngle+pi/16,2*pi);
         elseif task.thistrial.whichButton==2
-            task.thistrial.respAngle = mod(task.thistrial.respAngle+pi/32,2*pi);
+            task.thistrial.respAngle = mod(task.thistrial.respAngle-pi/16,2*pi);
         else
             task = jumpSegment(task);
         end 
+        task.thistrial.gotResponse = 1;
     end
 end
 
