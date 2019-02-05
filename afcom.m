@@ -185,10 +185,18 @@ if stimulus.session>length(stimulus.blocks)
         block.group{i} = group;
     end
     
+    block.trials = 19*12;
+    
     % re-build into the trial order
     target = [ones(1,19*3) ones(1,19*3)*2 ones(1,19*3)*3 ones(1,19*3)*4];
     trialType = repmat([ones(1,19) ones(1,19)*2 zeros(1,19)],1,4);
     groups = repmat(1:19,1,12);
+    
+    order = randperm(block.trials);
+    
+    target = target(order);
+    trialType = trialType(order);
+    groups = groups(order);
     
     block.groups = groups;
     block.target = target;
@@ -362,8 +370,8 @@ task{1}{1}.segmax = [2 inf 0.75 0.75 inf 1 inf 0.75];
 if stimulus.scan
     % eye tracking is probably off, but put the dots up for one second
     % before the cue period
-    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 4];
-    task{1}{1}.segmax = [8 inf 0.75 0.75 inf 6 4];
+    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 5];
+    task{1}{1}.segmax = [10 inf 0.75 0.75 inf 6 5];
 end
 
 if stimulus.noeye
@@ -371,8 +379,8 @@ if stimulus.noeye
     task{1}{1}.segmax(stimulus.seg.fix) = 0;
 
     if stimulus.scan
-        task{1}{1}.segmin(stimulus.seg.fix) = 1;
-        task{1}{1}.segmax(stimulus.seg.fix) = 1;
+        task{1}{1}.segmin(stimulus.seg.fix) = 2;
+        task{1}{1}.segmax(stimulus.seg.fix) = 2;
     end
 end
 
@@ -680,10 +688,6 @@ end
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
-warning('sidedist not set');
-warning('featdist not set');
-warning('distdist not set');
-
 if stimulus.scan
     % set trial type from current block
     t = stimulus.blocks{end}.trial;
@@ -801,7 +805,7 @@ end
 
 if stimulus.scan
     stimulus.blocks{end}.trial = stimulus.blocks{end}.trial + 1;
-    left = length(stimulus.blocks{end}.group)-stimulus.blocks{end}.trial;
+    left = stimulus.blocks{end}.trials-stimulus.blocks{end}.trial;
     if left>0
         disp(sprintf('There are %i trials remaining in this scan block',left));
     else
@@ -1166,7 +1170,7 @@ else
         else
             task = jumpSegment(task);
         end 
-        task.thistrial.gotResponse = 1;
+        task.thistrial.gotResponse = 0;
     end
 end
 
