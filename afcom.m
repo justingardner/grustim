@@ -398,6 +398,14 @@ elseif stimulus.practice==2
     task{1}{1}.segmax(stimulus.seg.cue) = 1;
     task{1}{1}.segmin(stimulus.seg.isi) = 1;
     task{1}{1}.segmax(stimulus.seg.isi) = 1;
+elseif stimulus.practice==3
+    % scan practice mode
+    task{1}{1}.segmin(stimulus.seg.iti) = 0;
+    task{1}{1}.segmax(stimulus.seg.iti) = 2;
+    task{1}{1}.segmin(stimulus.seg.delay) = 3;
+    task{1}{1}.segmax(stimulus.seg.delay) = 3;
+    task{1}{1}.segmin(stimulus.seg.resp) = 5;
+    task{1}{1}.segmax(stimulus.seg.resp) = 5;
 end
 
 task{1}{1}.waitForBacktick = 1;
@@ -433,7 +441,7 @@ end
 
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
-if ~stimulus.replay && stimulus.scan
+if ~stimulus.replay && stimulus.scan && stimulus.practice==0
     task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
     task{1}{1}.synchToVol(stimulus.seg.iti) = 1;
 end
