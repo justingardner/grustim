@@ -18,9 +18,9 @@ stimulus = struct;
 scan = 0;
 run = 0;
 layer = '';
-getArgs(varargin,{'scan=1', 'run=1', 'layer=pool4'});
+getArgs(varargin,{'scan=0', 'blank=0', 'layer=pool4'});
 stimulus.scan = scan;
-stimulus.run = run;
+stimulus.blank = blank;
 stimulus.layer=layer;
 clear scan run;
 
@@ -80,20 +80,22 @@ stimulus.smpLen = 1.0 / stimRate; % seconds
 nSegs = stimRate * blockLen;
 
 % Task important variables
-stimulus.imNames = {'im13', 'rocks', 'glass'};
+stimulus.imNames = {'bricks', 'bark', 'rocks', 'glass'};
 stimulus.poolSize = '1x1_';
-stimulus.poolSize = '';
+%stimulus.poolSize = '';
 stimulus.nTexFams = length(stimulus.imNames);
 stimulus.imSize = 12;
 stimulus.stimXPos = 7; 
 stimulus.nTexSmps = 4;
-stimulus.nNoiseSmps = 3;
+stimulus.nNoiseSmps = 1;
+stimulus.nBkgdSmps = 25;
 stimulus.nSmpsPerSeg = nSegs;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/fzs/tex';
-stimulus.noiseDir = '~/proj/TextureSynthesis/stimuli/fzs/noise';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texER/tex';
+stimulus.noiseDir = '~/proj/TextureSynthesis/stimuli/texER/noise';
+stimulus.bkgdDir = '~/proj/TextureSynthesis/stimuli/texER/bkgd';
 
 %% Preload images
 mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
@@ -101,6 +103,7 @@ stimulus.live.tex = struct();
 stimulus.live.noise = struct();
 disppercent(-inf, 'Preloading images');
 
+% load texture and noise samples
 for i = 1:stimulus.nTexFams
   imName = stimulus.imNames{i};
   for j = 1:stimulus.nTexSmps
@@ -113,14 +116,21 @@ for i = 1:stimulus.nTexFams
   end
   disppercent(i / stimulus.nTexFams);
 end
+
+% load background samples
+for i = 1:stimulus.nBkgdSmps
+  nd = imread(sprintf('%s/bkgd_smp%i.png', stimulus.bkgdDir, i));
+  stimulus.live.bkgd.(sprintf('smp%i', i)) = genTexFromIm(nd, mask);
+end
+
 disppercent(inf);
 clear sd nd
 
 %%%%%%%%%%%%% TASK %%%%%%%%%%%%%%%%%
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [2.00 4.00];
-task{1}{1}.segmax = [2.00 4.00];
+task{1}{1}.segmin = [3.00 5.00];
+task{1}{1}.segmax = [3.00 5.00];
 stimulus.seg = {};
 stimulus.seg.stim = 1;
 stimulus.seg.ITI = 2;
@@ -128,19 +138,19 @@ stimulus.seg.ITI = 2;
 % Trial parameters
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
-task{1}{1}.numTrials = 63;
+task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
 
 if stimulus.scan
   task{1}{1}.synchToVol(end) = 1;
   % Shorten the last segment to account for synchtovol
-  task{1}{1}.segmin(end) = 3.800;
-  task{1}{1}.segmax(end) = 3.800;
+  task{1}{1}.segmin(end) = 4.800;
+  task{1}{1}.segmax(end) = 4.800;
 end
 
 % Specify task parameters
 task{1}{1}.parameter.texFam = 1:length(stimulus.imNames);
-task{1}{1}.parameter.sampleIdx = 1:7; % 1-4 are textures, 5-7 are noise.
+task{1}{1}.parameter.sampleIdx = 1:5; % 1-4 are textures, 5-7 are noise.
 
 % Task variables to be calculated later
 task{1}{1}.randVars.calculated.noiseOrTex = {NaN};
@@ -264,6 +274,12 @@ if task.thistrial.thisseg== stimulus.seg.stim
     mglBltTexture(stimulus.live.trialStim, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
     mglBltTexture(stimulus.live.trialStim, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
   end
+elseif task.thistrial.thisseg==stimulus.seg.ITI
+  if mod(stimIdx,2) == 1 && ~stimulus.blank
+    thisBkgd = stimulus.live.bkgd.(sprintf('smp%i', stimIdx));
+    mglBltTexture(thisBkgd, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(thisBkgd, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+  end 
 end
 
 
