@@ -28,9 +28,14 @@ myscreen = initScreen(myscreen);
 % S3: random period of fixation (1~3s)
 task{1}{1}.segmin = [0.5 2 1];
 task{1}{1}.segmax = [0.5 2 3];
-task{1}{1}.numTrials = 300;
+task{1}{1}.numTrials = 160;
 task{1}{1}.getResponse = [0 1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
+
+% Run fixed intervals (1) or staircase (0)
+task{1}{1}.runfixedint = 1;
+task{1}{1}.blankrun = 1;
+coherence = [0.6, 0.4, 0.3, 0.2, 0.1];
 
 %task parameters
 task{1}{1}.randVars.calculated.direction = nan; %"non-crucial" variables, block randomized. 
@@ -40,31 +45,67 @@ task{1}{1}.randVars.calculated.leftDir = nan;
 task{1}{1}.randVars.calculated.righttDir = nan;
 task{1}{1}.randVars.calculated.cohPres = nan; %??? does it not save the parameters of interest automatically? 
 
-coherence = [1 0.8 0.6 0.4];
-for phaseN = 1:length(coherence)
-task{1}{phaseN} = task{1}{1};
-task{1}{phaseN}.parameter.coherence = coherence(phaseN);
-[task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
-end
-
 % initialize stimulus
 global stimulus;
 stimulus = [];
-stimulus.stairUp = 1;
-stimulus.stairDown = 2;
-stimulus.stairStepSize = 0.2;
-stimulus.stairUseLevitt = 0;
-stimulus.stairUsePest = 1;
-stimulus.stairRep = 100; %repeat staircase every [stairRep] trials
-stimulus.stairN = 0; %keeps track of how many staircases they did
-stimulus.threshold = 8;
+
+if task{1}{1}.runfixedint == 0
+    stimulus.stairUp = 1;
+    stimulus.stairDown = 2;
+    stimulus.stairStepSize = 0.2;
+    stimulus.stairUseLevitt = 0;
+    stimulus.stairUsePest = 1; %use PEST
+    stimulus.stairRep = 100; %repeat staircase every [stairRep] trials
+    stimulus.stairN = 0; %keeps track of how many staircases they did
+    stimulus.threshold = 8;
+else % run fixed intervals (set the values here) 
+    coherence = [];dirdiffs = {};
+    %coherence(end+1) = 1;
+    %dirdiffs{end+1} = linspace(1,10,8);
+    %coherence(end+1) = 0.8; 
+    %dirdiffs{end+1} = linspace(1,10,8);
+    coherence(end+1) = 0.6; 
+    dirdiffs{end+1} = linspace(4,32,8);
+    coherence(end+1) = 0.4; 
+    dirdiffs{end+1} = linspace(4,32,8);
+    coherence(end+1) = 0.3; 
+    dirdiffs{end+1} = linspace(4,32,8);
+    coherence(end+1) = 0.2; 
+    dirdiffs{end+1} = linspace(4,32,8);
+    coherence(end+1) = 0.1; 
+    dirdiffs{end+1} = linspace(4,32,8);
+end
+
+for phaseN = 1:length(coherence)
+    task{1}{phaseN} = task{1}{1};
+    
+    if task{1}{1}.runfixedint == 1
+        task{1}{phaseN}.parameter.coherence = coherence(phaseN);
+        task{1}{1}.parameter.dirdiffs = dirdiffs{phaseN};
+    end
+    
+    [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+end
+
+if task{1}{1}.blankrun == 1
+    phaseN = length(coherence)+1;
+    task{1}{phaseN} = task{1}{1};
+    task{1}{phaseN}.numTrials = 15;
+    task{1}{phaseN}.parameter.coherence = 1;
+    if task{1}{1}.runfixedint == 1
+        task{1}{1}.parameter.dirdiffs = dirdiffs{1};
+    end
+    [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+    task{1} = task{1}([phaseN, 1:phaseN-1]);
+end
+
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
 directions = [0:1:359]; %direction to be presented on the left side. 
 stimulus.directions = directions;
 
-stimulus.grabframe = 0; %save frames into matrices
+stimulus.grabframe = 0; %save frames into matrices for outputting task image
 if stimulus.grabframe, global frame; frame = {};, end
 
 phaseNum = 1;
@@ -112,17 +153,22 @@ end
 %% Initialize trials 
 function [task myscreen] = initTrialCallback(task, myscreen)
     global stimulus
-    if task.trialnum == 1 %does the task 
-        stimulus.stairN = 0;
-    end
     
-    %initialize staircase. 
-    if mod(stimulus.stairN, stimulus.stairRep) == 0
-        stimulus = initStaircase(stimulus);
+    if task.runfixedint == 0
+        if task.trialnum == 1 %does the task 
+            stimulus.stairN = 0;
+        end
+
+        %initialize staircase. 
+        if mod(stimulus.stairN, stimulus.stairRep) == 0
+            stimulus = initStaircase(stimulus);
+        end
+
+        [stimulus.threshold stimulus.staircase] = doStaircase('testValue',stimulus.staircase); %left threshold
+    %     [stimulus.threshold(2) stimulus.staircase(2)] = doStaircase('testValue',stimulus.staircase(2)); %right threshold
+    else
+        stimulus.threshold = task.thistrial.dirdiffs;
     end
-    
-    [stimulus.threshold stimulus.staircase] = doStaircase('testValue',stimulus.staircase); %left threshold
-%     [stimulus.threshold(2) stimulus.staircase(2)] = doStaircase('testValue',stimulus.staircase(2)); %right threshold
 end
 
 %% Start segment
@@ -211,7 +257,10 @@ global stimulus
 if any(task.thistrial.whichButton == [1 2])
     resIsLeft = (task.thistrial.whichButton == 1); %1 if the subject chose left
     correctIncorrect = (stimulus.leftcorrect == resIsLeft); %1 if correct
-    stimulus.stairN = stimulus.stairN+1; %count how many times 
+    
+    if task.runfixedint == 0
+        stimulus.stairN = stimulus.stairN+1; %count how many times 
+    end
 else
     stimIsLeft = nan; resIsLeft = nan; correctIncorrect = nan;
 end
@@ -240,8 +289,11 @@ else, corrString = 'no response'; end
 
 %stimulus.staircase(stimulus.leftcorrect+1) = doStaircase('update',stimulus.staircase(stimulus.leftcorrect+1),correctIncorrect,abs(task.thistrial.dirDiff));
 %[stimulus.threshold(stimulus.leftcorrect+1), stimulus.staircase(stimulus.leftcorrect+1)] = doStaircase('testValue',stimulus.staircase(stimulus.leftcorrect+1));
-stimulus.staircase = doStaircase('update',stimulus.staircase,correctIncorrect,abs(task.thistrial.dirDiff));
-[stimulus.threshold, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+
+if task.runfixedint == 0
+    stimulus.staircase = doStaircase('update',stimulus.staircase,correctIncorrect,abs(task.thistrial.dirDiff));
+    [stimulus.threshold, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
+end
 
 disp(['Coherence: ' num2str(task.thistrial.coherence) '; ' ...
     'Directions: ' num2str(task.thistrial.leftDir) ' (l) vs ' num2str(task.thistrial.righttDir) ' (r); ' ...

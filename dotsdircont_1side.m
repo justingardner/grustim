@@ -17,7 +17,7 @@ getArgs(varargin,{'subjectID=-1','centerX=10','centerY=0','diameter=16'});
 myscreen.subjectID = subjectID;
 myscreen.saveData = 1;
 %myscreen.displayName = 'screen1';
-myscreen.displayName = 'VPixx';
+%myscreen.displayName = 'testVpixx';
 %myscreen.displayName = 'test'; myscreen.screenNumber = 1;
 myscreen = initScreen(myscreen);
 
@@ -29,8 +29,8 @@ myscreen = initScreen(myscreen);
 % S5: random period of fixation (1~3s)
 task{1}{1}.segmin = [1.5 0.5 inf 1 1];
 task{1}{1}.segmax = [1.5 0.5 inf 1 3];
-task{1}{1}.numTrials = 100;
-task{1}{1}.getResponse = [0 0 0 1 0]; %segment to get response.
+task{1}{1}.numTrials = 50;
+task{1}{1}.getResponse = [0 0 1 0 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
 %task parameters
@@ -43,10 +43,10 @@ task{1}{1}.randVars.uniform.direction = [0:1:359];
 task{1}{1}.randVars.uniform.dirDiff = [-25:0.25:25];
 task{1}{1}.randVars.uniform.respAngle = [0:1:359];
 
-task{1}{1}.parameter.distAttention = [0 1]; % cue both sides?
+task{1}{1}.parameter.distAttention = [0]; % cue both sides?
 task{1}{1}.parameter.respSide = [0 1]; %Is the response side left? (1) or right (0)
 
-coherence = [1 0.4];
+coherence = [1 0.8 0.6 0.4 0.2 0.1]; %[1 0.8 0.6 0.4 0.2 0.1];
 for phaseN = 1:length(coherence)
     task{1}{phaseN} = task{1}{1};
     task{1}{phaseN}.parameter.coherence = coherence(phaseN);
@@ -62,7 +62,7 @@ stimulus = [];
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
-stimulus.powerwheel = 0; %1; % powerwheel (1)  or mouse (0)
+stimulus.powerwheel = 1; %1; % powerwheel (1)  or mouse (0)
 
 stimulus.grabframe = 0; %save frames into matrices
 if stimulus.grabframe
@@ -161,14 +161,15 @@ elseif task.thistrial.thisseg == 2 % [stimulus period] draw dots
     % choose stencil with L/R holes
     mglStencilSelect(1);
     
+    if task.thistrial.respSide == 1
     % draw the left patch
     stimulus.dots{1}.dir = direction;
     stimulus.dots{1} = updateDots(stimulus.dots{1},coherence,myscreen);
-  
+    else
     % draw the right patch
     stimulus.dots{2}.dir = mod(direction+dirDiff,360);
     stimulus.dots{2} = updateDots(stimulus.dots{2},coherence,myscreen);
-  
+    end
     % return to unstenciled drawing
     mglStencilSelect(0);
     
