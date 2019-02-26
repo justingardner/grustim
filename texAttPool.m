@@ -77,8 +77,8 @@ task{1}.waitForBacktick = 1;
 
 % Define stimulus timing
 % inf, Cue, Stimulus, Pause, Response, Feedback
-task{1}.segmin = [inf, 1.0, 0.6, 1.2, .2];
-task{1}.segmax = [inf, 1.0, 0.6, 1.2, .2];
+task{1}.segmin = [inf, 1.0, 1.0, 1.2, .2];
+task{1}.segmax = [inf, 1.0, 1.0, 1.2, .2];
 stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.cue = 2;
@@ -103,7 +103,7 @@ stimulus.imNames = {'balls', 'beansalad', 'biryani','bubbles', 'cherries', 'clou
 %         'paisley', 'pears', 'phlox', 'rorschach', 'spiky', 'splotchy', 'stars', 'succulent', 'tiles'};
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
 stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
-stimulus.imSize = 6;
+stimulus.imSize = 8;
 stimulus.eccentricity = 12;
 stimulus.obPoolSize = '4x4';
 stimulus.poolSizes = {'1x1','1.25x1.25', '1.5x1.5','1.75x1.75', '2x2', '3x3', '4x4'};
