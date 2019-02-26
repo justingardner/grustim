@@ -103,8 +103,8 @@ stimulus.imNames = {'balls', 'beansalad', 'biryani','bubbles', 'cherries', 'clou
 %         'paisley', 'pears', 'phlox', 'rorschach', 'spiky', 'splotchy', 'stars', 'succulent', 'tiles'};
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
 stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
-stimulus.imSize = 8;
-stimulus.eccentricity = 12;
+stimulus.imSize = 6;
+stimulus.eccentricity = 9;
 stimulus.obPoolSize = '4x4';
 stimulus.poolSizes = {'1x1','1.25x1.25', '1.5x1.5','1.75x1.75', '2x2', '3x3', '4x4'};
 stimulus.cueEcc = 4;
@@ -280,8 +280,8 @@ ecc = stimulus.eccentricity; % Eccentricity to display image at
 
 % Define possible stimulus locations.
 locations = zeros(2, 3, 2);
-locations(1,:,:) = [-ecc/sqrt(2) ecc/sqrt(2); -ecc 0; -ecc/sqrt(2) -ecc/sqrt(2)];
-locations(2,:,:) = [ecc/sqrt(2) ecc/sqrt(2); ecc 0; ecc/sqrt(2) -ecc/sqrt(2)];
+locations(1,:,:) = [-ecc*cosd(60) ecc*sind(60); -ecc 0; -ecc*cosd(60) -ecc*sind(60)];
+locations(2,:,:) = [ecc*cosd(60) ecc*sind(60); ecc 0; ecc*cosd(60) -ecc*sind(60)];
 
 % Define possible cue positions
 cueX = stimulus.cueEcc/sqrt(2);
