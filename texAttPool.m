@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=0'});
+getArgs(varargin,{'plots=0','noeye=1'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 clear noeye plots
@@ -306,8 +306,8 @@ for i = 1:2
     mglBltTexture(stimulus.live.cueside_dist1, [squeeze(locations(cueSide, cueside_distpos(1), :))' imSz imSz]);
     mglBltTexture(stimulus.live.cueside_dist2, [squeeze(locations(cueSide, cueside_distpos(2), :))' imSz imSz]);
     
-    mglBltTexture(stimulus.live.otherside_dist1, [squeeze(locations(otherSide, otherside_distpos(1)))', imSz, imSz]);
-    mglBltTexture(stimulus.live.otherside_dist2, [squeeze(locations(otherSide, otherside_distpos(2)))', imSz, imSz]);
+    mglBltTexture(stimulus.live.otherside_dist1, [squeeze(locations(otherSide, otherside_distpos(1),:))', imSz, imSz]);
+    mglBltTexture(stimulus.live.otherside_dist2, [squeeze(locations(otherSide, otherside_distpos(2),:))', imSz, imSz]);
   
   end
   upFix(stimulus, fixColor);  
