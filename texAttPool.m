@@ -17,10 +17,15 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=1'});
+getArgs(varargin,{'plots=0','noeye=1', 'analyze=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 clear noeye plots
+
+if analyze
+    analyzeData;
+    return;
+end
 
 %% Stimulus parameters 
 %% Open Old Stimfile
@@ -474,3 +479,77 @@ alphamask(:,:,4) = gauss*255;
 % we'll adjust the gamma table to control contrast
 stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast        
 
+%%%%%%%%%%%%%%%%%%%%%%%
+%    analyzeData %
+%%%%%%%%%%%%%%%%%%%%%%%
+function data = analyzeData()
+%%
+
+% get the files list
+files = dir(fullfile(sprintf('~/data/texAttPool/%s/19*stim*.mat',mglGetSID)));
+
+count = 1; 
+data = struct('response', [], 'reaction_time', [], 'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
+for fi = 1:length(files)
+  load(fullfile(sprintf('~/data/texAttPool/%s/%s',mglGetSID,files(fi).name)));
+  
+  e = getTaskParameters(myscreen,task);
+  if e.nTrials>1
+    
+    f = fields(e.parameter);
+    for i = 1:length(f)
+        if ~isfield(data, f{i})
+            data.(f{i}) = [];
+        end
+        data.(f{i}) = [data.(f{i}) e.parameter.(f{i})];
+    end
+    f = fields(e.randVars);
+    for i = 1:length(f)
+        if ~isfield(data, f{i})
+            data.(f{i}) = [];
+        end
+        data.(f{i}) = [data.(f{i}) e.randVars.(f{i})];
+    end
+    
+    data.response = [data.response e.response-10];
+
+    data.reaction_time = [data.reaction_time e.reactionTime];
+    data.nTrials = data.nTrials + e.nTrials;
+
+    % Calculate number of valid trials by excluding eye movements
+    data.nValTrials = data.nValTrials + sum(~isnan(e.response));
+    
+    data.accByRuns = [data.accByRuns nanmean(e.randVars.correct)];
+        
+  end
+  count = count + 1;
+end
+
+keyboard
+%%
+all_pools = unique(data.poolSize);
+all_cueTypes = unique(data.isCueFocal);
+accs = nan(length(all_pools), length(all_cueTypes));
+SEs = nan(length(all_pools), length(all_cueTypes));
+for i = 1:length(all_pools)
+    for j = 1:length(all_cueTypes)
+        ct = data.correct(data.poolSize==all_pools(i) & data.isCueFocal==all_cueTypes(j));
+        accs(i,j) = nanmean(ct);
+        SEs(i,j) = 1.96*nanstd(ct) / length(ct);
+    end
+end
+
+%%
+poolsizes = [1, 1.25, 1.5, 1.75, 2, 3, 4];
+x = 6./poolsizes;
+figure;
+h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g');
+h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b'); hold on;
+xlim([0 length(all_pools)+1]);
+
+hline(0.3, ':');
+legend([h1,h2], {'Distributed', 'Focal'});
+set(gca, 'XTick', sort(x));
+set(gca, 'XTickLabel', sort(x));
+xlabel('Distractor Pooling Size (degrees)');
+ylabel('Accuracy (% correct)');
