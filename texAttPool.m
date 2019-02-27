@@ -117,6 +117,7 @@ stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
 
 % Trial parameters
+task{1}.parameter.oddPoolSize = [7]; % oddball layer is 4x4.
 task{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
 task{1}.parameter.isCueFocal = [0 1]; % Is the cue distributed or focal?
@@ -221,14 +222,17 @@ otherside_imName = stimulus.imNames{task.thistrial.otherside_imgFam};
 osLayer = stimulus.layerNames{task.thistrial.otherside_layer};
 osPoolSize = stimulus.poolSizes{task.thistrial.otherside_poolsize};
 
+% Get poolsize for oddball
+oddPoolSize = stimulus.poolSizes{task.thistrial.oddPoolSize};
+
 % Randomly select 3 images to display on each side for this trial.
 cueside_smps = randperm(3,3); otherside_smps = randperm(3,3);
 task.thistrial.cueside_smp = cueside_smps(1);  % Store which sample was the oddball on each trial.
 task.thistrial.otherside_smp = otherside_smps(1);
 
 % Load the two oddball images.
-stimulus.live.cueside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, stimulus.obPoolSize, layer, cueside_imName, cueside_smps(1))), stimulus.live.mask);
-stimulus.live.otherside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, stimulus.obPoolSize, osLayer, otherside_imName, otherside_smps(1))), stimulus.live.mask);
+stimulus.live.cueside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, oddPoolSize, layer, cueside_imName, cueside_smps(1))), stimulus.live.mask);
+stimulus.live.otherside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, oddPoolSize, osLayer, otherside_imName, otherside_smps(1))), stimulus.live.mask);
 
 % Load the 4 distractor images.
 stimulus.live.cueside_dist1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, poolSize, layer, cueside_imName, cueside_smps(2))), stimulus.live.mask);
@@ -525,7 +529,6 @@ for fi = 1:length(files)
   count = count + 1;
 end
 
-keyboard
 %%
 all_pools = unique(data.poolSize);
 all_cueTypes = unique(data.isCueFocal);
@@ -543,13 +546,17 @@ end
 poolsizes = [1, 1.25, 1.5, 1.75, 2, 3, 4];
 x = 6./poolsizes;
 figure;
-h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g');
-h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b'); hold on;
+h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g', 'Symbol=o');
+h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b', 'Symbol=o'); hold on;
 xlim([0 length(all_pools)+1]);
 
 hline(0.3, ':');
 legend([h1,h2], {'Distributed', 'Focal'});
 set(gca, 'XTick', sort(x));
-set(gca, 'XTickLabel', sort(x));
+set(gca, 'XTickLabel', round(sort(x),2));
 xlabel('Distractor Pooling Size (degrees)');
 ylabel('Accuracy (% correct)');
+title(sprintf('Oddity Task: nTrials = %i', data.nTrials));
+
+%%
+keyboard
