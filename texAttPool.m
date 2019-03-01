@@ -17,9 +17,11 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=1', 'analyze=0'});
+flipodd=0;
+getArgs(varargin,{'plots=0','noeye=1', 'analyze=0', 'flipodd=0'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.flipodd = flipodd;
 clear noeye plots
 
 if analyze
@@ -117,9 +119,14 @@ stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
 
 % Trial parameters
-task{1}.parameter.oddPoolSize = [7]; % oddball layer is 4x4.
+if stimulus.flipodd % Make distractors = 4x4 and oddballs vary.
+    task{1}.parameter.oddPoolSize = 1:length(stimulus.poolSizes);
+    task{1}.parameter.poolSize = [7];
+else % Make oddball = 4x4, and distractors vary.
+    task{1}.parameter.oddPoolSize = [7]; % oddball layer is 4x4.
+    task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
+end
 task{1}.parameter.layer = 1:length(stimulus.layerNames);
-task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
 task{1}.parameter.isCueFocal = [0 1]; % Is the cue distributed or focal?
 
 task{1}.synchToVol = zeros(size(task{1}.segmin));
@@ -246,7 +253,7 @@ task.thistrial.cueside_oddpos = randi(3);
 task.thistrial.otherside_oddpos = randi(3);
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image %s, Layer %s, Pooling Region Size: %s, cueSide: %i, isCueFocal: %i', task.trialnum, cueside_imName, layer,poolSize, task.thistrial.cueSide, task.thistrial.isCueFocal));
+disp(sprintf('Trial %d - %s, %s: CueSide=%i, isCueFocal=%i, OddPoolSize=%s, DistPoolSize=%s', task.trialnum, cueside_imName, layer, task.thistrial.cueSide, task.thistrial.isCueFocal, oddPoolSize, poolSize));
 if task.trialnum > 1
     disp(sprintf('--Target on Last Trial: %g, Response on last trial: %g, LastTrialCorrect?: %g', task.lasttrial.cueside_oddpos, task.lasttrial.response, task.lasttrial.correct));
 end
@@ -524,19 +531,19 @@ for fi = 1:length(files)
     data.nValTrials = data.nValTrials + sum(~isnan(e.response));
     
     data.accByRuns = [data.accByRuns nanmean(e.randVars.correct)];
-        
+    
   end
   count = count + 1;
 end
 
 %%
-all_pools = unique(data.poolSize);
+all_pools = unique(data.oddPoolSize);
 all_cueTypes = unique(data.isCueFocal);
 accs = nan(length(all_pools), length(all_cueTypes));
 SEs = nan(length(all_pools), length(all_cueTypes));
 for i = 1:length(all_pools)
     for j = 1:length(all_cueTypes)
-        ct = data.correct(data.poolSize==all_pools(i) & data.isCueFocal==all_cueTypes(j));
+        ct = data.correct(data.oddPoolSize==all_pools(i) & data.isCueFocal==all_cueTypes(j));
         accs(i,j) = nanmean(ct);
         SEs(i,j) = 1.96*nanstd(ct) / length(ct);
     end
@@ -546,17 +553,58 @@ end
 poolsizes = [1, 1.25, 1.5, 1.75, 2, 3, 4];
 x = 6./poolsizes;
 figure;
-h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g', 'Symbol=o');
-h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b', 'Symbol=o'); hold on;
+h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g', 'Symbol=o-');
+h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b', 'Symbol=o-'); hold on;
 xlim([0 length(all_pools)+1]);
 
-hline(0.3, ':');
+hline(1/3, ':');
 legend([h1,h2], {'Distributed', 'Focal'});
 set(gca, 'XTick', sort(x));
 set(gca, 'XTickLabel', round(sort(x),2));
-xlabel('Distractor Pooling Size (degrees)');
+xlabel('Oddball Pooling Size (degrees)');
 ylabel('Accuracy (% correct)');
 title(sprintf('Oddity Task: nTrials = %i', data.nTrials));
 
 %%
+all_ims = unique(data.cueside_imgFam);
+accs = nan(length(all_pools), length(all_cueTypes), length(all_ims));
+SEs = nan(length(all_pools), length(all_cueTypes), length(all_ims));
+for i = 1:length(all_pools)
+  for j = 1:length(all_cueTypes)
+    for k = 1:length(all_ims)
+      ct = data.correct(data.oddPoolSize==all_pools(i) & data.isCueFocal==all_cueTypes(j) & data.cueside_imgFam==all_ims(k));
+      accs(i,j,k) = nanmean(ct);
+      SEs(i,j,k) = 1.96*nanstd(ct) / length(ct);
+    end
+  end
+end
+
+%%
+figure;
+for i = 1:5
+  for j = 1:4
+    ind = 4*(i-1)+j;
+    
+    if ind < length(all_ims)
+        subplot(5,4, ind);
+        h1 = myerrorbar(x, accs(:,1,ind), 'yError', SEs(:,1,ind), 'Color', 'g', 'Symbol=o');
+        h2 = myerrorbar(x, accs(:,2,ind), 'yError', SEs(:,2,ind), 'Color', 'b', 'Symbol=o'); hold on;
+        xlim([0 length(all_pools)+1]);
+        ylim([-.2 1.2]);
+
+        hline(1/3, ':');
+        if ind == length(all_ims)-1
+          legend([h1,h2], {'Distributed', 'Focal'});
+        end
+        set(gca, 'XTick', sort(x));
+        set(gca, 'XTickLabel', round(sort(x),2));
+        xlabel('Oddball Pooling Size (degrees)');
+        ylabel('Accuracy (% correct)');
+        title(sprintf('%s: nTrials = %i', stimulus.imNames{all_ims(ind)}, data.nTrials));
+    end
+  end
+end
+
+%%
 keyboard
+
