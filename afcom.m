@@ -455,6 +455,8 @@ elseif stimulus.practice==3
     task{1}{1}.segmax(stimulus.seg.delay) = 3;
     task{1}{1}.segmin(stimulus.seg.resp) = 5;
     task{1}{1}.segmax(stimulus.seg.resp) = 5;
+    task{1}{1}.segmin(stimulus.seg.feedback) = 1;
+    task{1}{1}.segmax(stimulus.seg.feedback) = 1;
 end
 
 task{1}{1}.waitForBacktick = 1;
