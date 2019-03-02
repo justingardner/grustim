@@ -33,6 +33,17 @@ function [ myscreen ] = afcom( varargin )
 % TODO:
  % - add the color cue report direction variation
  % - add control conditions
+ 
+ 
+ % CHANGES CHANGES CHANGES
+ 
+ % (1) Cue not working: block by 20 trial groups
+ % (2) Difficulty: no need to binarize, just randomize 250-1000 ms
+ % (3) Longer response time: 6 s, but allow early click?
+ % (4) 2 memorization... perceptual version?
+ 
+ 
+ % CHANGES CHANGES CHANGES
 %%
 
 global stimulus fixStimulus
@@ -185,7 +196,7 @@ if stimulus.session>length(stimulus.blocks)
         block.group{i} = group;
     end
     
-    block.trials = 19*12;
+    block.trials = 17*12;
     
     % re-build into the trial order
     target = [ones(1,19*3) ones(1,19*3)*2 ones(1,19*3)*3 ones(1,19*3)*4];
@@ -283,6 +294,11 @@ stimulus.fixWidth = 0.5;
 stimulus.targetWidth = 10;
 stimulus.patchEcc = 8;
 
+if stimulus.scan
+    stimulus.targetWidth = 8;
+    stimulus.patchEcc = 7;
+end
+
 %% Setup patches and stencils
 
 % there will be 12 possible locations where we can show dots. We will use 6
@@ -351,6 +367,39 @@ dots.dotScale = 3;
 dots.maxAlive = 1000;
 stimulus.cueDots = initDots(dots);
 
+%% afcom trial length simulator code:
+% simulate trials according to the length and randomization
+% using a histogram, determine what the optimal length of scan is, so that
+% you minimize lost data (i.e. we want to end when the delay segment ends,
+% since we don't care about responses.
+% n = 10000;
+% tl = zeros(n,7);
+% 
+% for ni = 1:n
+%     tl(ni,1) = 1.07^(rand*30+10);
+%     tl(ni,2:end) = [2 0.75 0.75 1 6 5];
+% end
+% 
+% tdist = sum(tl');
+% 
+% % now sample from the distribution to create a series of trials 30 long
+% % mark the time when the trial ends, minus the response time (5 sec)
+% reps = 10000;
+% 
+% timepoints = [];
+% for ri = 1:reps
+%     rep = randsample(tdist,25);
+%     % go through and note down each timepoint
+%     for ri = 1:length(rep)
+%         timepoints(end+1) = sum(rep(1:ri))-5;
+%     end
+% end
+% 
+% hist(timepoints,600);
+
+% result: there is no optimal time to stop, the randomness in the ITI,
+% after only 3 trials, quickly converges to an even distribution! Cool!
+
 %% Setup Probe Task
 
 task{1}{1} = struct;
@@ -370,8 +419,8 @@ task{1}{1}.segmax = [2 inf 0.75 0.75 inf 1 inf 0.75];
 if stimulus.scan
     % eye tracking is probably off, but put the dots up for one second
     % before the cue period
-    task{1}{1}.segmin = [2 inf 0.75 0.75 inf 6 5];
-    task{1}{1}.segmax = [10 inf 0.75 0.75 inf 6 5];
+    task{1}{1}.segmin = [inf inf 0.75 0.75 inf 6 5];
+    task{1}{1}.segmax = [inf inf 0.75 0.75 inf 6 5];
 end
 
 if stimulus.noeye
@@ -695,6 +744,15 @@ end
 %%
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
+
+if stimulus.scan
+    if stimulus.practice==3
+        task.thistrial.seglen(stimulus.seg.iti) = 1;
+    else
+        
+        task.thistrial.seglen(stimulus.seg.iti) = 1.07^(rand*30+10);
+    end
+end
 
 if stimulus.scan
     % set trial type from current block
