@@ -1,5 +1,3 @@
-git 
-
 function [ myscreen ] = texAttPool( varargin )
 %
 % TEXTURE SEARCH 
