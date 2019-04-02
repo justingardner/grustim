@@ -167,6 +167,7 @@ if ~isfield(stimulus,'blocks')
 end
 
 if stimulus.session>length(stimulus.blocks)
+    nblocks = 17;
     % build blocks for this session
     
     % each scan session should consist of ~56 minutes of scanning total,
@@ -180,7 +181,9 @@ if stimulus.session>length(stimulus.blocks)
     % amount of noise reduction by averaging over each pair. 
     
     % Each "run" should consist of roughly 7 minutes, so 28 trials, or ~228 
-    % per scan session. This is 19 blocks, which will be interleaved.
+    % per scan session. This is 19 blocks, which will be interleaved. (in
+    % practice we will use 17 blocks... 19 doesn't account well for dead
+    % time)
     
     % Note that a session is therefore useless if you don't scan all 228
     % trials!! So if a scan fails, that run must be repeated. 
@@ -188,7 +191,7 @@ if stimulus.session>length(stimulus.blocks)
     block = struct;
     
     % build the block -- first create 19 sets of random directions
-    for i = 1:19
+    for i = 1:nblocks
         group = struct;
         
         group.dirs = [rand rand rand rand]*2*pi;
@@ -196,12 +199,12 @@ if stimulus.session>length(stimulus.blocks)
         block.group{i} = group;
     end
     
-    block.trials = 17*12;
+    block.trials = nblocks*12;
     
     % re-build into the trial order
-    target = [ones(1,19*3) ones(1,19*3)*2 ones(1,19*3)*3 ones(1,19*3)*4];
-    trialType = repmat([ones(1,19) ones(1,19)*2 zeros(1,19)],1,4);
-    groups = repmat(1:19,1,12);
+    target = [ones(1,nblocks*3) ones(1,nblocks*3)*2 ones(1,nblocks*3)*3 ones(1,nblocks*3)*4];
+    trialType = repmat([ones(1,nblocks) ones(1,nblocks)*2 zeros(1,nblocks)],1,4);
+    groups = repmat(1:nblocks,1,12);
     
     order = randperm(block.trials);
     
@@ -473,9 +476,9 @@ end
 task{1}{1}.random = 1;
 
 if stimulus.scan
-    task{1}{1}.parameter.trialType = -1;
+%     task{1}{1}.parameter.trialType = -1;
     task{1}{1}.parameter.duration = 1;
-    task{1}{1}.parameter.target = -1;
+%     task{1}{1}.parameter.target = -1;
 else
     task{1}{1}.parameter.trialType = [1 1 1 2 2 2 0 0 3 4]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
     task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
@@ -497,6 +500,10 @@ if ~stimulus.replay && stimulus.scan && stimulus.practice==0
     task{1}{1}.synchToVol(stimulus.seg.iti) = 1;
 end
 
+if stimulus.scan
+    task{1}{1}.randVars.calculated.trialType = nan;
+    task{1}{1}.randVars.calculated.target = nan;
+end
 % feature target
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
@@ -871,14 +878,15 @@ if isnan(task.thistrial.respDistance)
     disp(sprintf('Recorded: %s. angle of %1.2f true %1.2f: %1.2f distance',respType{task.thistrial.gotResponse+1},task.thistrial.respAngle,task.thistrial.targetAngle,task.thistrial.respDistance));
 end
 
-if stimulus.scan
-    stimulus.blocks{end}.trial = stimulus.blocks{end}.trial + 1;
-    left = stimulus.blocks{end}.trials-stimulus.blocks{end}.trial;
-    if left>0
-        disp(sprintf('There are %i trials remaining in this scan block',left));
-    else
-        disp('This is the final trial in this scan session');
-    end
+function incrementScanTrial()
+global stimulus
+
+stimulus.blocks{end}.trial = stimulus.blocks{end}.trial + 1;
+left = stimulus.blocks{end}.trials-stimulus.blocks{end}.trial;
+if left>0
+    disp(sprintf('There are %i trials remaining in this scan block',left));
+else
+    disp('This is the final trial in this scan session');
 end
 
 function d = angdist(t1,t2)
@@ -889,7 +897,15 @@ d = acos(cos(t1)*cos(t2)+sin(t1)*sin(t2));
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task, myscreen] = startSegmentCallback(task,myscreen)
 %%
-% global stimulus
+global stimulus
+
+if task.thisseg == stimulus.seg.resp
+    % if we make it to the response period, increment the current scan
+    % trial. Otherwise we will repeat this trial on the next run.
+    if stimulus.scan
+        incrementScanTrial();
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Drawing functions %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
