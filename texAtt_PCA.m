@@ -1,9 +1,9 @@
-function [ myscreen ] = texAttPool( varargin )
+function [ myscreen ] = texAtt_PCA( varargin )
 %
 % TEXTURE SEARCH 
 %  Visual search task using textures 
 %
-%  Usage: texAttPool(varargin)
+%  Usage: texAtt_PCA(varargin)
 %  Authors: Akshay Jagadeesh
 %  Date: 02/27/2018
 %
@@ -17,29 +17,34 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=1'});
+getArgs(varargin,{'plots=0','noeye=1', 'analyze=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 clear noeye plots
+
+if analyze
+    analyzeData;
+    return;
+end
 
 %% Stimulus parameters 
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/texAttPool/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/texAtt_PCA/%s',mglGetSID))
   % Directory exists, check for a stimfile
-  files = dir(sprintf('~/data/texAttPool/%s/1*mat',mglGetSID));
+  files = dir(sprintf('~/data/texAtt_PCA/%s/1*mat',mglGetSID));
 
   if length(files) >= 1
     fname = files(end).name;
     
-    s = load(sprintf('~/data/texAttPool/%s/%s',mglGetSID,fname));
+    s = load(sprintf('~/data/texAtt_PCA/%s/%s',mglGetSID,fname));
     stimulus.counter = s.stimulus.counter + 1;
     clear s;
-    disp(sprintf('(texAttPool) Data file: %s loaded.',fname));
+    disp(sprintf('(texAtt_PCA) Data file: %s loaded.',fname));
   end
 end
-disp(sprintf('(texAttPool) This is run #%i',stimulus.counter));
+disp(sprintf('(texAtt_PCA) This is run #%i',stimulus.counter));
 
 %% Setup Screen
 myscreen = initScreen('VPixx2');
@@ -114,7 +119,7 @@ stimulus.eccentricity = 12;
 
 stimulus.PCs = {'PC0', 'PC1', 'PC2', 'PC3', 'PC4', 'PC5'};
 stimulus.PCDists = {'0'};
-stimulus.ob_PCDists = {'-10', '-5', '5', '10'};
+stimulus.ob_PCDists = {'-10', '-5', '-2', '2', '5', '10'};
 % stimulus.poolSizes = {'1x1','1.25x1.25', '1.5x1.5','1.75x1.75', '2x2', '3x3', '4x4'};
 stimulus.poolSizes = {'1x1'};
 stimulus.cueEcc = 4;
@@ -124,6 +129,9 @@ stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 % Trial parameters
 task{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
+task{1}.parameter.PCs = stimulus.PCs;
+task{1}.parameter.PCDists = stimulus.PCDists;
+task{1}.parameter.ob_PCDists = stimulus.ob_PCDists;
 task{1}.parameter.isCueFocal = [0 1]; % Is the cue distributed or focal?
 
 task{1}.synchToVol = zeros(size(task{1}.segmin));
@@ -136,15 +144,21 @@ task{1}.random = 1;
 
 % Task variables to be calculated later
 task{1}.randVars.calculated.cueSide = NaN; % which side is the target on
-task{1}.randVars.calculated.cueside_imgFam = NaN; % which image are we showing on the target side
+task{1}.randVars.calculated.cueside_imFam = NaN; % which image are we showing on the target side
 task{1}.randVars.calculated.cueside_oddpos = NaN; % which of the 3 positions is the oddball on.
+task{1}.randVars.calculated.cueside_poolSize = NaN;
 task{1}.randVars.calculated.cueside_smp = NaN;
+task{1}.randVars.calculated.cueside_PC = NaN;
 
-task{1}.randVars.calculated.cueside_smp = NaN;
+task{1}.randVars.calculated.otherside_smp = NaN;
 task{1}.randVars.calculated.otherside_layer = NaN;
-task{1}.randVars.calculated.otherside_poolsize = NaN;
-task{1}.randVars.calculated.otherside_imgFam = NaN; % which image are we showing on the non-target side
-task{1}.randVars.calculated.otherside_oddpos = NaN; % which 
+task{1}.randVars.calculated.otherside_poolSize = NaN;
+task{1}.randVars.calculated.otherside_imFam = NaN; % which image are we showing on the non-target side
+task{1}.randVars.calculated.otherside_oddpos = NaN; 
+task{1}.randVars.calculated.otherside_PC = NaN;
+
+task{1}.randVars.calculated.ob_PCdist = NaN;
+task{1}.randVars.calculated.d_PCdist = NaN;
 
 task{1}.randVars.calculated.correct = NaN;
 
@@ -161,7 +175,7 @@ task{1}.randVars.calculated.visible = 1;
 myscreen = eyeCalibDisp(myscreen);
 
 % let the user know
-disp(sprintf('(texAttPool) Starting run number: %i.',stimulus.counter));
+disp(sprintf('(texAtt_PCA) Starting run number: %i.',stimulus.counter));
 
 %% Main Task Loop
 mglClearScreen(0.5); 
@@ -213,12 +227,12 @@ texDir = stimulus.stimDir;
 
 %% Load all 6 images for this trial
 
-% Making imgFam & PC distance between oddball and distractors same for both sides
+% Making imFam & PC distance between oddball and distractors same for both sides
 % all of these are the same between cueside and other side, only difference
 % is cueing
 
 %Set Cue side task parameters
-task.thistrial.cueside_imgFam = randi(length(stimulus.imNames));
+task.thistrial.cueside_imFam = randi(length(stimulus.imNames));
 task.thistrial.cueside_layer = randi(length(stimulus.layerNames));
 task.thistrial.cueside_poolSize = randi(length(stimulus.poolSizes));
 task.thistrial.cueside_PC = randi(length(stimulus.PCs));
@@ -227,7 +241,7 @@ task.thistrial.cueside_PC = randi(length(stimulus.PCs));
 cueside_PC = stimulus.PCs{task.thistrial.cueside_PC};
 cueside_layer = stimulus.layerNames{task.thistrial.cueside_layer};
 cueside_poolSize = stimulus.poolSizes{task.thistrial.cueside_poolSize};
-cueside_imName = stimulus.imNames{task.thistrial.cueside_imgFam};
+cueside_imFam = stimulus.imNames{task.thistrial.cueside_imFam};
 
 % PC Distance is the same for both cueside and otherside.
 task.thistrial.ob_PCDist = randi(length(stimulus.ob_PCDists));
@@ -238,18 +252,18 @@ d_PCDist = stimulus.PCDists{task.thistrial.d_PCDist};
 % Get image, layer, and poolSize for other side 
 sidesAreDifferent = 0;
 if sidesAreDifferent
-    task.thistrial.otherside_imgFam = randi(length(stimulus.imNames));
+    task.thistrial.otherside_imFam = randi(length(stimulus.imNames));
     task.thistrial.otherside_layer = randi(length(stimulus.layerNames));
-    task.thistrial.otherside_poolsize = randi(length(stimulus.poolSizes));
+    task.thistrial.otherside_poolSize = randi(length(stimulus.poolSizes));
     task.thistrial.otherside_PC = randi(length(stimulus.PCs));
 else
-    task.thistrial.otherside_imgFam = task.thistrial.cueside_imgFam;
+    task.thistrial.otherside_imFam = task.thistrial.cueside_imFam;
     task.thistrial.otherside_layer = task.thistrial.cueside_layer;
     task.thistrial.otherside_poolSize = task.thistrial.cueside_poolSize;
     task.thistrial.otherside_PC = task.thistrial.cueside_PC;
 end
 
-otherside_imName = stimulus.imNames{task.thistrial.otherside_imgFam};
+otherside_imFam = stimulus.imNames{task.thistrial.otherside_imFam};
 otherside_layer = stimulus.layerNames{task.thistrial.otherside_layer};
 otherside_poolSize = stimulus.poolSizes{task.thistrial.otherside_poolSize};
 otherside_PC = stimulus.PCs{task.thistrial.otherside_PC};
@@ -263,14 +277,14 @@ task.thistrial.cueside_smp = oddball_smps(1); % Store which sample was the oddba
 task.thistrial.otherside_smp = oddball_smps(2);
 
 % Load the two oddball images.
-stimulus.live.cueside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, cueside_poolSize, cueside_layer, cueside_imName, cueside_PC, ob_PCDist, oddball_smps(1))), stimulus.live.mask);
-stimulus.live.otherside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, otherside_poolSize, otherside_layer, otherside_imName, otherside_PC, ob_PCDist, oddball_smps(2))), stimulus.live.mask);
+stimulus.live.cueside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, cueside_poolSize, cueside_layer, cueside_imFam, cueside_PC, ob_PCDist, oddball_smps(1))), stimulus.live.mask);
+stimulus.live.otherside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, otherside_poolSize, otherside_layer, otherside_imFam, otherside_PC, ob_PCDist, oddball_smps(2))), stimulus.live.mask);
 
 % Load the 4 distractor images.
-stimulus.live.cueside_dist1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, cueside_poolSize, cueside_layer, cueside_imName, cueside_PC, d_PCDist, dist_smps(1))), stimulus.live.mask);
-stimulus.live.cueside_dist2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, cueside_poolSize, cueside_layer, cueside_imName, cueside_PC, d_PCDist, dist_smps(2))), stimulus.live.mask);
-stimulus.live.otherside_dist1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, otherside_poolSize, otherside_layer, otherside_imName, otherside_PC, d_PCDist, dist_smps(3))), stimulus.live.mask);
-stimulus.live.otherside_dist2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, otherside_poolSize, otherside_layer, otherside_imName, otherside_PC, d_PCDist, dist_smps(4))), stimulus.live.mask);
+stimulus.live.cueside_dist1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, cueside_poolSize, cueside_layer, cueside_imFam, cueside_PC, d_PCDist, dist_smps(1))), stimulus.live.mask);
+stimulus.live.cueside_dist2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, cueside_poolSize, cueside_layer, cueside_imFam, cueside_PC, d_PCDist, dist_smps(2))), stimulus.live.mask);
+stimulus.live.otherside_dist1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, otherside_poolSize, otherside_layer, otherside_imFam, otherside_PC, d_PCDist, dist_smps(3))), stimulus.live.mask);
+stimulus.live.otherside_dist2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_%s_%s_smp%i.png', texDir, otherside_poolSize, otherside_layer, otherside_imFam, otherside_PC, d_PCDist, dist_smps(4))), stimulus.live.mask);
 
 %% Select cueside position and target size.
 task.thistrial.cueSide = randi(2); % 1 is left 2 is right
@@ -278,7 +292,7 @@ task.thistrial.cueside_oddpos = randi(3);
 task.thistrial.otherside_oddpos = randi(3);
 
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - %s, %s, PC: %s, PC_Dist: %s, PoolSize: %s, cueSide: %i, isCueFocal: %i', task.trialnum, cueside_imName, cueside_layer,cueside_PC, ob_PCDist, cueside_poolSize, task.thistrial.cueSide, task.thistrial.isCueFocal));
+disp(sprintf('Trial %d - %s, %s, PC: %s, PC_Dist: %s, PoolSize: %s, cueSide: %i, isCueFocal: %i', task.trialnum, cueside_imFam, cueside_layer,cueside_PC, ob_PCDist, cueside_poolSize, task.thistrial.cueSide, task.thistrial.isCueFocal));
 if task.trialnum > 1
     disp(sprintf('--Target on Last Trial: %g, Response on last trial: %g, LastTrialCorrect?: %g', task.lasttrial.cueside_oddpos, task.lasttrial.response, task.lasttrial.correct));
 end
@@ -516,4 +530,128 @@ alphamask(:,:,4) = gauss*255;
 
 % we'll adjust the gamma table to control contrast
 stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast        
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%    analyzeData %
+%%%%%%%%%%%%%%%%%%%%%%%
+function data = analyzeData()
+%%
+
+% get the files list
+files = dir(fullfile(sprintf('~/data/texAtt_PCA/%s/19*stim*.mat',mglGetSID)));
+
+count = 1; 
+data = struct('response', [], 'reaction_time', [], 'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
+
+for fi = 1:length(files)
+  load(fullfile(sprintf('~/data/texAtt_PCA/%s/%s',mglGetSID,files(fi).name)));
+  
+  e = getTaskParameters(myscreen,task);
+  if e.numTrials>1
+    
+    f = fields(e.parameter);
+    for i = 1:length(f)
+        if ~isfield(data, f{i})
+            data.(f{i}) = [];
+        end
+        data.(f{i}) = [data.(f{i}) e.parameter.(f{i})];
+    end
+    f = fields(e.randVars);
+    for i = 1:length(f)
+        if ~isfield(data, f{i})
+            data.(f{i}) = [];
+        end
+        data.(f{i}) = [data.(f{i}) e.randVars.(f{i})];
+    end
+    
+    data.response = [data.response e.response-10];
+
+    data.reaction_time = [data.reaction_time e.reactionTime];
+    data.nTrials = data.nTrials + e.nTrials;
+
+    % Calculate number of valid trials by excluding eye movements
+    data.nValTrials = data.nValTrials + sum(~isnan(e.response));
+    
+    data.accByRuns = [data.accByRuns nanmean(e.randVars.correct)];
+    
+  end
+  count = count + 1;
+end
+
+%%
+% all poolSizes are 1x1, also recorded incorrectly for stimfiles 1-7
+%all_pools = unique(data.cueside_poolSize);
+all_cueTypes = unique(data.isCueFocal);
+
+all_PCDists = unique(data.ob_PCDists);
+accs = nan(length(all_PCDists), length(all_cueTypes));
+SEs = nan(length(all_PCDists), length(all_cueTypes));
+for i = 1:length(all_PCDists)
+    for j = 1:length(all_cueTypes)
+        ct = data.correct(data.ob_PCDist==all_PCDists(i) & data.isCueFocal==all_cueTypes(j));
+        accs(i,j) = nanmean(ct);
+        SEs(i,j) = 1.96*nanstd(ct) / length(ct);
+    end
+end
+
+%%
+%poolsizes = [1, 1.25, 1.5, 1.75, 2, 3, 4];
+PCDists = [-10, -5, -2, 2, 5, 10];
+%x = 6./poolsizes;
+x = PCDists;
+figure;
+h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g', 'Symbol=o-');
+h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b', 'Symbol=o-'); hold on;
+xlim([0 length(all_PCDists)+1]);
+
+hline(1/3, ':');
+legend([h1,h2], {'Distributed', 'Focal'});
+set(gca, 'XTick', sort(x));
+set(gca, 'XTickLabel', round(sort(x),2));
+xlabel('Oddball Pooling Size (degrees)');
+ylabel('Accuracy (% correct)');
+title(sprintf('Oddity Task: nTrials = %i', data.nTrials));
+
+%%
+all_PCs = unique(data.PCs);
+accs = nan(length(all_PCDists), length(all_cueTypes), length(all_PCs));
+SEs = nan(length(all_PCDists), length(all_cueTypes), length(all_PCs));
+for i = 1:length(all_PCDists)
+  for j = 1:length(all_cueTypes)
+    for k = 1:length(all_PCs)
+      ct = data.correct(data.ob_PCDist==all_pools(i) & data.isCueFocal==all_cueTypes(j) & data.cueside_imFam==all_PCs(k));
+      accs(i,j,k) = nanmean(ct);
+      SEs(i,j,k) = 1.96*nanstd(ct) / length(ct);
+    end
+  end
+end
+
+%%
+figure;
+for i = 1:5
+  for j = 1:4
+    ind = 4*(i-1)+j;
+    
+    if ind < length(all_PCs)
+        subplot(5,4, ind);
+        h1 = myerrorbar(x, accs(:,1,ind), 'yError', SEs(:,1,ind), 'Color', 'g', 'Symbol=o');
+        h2 = myerrorbar(x, accs(:,2,ind), 'yError', SEs(:,2,ind), 'Color', 'b', 'Symbol=o'); hold on;
+        xlim([0 length(all_pools)+1]);
+        ylim([-.2 1.2]);
+
+        hline(1/3, ':');
+        if ind == length(all_PCs)-1
+          legend([h1,h2], {'Distributed', 'Focal'});
+        end
+        set(gca, 'XTick', sort(x));
+        set(gca, 'XTickLabel', round(sort(x),2));
+        xlabel('Oddball Pooling Size (degrees)');
+        ylabel('Accuracy (% correct)');
+        title(sprintf('%s: nTrials = %i', stimulus.imNames{all_PCs(ind)}, data.nTrials));
+    end
+  end
+end
+
+%%
+keyboard
 
