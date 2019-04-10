@@ -534,20 +534,21 @@ stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
 %%%%%%%%%%%%%%%%%%%%%%%
 %    analyzeData %
 %%%%%%%%%%%%%%%%%%%%%%%
+
 function data = analyzeData()
 %%
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/texAtt_PCA/%s/19*stim*.mat',mglGetSID)));
+% files = dir(fullfile(sprintf('~/data/texAtt_PCA/%s/19*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/texAtt_PCA/s064/19*stim*.mat')));
 
 count = 1; 
 data = struct('response', [], 'reaction_time', [], 'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
 
 for fi = 1:length(files)
-  load(fullfile(sprintf('~/data/texAtt_PCA/%s/%s',mglGetSID,files(fi).name)));
-  
+  load(fullfile(sprintf('~/data/texAtt_PCA/s064/%s',files(fi).name)));
   e = getTaskParameters(myscreen,task);
-  if e.numTrials>1
+  if e.nTrials>1
     
     f = fields(e.parameter);
     for i = 1:length(f)
@@ -588,7 +589,7 @@ accs = nan(length(all_PCDists), length(all_cueTypes));
 SEs = nan(length(all_PCDists), length(all_cueTypes));
 for i = 1:length(all_PCDists)
     for j = 1:length(all_cueTypes)
-        ct = data.correct(data.ob_PCDist==all_PCDists(i) & data.isCueFocal==all_cueTypes(j));
+        ct = data.correct(strcmp(data.ob_PCDists,all_PCDists(i)) & data.isCueFocal==all_cueTypes(j));
         accs(i,j) = nanmean(ct);
         SEs(i,j) = 1.96*nanstd(ct) / length(ct);
     end
@@ -619,7 +620,7 @@ SEs = nan(length(all_PCDists), length(all_cueTypes), length(all_PCs));
 for i = 1:length(all_PCDists)
   for j = 1:length(all_cueTypes)
     for k = 1:length(all_PCs)
-      ct = data.correct(data.ob_PCDist==all_pools(i) & data.isCueFocal==all_cueTypes(j) & data.cueside_imFam==all_PCs(k));
+      ct = data.correct(strcmp(data.ob_PCDists,all_PCDists(i)) & data.isCueFocal==all_cueTypes(j) & strcmp(data.PCs,all_PCs(k)));
       accs(i,j,k) = nanmean(ct);
       SEs(i,j,k) = 1.96*nanstd(ct) / length(ct);
     end
@@ -628,28 +629,25 @@ end
 
 %%
 figure;
-for i = 1:5
-  for j = 1:4
-    ind = 4*(i-1)+j;
+for i = 1:length(all_PCs)
+    %disp(i);
+    ind = i;
     
-    if ind < length(all_PCs)
-        subplot(5,4, ind);
-        h1 = myerrorbar(x, accs(:,1,ind), 'yError', SEs(:,1,ind), 'Color', 'g', 'Symbol=o');
-        h2 = myerrorbar(x, accs(:,2,ind), 'yError', SEs(:,2,ind), 'Color', 'b', 'Symbol=o'); hold on;
-        xlim([0 length(all_pools)+1]);
-        ylim([-.2 1.2]);
+    subplot(3,2, ind);
+    h1 = myerrorbar(x, accs(:,1,i), 'yError', SEs(:,1,i), 'Color', 'g', 'Symbol=o');
+    h2 = myerrorbar(x, accs(:,2,i), 'yError', SEs(:,2,i), 'Color', 'b', 'Symbol=o'); hold on;
+    xlim([-12 12]);
+    ylim([-.2 1.2]);
 
-        hline(1/3, ':');
-        if ind == length(all_PCs)-1
-          legend([h1,h2], {'Distributed', 'Focal'});
-        end
-        set(gca, 'XTick', sort(x));
-        set(gca, 'XTickLabel', round(sort(x),2));
-        xlabel('Oddball Pooling Size (degrees)');
-        ylabel('Accuracy (% correct)');
-        title(sprintf('%s: nTrials = %i', stimulus.imNames{all_PCs(ind)}, data.nTrials));
+    hline(1/3, ':');
+    if i == length(all_PCs)-1
+      legend([h1,h2], {'Distributed', 'Focal'});
     end
-  end
+    set(gca, 'XTick', sort(x));
+    set(gca, 'XTickLabel', round(sort(x),2));
+    xlabel('PCDistance from 0');
+    ylabel('Accuracy (% correct)');
+    title(sprintf('%s: nTrials = %i', all_PCs{i}, data.nTrials));
 end
 
 %%
