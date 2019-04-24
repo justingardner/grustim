@@ -30,10 +30,7 @@ function [ myscreen ] = afcom( varargin )
 %   response to color/motion is a post-selection response, hence there are
 %   apparent tuning shifts.
 
-% TODO:
- % - add the color cue report direction variation
- % - add control conditions
- 
+% STANDARD CALLS:
  
  % CHANGES CHANGES CHANGES
  
@@ -125,6 +122,9 @@ end
 %% Display run info
 if ~stimulus.replay
     disp('*************************');
+    disp(sprintf('(afcom) This is session %i',stimulus.session));
+    r = input('Confirm the session #: [enter to continue]');
+    if ~isempty(r), return; end
     if stimulus.scan
         disp(sprintf('(afcom) This is scan #%i',stimulus.scanCounter));
     else
@@ -188,6 +188,7 @@ if ~isfield(stimulus,'blocks')
 end
 
 if stimulus.session>length(stimulus.blocks)
+    disp('(afcom) Building new blocks for this session');
     nblocks = 17;
     % build blocks for this session
     
@@ -501,8 +502,7 @@ if stimulus.scan
     task{1}{1}.parameter.duration = 1;
 %     task{1}{1}.parameter.target = -1;
 else
-    task{1}{1}.parameter.target = [1 2 3 4]; % which patch is the target
-    task{1}{1}.parameter.duration = [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+    task{1}{1}.randVars.calculated.duration = nan;
 end
 
 if stimulus.practice==1
@@ -520,10 +520,8 @@ if ~stimulus.replay && stimulus.scan && stimulus.practice==0
     task{1}{1}.synchToVol(stimulus.seg.iti) = 1;
 end
 
-if stimulus.scan
-    task{1}{1}.randVars.calculated.target = nan;
-    task{1}{1}.randVars.calculated.blockTrial = nan;
-end
+task{1}{1}.randVars.calculated.target = nan;
+task{1}{1}.randVars.calculated.blockTrial = nan;
 
 task{1}{1}.randVars.calculated.trialType = nan;
 % feature target
@@ -784,7 +782,12 @@ if stimulus.scan
         task.thistrial.seglen(stimulus.seg.iti) = 1.07^(rand*30+10);
     end
 end
-`1
+
+% add duration
+if ~stimulus.scan
+    task.thistrial.duration = rand*.75 + 0.25;
+end
+
 if stimulus.scan
     % set trial type from current block
     t = stimulus.blocks{end}.trial;
