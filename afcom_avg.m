@@ -28,7 +28,7 @@ practiceType=-1;
 cue=0;
 session=1;
 
-getArgs(varargin,{'cue=2','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0','session=1'});
+getArgs(varargin,{'cue=2','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.cue = cue; % cue = 1 means direction, cue = 2 means color
@@ -40,31 +40,29 @@ stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
-stimulus.session = session;
-
 clear localizer invisible noeye task test2 attend build eyewindow mouse practice powerwheel cue session
 
 %% Open Old Stimfile
 if ~stimulus.replay
     stimulus.counter = 1;
     
-    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom/%s',mglGetSID))
+    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom_avg/%s',mglGetSID))
         % Directory exists, check for a stimefile
-        files = dir(sprintf('~/data/afcom/%s/1*mat',mglGetSID));
+        files = dir(sprintf('~/data/afcom_avg/%s/1*mat',mglGetSID));
         
         if length(files) >= 1
             fname = files(end).name;
             
-            s = load(sprintf('~/data/afcom/%s/%s',mglGetSID,fname));
+            s = load(sprintf('~/data/afcom_avg/%s/%s',mglGetSID,fname));
             % copy staircases and run numbers
             stimulus.counter = s.stimulus.counter + 1;
             stimulus.colors = s.stimulus.colors;
             stimulus.colorwheel = s.stimulus.colorwheel;
             stimulus.blocks = s.stimulus.blocks;
             clear s;
-            disp(sprintf('(afcom) Data file: %s loaded.',fname));
+            disp(sprintf('(afcom_avg) Data file: %s loaded.',fname));
         else
-            warning('(afcom) Unable to load previous data files. If this is *not* the first run there is something wrong.');
+            warning('(afcom_avg) Unable to load previous data files. If this is *not* the first run there is something wrong.');
         end
     end
 end
@@ -72,7 +70,7 @@ end
 %% Display run info
 if ~stimulus.replay
     disp('*************************');
-    disp(sprintf('(afcom) This is run #%i',stimulus.counter));
+    disp(sprintf('(afcom_avg) This is run #%i',stimulus.counter));
     disp('*************************');
 end
 
@@ -104,63 +102,6 @@ if ~stimulus.replay
     end
 else
 end
-
-%% Block coding for scans
-if ~isfield(stimulus,'blocks')
-    stimulus.blocks = {};
-end
-
-if stimulus.session>length(stimulus.blocks)
-    % build blocks for this session
-    
-    % each scan session should consist of ~56 minutes of scanning total,
-    % which corresponds to some numbers of blocks. A "block" is a repeat of
-    % the exact same set of angles for the three different cueing
-    % conditions (no cue, spatial, feature) for each of the four possible
-    % responses. So 12 trials total.
-    
-    % Note that the uncued trials are identical in terms of stimulus, while
-    % the cued trials are in pairs of two. This means we can do a (small)
-    % amount of noise reduction by averaging over each pair. 
-    
-    % Each "run" should consist of roughly 7 minutes, so 28 trials, or ~228 
-    % per scan session. This is 19 blocks, which will be interleaved.
-    
-    % Note that a session is therefore useless if you don't scan all 228
-    % trials!! So if a scan fails, that run must be repeated. 
-    
-    block = struct;
-    
-    % build the block -- first create 19 sets of random directions
-    for i = 1:19
-        group = struct;
-        
-        group.dirs = [rand rand rand rand]*2*pi;
-        
-        block.group{i} = group;
-    end
-    
-    block.trials = 17*12;
-    
-    % re-build into the trial order
-    target = [ones(1,19*3) ones(1,19*3)*2 ones(1,19*3)*3 ones(1,19*3)*4];
-    trialType = repmat([ones(1,19) ones(1,19)*2 zeros(1,19)],1,4);
-    groups = repmat(1:19,1,12);
-    
-    order = randperm(block.trials);
-    
-    target = target(order);
-    trialType = trialType(order);
-    groups = groups(order);
-    
-    block.groups = groups;
-    block.target = target;
-    block.trialType = trialType;
-    block.trial = 1;
-    
-    stimulus.blocks{end+1} = block;
-end
-
 
 %% load the calib
 if isfield(myscreen,'calibFullFilename')
@@ -344,11 +285,9 @@ task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 task{1}{1}.numTrials = 40;
 
 task{1}{1}.random = 1;
-
-task{1}{1}.parameter.trialType = [1 2]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
-task{1}{1}.parameter.target = [1 2]; % which patches are the target, for spatial 1 = left 2= right, for feature 1 = yellow, 2 = blue
-warning('Duration fixed at 1');
-task{1}{1}.parameter.duration = 1; % [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+task{1}{1}.parameter.target = [1 2];
+task{1}{1}.parameter.trialType = [1 2];
+task{1}{1}.parameter.duration = 0.5; % [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
 
 if stimulus.practice==1
     task{1}{1}.parameter.duration = 1.0;
@@ -361,6 +300,9 @@ end
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 % feature target
+task{1}{1}.randVars.calculated.target1 = nan;
+task{1}{1}.randVars.calculated.target2 = nan;
+task{1}{1}.randVars.calculated.group = nan;
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
 task{1}{1}.randVars.calculated.featdist = nan; % number of the matched feature
@@ -396,7 +338,7 @@ if ~stimulus.replay && ~stimulus.noeye
     myscreen = eyeCalibDisp(myscreen);
     
     % let the user know
-    disp(sprintf('(afcom) Starting run number: %i.',stimulus.counter));
+    disp(sprintf('(afcom_avg) Starting run number: %i.',stimulus.counter));
 end
 
 %% Draw the cue type to the screen
@@ -435,7 +377,7 @@ myscreen.flushMode = 1;
 myscreen = endTask(myscreen,task);
 
 if ~stimulus.replay && stimulus.plots
-    disp('(afcom) Displaying plots');
+    disp('(afcom_avg) Displaying plots');
     dispInfo(stimulus);
 end
 
@@ -645,6 +587,9 @@ elseif task.thistrial.trialType==2 % feature
 end
 targetIdx = targets(task.thistrial.target,:);
 
+task.thistrial.target1 = targetIdx(1);
+task.thistrial.target2 = targetIdx(2);
+
 % set the angles of the patches
 angles = randsample(stimulus.thetas,4);
 
@@ -675,8 +620,8 @@ if task.thistrial.trialType==1
 else
     trialTypes = {'yellow','blue'};
 end
-disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.target}));
-disp(sprintf('(afcom) Ang1 %1.2f Ang2 %1.2f. True %1.2f',targetAngles(1),targetAngles(2),task.thistrial.targetAngle));
+disp(sprintf('(afcom_avg) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.target}));
+disp(sprintf('(afcom_avg) Ang1 %1.2f Ang2 %1.2f. True %1.2f',targetAngles(1),targetAngles(2),task.thistrial.targetAngle));
 
 % eye tracking 
 task.thistrial.dead = 0;
@@ -983,7 +928,6 @@ switch task.thistrial.thisseg
         drawResp(task.thistrial.targetAngle,[0 0 1]);
         drawResp(task.thistrial.respAngle,[0.75 0.75 0.75]);
         drawFix(task,stimulus.colors.white);
-        
 end
 
 drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
