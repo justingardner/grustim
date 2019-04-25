@@ -128,15 +128,12 @@ if ~isfield(stimulus,'trialTypes')
 end
 
 % add trial types for this run
-if ~stimulus.scan
-    if isempty(stimulus.curSample)
-        stimulus.curSample = stimulus.ratio(randperm(length(stimulus.ratio)));
-    end
-    idxs = randsample(1:length(stimulus.curSample),2);
-    stimulus.trialTypes{end+1} = stimulus.curSample(idxs);
-    stimulus.curSample(idxs) = [];
+if isempty(stimulus.curSample)
+    stimulus.curSample = stimulus.ratio(randperm(length(stimulus.ratio)));
 end
-
+idxs = randsample(1:length(stimulus.curSample),2);
+stimulus.trialTypes{end+1} = stimulus.curSample(idxs);
+stimulus.curSample(idxs) = [];
 
 %% Colors
 if ~isfield(stimulus,'colors')
@@ -579,6 +576,10 @@ else
     task.thistrial.trialType = stimulus.trialTypes{end}(2);
 end
 
+if (task.trialnum==1) || (task.trialnum==21)
+    task.thistrial.seglen(stimulus.seg.iti) = 2;
+end
+
 % get the current mouse position:
 mInfo = mglGetMouse(myscreen.screenNumber);
 stimulus.live.mouseStart = -mInfo.x/stimulus.rotSpd;
@@ -916,11 +917,11 @@ switch task.thistrial.thisseg
     case stimulus.seg.iti
         drawStim(task,false);
         drawFix(task,stimulus.colors.white);
-    case stimulus.seg.fix % same as for ITI
-        drawStim(task,false);
         if (task.trialnum==1) || (task.trialnum==21)
             drawCueInfo(task);
         end
+    case stimulus.seg.fix % same as for ITI
+        drawStim(task,false);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue

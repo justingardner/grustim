@@ -819,6 +819,9 @@ else
     else
         task.thistrial.trialType = stimulus.trialTypes{end}(2);
     end
+    if (task.trialnum==1) || (task.trialnum==21)
+        task.thistrial.seglen(stimulus.seg.iti) = 2;
+    end
 end
 
 % swap seglen in
@@ -1209,11 +1212,11 @@ switch task.thistrial.thisseg
             drawStim(task,false);
         end
         drawFix(task,stimulus.colors.white);
-    case stimulus.seg.fix % same as for ITI
-        drawStim(task,false);
         if (task.trialnum==1) || (task.trialnum==21)
             drawCueInfo(task);
         end
+    case stimulus.seg.fix % same as for ITI
+        drawStim(task,false);
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
