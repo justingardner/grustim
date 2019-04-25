@@ -63,6 +63,9 @@ if ~stimulus.replay
             stimulus.counter = s.stimulus.counter + 1;
             stimulus.colors = s.stimulus.colors;
             stimulus.colorwheel = s.stimulus.colorwheel;
+            stimulus.trialTypes = s.stimulus.trialTypes;
+            stimulus.curSample = s.stimulus.curSample;
+            stimulus.ratio = s.stimulus.ratio;
             clear s;
             disp(sprintf('(afcom_avg) Data file: %s loaded.',fname));
         else
@@ -114,6 +117,26 @@ if isfield(myscreen,'calibFullFilename')
 else
     stimulus.calib = []; % need this so that mglLab2rgb doesn't fail
 end
+
+
+%% Trial type blocks for non-scanning
+if ~isfield(stimulus,'trialTypes')
+    stimulus.trialTypes = {};
+    % the actual ratio to keep
+    stimulus.ratio = [1 1 1 2 2 2 0 0 3 4];
+    stimulus.curSample = [];
+end
+
+% add trial types for this run
+if ~stimulus.scan
+    if isempty(stimulus.curSample)
+        stimulus.curSample = stimulus.ratio(randperm(length(stimulus.ratio)));
+    end
+    idxs = randsample(1:length(stimulus.curSample),2);
+    stimulus.trialTypes{end+1} = stimulus.curSample(idxs);
+    stimulus.curSample(idxs) = [];
+end
+
 
 %% Colors
 if ~isfield(stimulus,'colors')
@@ -290,7 +313,6 @@ task{1}{1}.numTrials = 40;
 
 task{1}{1}.random = 1;
 task{1}{1}.parameter.target = [1 2];
-task{1}{1}.parameter.trialType = [1 2];
 task{1}{1}.parameter.duration = 0.5; % [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
 
 if stimulus.practice==1
@@ -304,6 +326,7 @@ end
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 % feature target
+task{1}{1}.randVars.calculated.trialType = nan;
 task{1}{1}.randVars.calculated.blockTrial = nan;
 task{1}{1}.randVars.calculated.target1 = nan;
 task{1}{1}.randVars.calculated.target2 = nan;
@@ -548,6 +571,12 @@ if stimulus.powerwheel>0
     mglSetMousePosition(myscreen.screenWidth/2+rand*2*pi*stimulus.rotSpd-pi*stimulus.rotSpd,myscreen.screenHeight/2,1);
 else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
+end
+
+if task.trialnum <= 20
+    task.thistrial.trialType = stimulus.trialTypes{end}(1);
+else
+    task.thistrial.trialType = stimulus.trialTypes{end}(2);
 end
 
 % get the current mouse position:
@@ -824,6 +853,14 @@ function mglGluPartialDisk_(x,y,isize,osize,sangle,sweep,color)
 sangle = 90-sangle; % this sets 0 to be vertical and all coordinates go clockwise
 mglGluPartialDisk(x,y,isize,osize,sangle,sweep,color);
 
+function drawCueInfo(task)
+
+if task.thistrial.trialType==1
+    mglTextDraw('Side!',[0 0]);
+else
+    mglTextDraw('Color!',[0 0]);
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -881,6 +918,9 @@ switch task.thistrial.thisseg
         drawFix(task,stimulus.colors.white);
     case stimulus.seg.fix % same as for ITI
         drawStim(task,false);
+        if (task.trialnum==1) || (task.trialnum==21)
+            drawCueInfo(task);
+        end
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue

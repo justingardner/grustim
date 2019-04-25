@@ -541,7 +541,9 @@ if ~stimulus.replay && stimulus.scan && stimulus.practice==0
     task{1}{1}.synchToVol(stimulus.seg.iti) = 1;
 end
 
-task{1}{1}.randVars.calculated.trialType = nan;
+if ~isfield(task{1}{1}.parameter,'trialType')
+    task{1}{1}.randVars.calculated.trialType = nan;
+end
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
 task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
@@ -1142,6 +1144,14 @@ function mglGluPartialDisk_(x,y,isize,osize,sangle,sweep,color)
 sangle = 90-sangle; % this sets 0 to be vertical and all coordinates go clockwise
 mglGluPartialDisk(x,y,isize,osize,sangle,sweep,color);
 
+function drawCueInfo(task)
+
+if task.thistrial.trialType==1
+    mglTextDraw('Side!',[0 0]);
+else
+    mglTextDraw('Color!',[0 0]);
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1201,6 +1211,9 @@ switch task.thistrial.thisseg
         drawFix(task,stimulus.colors.white);
     case stimulus.seg.fix % same as for ITI
         drawStim(task,false);
+        if (task.trialnum==1) || (task.trialnum==21)
+            drawCueInfo(task);
+        end
         drawFix(task,stimulus.colors.white);
         
     case stimulus.seg.cue
