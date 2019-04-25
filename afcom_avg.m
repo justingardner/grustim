@@ -63,7 +63,6 @@ if ~stimulus.replay
             stimulus.counter = s.stimulus.counter + 1;
             stimulus.colors = s.stimulus.colors;
             stimulus.colorwheel = s.stimulus.colorwheel;
-            stimulus.blocks = s.stimulus.blocks;
             clear s;
             disp(sprintf('(afcom_avg) Data file: %s loaded.',fname));
         else
@@ -311,9 +310,6 @@ task{1}{1}.randVars.calculated.target2 = nan;
 task{1}{1}.randVars.calculated.group = nan;
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
-task{1}{1}.randVars.calculated.featdist = nan; % number of the matched feature
-task{1}{1}.randVars.calculated.sidedist = nan; % number of the matched side
-task{1}{1}.randVars.calculated.distdist = nan; % number of the one you ignored (not matched side or matched feature)
 task{1}{1}.randVars.calculated.angle1 = nan;
 task{1}{1}.randVars.calculated.angle2 = nan;
 task{1}{1}.randVars.calculated.angle3 = nan;
@@ -559,34 +555,14 @@ mInfo = mglGetMouse(myscreen.screenNumber);
 stimulus.live.mouseStart = -mInfo.x/stimulus.rotSpd;
 
 if stimulus.cue==1
-    stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
+%     stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
 else
     stimulus.cueDots.dir = 0; % doesn't matter, dots are incoherent
 end
 
-% set the numbers of the distractors
-switch task.thistrial.target
-    case 1
-        task.thistrial.sidedist = 2;
-        task.thistrial.featdist = 3;
-        task.thistrial.distdist = 4;
-    case 2
-        task.thistrial.sidedist = 1;
-        task.thistrial.featdist = 4;
-        task.thistrial.distdist = 3;
-    case 3
-        task.thistrial.sidedist = 4;
-        task.thistrial.featdist = 1;
-        task.thistrial.distdist = 2;
-    case 4
-        task.thistrial.sidedist = 3;
-        task.thistrial.featdist = 2;
-        task.thistrail.distdist = 1;
-end
-
 if task.thistrial.trialType==1 % spatial
-    targets = [1 2
-               3 4];
+    targets = [3 4
+               1 2];
 elseif task.thistrial.trialType==2 % feature
     targets = [1 3
                2 4];
@@ -617,6 +593,9 @@ end
 task.thistrial.targetAngle = angavg(angles(targetIdx(1)),angles(targetIdx(2)));
    % don't bother with distractorAngle (doesn't make much sense?)
 
+if task.thistrial.trialType==1
+    stop = 1;
+end
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
 task.thistrial.respAngle = -task.thistrial.cwOffset;
@@ -627,7 +606,7 @@ else
     trialTypes = {'yellow','blue'};
 end
 disp(sprintf('(afcom_avg) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.target}));
-disp(sprintf('(afcom_avg) Ang1 %1.2f Ang2 %1.2f. True %1.2f',targetAngles(1),targetAngles(2),task.thistrial.targetAngle));
+disp(sprintf('(afcom_avg) Ang%i %1.2f Ang%i %1.2f. True %1.2f',targetIdx(1),targetAngles(1),targetIdx(2),targetAngles(2),task.thistrial.targetAngle));
 
 % eye tracking 
 task.thistrial.dead = 0;
@@ -697,8 +676,8 @@ if any(cues==1)
     % spatial - draw lines to attended locations
         
     % draw the line from fixWidth to 2*fixWidth
-    x = 1.5*stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target}.theta);
-    y = 1.5*stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target}.theta);
+    x = 1.5*stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target1}.theta);
+    y = 1.5*stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target1}.theta);
     mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);
 end
 if any(cues==2)
@@ -712,7 +691,7 @@ if any(cues==2)
 %         mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);
     elseif stimulus.cue==2
         coherence = 0;
-        color = ang2rgb(stimulus.dotColors(task.thistrial.target));
+        color = ang2rgb(stimulus.dotColors(task.thistrial.target1));
     end
     % cue dots version
     stimulus.cueDots = updateDots(stimulus.cueDots,coherence,false);
@@ -737,7 +716,7 @@ g = r;
 b = r;
 
 for di = 1:length(stimulus.patches)
-    if task.thistrial.trialType~=4 || ~stimSeg || (stimSeg && (di==task.thistrial.target))
+    if task.thistrial.trialType~=4 || ~stimSeg || (stimSeg && (di==task.thistrial.target1)) || (stimSeg && (di==task.thistrial.target2))
         if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
             % if this is the actual stim seg and using motion, update
             % coherently
@@ -792,27 +771,28 @@ for di = 1:length(x)
     end
 end
 
-function drawTarget(task)
-
-global stimulus
-
-if stimulus.cue==1
-    stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
-    color = stimulus.colors.mean;
-else
-    % if we we cued color set the coherence to zero so that there's no
-    % direction information
-    stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,0,false);
-    color = ang2rgb(stimulus.dotColors(task.thistrial.target));
-end
-% compute the offset position
-offX = stimulus.patches{task.thistrial.target}.xcenter - stimulus.patches{task.thistrial.target}.dots.maxX/2;
-offY = stimulus.patches{task.thistrial.target}.ycenter - stimulus.patches{task.thistrial.target}.dots.maxY/2;
-
-% draw the actual points
-mglStencilSelect(1);
-afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
-mglStencilSelect(0);
+% function drawTarget(task)
+% 
+% global stimulus
+% 
+% if stimulus.cue==1
+% %     stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
+% %     color = stimulus.colors.mean;
+% else
+%     % if we we cued color set the coherence to zero so that there's no
+%     % direction information
+%     stimulus.patches{task.thistrial.target1}.dots = updateDots(stimulus.patches{task.thistrial.target1}.dots,0,false);
+%     stimulus.patches{task.thistrial.target2}.dots = updateDots(stimulus.patches{task.thistrial.target2}.dots,0,false);
+%     color = ang2rgb(stimulus.dotColors(task.thistrial.target1));
+% end
+% % compute the offset position
+% offX = stimulus.patches{task.thistrial.target1}.xcenter - stimulus.patches{task.thistrial.target1}.dots.maxX/2;
+% offY = stimulus.patches{task.thistrial.target1}.ycenter - stimulus.patches{task.thistrial.target1}.dots.maxY/2;
+% 
+% % draw the actual points
+% mglStencilSelect(1);
+% afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
+% mglStencilSelect(0);
 
 function drawPicker(task)
 
