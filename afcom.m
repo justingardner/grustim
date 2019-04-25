@@ -38,9 +38,6 @@ function [ myscreen ] = afcom( varargin )
 % TESTING CALL:
 % afcom('cue=#','noeye=1','powerwheel=0');
 
-
-
-
  % CHANGES CHANGES CHANGES
  
  % (1) Cue not working: block by 20 trial groups
@@ -1148,12 +1145,15 @@ sangle = 90-sangle; % this sets 0 to be vertical and all coordinates go clockwis
 mglGluPartialDisk(x,y,isize,osize,sangle,sweep,color);
 
 function drawCueInfo(task)
+global stimulus
 
-if task.thistrial.trialType==1
-    mglTextDraw('Side!',[0 0]);
-else
-    mglTextDraw('Color!',[0 0]);
+if stimulus.cue==1
+    cues = {'No cue','Cue side','Cue direction','Combo cue','Combo cue'};
+elseif stimulus.cue==2
+    cues = {'No cue','Cue side','Cue color','Combo cue','Combo cue'};
 end
+
+mglTextDraw(cues{task.thistrial.trialType+1},[0 0]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%

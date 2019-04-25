@@ -47,6 +47,11 @@ stimulus.replay = replay;
 stimulus.overrideRun = run;
 clear localizer invisible noeye task test2 attend build eyewindow mouse practice powerwheel cue session
 
+if stimulus.cue==1
+    warning('Only direction supported');
+    return
+end
+
 %% Open Old Stimfile
 if ~stimulus.replay
     stimulus.counter = 1;
@@ -366,13 +371,6 @@ end
 %% Draw the cue type to the screen
 for i= 1:2
     mglClearScreen;
-    if stimulus.cue==1
-%         mglTextDraw('Cue: direction',[0 1]);
-        mglTextDraw('Report: color',[0 0]);
-    else
-%         mglTextDraw('Cue: color',[0 1]);
-        mglTextDraw('Report: direction',[0 0]);
-    end
     mglFlush
 end
 
@@ -857,9 +855,9 @@ mglGluPartialDisk(x,y,isize,osize,sangle,sweep,color);
 function drawCueInfo(task)
 
 if task.thistrial.trialType==1
-    mglTextDraw('Side!',[0 0]);
+    mglTextDraw('Cue side',[0 0]);
 else
-    mglTextDraw('Color!',[0 0]);
+    mglTextDraw('Cue color',[0 0]);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
