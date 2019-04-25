@@ -32,6 +32,15 @@ function [ myscreen ] = afcom( varargin )
 
 % STANDARD CALLS:
  
+% EXPERIMENT CALL:
+% scanning
+% afcom('scan=1');
+% TESTING CALL:
+% afcom('cue=#','noeye=1','powerwheel=0');
+
+
+
+
  % CHANGES CHANGES CHANGES
  
  % (1) Cue not working: block by 20 trial groups
@@ -122,11 +131,11 @@ end
 %% Display run info
 if ~stimulus.replay
     disp('*************************');
-    disp(sprintf('(afcom) This is session %i',stimulus.session));
-    r = input('Confirm the session #: [enter to continue]');
-    if ~isempty(r), return; end
     if stimulus.scan
         disp(sprintf('(afcom) This is scan #%i',stimulus.scanCounter));
+        disp(sprintf('(afcom) This is session %i',stimulus.session));
+        r = input('Confirm the session #: [enter to continue]');
+        if ~isempty(r), return; end
     else
         disp(sprintf('(afcom) This is run #%i',stimulus.counter));
     end
@@ -187,7 +196,7 @@ if ~isfield(stimulus,'blocks')
     stimulus.blocks = {};
 end
 
-if stimulus.session>length(stimulus.blocks)
+if stimulus.scan && (stimulus.session>length(stimulus.blocks))
     disp('(afcom) Building new blocks for this session');
     nblocks = 17;
     % build blocks for this session
@@ -224,12 +233,19 @@ if stimulus.session>length(stimulus.blocks)
     block.trials = nblocks*12;
     
     % re-build into the trial order
-    target = [ones(1,nblocks*3) ones(1,nblocks*3)*2 ones(1,nblocks*3)*3 ones(1,nblocks*3)*4];
-    trialType = repmat([ones(1,nblocks) ones(1,nblocks)*2 zeros(1,nblocks)],1,4);
-    groups = repmat(1:nblocks,1,12);
-    
+    if stimulus.scan
+        targetOpts = [1 2 3 4 1 2 3 4 1 2 3 4];
+        typeOpts =   [0 0 0 0 1 1 1 1 2 2 2 2];
+        
+        target = repmat(targetOpts,1,nblocks);
+        trialType = repmat(typeOpts,1,nblocks);
+        
+        groups = repmat(1:nblocks,12,1);
+        groups = groups(:)';
+    end
+
     order = randperm(block.trials);
-    
+
     target = target(order);
     trialType = trialType(order);
     groups = groups(order);
@@ -493,15 +509,20 @@ if stimulus.scan==1
     task{1}{1}.numTrials = Inf;
 else
     task{1}{1}.numTrials = 40;
+    if ~task{1}{1}.numTrials==40
+        warning('Trials is not set to 40, this means that the blocking of trial types is not going to work properly.');
+        keyboard
+    end
 end
 
 task{1}{1}.random = 1;
 
 if stimulus.scan
-%     task{1}{1}.parameter.trialType = -1;
+    task{1}{1}.parameter.trialType = -1;
     task{1}{1}.parameter.duration = 1;
-%     task{1}{1}.parameter.target = -1;
+    task{1}{1}.parameter.target = -1;
 else
+    task{1}{1}.parameter.target = [1 2 3 4];
     task{1}{1}.randVars.calculated.duration = nan;
 end
 
@@ -520,11 +541,7 @@ if ~stimulus.replay && stimulus.scan && stimulus.practice==0
     task{1}{1}.synchToVol(stimulus.seg.iti) = 1;
 end
 
-task{1}{1}.randVars.calculated.target = nan;
-task{1}{1}.randVars.calculated.blockTrial = nan;
-
 task{1}{1}.randVars.calculated.trialType = nan;
-% feature target
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
 task{1}{1}.randVars.calculated.distractorAngle = nan; % angle of the other thing you had to attend
@@ -859,7 +876,6 @@ for di = 1:length(stimulus.patches)
         ctheta = stimulus.blocks{end}.group{g}.dirs(di);
     else
         ctheta = randsample(stimulus.thetas,1);
-
     end
     
     if di==task.thistrial.target

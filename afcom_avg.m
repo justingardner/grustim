@@ -3,6 +3,12 @@ function [ myscreen ] = afcom_avg( varargin )
 % *** set 'noeye=1' to turn of the eye tracker***
 %
 % Variant of afcom in which you report the average motion direction
+
+% EXPERIMENT CALL:
+% afcom_avg;
+% TESTING CALL:
+% afcom_avg('cue=2','noeye=1','powerwheel=0');
+
 %%
 
 global stimulus fixStimulus
@@ -26,7 +32,6 @@ mouse=0;
 practice=0; 
 practiceType=-1;
 cue=0;
-session=1;
 
 getArgs(varargin,{'cue=2','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.plots = plots;
@@ -300,6 +305,7 @@ end
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 % feature target
+task{1}{1}.randVars.calculated.blockTrial = nan;
 task{1}{1}.randVars.calculated.target1 = nan;
 task{1}{1}.randVars.calculated.target2 = nan;
 task{1}{1}.randVars.calculated.group = nan;
