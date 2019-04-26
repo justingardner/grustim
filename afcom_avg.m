@@ -128,7 +128,7 @@ end
 if ~isfield(stimulus,'trialTypes')
     stimulus.trialTypes = {};
     % the actual ratio to keep
-    stimulus.ratio = [1 1 1 2 2 2 0 0 3 4];
+    stimulus.ratio = [1 1 2 2];
     stimulus.curSample = [];
 end
 
