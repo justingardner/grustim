@@ -291,12 +291,12 @@ if stimulus.noeye
 end
 
 if stimulus.practice==1
-    task{1}{1}.segmin(stimulus.seg.cue) = 1;
-    task{1}{1}.segmax(stimulus.seg.cue) = 1;
+    task{1}{1}.segmin(stimulus.seg.cue) = 1.5;
+    task{1}{1}.segmax(stimulus.seg.cue) = 1.5;
     task{1}{1}.segmin(stimulus.seg.isi) = 1;
     task{1}{1}.segmax(stimulus.seg.isi) = 1;
-    task{1}{1}.segmin(stimulus.seg.resp) = 6;
-    task{1}{1}.segmax(stimulus.seg.resp) = 6;
+    task{1}{1}.segmin(stimulus.seg.resp) = inf;
+    task{1}{1}.segmax(stimulus.seg.resp) = inf;
     task{1}{1}.segmin(stimulus.seg.feedback) = 1.5;
     task{1}{1}.segmax(stimulus.seg.feedback) = 1.5;
 elseif stimulus.practice==2
@@ -315,10 +315,12 @@ task{1}{1}.numTrials = 40;
 
 task{1}{1}.random = 1;
 task{1}{1}.parameter.target = [1 2];
-task{1}{1}.parameter.duration = 0.5; % [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+% task{1}{1}.parameter.duration = 0.5; % [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
 
 if stimulus.practice==1
     task{1}{1}.parameter.duration = 1.0;
+else
+    task{1}{1}.randVars.calculated.duration = nan;
 end
 
 if stimulus.practiceType>=0
@@ -405,11 +407,11 @@ end
 
 function dispInfo()
 %%
-files = dir(fullfile('~/data/afcom/',mglGetSID,'*.mat'));
+files = dir(fullfile('~/data/afcom_avg/',mglGetSID,'*.mat'));
 
 maxTrackLength = 0;
 for fi = 1:length(files)
-    load(fullfile('~/data/afcom/',mglGetSID,files(fi).name));
+    load(fullfile('~/data/afcom_avg/',mglGetSID,files(fi).name));
     exp = getTaskParameters(myscreen,task);
     e{fi} = exp{1};
     mt{fi} = stimulus.data.mouseTrack(1:e{fi}.nTrials,:);
@@ -426,9 +428,8 @@ end
 % end
 
 %% concatenate all trials
-pvars = {'target','trialType','cue','duration'};
-rvars = {'dead','targetAngle','angle1','angle2','angle3',...
-    'angle4','respAngle','respDistance','distDistance'};
+pvars = {'target'};
+rvars = {'dead','duration','trialType','targetAngle','respAngle','respDistance'};
 runs = [];
 
 for pii = 1:length(pvars)
@@ -441,7 +442,7 @@ end
 runcount = [0 0];
 for run = 1:length(e)
     if e{run}.nTrials>0
-        runs = [runs ones(1,e{run}.nTrials)];
+        runs = [runs run*ones(1,e{run}.nTrials)];
         runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
         for pii = 1:length(pvars)
             eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
@@ -486,79 +487,51 @@ eval('dur = duration;');
 % amt = fliplr(amt);
 
 %% create one giant matrix, but just of a few variables that matter
-data = [cue' runs' trialType' respDistance' dur'];
-keepIdxs = ~any(isnan(data(:,4)),2);
+data = [runs' dead' trialType' respDistance' dur'];
+keepIdxs = ~data(:,2);
 data = data(keepIdxs,:);
-amt = amt(keepIdxs,:);
 
 disp(sprintf('Total trials: %i',size(data,1)));
 
 %% print out information
-disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
+disp(sprintf('Runs so far: %i',runcount(2)));
 
-%% plot
+%% plot 
+cmap = brewermap(2,'Dark2');
 
-% split data by difficulty
-% edata = data(data(:,5)==1,:);
-% hdata = data(data(:,5)==0.25,:);
-% 
-% dispInfoFigures(edata,'easy');
-% dispInfoFigures(hdata,'hard');
+h = figure; hold on
+uruns = unique(runs);
+for ui = 1:length(uruns)
+    run = uruns(ui);
+    dat = data(data(:,1)==run,:);
+    % split by short and long durations
+    dat_short = dat(dat(:,5)<=0.5,:);
+    dat_long = dat(dat(:,5)>0.5,:);
+    plot(run,median(dat_short(:,4)),'o','MarkerFaceColor',cmap(1,:),'MarkerEdgeColor','w');
+    plot(run,median(dat_long(:,4)),'o','MarkerFaceColor',cmap(2,:),'MarkerEdgeColor','w');
+end
+axis([uruns(1) uruns(end) 0 pi]);
+legend({'Duration < 0.5 s','Duration > 0.5 s'});
+title('Performance over runs');
 
-% function dispInfoFigures(data,diff)
-% 
-% % build one figure for each task
-% titles = {'Cue direction: ','Cue color: '};
-% bins = pi/32:pi/16:pi;
-% blabels = {};
-% for bi = 0:(length(bins)-1)
-%     blabels{bi+1} = sprintf('%i/16',bi);
-% end
-% 
-% cmap = brewermap(5,'Dark2');
-% 
-% for cue = 1:2
-%     disp(sprintf('%s cue %s',diff,titles{cue}));
-%     cdata = data(data(:,1)==cue,:);
-%     
-%     disp(sprintf('Trials of: %s so far %i',titles{cue},size(cdata,1)));
-%     
-%     all = cdata(cdata(:,3)==0,:);
-%     disp(sprintf('Type all: %i',size(all,1)));
-%     spatial = cdata(cdata(:,3)==1,:);
-%     disp(sprintf('Type spatial: %i',size(spatial,1)));
-%     feature = cdata(cdata(:,3)==2,:);
-%     disp(sprintf('Type feature: %i',size(feature,1)));
-%     target = cdata(cdata(:,3)==3,:);
-%     disp(sprintf('Type target: %i',size(target,1)));
-%     base = cdata(cdata(:,3)==4,:);
-%     disp(sprintf('Type baseline: %i',size(base,1)));
-% 
-%     figure;
-%     
-%     group = {'all','spatial','feature','target','base'};
-%     legends = {'All','Spatial','Feature','Target','Baseline'};
-%     
-%     for s = 1:5
-%         cdat = eval(sprintf('%s(:,4)',group{s}));
-%         his = hist(cdat,bins);
-%         his = his/sum(his);
-%         
-%         subplot(5,1,s); hold on
-%         b = bar(bins,his,pi/8);
-%         set(b,'FaceColor',cmap(s,:),'EdgeColor','w');
-%         vline(nanmedian(cdat),'--k');
-%         legend(legends{s});
-%         ylabel('Proportion (%)');
-%         xlabel('Response distance from target (target=0');
-%         set(gca,'XTick',bins,'XTickLabel',blabels);
-%         drawPublishAxis;
-%     end
-% end
+%% plot histogram for tasks
+dat_spatial = data(data(:,3)==1,:);
+dat_feature = data(data(:,3)==2,:);
+
+h = figure;
+subplot(211)
+hist(dat_spatial(:,4));
+subplot(212)
+hist(dat_feature(:,4));
+
+
 %%
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
+if ~stimulus.practice
+    task.thistrial.duration = rand*.5 + 0.25;
+end
 % swap seglen in
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
@@ -575,7 +548,7 @@ else
 end
 
 if (task.trialnum==1) || (task.trialnum==21)
-    task.thistrial.seglen(stimulus.seg.iti) = 2;
+    task.thistrial.seglen(stimulus.seg.iti) = 4;
 end
 
 % get the current mouse position:

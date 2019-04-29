@@ -1,4 +1,4 @@
-function [ myscreen ] = afcom( varargin )
+opfunction [ myscreen ] = afcom( varargin )
 % AFCOM (attention field color mapping)
 % *** set 'noeye=1' to turn of the eye tracker***
 %
@@ -801,7 +801,7 @@ end
 
 % add duration
 if ~stimulus.scan
-    task.thistrial.duration = rand*.75 + 0.25;
+    task.thistrial.duration = rand*.5 + 0.25;
 end
 
 if stimulus.scan
