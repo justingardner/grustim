@@ -87,6 +87,8 @@ stimulus.colors.red = [1 0 0];
 stimulus.colors.white = [1 1 1];
 stimulus.colors.black = [0 0 0];
 
+stimulus.live = struct;
+
 %% Sizes
 stimulus.arrayWidth = myscreen.screenWidth/myscreen.imageWidth*7; % IN PIXELS! We'll resize images to this... 
 
@@ -125,6 +127,10 @@ task{1}{1}.randVars.calculated.targetCategory = nan;
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.responsePresent = nan;
 task{1}{1}.randVars.calculated.correct = nan;
+task{1}{1}.randVars.calculated.imgCat1 = nan;
+task{1}{1}.randVars.calculated.imgCat2 = nan;
+task{1}{1}.randVars.calculated.imgCat3 = nan;
+task{1}{1}.randVars.calculated.imgCat4 = nan;
 
 task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
 
@@ -181,8 +187,8 @@ function dispInfo()
 function [task, myscreen] = startBlockCallback(task,myscreen)
 global stimulus
 % set the new category
-stimulus.live.curCategory = randsample(stimulus.live.remainCategory,1);
-stimulus.live.remainCategory = setdiff(stimulus.live.remainCategory,stimulus.live.curCategory);
+stimulus.live.curCategory = randsample(stimulus.remainCategory,1);
+stimulus.remainCategory = setdiff(stimulus.remainCategory,stimulus.live.curCategory);
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
@@ -196,8 +202,14 @@ task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 % create the texture for this trial
 if task.thistrial.targetPresent
     img = permute(squeeze(stimulus.images(task.thistrial.category,task.thistrial.targetImg,:,:,:)),[3 1 2]);
+    for i = 1:4
+        task.thistrial.(sprintf('imgCat%i',i)) = stimulus.images_info(task.thistrial.category,task.thistrial.targetImg,i);
+    end
 else
     img = permute(squeeze(stimulus.distractors(task.thistrial.category,task.thistrial.targetImg,:,:,:)),[3 1 2]);
+    for i = 1:4
+        task.thistrial.(sprintf('imgCat%i',i)) = stimulus.distractors_info(task.thistrial.category,task.thistrial.targetImg,i);
+    end
 end
 mask = img;
 img(4,:,:) = 255;
