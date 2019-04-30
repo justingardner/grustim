@@ -71,6 +71,7 @@ end
 myscreen = initScreen('VPixx');
 % set background to black
 myscreen.background = 0;
+stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur when for 300 ms someone moves out of the fixation region
 
 %% Plot and return
 if stimulus.plots==2
@@ -90,8 +91,8 @@ stimulus.colors.black = [0 0 0];
 stimulus.live = struct;
 
 %% Sizes
-stimulus.arrayWidth = myscreen.screenWidth/myscreen.imageWidth*7; % IN PIXELS! We'll resize images to this... 
-
+stimulus.arrayWidth = 224*myscreen.imageWidth/myscreen.screenWidth; % IN PIXELS! We'll resize images to this... 
+disp(sprintf('Images are %1.2f degrees',stimulus.arrayWidth));
 %% Setup Task
 
 % task waits for fixation on first segment
@@ -171,6 +172,9 @@ mglClearScreen;
 mglFlush
 myscreen.flushMode = 1;
 
+% track finished categories
+stimulus.remainCategory = setdiff(stimulus.remainCategory,stimulus.doneCategories);
+
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -188,7 +192,10 @@ function [task, myscreen] = startBlockCallback(task,myscreen)
 global stimulus
 % set the new category
 stimulus.live.curCategory = randsample(stimulus.remainCategory,1);
-stimulus.remainCategory = setdiff(stimulus.remainCategory,stimulus.live.curCategory);
+if ~isfield(stimulus,'doneCategories')
+    stimulus.doneCategories = [];
+end
+stimulus.doneCategories = [stimulus.doneCategories stimulus.live.curCategory];
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
@@ -223,6 +230,7 @@ stimulus.live.mask = mglCreateTexture(mask);
 stimulus.live.fixColor = stimulus.colors.white;
 
 task.thistrial.dead = false;
+stimulus.live.fixCount = 0;
 
 if task.thistrial.targetPresent
     disp(sprintf('(spatobj) There is a %s in the array.',stimulus.categories{task.thistrial.category}));
