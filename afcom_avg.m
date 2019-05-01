@@ -3,6 +3,12 @@ function [ myscreen ] = afcom_avg( varargin )
 % *** set 'noeye=1' to turn of the eye tracker***
 %
 % Variant of afcom in which you report the average motion direction
+
+% EXPERIMENT CALL:
+% afcom_avg;
+% TESTING CALL:
+% afcom_avg('cue=2','noeye=1','powerwheel=0');
+
 %%
 
 global stimulus fixStimulus
@@ -26,9 +32,8 @@ mouse=0;
 practice=0; 
 practiceType=-1;
 cue=0;
-session=1;
 
-getArgs(varargin,{'cue=2','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0','session=1'});
+getArgs(varargin,{'cue=2','plots=0','noeye=0','powerwheel=1','eyewindow=3','practice=0','practiceType=-1','debug=0','replay=0','run=0','build=0','mouse=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.cue = cue; % cue = 1 means direction, cue = 2 means color
@@ -40,31 +45,36 @@ stimulus.eyewindow = eyewindow;
 stimulus.debug = debug;
 stimulus.replay = replay;
 stimulus.overrideRun = run;
-stimulus.session = session;
-
 clear localizer invisible noeye task test2 attend build eyewindow mouse practice powerwheel cue session
+
+if stimulus.cue==1
+    warning('Only direction supported');
+    return
+end
 
 %% Open Old Stimfile
 if ~stimulus.replay
     stimulus.counter = 1;
     
-    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom/%s',mglGetSID))
+    if ~isempty(mglGetSID) && isdir(sprintf('~/data/afcom_avg/%s',mglGetSID))
         % Directory exists, check for a stimefile
-        files = dir(sprintf('~/data/afcom/%s/1*mat',mglGetSID));
+        files = dir(sprintf('~/data/afcom_avg/%s/1*mat',mglGetSID));
         
         if length(files) >= 1
             fname = files(end).name;
             
-            s = load(sprintf('~/data/afcom/%s/%s',mglGetSID,fname));
+            s = load(sprintf('~/data/afcom_avg/%s/%s',mglGetSID,fname));
             % copy staircases and run numbers
             stimulus.counter = s.stimulus.counter + 1;
             stimulus.colors = s.stimulus.colors;
             stimulus.colorwheel = s.stimulus.colorwheel;
-            stimulus.blocks = s.stimulus.blocks;
+            stimulus.trialTypes = s.stimulus.trialTypes;
+            stimulus.curSample = s.stimulus.curSample;
+            stimulus.ratio = s.stimulus.ratio;
             clear s;
-            disp(sprintf('(afcom) Data file: %s loaded.',fname));
+            disp(sprintf('(afcom_avg) Data file: %s loaded.',fname));
         else
-            warning('(afcom) Unable to load previous data files. If this is *not* the first run there is something wrong.');
+            warning('(afcom_avg) Unable to load previous data files. If this is *not* the first run there is something wrong.');
         end
     end
 end
@@ -72,7 +82,7 @@ end
 %% Display run info
 if ~stimulus.replay
     disp('*************************');
-    disp(sprintf('(afcom) This is run #%i',stimulus.counter));
+    disp(sprintf('(afcom_avg) This is run #%i',stimulus.counter));
     disp('*************************');
 end
 
@@ -105,63 +115,6 @@ if ~stimulus.replay
 else
 end
 
-%% Block coding for scans
-if ~isfield(stimulus,'blocks')
-    stimulus.blocks = {};
-end
-
-if stimulus.session>length(stimulus.blocks)
-    % build blocks for this session
-    
-    % each scan session should consist of ~56 minutes of scanning total,
-    % which corresponds to some numbers of blocks. A "block" is a repeat of
-    % the exact same set of angles for the three different cueing
-    % conditions (no cue, spatial, feature) for each of the four possible
-    % responses. So 12 trials total.
-    
-    % Note that the uncued trials are identical in terms of stimulus, while
-    % the cued trials are in pairs of two. This means we can do a (small)
-    % amount of noise reduction by averaging over each pair. 
-    
-    % Each "run" should consist of roughly 7 minutes, so 28 trials, or ~228 
-    % per scan session. This is 19 blocks, which will be interleaved.
-    
-    % Note that a session is therefore useless if you don't scan all 228
-    % trials!! So if a scan fails, that run must be repeated. 
-    
-    block = struct;
-    
-    % build the block -- first create 19 sets of random directions
-    for i = 1:19
-        group = struct;
-        
-        group.dirs = [rand rand rand rand]*2*pi;
-        
-        block.group{i} = group;
-    end
-    
-    block.trials = 17*12;
-    
-    % re-build into the trial order
-    target = [ones(1,19*3) ones(1,19*3)*2 ones(1,19*3)*3 ones(1,19*3)*4];
-    trialType = repmat([ones(1,19) ones(1,19)*2 zeros(1,19)],1,4);
-    groups = repmat(1:19,1,12);
-    
-    order = randperm(block.trials);
-    
-    target = target(order);
-    trialType = trialType(order);
-    groups = groups(order);
-    
-    block.groups = groups;
-    block.target = target;
-    block.trialType = trialType;
-    block.trial = 1;
-    
-    stimulus.blocks{end+1} = block;
-end
-
-
 %% load the calib
 if isfield(myscreen,'calibFullFilename')
     calib = load(fullfile(myscreen.calibFullFilename));
@@ -169,6 +122,23 @@ if isfield(myscreen,'calibFullFilename')
 else
     stimulus.calib = []; % need this so that mglLab2rgb doesn't fail
 end
+
+
+%% Trial type blocks for non-scanning
+if ~isfield(stimulus,'trialTypes')
+    stimulus.trialTypes = {};
+    % the actual ratio to keep
+    stimulus.ratio = [1 1 2 2];
+    stimulus.curSample = [];
+end
+
+% add trial types for this run
+if isempty(stimulus.curSample)
+    stimulus.curSample = stimulus.ratio(randperm(length(stimulus.ratio)));
+end
+idxs = randsample(1:length(stimulus.curSample),2);
+stimulus.trialTypes{end+1} = stimulus.curSample(idxs);
+stimulus.curSample(idxs) = [];
 
 %% Colors
 if ~isfield(stimulus,'colors')
@@ -321,12 +291,12 @@ if stimulus.noeye
 end
 
 if stimulus.practice==1
-    task{1}{1}.segmin(stimulus.seg.cue) = 1;
-    task{1}{1}.segmax(stimulus.seg.cue) = 1;
+    task{1}{1}.segmin(stimulus.seg.cue) = 1.5;
+    task{1}{1}.segmax(stimulus.seg.cue) = 1.5;
     task{1}{1}.segmin(stimulus.seg.isi) = 1;
     task{1}{1}.segmax(stimulus.seg.isi) = 1;
-    task{1}{1}.segmin(stimulus.seg.resp) = 6;
-    task{1}{1}.segmax(stimulus.seg.resp) = 6;
+    task{1}{1}.segmin(stimulus.seg.resp) = inf;
+    task{1}{1}.segmax(stimulus.seg.resp) = inf;
     task{1}{1}.segmin(stimulus.seg.feedback) = 1.5;
     task{1}{1}.segmax(stimulus.seg.feedback) = 1.5;
 elseif stimulus.practice==2
@@ -344,14 +314,13 @@ task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 task{1}{1}.numTrials = 40;
 
 task{1}{1}.random = 1;
-
-task{1}{1}.parameter.trialType = [1 2]; % 1 = spatial, 2 = feature, 0 = no cue, 3 = exact cue (1+2), 4 = target only
-task{1}{1}.parameter.target = [1 2]; % which patches are the target, for spatial 1 = left 2= right, for feature 1 = yellow, 2 = blue
-warning('Duration fixed at 1');
-task{1}{1}.parameter.duration = 1; % [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
+task{1}{1}.parameter.target = [1 2];
+% task{1}{1}.parameter.duration = 0.5; % [0.25 1.0]; % bump to 0.25/0.50/1.00 for full task? 
 
 if stimulus.practice==1
     task{1}{1}.parameter.duration = 1.0;
+else
+    task{1}{1}.randVars.calculated.duration = nan;
 end
 
 if stimulus.practiceType>=0
@@ -361,11 +330,13 @@ end
 task{1}{1}.parameter.cue = stimulus.cue; % which cue condition, 1=direction cues, 2=color cues
 
 % feature target
+task{1}{1}.randVars.calculated.trialType = nan;
+task{1}{1}.randVars.calculated.blockTrial = nan;
+task{1}{1}.randVars.calculated.target1 = nan;
+task{1}{1}.randVars.calculated.target2 = nan;
+task{1}{1}.randVars.calculated.group = nan;
 task{1}{1}.randVars.calculated.dead = nan;
 task{1}{1}.randVars.calculated.targetAngle = nan; % angle of the target
-task{1}{1}.randVars.calculated.featdist = nan; % number of the matched feature
-task{1}{1}.randVars.calculated.sidedist = nan; % number of the matched side
-task{1}{1}.randVars.calculated.distdist = nan; % number of the one you ignored (not matched side or matched feature)
 task{1}{1}.randVars.calculated.angle1 = nan;
 task{1}{1}.randVars.calculated.angle2 = nan;
 task{1}{1}.randVars.calculated.angle3 = nan;
@@ -396,19 +367,12 @@ if ~stimulus.replay && ~stimulus.noeye
     myscreen = eyeCalibDisp(myscreen);
     
     % let the user know
-    disp(sprintf('(afcom) Starting run number: %i.',stimulus.counter));
+    disp(sprintf('(afcom_avg) Starting run number: %i.',stimulus.counter));
 end
 
 %% Draw the cue type to the screen
 for i= 1:2
     mglClearScreen;
-    if stimulus.cue==1
-%         mglTextDraw('Cue: direction',[0 1]);
-        mglTextDraw('Report: color',[0 0]);
-    else
-%         mglTextDraw('Cue: color',[0 1]);
-        mglTextDraw('Report: direction',[0 0]);
-    end
     mglFlush
 end
 
@@ -435,7 +399,7 @@ myscreen.flushMode = 1;
 myscreen = endTask(myscreen,task);
 
 if ~stimulus.replay && stimulus.plots
-    disp('(afcom) Displaying plots');
+    disp('(afcom_avg) Displaying plots');
     dispInfo(stimulus);
 end
 
@@ -443,11 +407,11 @@ end
 
 function dispInfo()
 %%
-files = dir(fullfile('~/data/afcom/',mglGetSID,'*.mat'));
+files = dir(fullfile('~/data/afcom_avg/',mglGetSID,'*.mat'));
 
 maxTrackLength = 0;
 for fi = 1:length(files)
-    load(fullfile('~/data/afcom/',mglGetSID,files(fi).name));
+    load(fullfile('~/data/afcom_avg/',mglGetSID,files(fi).name));
     exp = getTaskParameters(myscreen,task);
     e{fi} = exp{1};
     mt{fi} = stimulus.data.mouseTrack(1:e{fi}.nTrials,:);
@@ -464,9 +428,8 @@ end
 % end
 
 %% concatenate all trials
-pvars = {'target','trialType','cue','duration'};
-rvars = {'dead','targetAngle','angle1','angle2','angle3',...
-    'angle4','respAngle','respDistance','distDistance'};
+pvars = {'target'};
+rvars = {'dead','duration','trialType','targetAngle','respAngle','respDistance'};
 runs = [];
 
 for pii = 1:length(pvars)
@@ -479,7 +442,7 @@ end
 runcount = [0 0];
 for run = 1:length(e)
     if e{run}.nTrials>0
-        runs = [runs ones(1,e{run}.nTrials)];
+        runs = [runs run*ones(1,e{run}.nTrials)];
         runcount(e{run}.parameter.cue(1)) = runcount(e{run}.parameter.cue(1)) + 1;
         for pii = 1:length(pvars)
             eval(sprintf('%s = [%s e{run}.parameter.%s];',pvars{pii},pvars{pii},pvars{pii}));
@@ -524,79 +487,51 @@ eval('dur = duration;');
 % amt = fliplr(amt);
 
 %% create one giant matrix, but just of a few variables that matter
-data = [cue' runs' trialType' respDistance' dur'];
-keepIdxs = ~any(isnan(data(:,4)),2);
+data = [runs' dead' trialType' respDistance' dur'];
+keepIdxs = ~data(:,2);
 data = data(keepIdxs,:);
-amt = amt(keepIdxs,:);
 
 disp(sprintf('Total trials: %i',size(data,1)));
 
 %% print out information
-disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runcount(1),runcount(2)));
+disp(sprintf('Runs so far: %i',runcount(2)));
 
-%% plot
+%% plot 
+cmap = brewermap(2,'Dark2');
 
-% split data by difficulty
-% edata = data(data(:,5)==1,:);
-% hdata = data(data(:,5)==0.25,:);
-% 
-% dispInfoFigures(edata,'easy');
-% dispInfoFigures(hdata,'hard');
+h = figure; hold on
+uruns = unique(runs);
+for ui = 1:length(uruns)
+    run = uruns(ui);
+    dat = data(data(:,1)==run,:);
+    % split by short and long durations
+    dat_short = dat(dat(:,5)<=0.5,:);
+    dat_long = dat(dat(:,5)>0.5,:);
+    plot(run,median(dat_short(:,4)),'o','MarkerFaceColor',cmap(1,:),'MarkerEdgeColor','w');
+    plot(run,median(dat_long(:,4)),'o','MarkerFaceColor',cmap(2,:),'MarkerEdgeColor','w');
+end
+axis([uruns(1) uruns(end) 0 pi]);
+legend({'Duration < 0.5 s','Duration > 0.5 s'});
+title('Performance over runs');
 
-% function dispInfoFigures(data,diff)
-% 
-% % build one figure for each task
-% titles = {'Cue direction: ','Cue color: '};
-% bins = pi/32:pi/16:pi;
-% blabels = {};
-% for bi = 0:(length(bins)-1)
-%     blabels{bi+1} = sprintf('%i/16',bi);
-% end
-% 
-% cmap = brewermap(5,'Dark2');
-% 
-% for cue = 1:2
-%     disp(sprintf('%s cue %s',diff,titles{cue}));
-%     cdata = data(data(:,1)==cue,:);
-%     
-%     disp(sprintf('Trials of: %s so far %i',titles{cue},size(cdata,1)));
-%     
-%     all = cdata(cdata(:,3)==0,:);
-%     disp(sprintf('Type all: %i',size(all,1)));
-%     spatial = cdata(cdata(:,3)==1,:);
-%     disp(sprintf('Type spatial: %i',size(spatial,1)));
-%     feature = cdata(cdata(:,3)==2,:);
-%     disp(sprintf('Type feature: %i',size(feature,1)));
-%     target = cdata(cdata(:,3)==3,:);
-%     disp(sprintf('Type target: %i',size(target,1)));
-%     base = cdata(cdata(:,3)==4,:);
-%     disp(sprintf('Type baseline: %i',size(base,1)));
-% 
-%     figure;
-%     
-%     group = {'all','spatial','feature','target','base'};
-%     legends = {'All','Spatial','Feature','Target','Baseline'};
-%     
-%     for s = 1:5
-%         cdat = eval(sprintf('%s(:,4)',group{s}));
-%         his = hist(cdat,bins);
-%         his = his/sum(his);
-%         
-%         subplot(5,1,s); hold on
-%         b = bar(bins,his,pi/8);
-%         set(b,'FaceColor',cmap(s,:),'EdgeColor','w');
-%         vline(nanmedian(cdat),'--k');
-%         legend(legends{s});
-%         ylabel('Proportion (%)');
-%         xlabel('Response distance from target (target=0');
-%         set(gca,'XTick',bins,'XTickLabel',blabels);
-%         drawPublishAxis;
-%     end
-% end
+%% plot histogram for tasks
+dat_spatial = data(data(:,3)==1,:);
+dat_feature = data(data(:,3)==2,:);
+
+h = figure;
+subplot(211)
+hist(dat_spatial(:,4));
+subplot(212)
+hist(dat_feature(:,4));
+
+
 %%
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
+if ~stimulus.practice
+    task.thistrial.duration = rand*.5 + 0.25;
+end
 % swap seglen in
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
@@ -606,44 +541,37 @@ else
     mglSetMousePosition(myscreen.screenWidth/2,myscreen.screenHeight/2,2);
 end
 
+if task.trialnum <= 20
+    task.thistrial.trialType = stimulus.trialTypes{end}(1);
+else
+    task.thistrial.trialType = stimulus.trialTypes{end}(2);
+end
+
+if (task.trialnum==1) || (task.trialnum==21)
+    task.thistrial.seglen(stimulus.seg.iti) = 4;
+end
+
 % get the current mouse position:
 mInfo = mglGetMouse(myscreen.screenNumber);
 stimulus.live.mouseStart = -mInfo.x/stimulus.rotSpd;
 
 if stimulus.cue==1
-    stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
+%     stimulus.cueDots.dir = stimulus.patches{task.thistrial.target}.dots.dir;
 else
     stimulus.cueDots.dir = 0; % doesn't matter, dots are incoherent
 end
 
-% set the numbers of the distractors
-switch task.thistrial.target
-    case 1
-        task.thistrial.sidedist = 2;
-        task.thistrial.featdist = 3;
-        task.thistrial.distdist = 4;
-    case 2
-        task.thistrial.sidedist = 1;
-        task.thistrial.featdist = 4;
-        task.thistrial.distdist = 3;
-    case 3
-        task.thistrial.sidedist = 4;
-        task.thistrial.featdist = 1;
-        task.thistrial.distdist = 2;
-    case 4
-        task.thistrial.sidedist = 3;
-        task.thistrial.featdist = 2;
-        task.thistrail.distdist = 1;
-end
-
 if task.thistrial.trialType==1 % spatial
-    targets = [1 2
-               3 4];
+    targets = [3 4
+               1 2];
 elseif task.thistrial.trialType==2 % feature
     targets = [1 3
                2 4];
 end
 targetIdx = targets(task.thistrial.target,:);
+
+task.thistrial.target1 = targetIdx(1);
+task.thistrial.target2 = targetIdx(2);
 
 % set the angles of the patches
 angles = randsample(stimulus.thetas,4);
@@ -666,6 +594,9 @@ end
 task.thistrial.targetAngle = angavg(angles(targetIdx(1)),angles(targetIdx(2)));
    % don't bother with distractorAngle (doesn't make much sense?)
 
+if task.thistrial.trialType==1
+    stop = 1;
+end
 % colorwheel random rotation
 task.thistrial.cwOffset = rand*2*pi;
 task.thistrial.respAngle = -task.thistrial.cwOffset;
@@ -675,8 +606,8 @@ if task.thistrial.trialType==1
 else
     trialTypes = {'yellow','blue'};
 end
-disp(sprintf('(afcom) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.target}));
-disp(sprintf('(afcom) Ang1 %1.2f Ang2 %1.2f. True %1.2f',targetAngles(1),targetAngles(2),task.thistrial.targetAngle));
+disp(sprintf('(afcom_avg) Starting trial %i. Attending %s',task.trialnum,trialTypes{task.thistrial.target}));
+disp(sprintf('(afcom_avg) Ang%i %1.2f Ang%i %1.2f. True %1.2f',targetIdx(1),targetAngles(1),targetIdx(2),targetAngles(2),task.thistrial.targetAngle));
 
 % eye tracking 
 task.thistrial.dead = 0;
@@ -746,8 +677,8 @@ if any(cues==1)
     % spatial - draw lines to attended locations
         
     % draw the line from fixWidth to 2*fixWidth
-    x = 1.5*stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target}.theta);
-    y = 1.5*stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target}.theta);
+    x = 1.5*stimulus.fixWidth * cos(stimulus.patches{task.thistrial.target1}.theta);
+    y = 1.5*stimulus.fixWidth * sin(stimulus.patches{task.thistrial.target1}.theta);
     mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);
 end
 if any(cues==2)
@@ -761,7 +692,7 @@ if any(cues==2)
 %         mglLines2(x,y,2*x,2*y,4,stimulus.colors.white);
     elseif stimulus.cue==2
         coherence = 0;
-        color = ang2rgb(stimulus.dotColors(task.thistrial.target));
+        color = ang2rgb(stimulus.dotColors(task.thistrial.target1));
     end
     % cue dots version
     stimulus.cueDots = updateDots(stimulus.cueDots,coherence,false);
@@ -786,7 +717,7 @@ g = r;
 b = r;
 
 for di = 1:length(stimulus.patches)
-    if task.thistrial.trialType~=4 || ~stimSeg || (stimSeg && (di==task.thistrial.target))
+    if task.thistrial.trialType~=4 || ~stimSeg || (stimSeg && (di==task.thistrial.target1)) || (stimSeg && (di==task.thistrial.target2))
         if stimulus.cue==1 || (stimulus.cue==2 && stimSeg)
             % if this is the actual stim seg and using motion, update
             % coherently
@@ -841,27 +772,28 @@ for di = 1:length(x)
     end
 end
 
-function drawTarget(task)
-
-global stimulus
-
-if stimulus.cue==1
-    stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
-    color = stimulus.colors.mean;
-else
-    % if we we cued color set the coherence to zero so that there's no
-    % direction information
-    stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,0,false);
-    color = ang2rgb(stimulus.dotColors(task.thistrial.target));
-end
-% compute the offset position
-offX = stimulus.patches{task.thistrial.target}.xcenter - stimulus.patches{task.thistrial.target}.dots.maxX/2;
-offY = stimulus.patches{task.thistrial.target}.ycenter - stimulus.patches{task.thistrial.target}.dots.maxY/2;
-
-% draw the actual points
-mglStencilSelect(1);
-afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
-mglStencilSelect(0);
+% function drawTarget(task)
+% 
+% global stimulus
+% 
+% if stimulus.cue==1
+% %     stimulus.patches{task.thistrial.target}.dots = updateDots(stimulus.patches{task.thistrial.target}.dots,1,false);
+% %     color = stimulus.colors.mean;
+% else
+%     % if we we cued color set the coherence to zero so that there's no
+%     % direction information
+%     stimulus.patches{task.thistrial.target1}.dots = updateDots(stimulus.patches{task.thistrial.target1}.dots,0,false);
+%     stimulus.patches{task.thistrial.target2}.dots = updateDots(stimulus.patches{task.thistrial.target2}.dots,0,false);
+%     color = ang2rgb(stimulus.dotColors(task.thistrial.target1));
+% end
+% % compute the offset position
+% offX = stimulus.patches{task.thistrial.target1}.xcenter - stimulus.patches{task.thistrial.target1}.dots.maxX/2;
+% offY = stimulus.patches{task.thistrial.target1}.ycenter - stimulus.patches{task.thistrial.target1}.dots.maxY/2;
+% 
+% % draw the actual points
+% mglStencilSelect(1);
+% afPoints(stimulus.patches{task.thistrial.target}.dots.x + offX,stimulus.patches{task.thistrial.target}.dots.y + offY,stimulus.dotScale,color);
+% mglStencilSelect(0);
 
 function drawPicker(task)
 
@@ -892,6 +824,14 @@ function mglGluPartialDisk_(x,y,isize,osize,sangle,sweep,color)
 % inherited from OpenGL...
 sangle = 90-sangle; % this sets 0 to be vertical and all coordinates go clockwise
 mglGluPartialDisk(x,y,isize,osize,sangle,sweep,color);
+
+function drawCueInfo(task)
+
+if task.thistrial.trialType==1
+    mglTextDraw('Cue side',[0 0]);
+else
+    mglTextDraw('Cue color',[0 0]);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -948,6 +888,9 @@ switch task.thistrial.thisseg
     case stimulus.seg.iti
         drawStim(task,false);
         drawFix(task,stimulus.colors.white);
+        if (task.trialnum==1) || (task.trialnum==21)
+            drawCueInfo(task);
+        end
     case stimulus.seg.fix % same as for ITI
         drawStim(task,false);
         drawFix(task,stimulus.colors.white);
@@ -983,7 +926,6 @@ switch task.thistrial.thisseg
         drawResp(task.thistrial.targetAngle,[0 0 1]);
         drawResp(task.thistrial.respAngle,[0.75 0.75 0.75]);
         drawFix(task,stimulus.colors.white);
-        
 end
 
 drawAllBorders(stimulus.patches,stimulus.targetWidth/2);
