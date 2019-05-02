@@ -520,9 +520,22 @@ dat_feature = data(data(:,3)==2,:);
 
 h = figure;
 subplot(211)
-hist(dat_spatial(:,4));
+xs = 0:pi/32:pi;
+count = hist(dat_spatial(:,4),xs);
+count = count ./ sum(count);
+plot(xs,count,'o','MarkerFaceColor','k','MarkerEdgeColor','w');
+axis([0 pi 0 0.5]);
+vline(median(dat_spatial(:,4)),'--b');
+vline(pi/2,'--r');
+title('Cue side');
 subplot(212)
-hist(dat_feature(:,4));
+count = hist(dat_feature(:,4),xs);
+count = count ./ sum(count);
+plot(xs,count,'o','MarkerFaceColor','k','MarkerEdgeColor','w');
+axis([0 pi 0 0.5]);
+vline(median(dat_feature(:,4)),'--b');
+vline(pi/2,'--r');
+title('Cue color');
 
 
 %%
