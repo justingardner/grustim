@@ -17,10 +17,16 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=1'});
+getArgs(varargin,{'plots=0','noeye=1', 'analyze=0'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.analyze = analyze;
 clear noeye plots
+
+if stimulus.analyze
+    analyzeData();
+    return
+end
 
 %% Stimulus parameters 
 %% Open Old Stimfile
@@ -52,7 +58,7 @@ myscreen = initStimulus('stimulus',myscreen);
 localInitStimulus();
   
 % Set response keys
-stimulus.responseKeys = [12 13 14];
+stimulus.responseKeys = [11 14 12];
 %% [aj]: change to add response keys for whichever 3 keys we want.
 
 % set colors
@@ -105,7 +111,7 @@ task{1}.getResponse = zeros(size(task{1}.segmin));
 task{1}.getResponse(stimulus.seg.response)=1;
 
 % Make numTrials some multiple of number of TrialTypes 
-task{1}.numTrials = 180; 
+task{1}.numTrials = 168;
 task{1}.random = 1;
 
 % Task variables to be calculated later
@@ -421,3 +427,76 @@ alphamask(:,:,4) = gauss*255;
 % we'll adjust the gamma table to control contrast
 stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast        
 
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%    analyzeData %
+%%%%%%%%%%%%%%%%%%%%%%%
+function data = analyzeData()
+%%
+
+% get the files list
+files = dir(fullfile(sprintf('~/data/texOB/%s/19*stim*.mat',mglGetSID)));
+
+count = 1; 
+data = struct('response', [], 'reaction_time', [], 'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
+for fi = 1:length(files)
+  load(fullfile(sprintf('~/data/texOB/%s/%s',mglGetSID,files(fi).name)));
+  
+  e = getTaskParameters(myscreen,task);
+  if e.nTrials>1
+    
+    f = fields(e.parameter);
+    for i = 1:length(f)
+        if ~isfield(data, f{i})
+            data.(f{i}) = [];
+        end
+        data.(f{i}) = [data.(f{i}) e.parameter.(f{i})];
+    end
+    f = fields(e.randVars);
+    for i = 1:length(f)
+        if ~isfield(data, f{i})
+            data.(f{i}) = [];
+        end
+        data.(f{i}) = [data.(f{i}) e.randVars.(f{i})];
+    end
+    
+    data.response = [data.response e.response-10];
+
+    data.reaction_time = [data.reaction_time e.reactionTime];
+    data.nTrials = data.nTrials + e.nTrials;
+
+    % Calculate number of valid trials by excluding eye movements
+    data.nValTrials = data.nValTrials + sum(~isnan(e.response));
+    
+    data.accByRuns = [data.accByRuns nanmean(e.randVars.correct)];
+    
+  end
+  count = count + 1;
+end
+keyboard
+
+%%
+all_pools = unique(data.poolSize);
+all_layers = unique(data.layer);
+
+accs = nan(length(all_pools), length(all_layers));
+SEs = nan(length(all_pools), length(all_layers));
+
+for i = 1:length(all_pools)
+    for j = 1:length(all_layers)
+        ct = data.correct(data.poolSize==all_pools(i) & data.layer==all_layers(j));
+        accs(i,j) = nanmean(ct);
+        SEs(i,j) = 1.96*nanstd(ct) / sqrt(length(ct));
+    end
+end
+
+%%
+figure;
+for i = 1:length(all_pools)
+   plot(1:length(all_layers), accs(i,:), '.'); hold on;
+end
+xlim([0 length(all_layers)+1]);
+ylim([0 1]);
+legend(stimulus.poolSizes);
+set(gca, 'XTick', 1:length(all_layers));
+set(gca, 'XTickLabel', stimulus.layerNames);
