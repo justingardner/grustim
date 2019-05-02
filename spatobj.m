@@ -15,6 +15,11 @@ function [ myscreen ] = spatobj( varargin )
 % TESTING CALL:
 % afcom('cue=#','noeye=1','powerwheel=0');
 
+%% add npy-matlab
+if isempty(which('readNPY'))
+    addpath(genpath('~/proj/npy-matlab'));
+end
+
 %% Over-write the stimulus struct
 
 global stimulus 
@@ -62,16 +67,20 @@ end
 
 disp(sprintf('(spatobj) %i categories remaining (total trials %i)',length(stimulus.remainCategory),length(stimulus.remainCategory)*30));
 
-%% Load stimulus
-if ~stimulus.imagesLoaded
-    loadStimulus();
-end
-
 %% Setup Screen
 myscreen = initScreen('VPixx');
 % set background to black
 myscreen.background = 0;
 stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur when for 300 ms someone moves out of the fixation region
+
+%% Sizes
+stimulus.arrayWidth = round(7*myscreen.screenWidth/myscreen.imageWidth); % in pixels
+disp(sprintf('Images will be resized to %1.2f pixels to match 7 degrees',stimulus.arrayWidth));
+
+%% Load stimulus
+if ~stimulus.imagesLoaded
+    loadStimulus();
+end
 
 %% Plot and return
 if stimulus.plots==2
@@ -90,9 +99,6 @@ stimulus.colors.black = [0 0 0];
 
 stimulus.live = struct;
 
-%% Sizes
-stimulus.arrayWidth = 224*myscreen.imageWidth/myscreen.screenWidth; % IN PIXELS! We'll resize images to this... 
-disp(sprintf('Images are %1.2f degrees',stimulus.arrayWidth));
 %% Setup Task
 
 % task waits for fixation on first segment
@@ -357,14 +363,15 @@ mygroup = randsample(track.todo,1);
 track.todo = setdiff(track.todo,mygroup);
 save(trackFile,'track');
 
+imsz = stimulus.arrayWidth;
 % for each category we will show all 15 examples once, and we will also
 % show one random image from a different category. This means we need to
 % load at least 15 extra random images from each category, although they
 % won't all get used. 
-aimages = zeros(20,15,224,224,3,'uint8');
+aimages = zeros(20,15,imsz,imsz,3,'uint8');
 aimages_info = zeros(20,15,4,'uint8');
 
-adistractors = zeros(20,15,224,224,3,'uint8');
+adistractors = zeros(20,15,imsz,imsz,3,'uint8');
 adistractors_info = zeros(20,15,4,'uint8');
 
 %% distractors
@@ -418,14 +425,21 @@ for cat = 0:19
     images = squeeze(dat(:,mygroup,:,:,:));
     images_info = squeeze(info(:,mygroup,:));
     
-    aimages(cat+1,:,:,:,:) = uint8(images);
+    % resize images
+    images_sz = zeros(size(images,1),imsz,imsz,3);
+    for i = 1:size(images,1)
+        images_sz(i,:,:,:) = imresize(squeeze(images(i,:,:,:)),[imsz imsz]);
+    end
+    
+    aimages(cat+1,:,:,:,:) = uint8(images_sz);
     aimages_info(cat+1,:,:) = uint8(images_info);
     
     % go through the distractors and pull any images that are needed
     for dc = 0:19
         for di = 1:15
             if distractorList(dc+1,di,1)==cat
-                adistractors(dc+1,di,:,:,:) = dat(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:,:,:);
+                temp = dat(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:,:,:);
+                adistractors(dc+1,di,:,:,:) = uint(imresize(squeeze(temp),[imsz imsz]));
                 adistractors_info(dc+1,di,:) = info(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:);
             end
         end
