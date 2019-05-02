@@ -30,33 +30,36 @@ stimulus.imagesLoaded = false;
 plots = 0;
 noeye = 0;
 eyewindow=0; 
+rebuild = 0;
 
-getArgs(varargin,{'scan=0','plots=0','noeye=0','eyewindow=1.5'});
+getArgs(varargin,{'scan=0','plots=0','noeye=0','eyewindow=2','rebuild=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.eyewindow = eyewindow;
 stimulus.remainCategory = 1:20;
+stimulus.rebuild = rebuild;
 
-
-clear plots noeye eyewindow
+clear plots noeye eyewindow load
 
 %% Open Old Stimfile
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s',mglGetSID))
+if ~stimulus.rebuild && ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s',mglGetSID))
     % Directory exists, check for a stimefile
     files = dir(sprintf('~/data/spatobj/%s/1*mat',mglGetSID));
 
     if length(files) >= 1
-        fname = files(end).name;
-
+        fname = files(1).name;
         s = load(sprintf('~/data/spatobj/%s/%s',mglGetSID,fname));
-        % copy staircases and run numbers
         stimulus.images = s.stimulus.images;
         stimulus.categories = s.stimulus.categories;
         stimulus.images_info = s.stimulus.images_info;
         stimulus.distractors = s.stimulus.distractors;
         stimulus.distractors_info = s.stimulus.distractors_info;
         stimulus.imagesLoaded = s.stimulus.imagesLoaded;
+
+        fname = files(end).name;
+        s = load(sprintf('~/data/spatobj/%s/%s',mglGetSID,fname));
+        % copy staircases and run numbers
         stimulus.remainCategory = s.stimulus.remainCategory;
         clear s;
         disp(sprintf('(spatobj) Data file: %s loaded.',fname));
@@ -83,7 +86,7 @@ stimulus.arrayWidth = round(7*myscreen.screenWidth/myscreen.imageWidth); % in pi
 disp(sprintf('Images will be resized to %1.2f pixels to match 7 degrees',stimulus.arrayWidth));
 
 %% Load stimulus
-if ~stimulus.imagesLoaded
+if stimulus.rebuild || ~stimulus.imagesLoaded
     loadStimulus();
 end
 
@@ -113,8 +116,8 @@ stimulus.seg.stim = 3;
 stimulus.seg.mask = 4;
 stimulus.seg.resp = 5; % resp and stim overlap
 
-task{1}{1}.segmin = [0 inf inf 0.5 1];
-task{1}{1}.segmax = [1 inf inf 0.5 1];
+task{1}{1}.segmin = [0.5 inf inf 1 1];
+task{1}{1}.segmax = [1.5 inf inf 1 1];
 
 if stimulus.noeye
     task{1}{1}.segmin(stimulus.seg.fix) = 0.5;
@@ -183,7 +186,17 @@ mglFlush
 myscreen.flushMode = 1;
 
 % track finished categories
+r = input('Was the last block completed? [enter to confirm]','s');
+if ~isempty(r)
+    stimulus.doneCategories(end) = [];
+end
 stimulus.remainCategory = setdiff(stimulus.remainCategory,stimulus.doneCategories);
+
+if ~stimulus.rebuild
+    % remove extra fields
+    stimulus = rmfield(stimulus,'images');
+    stimulus = rmfield(stimulus,'distractors');
+end
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
@@ -207,13 +220,18 @@ if ~isfield(stimulus,'doneCategories')
 end
 stimulus.doneCategories = [stimulus.doneCategories stimulus.live.curCategory];
 
+disp(sprintf('Starting new block, category: %s',stimulus.categories{stimulus.live.curCategory}));
+
+
+
+
 function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
 task.thistrial.category = stimulus.live.curCategory;
 
 
-task.thistrial.duration = rand*2 + 0.5;
+task.thistrial.duration = rand*0.75 + 0.25;
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
 
 % create the texture for this trial
@@ -241,6 +259,7 @@ stimulus.live.fixColor = stimulus.colors.white;
 
 task.thistrial.dead = false;
 stimulus.live.fixCount = 0;
+stimulus.live.eyeCount = 0;
 
 if task.thistrial.targetPresent
     disp(sprintf('(spatobj) There is a %s in the array.',stimulus.categories{task.thistrial.category}));
@@ -275,8 +294,6 @@ if task.thistrial.thisseg==stimulus.seg.iti
     if mod(task.trialnum,30)==1
         task.thistrial.seglen(stimulus.seg.iti) = 3;
         mglTextDraw(sprintf('Look for: %s',stimulus.categories{stimulus.live.curCategory}),[0 1.5]);
-    else
-        mglBltTexture(stimulus.live.mask,[0 0]);
     end
 else
     if task.thistrial.thisseg==stimulus.seg.stim
@@ -436,7 +453,7 @@ for cat = 0:19
     % resize images
     images_sz = zeros(size(images,1),imsz,imsz,3);
     for i = 1:size(images,1)
-        images_sz(i,:,:,:) = imresize(squeeze(images(i,:,:,:)),[imsz imsz]);
+        images_sz(i,:,:,:) = imresize(imrotate(squeeze(images(i,:,:,:)),-90),[imsz imsz]);
     end
     
     aimages(cat+1,:,:,:,:) = uint8(images_sz);
@@ -447,7 +464,7 @@ for cat = 0:19
         for di = 1:15
             if distractorList(dc+1,di,1)==cat
                 temp = dat(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:,:,:);
-                adistractors(dc+1,di,:,:,:) = uint8(imresize(squeeze(temp),[imsz imsz]));
+                adistractors(dc+1,di,:,:,:) = uint8(imresize(imrotate(squeeze(temp),-90),[imsz imsz]));
                 adistractors_info(dc+1,di,:) = info(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:);
             end
         end

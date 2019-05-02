@@ -520,7 +520,7 @@ dat_feature = data(data(:,3)==2,:);
 
 h = figure;
 subplot(211)
-xs = 0:pi/32:pi;
+xs = pi/64:pi/32:pi;
 count = hist(dat_spatial(:,4),xs);
 count = count ./ sum(count);
 plot(xs,count,'o','MarkerFaceColor','k','MarkerEdgeColor','w');
