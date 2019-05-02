@@ -73,6 +73,11 @@ myscreen = initScreen('VPixx');
 myscreen.background = 0;
 stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur when for 300 ms someone moves out of the fixation region
 
+%% Reset the gamma table to be blank:
+gammaTable(:,1) = (0:1/255:1);
+gammaTable(:,2) = (0:1/255:1);
+gammaTable(:,3) = (0:1/255:1);
+mglSetGammaTable(gammaTable);
 %% Sizes
 stimulus.arrayWidth = round(7*myscreen.screenWidth/myscreen.imageWidth); % in pixels
 disp(sprintf('Images will be resized to %1.2f pixels to match 7 degrees',stimulus.arrayWidth));
@@ -112,14 +117,13 @@ task{1}{1}.segmin = [0 inf inf 0.5 1];
 task{1}{1}.segmax = [1 inf inf 0.5 1];
 
 if stimulus.noeye
-    task{1}{1}.segmin(stimulus.seg.fix) = 0;
-    task{1}{1}.segmax(stimulus.seg.fix) = 0;
+    task{1}{1}.segmin(stimulus.seg.fix) = 0.5;
+    task{1}{1}.segmax(stimulus.seg.fix) = 0.5;
 end
 
 task{1}{1}.waitForBacktick = 1;
 
 task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
-task{1}{1}.getResponse(stimulus.seg.stim) = 1;
 task{1}{1}.getResponse(stimulus.seg.mask) = 1;
 task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
@@ -229,7 +233,7 @@ img(4,:,:) = 255;
 stimulus.live.tex = mglCreateTexture(img);
 mask = mask(:);
 mask = mask(randperm(length(mask)));
-mask = reshape(mask,3,224,224);
+mask = reshape(mask,3,stimulus.arrayWidth,stimulus.arrayWidth);
 mask(4,:,:) = 255;
 stimulus.live.mask = mglCreateTexture(mask);
 
@@ -265,17 +269,21 @@ if task.thistrial.dead
     return
 end
 
-switch task.thistrial.thisseg
-    case stimulus.seg.iti
-        % if this is the first trial
-        if mod(task.trialnum,30)==1
-            task.thistrial.seglen(stimulus.seg.iti) = 5;
-            mglTextDraw(sprintf('Look for: %s',stimulus.categories{stimulus.live.curCategory}),[0 1.5]);
-        end
-    case stimulus.seg.stim
-        mglBltTexture(stimulus.live.tex,[0 0]);
-    case stimulus.seg.mask
+
+if task.thistrial.thisseg==stimulus.seg.iti
+    % if this is the first trial
+    if mod(task.trialnum,30)==1
+        task.thistrial.seglen(stimulus.seg.iti) = 3;
+        mglTextDraw(sprintf('Look for: %s',stimulus.categories{stimulus.live.curCategory}),[0 1.5]);
+    else
         mglBltTexture(stimulus.live.mask,[0 0]);
+    end
+else
+    if task.thistrial.thisseg==stimulus.seg.stim
+        mglBltTexture(stimulus.live.tex,[0 0]);
+    else
+        mglBltTexture(stimulus.live.mask,[0 0]);
+    end
 end
 
 mglGluDisk(0,0,0.5,stimulus.colors.black);
@@ -439,7 +447,7 @@ for cat = 0:19
         for di = 1:15
             if distractorList(dc+1,di,1)==cat
                 temp = dat(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:,:,:);
-                adistractors(dc+1,di,:,:,:) = uint(imresize(squeeze(temp),[imsz imsz]));
+                adistractors(dc+1,di,:,:,:) = uint8(imresize(squeeze(temp),[imsz imsz]));
                 adistractors_info(dc+1,di,:) = info(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:);
             end
         end
