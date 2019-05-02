@@ -398,9 +398,9 @@ myscreen.flushMode = 1;
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if ~stimulus.replay && stimulus.plots
+if stimulus.plots
     disp('(afcom_avg) Displaying plots');
-    dispInfo(stimulus);
+    dispInfo();
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
@@ -531,6 +531,8 @@ global stimulus
 
 if ~stimulus.practice
     task.thistrial.duration = rand*.5 + 0.25;
+else
+    task.thistrial.duration = 4;
 end
 % swap seglen in
 task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
