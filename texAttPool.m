@@ -18,7 +18,7 @@ stimulus = struct;
 plots = 0;
 noeye = 0;
 flipodd=0;
-getArgs(varargin,{'plots=0','noeye=1', 'analyze=0', 'flipodd=0'}, 'verbose=1');
+getArgs(varargin,{'plots=0','noeye=1', 'analyze=0', 'flipodd=1'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.flipodd = flipodd;
@@ -84,8 +84,8 @@ task{1}.waitForBacktick = 1;
 
 % Define stimulus timing
 % inf, Cue, Stimulus, Pause, Response, Feedback
-task{1}.segmin = [inf, 1.0, 1.0, 1.2, .2];
-task{1}.segmax = [inf, 1.0, 1.0, 1.2, .2];
+task{1}.segmin = [inf, 1.0, 1.3, 1.2, .2];
+task{1}.segmax = [inf, 1.0, 1.3, 1.2, .2];
 stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.cue = 2;
@@ -100,32 +100,39 @@ end
 
 
 % Task important variables
-stimulus.imNames = {'balls', 'beansalad', 'biryani','bubbles', 'cherries', 'clouds', 'crowd', 'dahlias',...
-    'fireworks', 'forest', 'fronds', 'leaves', 'noodles', 'paneer','rocks',  'tulips', 'worms', 'zebras'};
+
+stimulus.imNames = {'bison', 'bananas', 'blossoms', 'buns', 'cherries', 'dahlias', 'frills',... 
+    'gourds', 'stanford', 'tulips', 'zebras', 'rocks-3het-2', 'cilantro-het-1'};
+%stimulus.imNames = {'balls', 'beansalad', 'biryani','bubbles', 'cherries', 'clouds', 'crowd', 'dahlias',...
+%    'fireworks', 'forest', 'fronds', 'leaves', 'noodles', 'paneer','rocks',  'tulips', 'worms', 'zebras'};
 % stimulus.imNames = {'balls', 'beansalad', 'biryani', 'bubbles', 'cherries', 'clouds', ...
 %         'crowd', 'dahlias', 'fireworks', 'leaves', 'noodles', 'rocks', 'tulips', 'worms', ...
 %         'zebras', 'bananas', 'bark', 'bison', 'blossoms', 'blotch', 'braids', 'bricks',...
 %         'bubbly', 'bumpy', 'crystals', 'dalmatians', 'ducks', 'face', 'frills', 'fur', ...
 %         'galaxy', 'gourds', 'grass', 'honeycomb', 'lace', 'marbled', 'marbles', 'monarchs',...
 %         'paisley', 'pears', 'phlox', 'rorschach', 'spiky', 'splotchy', 'stars', 'succulent', 'tiles'};
-stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
-stimulus.imSize = 6;
-stimulus.eccentricity = 9;
-stimulus.obPoolSize = '4x4';
-stimulus.poolSizes = {'1x1','1.25x1.25', '1.5x1.5','1.75x1.75', '2x2', '3x3', '4x4'};
+
+%stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
+stimulus.layerNames = {'pool2'};
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool_new/texAttPool/jpegs';
+stimulus.imSize = 7; %prev: 6
+stimulus.eccentricity = 7; %prev: 9
+% stimulus.poolSizes = {'1x1','1.25x1.25', '1.5x1.5','1.75x1.75', '2x2', '3x3', '4x4'};
+if stimulus.flipodd %when flipodd=1, oddball varies
+    stimulus.poolSizes = {'6x6'};
+    stimulus.obPoolSizes = {'1x1', '2x2', '3x3', '4x4'};
+else %when flipodd=0, oddball is always 4x4
+    stimulus.obPoolSizes = {'6x6'};
+    stimulus.poolSizes = {'1x1', '2x2', '3x3', '4x4'};
+
+end
 stimulus.cueEcc = 4;
 stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
 
 % Trial parameters
-if stimulus.flipodd % Make distractors = 4x4 and oddballs vary.
-    task{1}.parameter.oddPoolSize = 1:length(stimulus.poolSizes);
-    task{1}.parameter.poolSize = [7];
-else % Make oddball = 4x4, and distractors vary.
-    task{1}.parameter.oddPoolSize = [7]; % oddball layer is 4x4.
-    task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
-end
+task{1}.parameter.oddPoolSize = 1:length(stimulus.obPoolSizes); % prev: 4 oddball layer is 4x4. TODO: MAKE THIS CLEANER
+task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
 task{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}.parameter.isCueFocal = [0 1]; % Is the cue distributed or focal?
 
@@ -221,6 +228,7 @@ cueside_imName = stimulus.imNames{task.thistrial.cueside_imgFam};
 layer = stimulus.layerNames{task.thistrial.layer};
 poolSize = stimulus.poolSizes{task.thistrial.poolSize};
 
+
 % Get image, layer, and poolSize for other side 
 task.thistrial.otherside_imgFam = randi(length(stimulus.imNames));
 task.thistrial.otherside_layer = randi(length(stimulus.layerNames));
@@ -230,8 +238,10 @@ osLayer = stimulus.layerNames{task.thistrial.otherside_layer};
 osPoolSize = stimulus.poolSizes{task.thistrial.otherside_poolsize};
 
 % Get poolsize for oddball
-oddPoolSize = stimulus.poolSizes{task.thistrial.oddPoolSize};
+oddPoolSize = stimulus.obPoolSizes{task.thistrial.oddPoolSize}; % prev: stimulus.poolSizes{task.thistrial.oddPoolSize}
 
+
+%CHANGED: from randperm(3,3) to randperm(2,2) 
 % Randomly select 3 images to display on each side for this trial.
 cueside_smps = randperm(3,3); otherside_smps = randperm(3,3);
 task.thistrial.cueside_smp = cueside_smps(1);  % Store which sample was the oddball on each trial.
@@ -241,6 +251,7 @@ task.thistrial.otherside_smp = otherside_smps(1);
 stimulus.live.cueside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, oddPoolSize, layer, cueside_imName, cueside_smps(1))), stimulus.live.mask);
 stimulus.live.otherside_odd = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, oddPoolSize, osLayer, otherside_imName, otherside_smps(1))), stimulus.live.mask);
 
+%CHANGED: from 2,3 to 1,2 in _smps
 % Load the 4 distractor images.
 stimulus.live.cueside_dist1 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, poolSize, layer, cueside_imName, cueside_smps(2))), stimulus.live.mask);
 stimulus.live.cueside_dist2 = genTexFromIm(imread(sprintf('%s/%s_%s_%s_smp%i.jpg', texDir, poolSize, layer, cueside_imName, cueside_smps(3))), stimulus.live.mask);
@@ -296,11 +307,12 @@ ecc = stimulus.eccentricity; % Eccentricity to display image at
 
 % Define possible stimulus locations.
 locations = zeros(2, 3, 2);
-locations(1,:,:) = [-ecc*cosd(60) ecc*sind(60); -ecc 0; -ecc*cosd(60) -ecc*sind(60)];
-locations(2,:,:) = [ecc*cosd(60) ecc*sind(60); ecc 0; ecc*cosd(60) -ecc*sind(60)];
+theta = 55; %prev: 60
+locations(1,:,:) = [-ecc*cosd(theta) ecc*sind(theta); -ecc 0; -ecc*cosd(theta) -ecc*sind(theta)];
+locations(2,:,:) = [ecc*cosd(theta) ecc*sind(theta); ecc 0; ecc*cosd(theta) -ecc*sind(theta)];
 
 % Define possible cue positions
-cueX = stimulus.cueEcc/sqrt(2);
+cueX = stimulus.cueEcc/sqrt(6); %prev: 2
 cueXLocs = [-cueX, -cueX, -cueX-1; cueX, cueX, cueX+1];
 cueYLocs = [-.25, .25, 0; -.25, .25, 0];
 cueColor = stimulus.colors.blue;
