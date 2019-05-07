@@ -84,8 +84,8 @@ task{1}.waitForBacktick = 1;
 
 % Define stimulus timing
 % inf, Cue, Stimulus, Pause, Response, Feedback
-task{1}.segmin = [inf, 1.0, 1.3, 1.2, .2];
-task{1}.segmax = [inf, 1.0, 1.3, 1.2, .2];
+task{1}.segmin = [inf, 1.0, 1.8, 1.2, .2];
+task{1}.segmax = [inf, 1.0, 1.8, 1.2, .2];
 stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.cue = 2;
@@ -114,9 +114,9 @@ stimulus.imNames = {'bison', 'bananas', 'blossoms', 'buns', 'cherries', 'dahlias
 
 %stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
 stimulus.layerNames = {'pool2'};
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool_new/texAttPool/jpegs';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool/jpegs';
 stimulus.imSize = 7; %prev: 6
-stimulus.eccentricity = 7; %prev: 9
+stimulus.eccentricity = 8; %prev: 9
 % stimulus.poolSizes = {'1x1','1.25x1.25', '1.5x1.5','1.75x1.75', '2x2', '3x3', '4x4'};
 if stimulus.flipodd %when flipodd=1, oddball varies
     stimulus.poolSizes = {'6x6'};
@@ -141,7 +141,7 @@ task{1}.getResponse = zeros(size(task{1}.segmin));
 task{1}.getResponse(stimulus.seg.response)=1;
 
 % Make numTrials some multiple of number of TrialTypes (in this case, # of attentional conditions x # of layers).
-task{1}.numTrials = 144; 
+task{1}.numTrials = 72; 
 task{1}.random = 1;
 
 % Task variables to be calculated later
@@ -562,14 +562,17 @@ for i = 1:length(all_pools)
 end
 
 %%
-poolsizes = [1, 1.25, 1.5, 1.75, 2, 3, 4];
-x = 6./poolsizes;
+%poolsizes = [1, 1.25, 1.5, 1.75, 2, 3, 4];
+poolsizes = [1, 2, 3, 4];
+x = stimulus.imSize./poolsizes;
+dist_poolSz = stimulus.imSize./6;
+
 figure;
 h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g', 'Symbol=o-');
 h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b', 'Symbol=o-'); hold on;
-xlim([0 length(all_pools)+1]);
-
-hline(1/3, ':');
+xlim([0 max(x)+1]); ylim([0 1]);
+text(dist_poolSz-.4, 0.1, sprintf('Distractor\npooling size'));
+hline(1/3, '--k'); vline(dist_poolSz, ':k');
 legend([h1,h2], {'Distributed', 'Focal'});
 set(gca, 'XTick', sort(x));
 set(gca, 'XTickLabel', round(sort(x),2));
