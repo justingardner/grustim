@@ -1,13 +1,11 @@
 %
 %        $Id: $
-%      usage: dotsdircont
+%      usage: dotsdirtrck_1side
 %         by: Josh Ryu
-%       date: 11/15/2018
-%    purpose: Compares motion direction in left or right patches of dots. 
-% Cues to one side, two side or both sides
-% check resolution of the responses (is it 0.5?)
+%       date: 02/12/2019
+%    purpose: 
 
-function myscreen = dotsdircont(varargin)
+function myscreen = dotsdirtrack_1side(varargin)
 
 % set input arguments
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'});
@@ -21,40 +19,37 @@ myscreen.saveData = 1;
 %myscreen.displayName = 'test'; myscreen.screenNumber = 1;
 myscreen = initScreen(myscreen);
 
-% Go straight to task.
-% S1: stimulus cue period (1.5s)
-% S2: stimulus period (0.5s)
-% S3: repsonse period (infs)
-% S4: feedback period (1s)
-% S5: random period of fixation (1~3s)
-task{1}{1}.segmin = [1.5 0.5 inf 1 1];
-task{1}{1}.segmax = [1.5 0.5 inf 1 3];
-task{1}{1}.numTrials = 50;
-task{1}{1}.getResponse = [0 0 1 0 0]; %segment to get response.
+%% parameters
+
+% Task design
+% S1: Stimulus (30s)
+% S2: Fixation (3s)
+task{1}{1}.segmin = [30 3]; 
+task{1}{1}.segmax = [30 3]; 
+task{1}{1}.numTrials = 10;
+task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
-%task parameters
-task{1}{1}.randVars.calculated.leftDir = nan;
-task{1}{1}.randVars.calculated.rightDir = nan;
-task{1}{1}.randVars.calculated.respAngle = nan; %response angle
-task{1}{1}.randVars.calculated.respStable = nan;
-
-task{1}{1}.randVars.uniform.direction = [0:1:359];
-task{1}{1}.randVars.uniform.dirDiff = [-25:0.25:25];
-task{1}{1}.randVars.uniform.respAngle = [0:1:359];
-
-task{1}{1}.parameter.distAttention = [0]; % cue both sides?
+% random task parameters
 task{1}{1}.parameter.respSide = [0 1]; %Is the response side left (1) or right (0)?
+task{1}{1}.randVars.uniform.initDir = [0:45:359]; %initial directions
+task{1}{1}.parameter.dirNoise = 1; %wait for backtick before starting each trial 
 
-coherence = [1 0.8 0.6 0.4 0.2 0.1]; %[1 0.8 0.6 0.4 0.2 0.1];
+coherence = [1 0.8 0.6 0.4 0.2 0.1]; %1; %[1 0.8 0.6 0.4 0.2 0.1]; %[1 0.8 0.6 0.4 0.2 0.1];
+
+% calculated parameters
+task{1}{1}.randVars.calculated.respAngle = nan; %response angle
+task{1}{1}.randVars.calculated.stimDir = nan;
+task{1}{1}.randVars.calculated.trackTick = nan;
+task{1}{1}.randVars.calculated.trackStim = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),1);
+task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),1);
+
+%% initialize
 for phaseN = 1:length(coherence)
     task{1}{phaseN} = task{1}{1};
     task{1}{phaseN}.parameter.coherence = coherence(phaseN);
     [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
 end
-
-% add a trace for the mouse position ??
-% [task{1}{1} myscreen] = addTraces(task{1}{1},myscreen,'mouseTrack');
 
 % initialize stimulus
 global stimulus;
@@ -62,7 +57,7 @@ stimulus = [];
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus = myInitStimulus(stimulus,myscreen,task,centerX,centerY,diameter); %centerX,Y, diameter called by getArgs.
-stimulus.powerwheel = 1; %1; % powerwheel (1)  or mouse (0)
+stimulus.powerwheel = 0; %1; % powerwheel (1)  or mouse (0)
 
 stimulus.grabframe = 0; %save frames into matrices
 if stimulus.grabframe
@@ -93,19 +88,19 @@ end
 
 %% Start segment
 function [task myscreen] = startSegmentCallback(task, myscreen)
-% S1: stimulus cue period (1.5s)
-% S2: stimulus period (0.5s)
-% S3: repsonse period (infs)
-% S4: feedback period (1s)
-% S5: random period of fixation (1~3s)
+% S1: Stimulus (30s)
+% S2: Fixation (3s)
 global stimulus 
 
 %change stimulus accordingly
-if any(task.thistrial.thisseg == [1 2])
-    stimulus.fixColor = stimulus.fixColors.stim;
-elseif task.thistrial.thisseg == 3
+if task.thistrial.thisseg == 1
     stimulus.fixColor = stimulus.fixColors.response;    
-    % set mouse position to the middle. 
+    
+    %set the initial response to the stimulus direction
+    task.thistrial.respAngle = task.thistrial.initDir; 
+    task.thistrial.stimDir = task.thistrial.initDir; 
+    
+    % set mouse position to the stimulus direction. 
     if stimulus.powerwheel
         %each x movement (+1 unit) counts as -1/2 degree turn (note the
         %screensize when doing this)
@@ -129,7 +124,10 @@ elseif task.thistrial.thisseg == 3
         disty = (floor(y_screen)-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight; % what is imagewidth???
         task.thistrial.respAngle = atan2(disty,distx)/(2*pi)*360;
     end
+    
     mglDisplayCursor(0) %hide cursor
+    
+    task.thistrial.trackTick = 0;
     
 else %intertrial interval or feedback
     stimulus.fixColor = stimulus.fixColors.interStim;
@@ -139,68 +137,51 @@ end
 
 %% screen update
 function [task myscreen] = screenUpdateCallback(task, myscreen)
-% S1: stimulus cue period (1.5s)
-% S2: stimulus period (0.5s)
-% S3: repsonse period (infs)
-% S4: feedback period (1s)
-% S5: random period of fixation (1~3s)
+% S1: Stimulus (30s)
+% S2: Fixation (3s)
 
 mglClearScreen % clear screen
 
 global stimulus % call stimulus
 
-if task.thistrial.thisseg == 1 %[cue period] draw cue  
-    [task myscreen] = drawCenterCue(task,myscreen,1);
-
-elseif task.thistrial.thisseg == 2 % [stimulus period] draw dots   
+if task.thistrial.thisseg == 1 % [stimulus period] draw dots   
     % get variables for this task
     coherence = task.thistrial.coherence; %task.thistrial.coherence; 
-    direction = task.thistrial.direction;
-    dirDiff = task.thistrial.dirDiff;
+    direction = task.thistrial.stimDir;
 
-    % choose stencil with L/R holes
+    % choose stencil with L&R holes
     mglStencilSelect(1);
     
     if task.thistrial.respSide == 1
     % draw the left patch
-    stimulus.dots{1}.dir = direction;
-    stimulus.dots{1} = updateDots(stimulus.dots{1},coherence,myscreen);
+        stimulus.dots{1}.dir = direction;
+        stimulus.dots{1} = updateDots(stimulus.dots{1},coherence,myscreen);
     else
     % draw the right patch
-    stimulus.dots{2}.dir = mod(direction+dirDiff,360);
-    stimulus.dots{2} = updateDots(stimulus.dots{2},coherence,myscreen);
+        stimulus.dots{2}.dir = direction;
+        stimulus.dots{2} = updateDots(stimulus.dots{2},coherence,myscreen);
     end
     % return to unstenciled drawing
     mglStencilSelect(0);
     
     [task myscreen] = drawCenterCue(task,myscreen,1);
-elseif (task.thistrial.thisseg==3) %[response segment] move the response bar. 
+
+    % draw response
     [task, myscreen] = getTurnResponse(task, myscreen);
-    [task myscreen] = drawCenterCue(task,myscreen,0);
     
-elseif (task.thistrial.thisseg== 4) %[feedback segment]
+    % record direction and response
+    task.thistrial.trackTick = task.thistrial.trackTick +1;
+    task.thistrial.trackResp(task.thistrial.trackTick) = task.thistrial.respAngle;
+    task.thistrial.trackStim(task.thistrial.trackTick) = task.thistrial.stimDir;
     
-    % draw response 
-    theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);
-    mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,stimulus.fixColors.response)
-    
-    % draw actual direction
-    if task.thistrial.respSide
-        theta = task.thistrial.direction*2*pi/360;
-    else
-        theta = (task.thistrial.direction+task.thistrial.dirDiff)*2*pi/360;
-    end
-    
-    mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,[1 0 0 ])
-    
-    % draw fixation
-    [task myscreen] = drawCenterCue(task,myscreen,0);
+    % update direction. Noise is distributed normally in angle space. 
+    task.thistrial.stimDir = mod(task.thistrial.stimDir + normrnd(0,task.thistrial.dirNoise),360);
 else
     % draw fixation
     mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
 end
 
-% draw circle for stimulus patches
+% draw circle for stimulus patches 
 mglGluAnnulus(-stimulus.centerX,stimulus.centerY,...
     stimulus.circleSize(1)/2,stimulus.circleSize(1)/2+0.1,[1 1 1],100,1)
 mglGluAnnulus(stimulus.centerX,stimulus.centerY,...
@@ -213,32 +194,8 @@ end
 end
 
 function [task myscreen] = drawCenterCue(task,myscreen,isStim)
-global stimulus     
-
-if isStim
-    colors = [stimulus.fixColors.interStim', stimulus.fixColors.stim'];
-    if task.thistrial.distAttention
-        mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
-    else
-        startAngles = [0; 180];
-
-        if ~(task.thistrial.respSide) %if the stimulus is on the right side.
-            colors = [colors(:,2), colors(:,1)];
-        end
-
-        mglGluPartialDisk([0;0],[0;0],[0.5;0.5],[0.75;0.75],startAngles,[180;180],colors,[60;60],[1;1]);
-    end
-else %for response cue
-    colors = [stimulus.fixColors.interStim', stimulus.fixColors.response'];
-    startAngles = [0; 180];
-
-    if ~(task.thistrial.respSide) %if the stimulus is on the right side.
-        colors = [colors(:,2), colors(:,1)];
-    end
-
-    mglGluPartialDisk([0;0],[0;0],[0.5;0.5],[0.75;0.75],startAngles,[180;180],colors,[60;60],[1;1]);
-end
-
+global stimulus         
+    mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
 end
 
 function [task myscreen]  = getTurnResponse(task, myscreen)
@@ -267,41 +224,11 @@ global stimulus % call stimulus
     % corresponds correctly to the direction task. This means that when you
     % transform into visual space you need to flip into MGL angles, see
     % mglGluDiskAnnulus_ which does this step
-
-    if abs(task.thistrial.respAngle - nextrespangle_deg) > 1e-10
-        task.thistrial.respStable = 0; % the subject is moving the bar. 
-    else %subject not moving the bar.
-        if isnan(task.thistrial.respStable)
-            task.thistrial.respStable = nan; %subject has not started moving the bar. 
-        else % subject moved the bar and stopped.
-            task.thistrial.respStable = task.thistrial.respStable + 1;
-        end
-    end
     
     task.thistrial.respAngle = nextrespangle_deg;
     theta = mod(task.thistrial.respAngle/360*2*pi,2*pi);   
     
-    % stimulus.data.mouseTrack(task.trialnum,stimulus.data.mouseTick) = task.thistrial.respAngle-stimulus.live.mouseStart;
     mglLines2(0.9*cos(theta), 0.9*sin(theta), 1.4*cos(theta), 1.4*sin(theta),5,stimulus.fixColors.response)
-    
-    if task.thistrial.respStable == 1.5*myscreen.framesPerSecond %if response stable for a second. 
-        % save variables
-        task.thistrial.leftDir = task.thistrial.direction; 
-        task.thistrial.rightDir = mod(task.thistrial.direction+task.thistrial.dirDiff,360); 
-
-        if task.thistrial.distAttention, att = 'distributed'; else att = 'focal'; end
-        if task.thistrial.respSide, respSide = 'left'; else respSide = 'right'; end
-
-        disp(['Coherence: ' num2str(task.thistrial.coherence) '; ' ...
-            'Directions: ' num2str(task.thistrial.leftDir) ' (l) vs ' num2str(task.thistrial.rightDir) ' (r); ' ...
-            'Difference: ' num2str(task.thistrial.dirDiff) '; '... 
-            att ' attention condition, response to ' respSide ' side at angle : ' ...
-            num2str(task.thistrial.respAngle) ''])
-
-        % end the segment when subject responses. 
-        task = jumpSegment(task);
-    end
-
 end
 
 %% Get response 
