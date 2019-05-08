@@ -18,7 +18,7 @@ stimulus = struct;
 scan = 0;
 run = 0;
 layer = '';
-getArgs(varargin,{'scan=0', 'blank=0', 'layer=pool4'});
+getArgs(varargin,{'scan=1', 'blank=0', 'layer=pool4'});
 stimulus.scan = scan;
 stimulus.blank = blank;
 stimulus.layer=layer;
@@ -276,7 +276,7 @@ if task.thistrial.thisseg== stimulus.seg.stim
   end
 elseif task.thistrial.thisseg==stimulus.seg.ITI
   if mod(stimIdx,2) == 1 && ~stimulus.blank
-    thisBkgd = stimulus.live.bkgd.(sprintf('smp%i', stimIdx));
+    thisBkgd = stimulus.live.bkgd.(sprintf('smp%i', min(25,stimIdx)));
     mglBltTexture(thisBkgd, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
     mglBltTexture(thisBkgd, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
   end 
