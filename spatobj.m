@@ -32,7 +32,7 @@ noeye = 0;
 eyewindow=0; 
 rebuild = 0;
 
-getArgs(varargin,{'scan=0','plots=0','noeye=0','eyewindow=2','rebuild=0'});
+getArgs(varargin,{'scan=0','plots=0','noeye=0','eyewindow=2','rebuild=1'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.eyewindow = eyewindow;
@@ -86,8 +86,12 @@ stimulus.arrayWidth = round(7*myscreen.screenWidth/myscreen.imageWidth); % in pi
 disp(sprintf('Images will be resized to %1.2f pixels to match 7 degrees',stimulus.arrayWidth));
 
 %% Load stimulus
-if stimulus.rebuild || ~stimulus.imagesLoaded
+if stimulus.rebuild
     loadStimulus();
+else
+    if ~isfield(stimulus,'images')
+        warning('Images are not loaded. Do you need to rebuild=1?');
+    end
 end
 
 %% Plot and return

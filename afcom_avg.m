@@ -543,7 +543,7 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 global stimulus
 
 if ~stimulus.practice
-    task.thistrial.duration = rand*.5 + 0.25;
+    task.thistrial.duration = rand*.45 + 0.20;
 else
     task.thistrial.duration = 4;
 end
