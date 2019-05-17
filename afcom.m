@@ -1,4 +1,4 @@
-opfunction [ myscreen ] = afcom( varargin )
+function [ myscreen ] = afcom( varargin )
 % AFCOM (attention field color mapping)
 % *** set 'noeye=1' to turn of the eye tracker***
 %
