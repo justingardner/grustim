@@ -30,7 +30,7 @@ clear fixStimulus
 %% Initialize Variables
 
 disp('****************************************');
-disp('** NEPR Into Cog Neuro Attention Task **');
+disp('** NEPR Into Cog Neuro Attention (Orientation Discrimination) Task **');
 disp('****************************************');
 % add arguments later
 stimFileNum = [];
@@ -168,6 +168,7 @@ task{1}{1}.randVars.calculated.dir = nan;
 task{1}{1}.randVars.calculated.rot = nan;
 
 stimulus.curTrial = 0;
+stimulus.fixWidth = 1;
 
 %% Full Setup
 for i = 1:2

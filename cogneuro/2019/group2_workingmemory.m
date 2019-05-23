@@ -1,48 +1,44 @@
-% cogneuro_workingmemory.m.m
+% group2_workingmemory.m.m
 %
-%      usage: cogneuro_workingmemory(scan) 
+%      usage: group2_workingmemory(scan) 
 %             scan is a tf value which when set to 1 waits for
 %             scanner sync pulses and sets the timing appropriately
 %         by: justin gardner
 %       date: 03/03/2016
 %    purpose: Code for replicating Harrison & Tong, 2009
 %       
-function myscreen = cogneuro_workingmemory(scan)
-
-% check arguments
-if ~any(nargin == [0 1])
-  help cogneuro_workingmemory.m
-  return
-end
-if nargin < 1, scan = 0; end
-
-% set for debugging - makes the delay period shorter among other things.
-debugMode = 0;
-
+function myscreen = group2_workingmemory(varargin)
 % stimulus parameters get stored in a global variable
 global stimulus;
 
-% parameters that are different for when scanning or not
+% check arguments
+getArgs(varargin,{'scan=0', 'debugMode=0'}, 'verbose=1');
 stimulus.scan = scan;
+
+% set for debugging - makes the delay period shorter among other things.
+
+% parameters that are different for when scanning or not
 if stimulus.scan
   % wait for scanner acq pulse at beginning of experiment
   waitForBacktick = 1;
   % contrast of the stimulus
   stimulus.contrast = 0.175;
+  myscreen.displayName = 'fMRIprojFlex';
 else
   % no wait for scanner acq pulse at beginning of experiment
   waitForBacktick = 0;
   % contrast of the stimulus
   stimulus.contrast = 0.1;
+  myscreen.displayName = 'VPixx2';
 end
 
 % inner and outer width of stimulus
 stimulus.innerWidth = 1.5;
-stimulus.outerWidth = 10;
+stimulus.outerWidth = 15;
 % spatial frequency of grating stimulus
 stimulus.sf = 1;
 % set to false for sharp edged stimulus
-stimulus.gabor = 0;
+stimulus.gabor = 1;
 % fixation cross width
 stimulus.fixWidth = 1.5;
 
@@ -78,42 +74,65 @@ myscreen = initScreen(myscreen);
 task{1}.waitForBacktick = 1;
 
 % length in seconds of different segments of the trial
-task{1}.segmin = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5];
-task{1}.segmax = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5];
+task{1}.segmin = [0.8 0.2 0.4 0.2 0.4 stimulus.delayInterval 0.5 2.5];
+task{1}.segmax = [0.8 0.2 0.4 0.2 0.4 stimulus.delayInterval 0.5 2.5];
+stimulus.seg = {};
+stimulus.seg.cue = 1;
+stimulus.seg.stim1 = 2;
+stimulus.seg.isi1 = 3;
+stimulus.seg.stim2 = 4;
+stimulus.seg.isi2 = 5;
+stimulus.seg.delay = 6;
+stimulus.seg.stim3 = 7;
+stimulus.seg.resp = 2.5;
+
 % synchToVol sets to wait for a scanner sync pulse after the end of the 
 % segment - in this case the last segment will last 2.5 seconds after
 % which the program will wait for the scanner sync pulse. This will insure
 % that the beginning of each trial will be synchronized to the acquisition
 % of an imaging volume.
-task{1}.synchToVol = [0 0 0 0 0 0 0 waitForBacktick];
+task{1}.synchToVol = zeros(1, length(task{1}.segmin));
+if stimulus.scan
+  task{1}.synchToVol(end)=1;
+end
+
 % get responses sets whether to aquire a keyboard response from the subject 
 % we only need to set it to 1 for the response interval at the end of the trial.
 task{1}.getResponse = [0 0 0 0 0 0 0 1];
-% parameters
+
+%% parameters
+
 % cue can be 1 or 2 (meaning which stimulus, the first or second the subject should remember)
+% or 0, which means sensory trial (only report whether the 3rd orientation is tilted).
 % this is picked from a uniform distribution, so just varies randomly from trial to trial
 task{1}.randVars.uniform.cue = [0 1 2];
-% oreintationOrder specifies which orientation will be shown 1st and which 2nd
+
+% Save whether this is a working memory or a sensory trial.
+task{1}.randVars.calculated.memOrSensory = NaN;
+
+% orientationOrder specifies which orientation will be shown 1st and which 2nd
 task{1}.randVars.uniform.orientationOrder = [1 2];
+
 % sets whether the probe stimulus at the end will be clockwise or counterclockwise of the remembered stimulus
 task{1}.randVars.uniform.clockwiseCounterclockwise = [-1 1];
+
 % these values are calculated during the experiment
 % orientationJitter is the small amount of jitter that is 
 % added to each orientation (its an array of 2, one fore each orientation)
 task{1}.randVars.calculated.orientationJitter = [nan nan];
-% oreintation is the actual oreintation shown
+
+% orientation is the actual orientation shown
 task{1}.randVars.calculated.orientation = [nan nan];
+
 % threshold is the threshold orientation shown
 task{1}.randVars.calculated.orientationThreshold = nan;
-% memorized orientation
+
+% memorized orientation -- saves which of the two orientations was cued (or if sensory, Nan)
 task{1}.randVars.calculated.memOrientation = nan;
+
 % random sets to randomize parameters
 task{1}.random = 1;
 
-for i = 1:2
-  mglFixationCross(stimulus.fixWidth, 1, [1 1 1]);
-  mglFlush;
-end
 % initialize the task
 for phaseNum = 1:length(task)
   [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
@@ -123,6 +142,12 @@ myscreen = initStimulus('stimulus',myscreen);
 
 % creates the stimulus images
 stimulus = myInitStimulus(stimulus,myscreen);
+
+% Display the fixation cross
+for i = 1:2
+  mglFixationCross(stimulus.fixWidth, 1, [1 1 1]);
+  mglFlush;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -169,20 +194,36 @@ if task.thistrial.thisseg == 1
   stimulus.displayOrientation(1) = task.thistrial.orientation(1) + task.thistrial.orientationJitter(1);
   stimulus.displayOrientation(2) = task.thistrial.orientation(2) + task.thistrial.orientationJitter(2);
 
+  % If this is a sensory trial
   if task.thistrial.cue == 0
-     stimulus.matchOrientation = task.thistrial.orientation(task.thistrial.cue+1)+task.thistrial.orientationJitter(task.thistrial.cue+1)+task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise;
-
-    task.thistrial.memOrientation = task.thistrial.orientation(task.thistrial.cue+1);
+    task.thistrial.memOrSensory = 0;
+    % Set the third Gabor's orientation to either clockwise or counterclockwise of vertical.
+     if task.thistrial.clockwiseCounterclockwise == -1
+       stimulus.matchOrientation = stimulus.orientations(1);
+     else
+       stimulus.matchOrientation = stimulus.orientations(2);
+     end
+    %task.thistrial.memOrientation = task.thistrial.orientation(task.thistrial.cue+1);
+    % Set memorized orientation to NaN since there's nothing to memorize.
+    task.thistrial.memOrientation = NaN;
   else
-   stimulus.matchOrientation = task.thistrial.orientation(task.thistrial.cue)+task.thistrial.orientationJitter(task.thistrial.cue)+task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise;
+    task.thistrial.memOrSensory = 1;
+    stimulus.matchOrientation = task.thistrial.orientation(task.thistrial.cue)+task.thistrial.orientationJitter(task.thistrial.cue)+task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise;
 
     task.thistrial.memOrientation = task.thistrial.orientation(task.thistrial.cue);
   end
 
+  oris = {'Right', '', 'Left'};
   % display what we have selected
-  disp(sprintf('Trial %i: Orientation 1: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(1),task.thistrial.orientationJitter(1),stimulus.displayOrientation(1)));
-  disp(sprintf('Trial %i: Orientation 2: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(2),task.thistrial.orientationJitter(2),stimulus.displayOrientation(2)));
-  disp(sprintf('Trial %i: Match to %i (%0.1f): %0.1f',task.trialnum,task.thistrial.cue,task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise,stimulus.matchOrientation));
+  if task.thistrial.cue==0
+    disp(sprintf('Trial %i: Sensory trial', task.trialnum));
+    disp(sprintf('Trial %i: Orientation 3 is %s of vertical', task.trialnum, oris{task.thistrial.clockwiseCounterclockwise+2}));
+  else
+    disp(sprintf('Trial %i: Working memory trial', task.trialnum));
+    disp(sprintf('Trial %i: Orientation 1: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(1),task.thistrial.orientationJitter(1),stimulus.displayOrientation(1)));
+    disp(sprintf('Trial %i: Orientation 2: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(2),task.thistrial.orientationJitter(2),stimulus.displayOrientation(2)));
+    disp(sprintf('Trial %i: Match to %i (%0.1f): %0.1f',task.trialnum,task.thistrial.cue,task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise,stimulus.matchOrientation));
+  end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -195,13 +236,13 @@ global stimulus
 % clear screen to gray
 mglClearScreen;
 
-if task.thistrial.thisseg == 1
-  % put up grating in first semgent
+if task.thistrial.thisseg == stimulus.seg.stim1
+  % put up first grating
   mglBltTexture(stimulus.tex,[0 0],0,0,stimulus.displayOrientation(1));
-elseif task.thistrial.thisseg == 3
-  % put up grating in third segment
+elseif task.thistrial.thisseg == stimulus.seg.stim2
+  % put up second grating
   mglBltTexture(stimulus.tex,[0 0],0,0,stimulus.displayOrientation(2));
-elseif (task.thistrial.thisseg == 5) 
+elseif (task.thistrial.thisseg == stimulus.seg.cue) 
   % put up text for which stimulus the subject should remember (1 or 2)
   mglBltTexture(stimulus.text(task.thistrial.cue+1),[0 1.5],0,0,0);
 elseif task.thistrial.thisseg == 7
@@ -223,11 +264,7 @@ global stimulus
 
 % figure out which button is the correct button for the trial
 butts = [2 0 1];
-if task.thistrial.cue == 0
-  corrButt = 
-else
-  corrButt = butts(task.thistrial.clockwiseCounterclockwise+2);
-end
+corrButt = butts(task.thistrial.clockwiseCounterclockwise+2);
 
 % here, we just check whether this is the first time we got a response
 if task.thistrial.gotResponse < 1
@@ -285,7 +322,7 @@ stimulus.tex = mglCreateTexture(gabor);
 
 % make text for 1 and 2 that are displayed to subjects
 mglTextSet('Helvetica',32,[1 1 1],0,0,0);
-stimulus.text(1) = mglText('0');
+stimulus.text(1) = mglText('S');
 stimulus.text(2) = mglText('1');
 stimulus.text(3) = mglText('2');
 
