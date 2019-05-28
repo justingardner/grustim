@@ -114,7 +114,7 @@ stimulus.imNames = {'bison', 'bananas', 'blossoms', 'buns', 'cherries', 'dahlias
 
 %stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
 stimulus.layerNames = {'pool2'};
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool_new/texAttPool/jpegs';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool/jpegs';
 stimulus.imSize = 7; %prev: 6
 stimulus.eccentricity = 8; %prev: 9
 % stimulus.poolSizes = {'1x1','1.25x1.25', '1.5x1.5','1.75x1.75', '2x2', '3x3', '4x4'};
@@ -385,7 +385,7 @@ end
 % Eye movement detection code
 if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.fix]) 
   if ~any(isnan(pos))
-    if dist > 1.5 && stimulus.live.eyeCount > 30
+    if dist > 3.0 && stimulus.live.eyeCount > 30
       disp('Eye movement detected!!!!');
       task.thistrial.dead = 1;
       stimulus.live.eyeDead=1;
@@ -402,7 +402,7 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
   % check eye position, if 
   if ~any(isnan(pos))
     wasCentered = stimulus.live.centered;
-    stimulus.live.centered = dist<2.5;
+    stimulus.live.centered = dist<3.0;
     if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
       stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
     end
