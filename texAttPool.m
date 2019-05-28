@@ -22,10 +22,12 @@ getArgs(varargin,{'plots=0','noeye=1', 'analyze=0', 'flipodd=1'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.flipodd = flipodd;
+stimulus.analyze=analyze;
 clear noeye plots
 
-if analyze
-    analyzeData;
+if stimulus.analyze
+    [data,accs] = analyzeData(stimulus.analyze);
+    myscreen = accs;
     return;
 end
 
@@ -505,8 +507,10 @@ stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
 %%%%%%%%%%%%%%%%%%%%%%%
 %    analyzeData %
 %%%%%%%%%%%%%%%%%%%%%%%
-function data = analyzeData()
+function [data, accs] = analyzeData(newFig)
+% if newFig ==1, use a newFig, if newFig ==2, make it a subplot.
 %%
+global stimulus;
 
 % get the files list
 files = dir(fullfile(sprintf('~/data/texAttPool/%s/19*stim*.mat',mglGetSID)));
@@ -535,20 +539,18 @@ for fi = 1:length(files)
     end
     
     data.response = [data.response e.response-10];
-
     data.reaction_time = [data.reaction_time e.reactionTime];
     data.nTrials = data.nTrials + e.nTrials;
 
     % Calculate number of valid trials by excluding eye movements
     data.nValTrials = data.nValTrials + sum(~isnan(e.response));
-    
     data.accByRuns = [data.accByRuns nanmean(e.randVars.correct)];
     
   end
   count = count + 1;
 end
 
-%%
+%% Get accuracy averaged across images.
 all_pools = unique(data.oddPoolSize);
 all_cueTypes = unique(data.isCueFocal);
 accs = nan(length(all_pools), length(all_cueTypes));
@@ -557,26 +559,30 @@ for i = 1:length(all_pools)
     for j = 1:length(all_cueTypes)
         ct = data.correct(data.oddPoolSize==all_pools(i) & data.isCueFocal==all_cueTypes(j));
         accs(i,j) = nanmean(ct);
-        SEs(i,j) = 1.96*nanstd(ct) / length(ct);
+        SEs(i,j) = 1.96*nanstd(ct) / sqrt(sum(~isnan(ct)));
     end
 end
 
-%%
+%% Plot mean accuracy over all images.
 %poolsizes = [1, 1.25, 1.5, 1.75, 2, 3, 4];
-poolsizes = [1 2 3 4];
+%poolsizes = [1 2 3 4];
+poolsizes = cellfun(@(x) str2num(x(1)), stimulus.obPoolSizes);
 x = stimulus.imSize./poolsizes;
-figure;
+if newFig ==1
+  figure;
+end
 h1 = myerrorbar(x, accs(:,1), 'yError', SEs(:,1), 'Color', 'g', 'Symbol=o-');
 h2 = myerrorbar(x, accs(:,2), 'yError', SEs(:,2), 'Color', 'b', 'Symbol=o-'); hold on;
 xlim([0 max(x)+1]);
-
+ylim([0 1]);
 hline(1/3, ':');
 legend([h1,h2], {'Distributed', 'Focal'});
 set(gca, 'XTick', sort(x));
-set(gca, 'XTickLabel', round(sort(x),2));
+set(gca, 'XTickLabel', sort(x));
 xlabel('Oddball Pooling Size (degrees)');
 ylabel('Accuracy (% correct)');
-title(sprintf('Oddity Task: nTrials = %i', data.nTrials));
+title(sprintf('%s: nTrials = %i', mglGetSID, data.nValTrials));
+return
 
 %%
 all_ims = unique(data.cueside_imgFam);
@@ -610,7 +616,7 @@ for i = 1:5
           legend([h1,h2], {'Distributed', 'Focal'});
         end
         set(gca, 'XTick', sort(x));
-        set(gca, 'XTickLabel', round(sort(x),2));
+        set(gca, 'XTickLabel', sort(x));
         xlabel('Oddball Pooling Size (degrees)');
         ylabel('Accuracy (% correct)');
         title(sprintf('%s: nTrials = %i', stimulus.imNames{all_ims(ind)}, data.nTrials));

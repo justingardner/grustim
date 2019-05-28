@@ -1,4 +1,4 @@
-opfunction [ myscreen ] = afcom( varargin )
+function [ myscreen ] = afcom( varargin )
 % AFCOM (attention field color mapping)
 % *** set 'noeye=1' to turn of the eye tracker***
 %
@@ -515,9 +515,9 @@ end
 task{1}{1}.random = 1;
 
 if stimulus.scan
-    task{1}{1}.parameter.trialType = -1;
+    task{1}{1}.randVars.calculated.trialType = -1;
     task{1}{1}.parameter.duration = 1;
-    task{1}{1}.parameter.target = -1;
+    task{1}{1}.randVars.calculated.target = -1;
 else
     task{1}{1}.parameter.target = [1 2 3 4];
     task{1}{1}.randVars.calculated.duration = nan;
