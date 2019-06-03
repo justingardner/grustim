@@ -1,9 +1,9 @@
-function [ myscreen ] = texTest( varargin )
+function [ myscreen ] = tex_fMRI( varargin )
 %
 % EVENT-RELATED TEXTURES
 %  Experiment to map neural responses to various textures
 %
-%  Usage: texTest(varargin)
+%  Usage: tex_fMRI(varargin)
 %  Authors: Akshay Jagadeesh
 %  Date: 11/05/2018
 %
@@ -15,34 +15,33 @@ stimulus = struct;
 %% Initialize Variables
 
 % add arguments later
-scan = 0;
-run = 0;
+scan = 1;
 getArgs(varargin,{'scan=1', 'sType=1', 'testing=0'}, 'verbose=1');
 stimulus.scan = scan;
 stimulus.type = sType;
 stimulus.debug = testing;
-clear scan run type;
+clear scan testing sType;
 
 %% Stimulus parameters 
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/texTest/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/tex_fMRI/%s',mglGetSID))
   % Directory exists, check for a stimfile
-  files = dir(sprintf('~/data/texTest/%s/1*mat',mglGetSID));
+  files = dir(sprintf('~/data/tex_fMRI/%s/1*mat',mglGetSID));
 
   if length(files) >= 1
     fname = files(end).name;
     
-    s = load(sprintf('~/data/texTest/%s/%s',mglGetSID,fname));
+    s = load(sprintf('~/data/tex_fMRI/%s/%s',mglGetSID,fname));
     stimulus.counter = s.stimulus.counter + 1;
     clear s;
-    disp(sprintf('(texTest) Data file: %s loaded.',fname));
+    disp(sprintf('(tex_fMRI) Data file: %s loaded.',fname));
   end
 end
 trialTypes = {'FAST_no-baseline', 'SLOW_no-baseline', 'SLOW_baseline'};
 disp(sprintf('-------------------------'));
-disp(sprintf('(texTest) Run Type %i: %s',stimulus.type, trialTypes{stimulus.type}));
+disp(sprintf('(tex_fMRI) Run Type %i: %s',stimulus.type, trialTypes{stimulus.type}));
 disp(sprintf('-------------------------'))
 
 %% Setup Screen
@@ -434,11 +433,11 @@ function [trials] = totalTrials()
 %%
 % Counts trials + estimates the threshold based on the last 500 trials
 % get the files list
-files = dir(fullfile(sprintf('~/data/texTest/%s/18*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/tex_fMRI/%s/18*stim*.mat',mglGetSID)));
 trials = 0;
 
 for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/texTest/%s/%s',mglGetSID,files(fi).name)));
+    load(fullfile(sprintf('~/data/tex_fMRI/%s/%s',mglGetSID,files(fi).name)));
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
     trials = trials + e.nTrials;
