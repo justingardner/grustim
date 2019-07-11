@@ -49,6 +49,7 @@ task{1}{1}.randVars.calculated.initStim = [nan nan];
 task{1}{1}.randVars.calculated.trackStim = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackEye  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
+task{1}{1}.randVars.calculated.trackTime = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),1);
 
 %% initialize stuff 
 % initialize task
@@ -152,7 +153,7 @@ if task.thistrial.thisseg == 1
     %% stimulus
     % initialize stimulus
     stimulus.gaussian = mglMakeGaussian(stimulus.circlerad,stimulus.circlerad,...
-        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum-stimulus.backLum) + 255*stimulus.backLum;
+        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum) + 255*stimulus.backLum;
     
     %stimulus initial position. uniform distribution across the screen
     x_img = myscreen.imageWidth/2*(rand(1)-0.5); 
@@ -240,6 +241,7 @@ if (task.thistrial.thisseg== 1)
     % ***record stimulus position and mouse position  
     task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.position;
     task.thistrial.trackResp(task.thistrial.framecount,:) = [mimg_x, mimg_y];
+    task.thistrial.trackTime(task.thistrial.framecount)   = rem(now,1)*24*60*60; %serial date time in seconds 
 
 elseif (task.thistrial.thisseg == 2)
     % draw fixation;
