@@ -20,7 +20,7 @@ myscreen = initScreen(myscreen);
 
 % Experimenter parameters
 eyewindow       = 0; %whats this?
-noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
+noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
 eyemousedebug   = 0; % do i need this? 
 grabframe       = 0; 
 whitenoiseOn    = 0;
@@ -35,7 +35,7 @@ task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
 % task parameters
-task{1}{1}.parameter.backLum = 0.5;  % background luminance; units: fraction of full luminance 
+task{1}{1}.parameter.backLum = 0.25;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.stimLum = 122;  % stimulus luminance (out of 255)
 task{1}{1}.parameter.stimStep = 4;   % stimulus velocity in cm/sec
 
@@ -61,6 +61,7 @@ disp(' Initializing Task....')
 % 3. test different uncertainty values.
 phaseN = 1; %motor gain estimation
 task{1}{phaseN} = task{1}{1};
+task{1}{phaseN}.parameter.backLum = 0;  % background luminance; units: fraction of full luminance 
 task{1}{phaseN}.numTrials = 30;
 task{1}{phaseN}.parameter = rmfield(task{1}{phaseN}.parameter,'stimStep');
 task{1}{phaseN}.randVars.uniform.stimStep = [2,4,6,8,10,12];
@@ -113,12 +114,11 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
 
-
 disp(' End Task....')
 
 myscreen = endTask(myscreen,task);
 mglClose
-mglDisplayCursor(1)
+mglCursor(1)
 
 if stimulus.grabframe
     save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/trackpos/frame_nored.mat', 'frame')
@@ -130,14 +130,11 @@ end
 function [task myscreen] = initTrialCallback(task, myscreen)
     global stimulus    
        
-    stimulus.stimStep = task.thistrial.stimStep;
+    stimulus.stepStd  = task.thistrial.stimStep/myscreen.framesPerSecond;
     stimulus.stimLum  = task.thistrial.stimLum;
     stimulus.backLum  = task.thistrial.backLum;
     
     stimulus = myInitStimulus(stimulus,myscreen,task); %centerX,Y, diameter called by getArgs.
-
-    % mglDisplayCursor(0) %hide cursor
-
 end
 
 %% Start segment
@@ -151,9 +148,6 @@ if task.thistrial.thisseg == 1
     % task{1}{1}.randVars.calculated.initStim = [nan nan];
     
     %% stimulus
-    % initialize stimulus
-    stimulus.gaussian = mglMakeGaussian(stimulus.circlerad,stimulus.circlerad,...
-        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum) + 255*stimulus.backLum;
     
     %stimulus initial position. uniform distribution across the screen
     x_img = myscreen.imageWidth/2*(rand(1)-0.5); 
@@ -164,7 +158,8 @@ if task.thistrial.thisseg == 1
     
     % set mouse position to the stimulus direction. 
     mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-
+    mglDisplayCursor(0) %hide cursor
+    
     % convert screen coordinates to image coordinates.
     stimx = (ceil(x_screen)-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     stimy = (floor(y_screen)-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight; % what is imagewidth???
@@ -237,6 +232,7 @@ if (task.thistrial.thisseg== 1)
     mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
 
     mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
+    mglDisplayCursor(0) %hide cursor
 
     % ***record stimulus position and mouse position  
     task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.position;
@@ -283,7 +279,6 @@ end
 
 %% Initialize stimulus
 function stimulus = myInitStimulus(stimulus,myscreen,task)  
-    tic
     % set standard deviation of stimulus
     
     % stimulus size
@@ -311,13 +306,14 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     else
 %         load('trackpos.mat','gaussian_rgb') % *** still very slow....
 %         stimulus.gaussian = gaussian_rgb;
-        stimulus.gaussian = mglMakeGaussian(stimulus.circlerad,stimulus.circlerad,...
-            stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum-stimulus.backLum) + 255*stimulus.backLum; 
+
+    % initialize stimulus
+    stimulus.gaussian = mglMakeGaussian(stimulus.circlerad,stimulus.circlerad,...
+        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum) + 255*stimulus.backLum;
     end    
     
     % fixation cross
     stimulus.fixColor = [1 1 1];
-    toc
 end
 
 function stimulus = updateTarget(stimulus,myscreen,task)
