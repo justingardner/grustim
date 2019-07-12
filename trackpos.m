@@ -30,7 +30,7 @@ whitenoiseOn    = 0;
 % S2: Fixation (3s)
 task{1}{1}.segmin = [30 3]; 
 task{1}{1}.segmax = [30 3]; 
-task{1}{1}.numTrials = 10;
+task{1}{1}.numTrials = 2;
 task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
@@ -46,6 +46,7 @@ task{1}{1}.parameter.stimStep = 4;   % stimulus velocity in cm/sec
 
 % calculated parameters
 task{1}{1}.randVars.calculated.initStim = [nan nan];
+
 task{1}{1}.randVars.calculated.trackStim = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackEye  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
@@ -62,17 +63,20 @@ disp(' Initializing Task....')
 phaseN = 1; %motor gain estimation
 task{1}{phaseN} = task{1}{1};
 task{1}{phaseN}.parameter.backLum = 0;  % background luminance; units: fraction of full luminance 
-task{1}{phaseN}.numTrials = 30;
+task{1}{phaseN}.numTrials = 2;
 task{1}{phaseN}.parameter = rmfield(task{1}{phaseN}.parameter,'stimStep');
 task{1}{phaseN}.randVars.uniform.stimStep = [2,4,6,8,10,12];
+% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 
 phaseN = 2; %adaptation trialsgegetg
 task{1}{phaseN} = task{1}{1};
+% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 
 teststimLum = [120:-20:20]; % main task 
 for phaseN = 3:(2+length(teststimLum)) %adaptation trials
     task{1}{phaseN} = task{1}{1};
     task{1}{phaseN}.parameter.stimLum = teststimLum(phaseN-2);
+    % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 end
 
 for phaseN = 1:(2+length(teststimLum))
@@ -192,8 +196,12 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 % S2: Fixation (3s)
 
 %% Update Screen
+% starttime = mglGetSecs; 
+
 global stimulus % call stimulus
 mglClearScreen(stimulus.backLum);
+
+% time1    = mglGetSecs; time1 - starttime
 
 if (task.thistrial.thisseg== 1)
     task.thistrial.framecount = task.thistrial.framecount + 1;
@@ -222,34 +230,56 @@ if (task.thistrial.thisseg== 1)
 
     % stimulus
     stimulus        = updateTarget(stimulus,myscreen,task); % update position.
-    texture         = mglCreateTexture(stimulus.gaussian);
-    mglBltTexture(texture,stimulus.position);
+%    time2    = mglGetSecs; time2 - time1
+    
+    mglBltTexture(stimulus.gaussian,stimulus.position);
+    
+%    time3    = mglGetSecs; time3 - time2
 
     % **&display mouse position
+    %timemouse = mglGetSecs;
     mInfo = mglGetMouse(myscreen.screenNumber);
+    %timemouse2 = mglGetSecs; mod(timemouse2-timemouse,1) % order of 1e-04.
 
     mimg_x = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
 
+    %timedisk = mglGetSecs;
     mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
-    mglDisplayCursor(0) %hide cursor
+    %timedisk2 = mglGetSecs; mod(timedisk2-timedisk,1) % order of 1e-04.
+
+    
+%    time4    = mglGetSecs; time4 - time3 % time limiting
 
     % ***record stimulus position and mouse position  
+%     myscreen   = writeTrace(stimulus.position(1),task.trackStimXTrace,myscreen);
+%     myscreen   = writeTrace(stimulus.position(2),task.trackStimYTrace,myscreen);
+%     myscreen   = writeTrace(mimg_x,task.trackRespXTrace,myscreen);
+%     myscreen   = writeTrace(mimg_y,task.trackRespYTrace,myscreen);
     task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.position;
     task.thistrial.trackResp(task.thistrial.framecount,:) = [mimg_x, mimg_y];
     task.thistrial.trackTime(task.thistrial.framecount)   = rem(now,1)*24*60*60; %serial date time in seconds 
+    
+%    time5    = mglGetSecs; time5 - time4
 
 elseif (task.thistrial.thisseg == 2)
     % draw fixation;
     mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
 end
 
+% timeflush = mglGetSecs;
 mglFlush
+% timeflush2 = mglGetSecs; mod(timeflush2-timeflush,1) % order of 1e-02!!! this takes long!!!
 
+% time6    = mglGetSecs; time6 - time5 %time limiting
 %% eye tracking
 % track for task
 % *** track for fixation???
+%timeif = mglGetSecs; 
+
 if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
+    %timeif2 = mglGetSecs; mod(timeif2-timeif,1) % order of 1e-05.
+    
     % mouse version for testing with no eyetracker
     if stimulus.eyemousedebug
         mInfo = mglGetMouse(myscreen.screenNumber);
@@ -261,12 +291,15 @@ if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
         [pos,~] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
     end
         
-    task.thistrial.trackEye(task.thistrial.framecount,:)  = pos;
+%     task.thistrial.trackEye(task.thistrial.framecount,:)  = pos;
 end
 
-if stimulus.grabframe
-    global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
-end
+% time7    = mglGetSecs; time7 - time6
+% disp(['Start: ' num2str(mod(starttime,1)) '; end: ' num2str(mod(time7,1)) '; end-start:' num2str(mod(time7-starttime,1))])
+
+% if stimulus.grabframe
+%     global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
+% end
 
 end
 
@@ -301,15 +334,17 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
 
     if stimulus.whitenoiseOn == 1;
         load('trackpos.mat') % *** still very slow....
-        stimulus.gaussian = gaussian_rgb;
+        stimulus.gaussian = mglCreateTexture(gaussian_rgb); 
         stimulus.backgroundnoise = backgroundnoise_rgb; %round(rand(myscreen.screenHeight-1,myscreen.screenWidth-1,50)*stimulus.noiseLum);
     else
 %         load('trackpos.mat','gaussian_rgb') % *** still very slow....
 %         stimulus.gaussian = gaussian_rgb;
 
-    % initialize stimulus
-    stimulus.gaussian = mglMakeGaussian(stimulus.circlerad,stimulus.circlerad,...
-        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum) + 255*stimulus.backLum;
+        % initialize stimulus
+        if isfield(stimulus,'gaussian'), mglDeleteTexture(stimulus.gaussian);, end %do we need to deleteTexutre?
+        gaussianmat  =  mglMakeGaussian(stimulus.circlerad,stimulus.circlerad,...
+                stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum) + 255*stimulus.backLum;
+        stimulus.gaussian = mglCreateTexture(gaussianmat);
     end    
     
     % fixation cross
