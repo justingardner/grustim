@@ -19,7 +19,7 @@ myscreen = initScreen(myscreen);
 %% parameters
 
 % Experimenter parameters
-eyewindow       = 0; %whats this?
+eyewindow       = 0; %whats this?`
 noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
 eyemousedebug   = 0; % do i need this? 
 grabframe       = 0; 
@@ -62,7 +62,8 @@ disp(' Initializing Task....')
 % 3. test different uncertainty values.
 phaseN = 1; %motor gain estimation
 task{1}{phaseN} = task{1}{1};
-task{1}{phaseN}.parameter.backLum = 0;  % background luminance; units: fraction of full luminance 
+task{1}{phaseN}.parameter.backLum = 0.5;  % background luminance; units: fraction of full luminance 
+task{1}{phaseN}.parameter.stimLum = 255 - 255*task{1}{phaseN}.parameter.backLum;  % stimulus luminance (out of 255)
 task{1}{phaseN}.numTrials = 2;
 task{1}{phaseN}.parameter = rmfield(task{1}{phaseN}.parameter,'stimStep');
 task{1}{phaseN}.randVars.uniform.stimStep = [2,4,6,8,10,12];
@@ -196,7 +197,7 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 % S2: Fixation (3s)
 
 %% Update Screen
-% starttime = mglGetSecs; 
+%starttime = mglGetSecs; 
 
 global stimulus % call stimulus
 mglClearScreen(stimulus.backLum);
@@ -294,8 +295,8 @@ if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
 %     task.thistrial.trackEye(task.thistrial.framecount,:)  = pos;
 end
 
-% time7    = mglGetSecs; time7 - time6
-% disp(['Start: ' num2str(mod(starttime,1)) '; end: ' num2str(mod(time7,1)) '; end-start:' num2str(mod(time7-starttime,1))])
+%time7    = mglGetSecs; %time7 - time6
+%disp(['Start: ' num2str(mod(starttime,1)) '; end: ' num2str(mod(time7,1)) '; end-start:' num2str(mod(time7-starttime,1))])
 
 % if stimulus.grabframe
 %     global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
@@ -371,7 +372,7 @@ function stimulus = updateTarget(stimulus,myscreen,task)
         stimulus.position(2) = stimulus.position(2) - 2*ystep;
     end
     
-    %`disp(['Stimulus position (x,y): ' num2str(stimulus.position)])
+    %disp(['Stimulus position (x,y): ' num2str(stimulus.position)])
 end
 
 function [stimx, stimy] = convertNearestPixel(myscreen,x_img,y_img)
