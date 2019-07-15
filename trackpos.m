@@ -30,14 +30,14 @@ whitenoiseOn    = 0;
 % S2: Fixation (3s)
 task{1}{1}.segmin = [30 3]; 
 task{1}{1}.segmax = [30 3]; 
-task{1}{1}.numTrials = 2;
+task{1}{1}.numTrials = 10;
 task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
 % task parameters
-task{1}{1}.parameter.backLum = 0.25;  % background luminance; units: fraction of full luminance 
+task{1}{1}.parameter.backLum = 0.5;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.stimLum = 122;  % stimulus luminance (out of 255)
-task{1}{1}.parameter.stimStep = 4;   % stimulus velocity in cm/sec
+task{1}{1}.parameter.stimStep = 6;   % stimulus velocity in cm/sec
 
 % The pilot test has three main parts:
 % 1. motor gain estimation through testing different stimulus speed
@@ -60,27 +60,29 @@ disp(' Initializing Task....')
 % 1. motor gain estimation through testing different stimulus speed
 % 2. adaptation trials so that the subjects learn priors
 % 3. test different uncertainty values.
+
+phaseN = 2; %code phase 2 first cuz its vanilla.
+task{1}{phaseN} = task{1}{1};
+% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
+
 phaseN = 1; %motor gain estimation
 task{1}{phaseN} = task{1}{1};
-task{1}{phaseN}.parameter.backLum = 0.5;  % background luminance; units: fraction of full luminance 
+task{1}{phaseN}.parameter.backLum = 0.25;  % background luminance; units: fraction of full luminance 
 task{1}{phaseN}.parameter.stimLum = 255 - 255*task{1}{phaseN}.parameter.backLum;  % stimulus luminance (out of 255)
-task{1}{phaseN}.numTrials = 2;
+task{1}{phaseN}.numTrials = 24;
 task{1}{phaseN}.parameter = rmfield(task{1}{phaseN}.parameter,'stimStep');
 task{1}{phaseN}.randVars.uniform.stimStep = [2,4,6,8,10,12];
 % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 
-phaseN = 2; %adaptation trialsgegetg
-task{1}{phaseN} = task{1}{1};
-% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
-
 teststimLum = [120:-20:20]; % main task 
-for phaseN = 3:(2+length(teststimLum)) %adaptation trials
+mainphaseN = 3; %starting phase number for the main task 
+for phaseN = mainphaseN:(1+length(teststimLum)) %adaptation trials
     task{1}{phaseN} = task{1}{1};
-    task{1}{phaseN}.parameter.stimLum = teststimLum(phaseN-2);
+    task{1}{phaseN}.parameter.stimLum = teststimLum(mainphaseN-1);
     % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 end
 
-for phaseN = 1:(2+length(teststimLum))
+for phaseN = 1:length(task{1})
     [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,...
         @startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
 end
