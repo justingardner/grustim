@@ -51,6 +51,7 @@ task{1}{1}.randVars.calculated.trackStim = nan(ceil(task{1}{1}.segmax(1)*myscree
 task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackEye  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackTime = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),1);
+task{1}{1}.randVars.calculated.trackEyeTime = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),1); % for referencing edf file
 
 %% initialize stuff 
 % initialize task
@@ -291,10 +292,11 @@ if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
 
         pos = [degx, degy];
     else  % check eye pos
-        [pos,~] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
+        [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
     end
         
-%     task.thistrial.trackEye(task.thistrial.framecount,:)  = pos;
+    task.thistrial.trackEye(task.thistrial.framecount,:)  = pos;
+    task.thistrial.trackEyeTime(task.thistrial.framecount) = postime;
 end
 
 %time7    = mglGetSecs; %time7 - time6
@@ -323,7 +325,7 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     stimulus.position = [0 0]; 
     
     % stimulus speed
-    if ~isfield(stimulus,'stepStd'), stimulus.stepStd = 4/myscreen.framesPerSecond;,end %unit: cm/s
+    if ~isfield(stimulus,'stepStd'), stimulus.stepStd = 4/myscreen.framesPerSecond;,end %unit: cm/s to cm/frame
     % this might change based on effective sampling rate.
     
     % stimulus luminance
