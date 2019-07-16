@@ -520,7 +520,7 @@ if stimulus.scan
     task{1}{1}.randVars.calculated.target = nan;
 else
     task{1}{1}.parameter.target = [1 2 3 4];
-    task{1}{1}.randVars.calculated.duration = nan;
+    task{1}{1}.randVars.calculated.duration = 0.25;
 end
 
 if stimulus.practice==1
@@ -797,11 +797,6 @@ if stimulus.scan
         
         task.thistrial.seglen(stimulus.seg.iti) = 1.07^(rand*30+10);
     end
-end
-
-% add duration
-if ~stimulus.scan
-    task.thistrial.duration = rand*.5 + 0.25;
 end
 
 if stimulus.scan
