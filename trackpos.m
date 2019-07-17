@@ -62,24 +62,26 @@ disp(' Initializing Task....')
 % 2. adaptation trials so that the subjects learn priors
 % 3. test different uncertainty values.
 
-phaseN = 2; %code phase 2 first cuz its vanilla.
+phaseN = 1; %code phase 2 first cuz its vanilla.
 task{1}{phaseN} = task{1}{1};
 % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 
+%{
 phaseN = 1; %motor gain estimation
 task{1}{phaseN} = task{1}{1};
 task{1}{phaseN}.parameter.backLum = 0.25;  % background luminance; units: fraction of full luminance 
 task{1}{phaseN}.parameter.stimLum = 255 - 255*task{1}{phaseN}.parameter.backLum;  % stimulus luminance (out of 255)
-task{1}{phaseN}.numTrials = 24;
+task{1}{phaseN}.numTrials = 20;
 task{1}{phaseN}.parameter = rmfield(task{1}{phaseN}.parameter,'stimStep');
-task{1}{phaseN}.randVars.uniform.stimStep = [2,4,6,8,10,12];
+task{1}{phaseN}.randVars.uniform.stimStep = [2,6,8,12,16];
 % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
+%}
 
-teststimLum = [120:-20:20]; % main task 
-mainphaseN = 3; %starting phase number for the main task 
-for phaseN = mainphaseN:(1+length(teststimLum)) %adaptation trials
-    task{1}{phaseN} = task{1}{1};
-    task{1}{phaseN}.parameter.stimLum = teststimLum(mainphaseN-1);
+teststimLum = [70,40,20,10,5]; % main task 
+mainphaseN = 2; %starting phase number for the main task 
+for phaseN = mainphaseN:(mainphaseN-1+length(teststimLum)) %adaptation trials
+    task{1}{phaseN} = task{1}{mainphaseN-1};
+    task{1}{phaseN}.parameter.stimLum = teststimLum(phaseN-mainphaseN+1);
     % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 end
 
@@ -89,7 +91,8 @@ for phaseN = 1:length(task{1})
 end
 
 % initialize stimulus
-disp(' Initializing Stimulus....')
+disp(' Initializing Stimulus....') 
+
 global stimulus; stimulus = struct;
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
@@ -111,6 +114,8 @@ if ~stimulus.noeye
     
     % let the user know
     disp(sprintf('(trackpos) Starting Run...'));
+    
+    % let the experimentee know too../
 end
 
 %% run the task
@@ -126,7 +131,7 @@ disp(' End Task....')
 
 myscreen = endTask(myscreen,task);
 mglClose
-mglCursor(1)
+mglDisplayCursor(1) %show cursor
 
 if stimulus.grabframe
     save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/trackpos/frame_nored.mat', 'frame')
