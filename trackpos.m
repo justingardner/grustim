@@ -77,7 +77,7 @@ task{1}{phaseN}.randVars.uniform.stimStep = [2,6,8,12,16];
 % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 %}
 
-teststimLum = [70,40,20,10,5]; % main task 
+teststimLum = [40,30,25,20,15,10]; % main task 
 mainphaseN = 2; %starting phase number for the main task 
 for phaseN = mainphaseN:(mainphaseN-1+length(teststimLum)) %adaptation trials
     task{1}{phaseN} = task{1}{mainphaseN-1};
@@ -131,7 +131,13 @@ disp(' End Task....')
 
 myscreen = endTask(myscreen,task);
 mglClose
-mglDisplayCursor(1) %show cursor
+ 
+
+
+c
+v
+```%mglDisplayCursor(1) %show cursor
+endScreen(myscreen);
 
 if stimulus.grabframe
     save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/trackpos/frame_nored.mat', 'frame')
