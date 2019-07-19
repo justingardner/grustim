@@ -30,7 +30,7 @@ whitenoiseOn    = 0;
 % S2: Fixation (3s)
 task{1}{1}.segmin = [30 3]; 
 task{1}{1}.segmax = [30 3]; 
-task{1}{1}.numTrials = 10;
+task{1}{1}.numTrials = 7;
 task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
@@ -114,12 +114,15 @@ if ~stimulus.noeye
     
     % let the user know
     disp(sprintf('(trackpos) Starting Run...'));
-    
-    % let the experimentee know too../
 end
 
 %% run the task
 disp(' Running Task....')
+
+% let the experimentee know too../
+mglClearScreen(0.5);
+mglTextDraw('task (trackpos) starting... Track the brightest point of the screen with the red mouse cursor',[0 0]);
+mglFlush
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -127,17 +130,12 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
 
+%% End task
 disp(' End Task....')
 
 myscreen = endTask(myscreen,task);
-mglClose
- 
-
-
-c
-v
-```%mglDisplayCursor(1) %show cursor
-endScreen(myscreen);
+mglClose 
+endScreen(myscreen); %mglDisplayCursor(1) %show cursor
 
 if stimulus.grabframe
     save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/trackpos/frame_nored.mat', 'frame')
@@ -216,9 +214,12 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus % call stimulus
 mglClearScreen(stimulus.backLum);
 
+% fixation cross for all tasks. 
+mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
 % time1    = mglGetSecs; time1 - starttime
 
 if (task.thistrial.thisseg== 1)
+    
     task.thistrial.framecount = task.thistrial.framecount + 1;
 
     % myscreen = initScreen(myscreen);mglClearScreen
@@ -279,7 +280,7 @@ if (task.thistrial.thisseg== 1)
 
 elseif (task.thistrial.thisseg == 2)
     % draw fixation;
-    mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+    % mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
 end
 
 % timeflush = mglGetSecs;
