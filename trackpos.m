@@ -19,25 +19,25 @@ myscreen = initScreen(myscreen);
 %% parameters
 
 % Experimenter parameters
-eyewindow       = 0; %whats this?`
 noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
 eyemousedebug   = 0; % do i need this? 
 grabframe       = 0; 
 whitenoiseOn    = 0;
+fixateCenter    = 1;
 
 % Task design
 % S1: Stimulus (30s)
 % S2: Fixation (3s)
 task{1}{1}.segmin = [30 3]; 
 task{1}{1}.segmax = [30 3]; 
-task{1}{1}.numTrials = 7;
+task{1}{1}.numTrials = 5;
 task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
 % task parameters
 task{1}{1}.parameter.backLum = 0.5;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.stimLum = 122;  % stimulus luminance (out of 255)
-task{1}{1}.parameter.stimStep = 6;   % stimulus velocity in cm/sec
+task{1}{1}.parameter.stimStep = 6; %20;   % stimulus velocity in cm/sec
 
 % The pilot test has three main parts:
 % 1. motor gain estimation through testing different stimulus speed
@@ -50,24 +50,19 @@ task{1}{1}.randVars.calculated.initStim = [nan nan];
 task{1}{1}.randVars.calculated.trackStim = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
 task{1}{1}.randVars.calculated.trackEye  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
-task{1}{1}.randVars.calculated.trackTime = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),1);
-task{1}{1}.randVars.calculated.trackEyeTime = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),1); % for referencing edf file
+task{1}{1}.randVars.calculated.trackTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond));
+task{1}{1}.randVars.calculated.trackEyeTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond)); % for referencing edf file
 
-%% initialize stuff 
-% initialize task
-disp(' Initializing Task....')
+%% Set up tasks 
 
+%motor gain estimation
+%{
 % The pilot test has three main parts:
 % 1. motor gain estimation through testing different stimulus speed
 % 2. adaptation trials so that the subjects learn priors
 % 3. test different uncertainty values.
 
-phaseN = 1; %code phase 2 first cuz its vanilla.
-task{1}{phaseN} = task{1}{1};
-% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
-
-%{
-phaseN = 1; %motor gain estimation
+phaseN = 1; 
 task{1}{phaseN} = task{1}{1};
 task{1}{phaseN}.parameter.backLum = 0.25;  % background luminance; units: fraction of full luminance 
 task{1}{phaseN}.parameter.stimLum = 255 - 255*task{1}{phaseN}.parameter.backLum;  % stimulus luminance (out of 255)
@@ -77,6 +72,12 @@ task{1}{phaseN}.randVars.uniform.stimStep = [2,6,8,12,16];
 % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 %}
 
+% changing stimulus luminance
+%{
+phaseN = 1; %code phase 2 first cuz its vanilla.
+task{1}{phaseN} = task{1}{1};
+% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
+
 teststimLum = [40,30,25,20,15,10]; % main task 
 mainphaseN = 2; %starting phase number for the main task 
 for phaseN = mainphaseN:(mainphaseN-1+length(teststimLum)) %adaptation trials
@@ -84,6 +85,26 @@ for phaseN = mainphaseN:(mainphaseN-1+length(teststimLum)) %adaptation trials
     task{1}{phaseN}.parameter.stimLum = teststimLum(phaseN-mainphaseN+1);
     % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
 end
+%} 
+
+% changing stimulus speed
+teststimSteps = [5,10,15,20,25];
+teststimLum   = 20;
+
+for idx = 1:length(teststimSteps)
+    % adaptation task
+    task{1}{2*idx-1} = task{1}{1};  
+    task{1}{2*idx-1}.parameter.stimStep = teststimSteps(idx);
+
+    task{1}{2*idx}   = task{1}{2*idx-1};
+    task{1}{2*idx}.parameter.stimLum    = teststimLum;
+end
+
+end
+
+%% initialize
+% intiailize task
+disp(' Initializing Task....')
 
 for phaseN = 1:length(task{1})
     [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,...
@@ -96,10 +117,10 @@ disp(' Initializing Stimulus....')
 global stimulus; stimulus = struct;
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
-stimulus.whitenoiseOn = whitenoiseOn;
-stimulus.eyewindow  = eyewindow;
-stimulus.noeye      = noeye;
-stimulus.eyemousedebug = eyemousedebug;
+stimulus.whitenoiseOn   = whitenoiseOn;
+stimulus.noeye          = noeye;
+stimulus.eyemousedebug  = eyemousedebug;
+stimulus.fixateCenter   = fixateCenter;
 
 stimulus.grabframe = grabframe; %save frames into matrices
 if stimulus.grabframe
@@ -117,7 +138,7 @@ if ~stimulus.noeye
 end
 
 %% run the task
-disp(' Running Task....')
+disp(' Running Task....'); stimulus.t0 = mglGetSecs;
 
 % let the experimentee know too../
 mglClearScreen(0.5);
@@ -198,7 +219,6 @@ if task.thistrial.thisseg == 1
     
 else %intertrial interval
     % *** fixation cross.
-    
 end    
 
 end
@@ -209,14 +229,9 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 % S2: Fixation (3s)
 
 %% Update Screen
-%starttime = mglGetSecs; 
 
 global stimulus % call stimulus
 mglClearScreen(stimulus.backLum);
-
-% fixation cross for all tasks. 
-mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
-% time1    = mglGetSecs; time1 - starttime
 
 if (task.thistrial.thisseg== 1)
     
@@ -227,8 +242,7 @@ if (task.thistrial.thisseg== 1)
     % background noise
     if stimulus.whitenoiseOn == 1
         backgroundnoise = stimulus.backgroundnoise(:,:,:,task.thistrial.noiseperm(task.thistrial.framecount));
-        texture         = mglCreateTexture(backgroundnoise);
-    
+        texture         = mglCreateTexture(backgroundnoise);    
     %{
     backgroundnoise             = round(rand(myscreen.screenWidth/2,myscreen.screenHeight/2)*stimulus.noiseLum);  
     backgroundnoise_rgb         = 255*ones(4,size(backgroundnoise,1),size(backgroundnoise,2),size(backgroundnoise,3),'uint8');
@@ -246,26 +260,16 @@ if (task.thistrial.thisseg== 1)
 
     % stimulus
     stimulus        = updateTarget(stimulus,myscreen,task); % update position.
-%    time2    = mglGetSecs; time2 - time1
     
     mglBltTexture(stimulus.gaussian,stimulus.position);
-    
-%    time3    = mglGetSecs; time3 - time2
 
     % **&display mouse position
-    %timemouse = mglGetSecs;
     mInfo = mglGetMouse(myscreen.screenNumber);
-    %timemouse2 = mglGetSecs; mod(timemouse2-timemouse,1) % order of 1e-04.
 
     mimg_x = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
 
-    %timedisk = mglGetSecs;
     mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
-    %timedisk2 = mglGetSecs; mod(timedisk2-timedisk,1) % order of 1e-04.
-
-    
-%    time4    = mglGetSecs; time4 - time3 % time limiting
 
     % ***record stimulus position and mouse position  
 %     myscreen   = writeTrace(stimulus.position(1),task.trackStimXTrace,myscreen);
@@ -274,27 +278,25 @@ if (task.thistrial.thisseg== 1)
 %     myscreen   = writeTrace(mimg_y,task.trackRespYTrace,myscreen);
     task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.position;
     task.thistrial.trackResp(task.thistrial.framecount,:) = [mimg_x, mimg_y];
-    task.thistrial.trackTime(task.thistrial.framecount)   = rem(now,1)*24*60*60; %serial date time in seconds 
-    
-%    time5    = mglGetSecs; time5 - time4
+    task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0);
 
 elseif (task.thistrial.thisseg == 2)
     % draw fixation;
-    % mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+    mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
 end
 
-% timeflush = mglGetSecs;
-mglFlush
-% timeflush2 = mglGetSecs; mod(timeflush2-timeflush,1) % order of 1e-02!!! this takes long!!!
+% fixation cross for all tasks. 
+if stimulus.fixateCenter == 1
+    mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+end
 
-% time6    = mglGetSecs; time6 - time5 %time limiting
+mglFlush
+
 %% eye tracking
 % track for task
 % *** track for fixation???
-%timeif = mglGetSecs; 
 
 if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
-    %timeif2 = mglGetSecs; mod(timeif2-timeif,1) % order of 1e-05.
     
     % mouse version for testing with no eyetracker
     if stimulus.eyemousedebug
@@ -311,12 +313,10 @@ if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
     task.thistrial.trackEyeTime(task.thistrial.framecount) = postime;
 end
 
-%time7    = mglGetSecs; %time7 - time6
-%disp(['Start: ' num2str(mod(starttime,1)) '; end: ' num2str(mod(time7,1)) '; end-start:' num2str(mod(time7-starttime,1))])
 
-% if stimulus.grabframe
-%     global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
-% end
+if stimulus.grabframe
+    global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
+end
 
 end
 
@@ -386,6 +386,14 @@ function stimulus = updateTarget(stimulus,myscreen,task)
     if stimulus.position(2)+stimulus.circlerad > myscreen.imageHeight/2 ...
             || stimulus.position(2)-stimulus.circlerad < -myscreen.imageHeight/2,
         stimulus.position(2) = stimulus.position(2) - 2*ystep;
+    end
+    
+    % if eye fixation is enforced
+    if stimulus.fixateCenter == 1
+        if norm(stimulus.position) < stimulus.circlerad 
+            stimulus.position(1) = stimulus.position(1) - 2*xstep;
+            stimulus.position(2) = stimulus.position(2) - 2*ystep;
+        end
     end
     
     %disp(['Stimulus position (x,y): ' num2str(stimulus.position)])
