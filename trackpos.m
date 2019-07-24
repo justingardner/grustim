@@ -100,8 +100,6 @@ for idx = 1:length(teststimSteps)
     task{1}{2*idx}.parameter.stimLum    = teststimLum;
 end
 
-end
-
 %% initialize
 % intiailize task
 disp(' Initializing Task....')
