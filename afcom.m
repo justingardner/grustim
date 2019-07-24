@@ -476,15 +476,10 @@ if stimulus.practice==1
     task{1}{1}.segmax(stimulus.seg.cue) = 1;
     task{1}{1}.segmin(stimulus.seg.isi) = 1;
     task{1}{1}.segmax(stimulus.seg.isi) = 1;
-    task{1}{1}.segmin(stimulus.seg.resp) = 6;
-    task{1}{1}.segmax(stimulus.seg.resp) = 6;
-    task{1}{1}.segmin(stimulus.seg.feedback) = 1.5;
-    task{1}{1}.segmax(stimulus.seg.feedback) = 1.5;
-elseif stimulus.practice==2
-    task{1}{1}.segmin(stimulus.seg.cue) = 1;
-    task{1}{1}.segmax(stimulus.seg.cue) = 1;
-    task{1}{1}.segmin(stimulus.seg.isi) = 1;
-    task{1}{1}.segmax(stimulus.seg.isi) = 1;
+    task{1}{1}.segmin(stimulus.seg.stim) = 1.5;
+    task{1}{1}.segmax(stimulus.seg.stim) = 1.5;
+    task{1}{1}.segmin(stimulus.seg.delay) = 2;
+    task{1}{1}.segmax(stimulus.seg.delay) = 2;
 elseif stimulus.practice==3
     % scan practice mode
     task{1}{1}.segmin(stimulus.seg.iti) = 0;
@@ -805,7 +800,7 @@ if stimulus.scan
     task.thistrial.trialType = stimulus.blocks{end}.trialType(t);
     task.thistrial.target = stimulus.blocks{end}.target(t);
     task.thistrial.blockTrial = t;
-else
+elseif isnan(task.thistrial.trialType)
     if task.trialnum <= 20
         task.thistrial.trialType = stimulus.trialTypes{end}(1);
     else
