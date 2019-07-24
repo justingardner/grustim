@@ -175,17 +175,17 @@ if ~isfield(stimulus,'trialTypes')
     stimulus.trialTypes = {};
     % the actual ratio to keep
     stimulus.ratio = [1 1 1 2 2 2 0 0 3 4];
-    stimulus.curSample = [];
+    stimulus.curSample = {[],[]};
 end
 
 % add trial types for this run
 if ~stimulus.scan
-    if isempty(stimulus.curSample)
-        stimulus.curSample = stimulus.ratio(randperm(length(stimulus.ratio)));
+    if isempty(stimulus.curSample{stimulus.cue})
+        stimulus.curSample{stimulus.cue} = stimulus.ratio(randperm(length(stimulus.ratio)));
     end
     idxs = randsample(1:length(stimulus.curSample),2);
-    stimulus.trialTypes{end+1} = stimulus.curSample(idxs);
-    stimulus.curSample(idxs) = [];
+    stimulus.trialTypes{end+1} = stimulus.curSample{stimulus.cue}(idxs);
+    stimulus.curSample{stimulus.cue}(idxs) = [];
 end
 
 %% Block coding for scans
@@ -478,8 +478,8 @@ if stimulus.practice==1
     task{1}{1}.segmax(stimulus.seg.isi) = 1;
     task{1}{1}.segmin(stimulus.seg.stim) = 1.5;
     task{1}{1}.segmax(stimulus.seg.stim) = 1.5;
-    task{1}{1}.segmin(stimulus.seg.delay) = 2;
-    task{1}{1}.segmax(stimulus.seg.delay) = 2;
+    task{1}{1}.segmin(stimulus.seg.delay) = 1;
+    task{1}{1}.segmax(stimulus.seg.delay) = 1;
 elseif stimulus.practice==3
     % scan practice mode
     task{1}{1}.segmin(stimulus.seg.iti) = 0;
@@ -515,7 +515,7 @@ if stimulus.scan
     task{1}{1}.randVars.calculated.target = nan;
 else
     task{1}{1}.parameter.target = [1 2 3 4];
-    task{1}{1}.randVars.calculated.duration = 0.25;
+    task{1}{1}.randVars.calculated.duration = 0.3;
 end
 
 if stimulus.practice==1
