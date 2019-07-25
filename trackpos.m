@@ -8,11 +8,14 @@
 function myscreen = trackpos(varargin)
 
 % set input arguments
-%getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'});
-getArgs(varargin,{'subjectID=-1'});
+%getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
 % set up screen
-myscreen.subjectID = subjectID;
+if isempty(mglGetSID)
+    myscreen.subjectID = -1;
+else
+    myscreen.subjectID = mglGetSID;
+end
 myscreen.saveData = 1;
 myscreen = initScreen(myscreen);
 
@@ -23,7 +26,7 @@ noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tr
 eyemousedebug   = 0; % do i need this? 
 grabframe       = 0; 
 whitenoiseOn    = 0;
-fixateCenter    = 1;
+fixateCenter    = 0;
 
 % Task design
 % S1: Stimulus (30s)
