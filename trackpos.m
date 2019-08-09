@@ -302,7 +302,7 @@ if stimulus.fixateCenter == 1
 end
 
 % stimulus.timedebug(6,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~2.48e-5 s
-mglFlush
+% mglFlush
 % stimulus.timedebug(7,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.007 s ..i.e. compensating for the other steps
 
 %% eye tracking
