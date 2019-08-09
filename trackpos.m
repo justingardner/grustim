@@ -1,4 +1,3 @@
-%
 %        $Id: $
 %      usage: trackpos
 %         by: Josh Ryu
@@ -6,8 +5,8 @@
 %    purpose: 
 
 function myscreen = trackpos(varargin)
+ 
 
-% set input arguments
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
 % set up screen
@@ -22,14 +21,14 @@ myscreen = initScreen(myscreen);
 %% parameters
 
 % Experimenter parameters
-noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
+noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
 eyemousedebug   = 0; % do i need this? 
 grabframe       = 0; 
 whitenoiseOn    = 0;
 fixateCenter    = 0;
 
 % Task design
-% S1: Stimulus (30s)
+% S1: Stimulus (30s) 
 % S2: Fixation (3s)
 task{1}{1}.segmin = [30 3]; 
 task{1}{1}.segmax = [30 3]; 
@@ -218,6 +217,8 @@ if task.thistrial.thisseg == 1
     %% frame counter.
     task.thistrial.framecount = 0;
     
+    % time debugging
+    % stimulus.timedebug = nan(15,ceil(task.segmax(1)*myscreen.framesPerSecond)); %nanmean(diff(stimulus.timedebug),2)
 else %intertrial interval
     % *** fixation cross.
 end    
@@ -231,7 +232,8 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 
 %% Update Screen
 
-global stimulus % call stimulus
+global stimulus % call stimulus. Takes ~0.000013 s.
+% stimulus.timedebug(9,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.0087425s
 mglClearScreen(stimulus.backLum);
 
 if (task.thistrial.thisseg== 1)
@@ -258,11 +260,16 @@ if (task.thistrial.thisseg== 1)
     mglFlush
     %}
     end
-
+    % stimulus.timedebug(10,task.thistrial.framecount) = mglGetSecs(stimulus.t0); % takes ~ 6.264918 e-5 s
+    % stimulus.timedebug(1,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0);
     % stimulus
     stimulus        = updateTarget(stimulus,myscreen,task); % update position.
     
+    % stimulus.timedebug(2,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.00012s 
+    
     mglBltTexture(stimulus.gaussian,stimulus.position);
+    
+    % stimulus.timedebug(3,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.000495s
 
     % **&display mouse position
     mInfo = mglGetMouse(myscreen.screenNumber);
@@ -271,6 +278,7 @@ if (task.thistrial.thisseg== 1)
     mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
 
     mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
+    % stimulus.timedebug(4,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~9.2678e-5 s
 
     % ***record stimulus position and mouse position  
 %     myscreen   = writeTrace(stimulus.position(1),task.trackStimXTrace,myscreen);
@@ -280,6 +288,8 @@ if (task.thistrial.thisseg== 1)
     task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.position;
     task.thistrial.trackResp(task.thistrial.framecount,:) = [mimg_x, mimg_y];
     task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0);
+    
+    % stimulus.timedebug(5,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~7.67331e-5 s
 
 elseif (task.thistrial.thisseg == 2)
     % draw fixation;
@@ -291,14 +301,14 @@ if stimulus.fixateCenter == 1
     mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
 end
 
+% stimulus.timedebug(6,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~2.48e-5 s
 mglFlush
+% stimulus.timedebug(7,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.007 s ..i.e. compensating for the other steps
 
 %% eye tracking
 % track for task
 % *** track for fixation???
-
 if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
-    
     % mouse version for testing with no eyetracker
     if stimulus.eyemousedebug
         mInfo = mglGetMouse(myscreen.screenNumber);
@@ -314,6 +324,7 @@ if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
     task.thistrial.trackEyeTime(task.thistrial.framecount) = postime;
 end
 
+% stimulus.timedebug(8,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~2.86661e-5 s
 
 if stimulus.grabframe
     global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
