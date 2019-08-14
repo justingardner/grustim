@@ -519,7 +519,7 @@ else
 end
 
 if stimulus.practice==1
-    task{1}{1}.parameter.duration = 1.0;
+    task{1}{1}.randVars.calculated.duration = 1.5;
 end
 
 if stimulus.practiceType>=0
@@ -641,8 +641,8 @@ end
 % end
 
 %% concatenate all trials
-pvars = {'target','trialType','cue','duration'};
-rvars = {'dead','targetAngle','distractorAngle','angle1','angle2','angle3',...
+pvars = {'target','cue'};
+rvars = {'dead','trialType','duration','targetAngle','distractorAngle','angle1','angle2','angle3',...
     'angle4','respAngle','respDistance','distDistance'};
 runs = [];
 
@@ -670,41 +670,41 @@ end
 eval('dur = duration;');
 
 %% concatenate mouse tracks
-amt = nan(length(target),maxTrackLength);
-start = 1;
-for run = 1:length(e)
-    stop = (start+e{run}.nTrials-1);
-    amt(start:stop,1:size(mt{run},2)) = mt{run};
-    start = stop + 1;
-end
-
-%% go backward through mouseTracks and fix jumps
-% assume that you end near zero, so if you jump -pi you need to -pi the
-% earlier section, etc
-amt = fliplr(amt);
-for ai = 1:size(amt,1)
-    track = amt(ai,:);
-    dtrack = diff(track);
-    posidx = find(dtrack>5);
-    negidx = find(dtrack<-5);
-    for pii = 1:length(posidx)
-        idx = posidx(pii)+1;
-        track(idx:end) = track(idx:end)-2*pi;
-    end
-    for nii = 1:length(negidx)
-        idx = negidx(nii)+1;
-        track(idx:end) = track(idx:end)+2*pi;
-    end
-    dtrack = diff(track);
-    amt(ai,:) = track;
-end
-amt = fliplr(amt);
+% amt = nan(length(target),maxTrackLength);
+% start = 1;
+% for run = 1:length(e)
+%     stop = (start+e{run}.nTrials-1);
+%     amt(start:stop,1:size(mt{run},2)) = mt{run};
+%     start = stop + 1;
+% end
+% 
+% %% go backward through mouseTracks and fix jumps
+% % assume that you end near zero, so if you jump -pi you need to -pi the
+% % earlier section, etc
+% amt = fliplr(amt);
+% for ai = 1:size(amt,1)
+%     track = amt(ai,:);
+%     dtrack = diff(track);
+%     posidx = find(dtrack>5);
+%     negidx = find(dtrack<-5);
+%     for pii = 1:length(posidx)
+%         idx = posidx(pii)+1;
+%         track(idx:end) = track(idx:end)-2*pi;
+%     end
+%     for nii = 1:length(negidx)
+%         idx = negidx(nii)+1;
+%         track(idx:end) = track(idx:end)+2*pi;
+%     end
+%     dtrack = diff(track);
+%     amt(ai,:) = track;
+% end
+% amt = fliplr(amt);
 
 %% create one giant matrix, but just of a few variables that matter
 data = [cue' runs' trialType' respDistance' dur'];
 keepIdxs = ~any(isnan(data(:,4)),2);
 data = data(keepIdxs,:);
-amt = amt(keepIdxs,:);
+% amt = amt(keepIdxs,:);
 
 disp(sprintf('Total trials: %i',size(data,1)));
 
@@ -713,22 +713,22 @@ disp(sprintf('Runs so far: %i cue direction (cue=1), %i cue color (cue=2)',runco
 
 %% plot mousetracks
 % step 1: rotate mousetracks so that they are relative to the target
-amt_ = amt - repmat(targetAngle(keepIdxs)',1,size(amt,2));
-% test plot the average mousetrack
-figure; hold on
-plot(amt_','-k');
-hline(0,'--r');
-xlabel('Time from response window start');
-ylabel('Rotation (rad)');
-drawPublishAxis;
+% amt_ = amt - repmat(targetAngle(keepIdxs)',1,size(amt,2));
+% % test plot the average mousetrack
+% figure; hold on
+% plot(amt_','-k');
+% hline(0,'--r');
+% xlabel('Time from response window start');
+% ylabel('Rotation (rad)');
+% drawPublishAxis;
 
 %% plot
 
 % split data by difficulty
-edata = data(data(:,5)==1,:);
-hdata = data(data(:,5)==0.25,:);
+% edata = data(data(:,5)==1,:);
+hdata = data(data(:,5)==0.3,:);
 
-dispInfoFigures(edata,'easy');
+% dispInfoFigures(edata,'easy');
 dispInfoFigures(hdata,'hard');
 
 function dispInfoFigures(data,diff)
