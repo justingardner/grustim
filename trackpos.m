@@ -16,7 +16,7 @@ else
     myscreen.subjectID  = mglGetSID;
 end
 myscreen.saveData       = 1;
-myscreen.displayName    = 'debug';
+% myscreen.displayName    = 'somato';
 myscreen                = initScreen(myscreen);
 
 %% parameters
@@ -24,7 +24,7 @@ global stimulus; stimulus = struct;
 
 % Experimenter parameters
 noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
-eyemousedebug   = 0; % do i need this? 
+showmouse       = 1; % do i need this? 
 grabframe       = 0; 
 whitenoiseOn    = 0; % 1: white noise; 2: 
 fixateCenter    = 1;
@@ -42,10 +42,10 @@ task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial
 % task parameters for adaptation conditions
 if whitenoiseOn == 1 || phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
-    task{1}{1}.parameter.backLum            = 0;  % background luminance; units: fraction of full luminance 
+    task{1}{1}.parameter.backLum            = 32;  % background luminance; units: luminance 
     task{1}{1}.parameter.noiseLum           = 32;
 else 
-    task{1}{1}.parameter.backLum = 0.5;  % background luminance; units: fraction of full luminance 
+    task{1}{1}.parameter.backLum = 32;  % background luminance; units: fraction of full luminance 
 end
 task{1}{1}.parameter.stimLum = 127;  % stimulus luminance (out of 255)
 % task{1}{1}.parameter.stimStep = 6; % stimulus velocity (standard deviation) in deg/sec
@@ -75,8 +75,8 @@ luminance
 
 phaseN = 1; 
 task{1}{phaseN} = task{1}{1};
-task{1}{phaseN}.parameter.backLum = 0.25;  % background luminance; units: fraction of full luminance 
-task{1}{phaseN}.parameter.stimLum = 255 - 255*task{1}{phaseN}.parameter.backLum;  % stimulus luminance (out of 255)
+task{1}{phaseN}.parameter.backLum = 255*0.25;  % background luminance; units: luminance 
+task{1}{phaseN}.parameter.stimLum = 255 - task{1}{phaseN}.parameter.backLum;  % stimulus luminance (out of 255)
 task{1}{phaseN}.numTrials = 20;
 task{1}{phaseN}.parameter = rmfield(task{1}{phaseN}.parameter,'stimStep');
 task{1}{phaseN}.randVars.uniform.stimStep = [2,6,8,12,16];
@@ -113,7 +113,7 @@ for idx = 1:length(teststimSteps)
 end
 %}
 
-% change stimulus speed and luminance.
+% change stimulus speed and luminance; cross conditions.
 teststimSteps = [1,2,3]; %[5,15,25];
 teststimLum   = [96,64,32];
 
@@ -150,7 +150,7 @@ disp(' Initializing Stimulus....')
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus.whitenoiseOn       = whitenoiseOn;
 stimulus.noeye              = noeye;
-stimulus.eyemousedebug      = eyemousedebug;
+stimulus.showmouse          = showmouse;
 stimulus.fixateCenter       = fixateCenter;
 stimulus.phasescrambleOn    = phasescrambleOn;
 
@@ -178,6 +178,8 @@ mglTextDraw('task (trackpos) starting... ', [0 0.5])
 mglTextDraw('Track the brightest point of the screen with the red mouse cursor',[0 -0.5]);
 mglFlush
 
+if ~stimulus.showmouse, mglDisplayCursor(0);, end %hide cursor
+
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
@@ -195,7 +197,7 @@ end
 
 myscreen = endTask(myscreen,task);
 mglClose 
-endScreen(myscreen); %mglDisplayCursor(1) %show cursor
+endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
 if stimulus.grabframe
     save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/trackpos/frame_nored.mat', 'frame')
@@ -223,26 +225,13 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 % S2: Fixation (3s)
 global stimulus 
 
-%change stimulus accordingly
-if task.thistrial.thisseg == 1    
-    % task{1}{1}.randVars.calculated.initStim = [nan nan];
-    
-    %% stimulus
-    
-    %stimulus initial position. uniform distribution across the screen
-    x_img = myscreen.imageWidth/2*(rand(1)-0.5); 
-    y_img = myscreen.imageHeight/2*(rand(1)-0.5);
-    
+if task.thistrial.thisseg == 1        
+    % set mouse position to the stimulus direction. 
+    x_img = stimulus.position(1);  y_img = stimulus.position(2);
     x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
     y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-    
-    % set mouse position to the stimulus direction. 
     mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-    % mglDisplayCursor(0) %hide cursor
-    
-    % convert screen coordinates to image coordinates.
-    stimx = (ceil(x_screen)-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-    stimy = (floor(y_screen)-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight; % what is imagewidth???
+    if ~stimulus.showmouse, mglDisplayCursor(0);, end %hide cursor
     
     task.thistrial.initStim = stimulus.position;% [stimx, stimy];
     
@@ -259,7 +248,7 @@ if task.thistrial.thisseg == 1
         text_xsize          = round(myscreen.screenWidth/downsample_spatRes);
         text_ysize          = round(myscreen.screenHeight/downsample_spatRes);
 
-        backgroundnoise         = round(rand(text_xsize,text_ysize,nframes)*stimulus.noiseLum);  
+        backgroundnoise         = round(rand(text_xsize,text_ysize,nframes)*stimulus.noiseLum)+stimulus.backLum;  
         backgroundnoise_rgb     = 255*ones(4,size(backgroundnoise,1),size(backgroundnoise,2),size(backgroundnoise,3),'uint8');
         backgroundnoise_rgb(4,:,:,:)    = backgroundnoise; % change alpha. full rgb.
         backgroundnoise_rgb             = uint8(backgroundnoise_rgb); 
@@ -306,7 +295,7 @@ if task.thistrial.thisseg == 1
             back.phase                  = rand(size(back.mag))*2*pi; % scramble phase
             backgroundnoise             = round(reconstructFromHalfFourier(back));   
             backgroundnoise_rgb         = 255*ones(4,size(backgroundnoise,2),size(backgroundnoise,1),'uint8');
-            backgroundnoise_rgb(4,:,:)  = backgroundnoise'/max(max(backgroundnoise))*stimulus.noiseLum;  % normalize contrast
+            backgroundnoise_rgb(4,:,:)  = backgroundnoise'/max(max(backgroundnoise))*stimulus.noiseLum+stimulus.backLum;  % normalize contrast
             backgroundnoise_rgb         = uint8(backgroundnoise_rgb);
 
             stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb);    
@@ -457,12 +446,12 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     if ~isfield(stimulus,'noiseLum'), stimulus.noiseLum = 122;,end; % unit: luminance
     
     % background luminance
-    if ~isfield(stimulus,'backLum'), stimulus.backLum = 0.5;,end; % unit: percentage full luminance
+    if ~isfield(stimulus,'backLum'), stimulus.backLum = 32;,end; % unit: luminance
 
     % initialize stimulus
     if isfield(stimulus,'gaussian'), mglDeleteTexture(stimulus.gaussian);, end 
     gaussian    =  mglMakeGaussian(stimulus.patchsize,stimulus.patchsize,...
-        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum);
+        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum)+stimulus.backLum;
     gaussian_rgb           = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
     gaussian_rgb(4,:,:)    = round(gaussian');
     gaussian_rgb           = uint8(gaussian_rgb);
