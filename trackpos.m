@@ -16,7 +16,7 @@ else
     myscreen.subjectID  = mglGetSID;
 end
 myscreen.saveData       = 1;
-% myscreen.displayName    = 'somato';
+myscreen.displayName    = 'debug';
 myscreen                = initScreen(myscreen);
 
 %% parameters
@@ -24,7 +24,7 @@ global stimulus; stimulus = struct;
 
 % Experimenter parameters
 noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
-showmouse       = 1; % do i need this? 
+showmouse       = 1; 
 grabframe       = 0; 
 whitenoiseOn    = 0; % 1: white noise; 2: 
 fixateCenter    = 1;
@@ -33,8 +33,8 @@ phasescrambleOn = 1;
 % Task design
 % S1: Stimulus (30s) 
 % S2: Fixation (3s)
-task{1}{1}.segmin = [5 0.1]; % fixation for shorter bc of the segment start takes time.
-task{1}{1}.segmax = [5 0.1]; 
+task{1}{1}.segmin = [5 3]; % fixation for shorter bc of the segment start takes time.
+task{1}{1}.segmax = [5 3]; 
 task{1}{1}.numTrials = 2;
 task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
@@ -173,7 +173,7 @@ end
 disp(' Running Task....'); stimulus.t0 = mglGetSecs; % 
 
 % let the experimentee know too...
-mglClearScreen(task{1}{1}.parameter.backLum);
+mglClearScreen(task{1}{1}.parameter.backLum/255);
 mglTextDraw('task (trackpos) starting... ', [0 0.5])
 mglTextDraw('Track the brightest point of the screen with the red mouse cursor',[0 -0.5]);
 mglFlush
@@ -226,6 +226,9 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus 
 
 if task.thistrial.thisseg == 1        
+    % set stimulus
+    stimulus = myInitStimulus(stimulus,myscreen,task); %centerX,Y, diameter called by getArgs.
+    
     % set mouse position to the stimulus direction. 
     x_img = stimulus.position(1);  y_img = stimulus.position(2);
     x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
@@ -336,7 +339,7 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 
 global stimulus % call stimulus. Takes ~0.000013 s.
 % stimulus.timedebug(9,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.0087425s
-mglClearScreen(stimulus.backLum);
+mglClearScreen(stimulus.backLum/255);
 
 if (task.thistrial.thisseg== 1)
     
@@ -429,14 +432,12 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
     
     %stimulus initial position. uniform distribution across the screen
-    if ~isfield(stimulus,'position')
-        x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
-        y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
-        stimulus.position = [x_img, y_img];
-    end
+    x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
+    y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
+    stimulus.position = [x_img, y_img];
     
     % stimulus speed
-    if ~isfield(stimulus,'stepStd'), stimulus.stepStd = 4/myscreen.framesPerSecond;,end %unit: cm/s to deg/frame
+    if ~isfield(stimulus,'stepStd'), stimulus.stepStd = 3/myscreen.framesPerSecond;,end %unit: cm/s to deg/frame
     % this might change based on effective sampling rate.
     
     % stimulus luminance
@@ -451,7 +452,7 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     % initialize stimulus
     if isfield(stimulus,'gaussian'), mglDeleteTexture(stimulus.gaussian);, end 
     gaussian    =  mglMakeGaussian(stimulus.patchsize,stimulus.patchsize,...
-        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum)+stimulus.backLum;
+        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum);
     gaussian_rgb           = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
     gaussian_rgb(4,:,:)    = round(gaussian');
     gaussian_rgb           = uint8(gaussian_rgb);
