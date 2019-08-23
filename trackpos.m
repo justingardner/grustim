@@ -11,13 +11,13 @@ function myscreen = trackpos(varargin)
 
 % set up screen
 if isempty(mglGetSID)
-    myscreen.subjectID = -1;
+    myscreen.subjectID  = -1;
 else
-    myscreen.subjectID = mglGetSID;
+    myscreen.subjectID  = mglGetSID;
 end
-myscreen.saveData = 1;
-myscreen.displayName = 'debug';
-myscreen = initScreen(myscreen);
+myscreen.saveData       = 1;
+myscreen.displayName    = 'debug';
+myscreen                = initScreen(myscreen);
 
 %% parameters
 global stimulus; stimulus = struct;
