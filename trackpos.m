@@ -123,6 +123,7 @@ for stepIdx = 1:length(teststimSteps)
     task{1}{idx} = task{1}{1};  
     task{1}{idx}.parameter.stimStep             = teststimSteps(stepIdx);
     task{1}{idx}.parameter.phasescrambleOn      = 0;
+    task{1}{1}.parameter.noiseLum               = 0;
     
     for lumIdx = 1:length(teststimLum)
         % adaptation task
@@ -131,7 +132,9 @@ for stepIdx = 1:length(teststimSteps)
         task{1}{idx} = task{1}{1};  
         task{1}{idx}.parameter.stimStep         = teststimSteps(stepIdx);
         task{1}{idx}.parameter.stimLum          = teststimLum(lumIdx);
-        task{1}{idx}.parameter.phasescrambleOn    = 1;
+        task{1}{idx}.parameter.phasescrambleOn  = 1;
+        task{1}{1}.parameter.noiseLum           = 32;
+
     end
 end
 
