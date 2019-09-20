@@ -100,7 +100,7 @@ stimulus.imNames = {'beans', 'blossoms', 'bubbly', 'clouds', 'crystals', 'dahlia
           'rocks', 'scales', 'spikes', 'tiles', 'waves', 'worms'};
 stimulus.layerNames = {'PS', 'pool1', 'pool2', 'pool4'};
 stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/orig';
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/tex_eq';
 stimulus.imSize = 6;
 stimulus.eccentricity = 10;
 stimulus.poolSizes = {'1x1'}; % Add back 2x2, 3x3, and 4x4 later.
@@ -136,13 +136,13 @@ stims = struct();
 disppercent(-inf, 'Preloading images');
 for i = 1:length(stimulus.imNames)
   imName = stimulus.imNames{i};
-  orig = imread(sprintf('%s/%s.jpg', stimulus.origImDir, imName));
+  orig = imread(sprintf('%s/%s.png', stimulus.origImDir, imName));
   stims.(imName) = genTexFromIm(orig, stimulus.live.mask);
   for j = 1:length(stimulus.layerNames)
     for k = 1:length(stimulus.poolSizes)
       for l = 1:stimulus.nSamples
         ps = stimulus.poolSizes{k}; ln = stimulus.layerNames{j};
-        smp = imread(sprintf('%s/%s_%s_%s_smp%i.jpg', stimulus.stimDir, ps, ln, imName, l));
+        smp = imread(sprintf('%s/%s_%s_%s_smp%i.png', stimulus.stimDir, ps, ln, imName, l));
         stims.(sprintf('%s_%s_%s_smp%i', imName, ps, ln, l)) = genTexFromIm(smp, stimulus.live.mask);
       end
     end
@@ -497,22 +497,61 @@ for fi = 1:length(files)
   end
   count = count + 1;
 end
-keyboard
+
 
 %%
-all_pools = unique(data.poolSize);
-all_layers = unique(data.layer);
+standard_pools = unique(data.standard_poolsize);
+standard_layers = unique(data.standard_layer);
+odd_pools = unique(data.oddball_poolsize);
+odd_layers = unique(data.oddball_layer);
 
-accs = nan(length(all_pools), length(all_layers));
-SEs = nan(length(all_pools), length(all_layers));
-
-for i = 1:length(all_pools)
-  for j = 1:length(all_layers)
-    ct = data.correct(data.poolSize==all_pools(i) & data.layer==all_layers(j));
-    accs(i,j) = nanmean(ct);
-    SEs(i,j) = 1.96*nanstd(ct) / sqrt(length(ct));
+accs = nan(length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
+SEs = nan( length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
+Ns = nan( length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
+for i = 1:length(standard_pools)
+  for j = 1:length(standard_layers)
+    for k = 1:length(odd_pools)
+      for l = 1:length(odd_layers)
+        ct = data.correct(data.standard_poolsize==standard_pools(i) & data.standard_layer==standard_layers(j) & data.oddball_poolsize==odd_pools(k) & data.oddball_layer==odd_layers(l));
+        accs(i*j, k*l) = nanmean(ct);
+        SEs(i*j,k*l) = 1.96*nanstd(ct) / sqrt(length(ct));
+        Ns(i*j, k*l) = length(ct);
+      end
+    end
   end
 end
+%%
+keyboard
+%% Plot heatmap of accuracies (distractor conditions x target conditions)
+figure;
+imagesc(accs);
+xlabel('Oddball Texture');
+ylabel('Standard (non-oddball) Texture');
+set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
+set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
+set(gca, 'XTickLabel', ['Original' stimulus.layerNames]);
+set(gca, 'YTickLabel', stimulus.layerNames);
+colormap('Hot');
+colorbar;
+%% Plot heatmap of Ns
+
+figure;
+imagesc(Ns);
+xlabel('Oddball Texture');
+ylabel('Standard (non-oddball) Texture');
+set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
+set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
+set(gca, 'XTickLabel', ['Original' stimulus.layerNames]);
+set(gca, 'YTickLabel', stimulus.layerNames);
+colormap('Hot');
+colorbar;
+
+%%
+figure; bar(accs');
+set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
+set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
+set(gca, 'XTickLabel', ['Original' stimulus.layerNames]);
+legend(stimulus.layerNames);
 
 %%
 figure;
