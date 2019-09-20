@@ -78,7 +78,7 @@ task{1}.waitForBacktick = 1;
 % Define stimulus timing
 task{1}.segmin = [inf, 0.5, 2.0, 0.2];
 task{1}.segmax = [inf, 0.5, 2.0, 0.2];
-stimlus.seg = {};
+stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.stim = 2;
 stimulus.seg.response = 3;
@@ -89,40 +89,48 @@ if stimulus.noeye==1
   task{1}.segmax(1) = 0.1;
 end
 
-% Task important variables
-%stimulus.imNames = {'im13', 'im18', 'im23', 'im30', 'im38', 'im48', 'im52', 'im56', 'im60', 'im71', 'im99', 'im327', 'im336', 'im393', 'im402'};
-stimulus.imNames = {'balls', 'beansalad', 'bubbles', 'cherries', 'clouds', 'dahlias', 'fireworks', 'forest', 'fronds', 'leaves', 'rocks', 'tulips', 'worms', 'zebras'};
-stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
-stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/textures/orig_texAttPool';
+% Set when to synchtovol and getResponse
+task{1}.synchToVol = zeros(size(task{1}.segmin));
+task{1}.getResponse = zeros(size(task{1}.segmin));
+task{1}.getResponse(stimulus.seg.response)=1;
+
+%%% Stimulus Variables
+stimulus.imNames = {'beans', 'blossoms', 'bubbly', 'clouds', 'crystals', 'dahlias',...
+          'fronds', 'fur', 'glass', 'leaves', 'leopard', 'noodles', 'paisley', 'plant',...
+          'rocks', 'scales', 'spikes', 'tiles', 'waves', 'worms'};
+stimulus.layerNames = {'PS', 'pool1', 'pool2', 'pool4'};
+stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/orig';
 stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
 stimulus.imSize = 6;
 stimulus.eccentricity = 10;
-stimulus.poolSizes = {'1x1', '2x2', '3x3', '4x4'};
+stimulus.poolSizes = {'1x1'}; % Add back 2x2, 3x3, and 4x4 later.
 stimulus.cueEcc = 4;
 stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
 % Trial parameters
-task{1}.parameter.imgFam = 1:length(stimulus.imNames);
 task{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
-
-task{1}.synchToVol = zeros(size(task{1}.segmin));
-task{1}.getResponse = zeros(size(task{1}.segmin));
-task{1}.getResponse(stimulus.seg.response)=1;
 
 % Make numTrials some multiple of number of TrialTypes 
 task{1}.numTrials = 168;
 task{1}.random = 1;
 
-% Task variables to be calculated later
-task{1}.randVars.calculated.targetPosition = NaN;
+%%% Task Variables
+% Keep track of texturefamily, oddball layer/poolsize, standard layer/poolsize, and target position.
+task{1}.randVars.uniform.imgFam = 1:length(stimulus.imNames);
+task{1}.randVars.uniform.oddball_layer = 0:length(stimulus.layerNames);
+task{1}.randVars.uniform.oddball_poolsize = 1:length(stimulus.poolSizes);
+task{1}.randVars.uniform.standard_layer = 1:length(stimulus.layerNames);
+task{1}.randVars.uniform.standard_poolsize = 1:length(stimulus.poolSizes);
+task{1}.randVars.uniform.targetPosition = 1:3; % Track target position
+
+% Task variables to keep track of the status of each trial
 task{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}.randVars.calculated.dead = 0;
-task{1}.randVars.calculated.visible = 1;
 task{1}.randVars.calculated.correct = NaN;
 
 %% Preload images
-stimulus.nSamples = 3; % preload 3 samples of each kind.
+stimulus.nSamples = 2; % preload 3 samples of each kind.
 %if ~exist(presavedStimLoc) % on the first time, load each image, convert to mgl texture, and save it to a struct.
 stims = struct();
 disppercent(-inf, 'Preloading images');
@@ -202,7 +210,6 @@ global stimulus
 
 task.thistrial.dead = 0;
 task.thistrial.detected = 0;
-task.thistrial.visible = 1;
 task.thistrial.response = NaN;
 
 stimulus.live.gotResponse = 0;
@@ -217,7 +224,6 @@ layer = stimulus.layerNames{task.thistrial.layer};
 poolSize = stimulus.poolSizes{task.thistrial.poolSize};
 
 % Randomly select which location will contain the target.
-task.thistrial.targetPosition = randi(3, 1);
 stimulus.live.targetImg = stimulus.live.stims.(imName);
 
 % Randomly select which samples to use as targets.
@@ -225,8 +231,27 @@ smpls = randperm(stimulus.nSamples, 2);
 stimulus.live.d1 = stimulus.live.stims.(sprintf('%s_%s_%s_smp%i', imName, poolSize, layer, smpls(1)));
 stimulus.live.d2 = stimulus.live.stims.(sprintf('%s_%s_%s_smp%i', imName, poolSize, layer, smpls(2)));
 
+% Load all 3 images for this trial
+imName = stimulus.imNames{task.thistrial.imgFam};
+
+std_layer = stimulus.layerNames{task.thistrial.standard_layer};
+std_poolsize = stimulus.poolSizes{task.thistrial.standard_poolsize};
+stimulus.live.d1 = stimulus.live.stims.(sprintf('%s_%s_%s_smp1', imName, std_poolsize, std_layer));
+stimulus.live.d2 = stimulus.live.stims.(sprintf('%s_%s_%s_smp2', imName, std_poolsize, std_layer));
+
+if task.thistrial.oddball_layer==0
+  stimulus.live.targetImg = stimulus.live.stims.(imName);
+  task.thistrial.oddball_poolsize = 0;
+  oddball_text = 'original';
+else
+  ob_poolsize = stimulus.poolSizes{task.thistrial.oddball_poolsize};
+  ob_layer = stimulus.layerNames{task.thistrial.oddball_layer};
+  stimulus.live.targetImg = stimulus.live.stims.(sprintf('%s_%s_%s_smp%i', imName, ob_poolsize, ob_layer, 1));
+  oddball_text = sprintf('%s - %s', ob_poolsize, ob_layer);
+end
+
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - Image %s, Layer %s, PoolSize: %s, Target Location: %i', task.trialnum, imName, layer, poolSize, task.thistrial.targetPosition));
+disp(sprintf('Trial %d - %s: Oddball = %s, Standard = %s - %s, Target Location: %i', task.trialnum, imName, oddball_text, std_poolsize, std_layer, task.thistrial.targetPosition));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -350,14 +375,13 @@ validResponse = any(task.thistrial.whichButton == stimulus.responseKeys);
 if validResponse
   if stimulus.live.gotResponse==0
     task.thistrial.detected = 1;
-    %task.thistrial.response = task.thistrial.whichButton;
+
     % Set thistrial response to index of response key (i.e. 1,2, or 3) rather than the button id.
     task.thistrial.response = find(stimulus.responseKeys == task.thistrial.whichButton);
     stimulus.live.fix = 0;
   else
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
   end
-  %disp('jumping segment');
   stimulus.live.gotResponse=stimulus.live.gotResponse+1;
   task = jumpSegment(task);
 else
@@ -483,20 +507,46 @@ accs = nan(length(all_pools), length(all_layers));
 SEs = nan(length(all_pools), length(all_layers));
 
 for i = 1:length(all_pools)
-    for j = 1:length(all_layers)
-        ct = data.correct(data.poolSize==all_pools(i) & data.layer==all_layers(j));
-        accs(i,j) = nanmean(ct);
-        SEs(i,j) = 1.96*nanstd(ct) / sqrt(length(ct));
-    end
+  for j = 1:length(all_layers)
+    ct = data.correct(data.poolSize==all_pools(i) & data.layer==all_layers(j));
+    accs(i,j) = nanmean(ct);
+    SEs(i,j) = 1.96*nanstd(ct) / sqrt(length(ct));
+  end
 end
 
 %%
 figure;
-for i = 1:length(all_pools)
-   plot(1:length(all_layers), accs(i,:), '.'); hold on;
-end
-xlim([0 length(all_layers)+1]);
-ylim([0 1]);
-legend(stimulus.poolSizes);
+subplot(2,1,1);
+myerrorbar(1:length(all_layers), mean(accs, 1), 'yError', mean(SEs,1), 'Symbol', 'o');
+hold on; 
+xlim([0 length(all_layers)+1]); ylim([0 1]);
+hline(1/3, ':k');
+xlabel('Layer'); ylabel('Accuracy');
 set(gca, 'XTick', 1:length(all_layers));
 set(gca, 'XTickLabel', stimulus.layerNames);
+
+subplot(2,1,2);
+myerrorbar(6./(1:length(all_pools)), mean(accs,2), 'yError', mean(SEs,2), 'Symbol', 'o');
+hold on; 
+xlim([0, 7]); ylim([0 1]);
+hline(1/3, ':k');
+xlabel('Pooling Region Size (degs)'); ylabel('Accuracy');
+set(gca, 'XTick', sort(6./(1:length(all_pools)), 'ascend'));
+%set(gca, 'XTickLabel', stimulus.poolSizes);
+
+
+%%
+figure;
+handles = []; cols = brewermap(length(all_pools)+1, 'Blues');
+for i = 1:length(all_pools)
+  h = myerrorbar(1:length(all_layers), accs(i,:), 'yError', SEs(i,:), 'Symbol', 'o', 'Color', cols(i+1,:)); 
+  hold on;
+  handles = [handles h];
+end
+xlim([0 length(all_layers)+1]); ylim([0 1]);
+hline(1/3, ':k');
+xlabel('Layer'); ylabel('Accuracy');
+legend(handles, stimulus.poolSizes);
+set(gca, 'XTick', 1:length(all_layers));
+set(gca, 'XTickLabel', stimulus.layerNames);
+box off;
