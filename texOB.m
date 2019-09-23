@@ -17,16 +17,16 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=1', 'analyze=0', 'training=0'}, 'verbose=1');
+getArgs(varargin,{'plots=0','noeye=0', 'analyze=0', 'training=0'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.training = training;
 stimulus.analyze = analyze;
-clear noeye plots
+clear noeye plots training analyze
 
 if stimulus.analyze
-    analyzeData();
-    return
+  analyzeData();
+  return
 end
 
 %% Stimulus parameters 
@@ -128,6 +128,7 @@ task{1}.randVars.uniform.targetPosition = 1:3; % Track target position
 if stimulus.training
   task{1}.randVars.uniform.oddball_layer = 0;
   task{1}.randVars.uniform.standard_layer = 1:2;
+  task{1}.numTrials = 50;
 end
 % Task variables to keep track of the status of each trial
 task{1}.randVars.calculated.detected = 0; % did they see the grating
@@ -255,8 +256,10 @@ else
   oddball_text = sprintf('%s - %s', ob_poolsize, ob_layer);
 end
 
+stimulus.live.eyeCount = 0;
+
 % Disp trial parameters each trial
-disp(sprintf('Trial %d - %s: Oddball = %s, Standard = %s - %s, Target Location: %i', task.trialnum, imName, oddball_text, std_poolsize, std_layer, task.thistrial.targetPosition));
+fprintf('Trial %d - %s: Oddball = %s, Standard = %s %s, TargetLoc: %i - ', task.trialnum, imName, oddball_text, std_poolsize, std_layer, task.thistrial.targetPosition);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -295,9 +298,11 @@ for i = 1:2
     if task.thistrial.response == task.thistrial.targetPosition
       task.thistrial.correct = 1;
       upFix(stimulus, stimulus.colors.green);
+      if i==1, fprintf('Correct! \n'); end
     else
       task.thistrial.correct = 0;
       upFix(stimulus, stimulus.colors.red);
+      if i==1, fprintf('Incorrect :( \n'); end
     end
   else
     upFix(stimulus, stimulus.colors.black);
@@ -336,7 +341,7 @@ end
 % Eye movement detection code
 if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.fix]) 
   if ~any(isnan(pos))
-    if dist > 1.5 && stimulus.live.eyeCount > 30
+    if dist > 1.5 && stimulus.live.eyeCount > 20
       disp('Eye movement detected!!!!');
       task.thistrial.dead = 1;
       stimulus.live.eyeDead=1;
@@ -526,22 +531,35 @@ for i = 1:length(standard_pools)
   end
 end
 %%
-keyboard
+
 %% Plot heatmap of accuracies (distractor conditions x target conditions)
 figure;
+subplot(1,2,1);
 imagesc(accs);
+for i=1:size(accs,1)
+    for j =1:size(accs,2)
+        text(j,i, num2str(accs(i,j)));
+    end
+end
 xlabel('Oddball Texture');
 ylabel('Standard (non-oddball) Texture');
 set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
 set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
 set(gca, 'XTickLabel', ['Original' stimulus.layerNames]);
 set(gca, 'YTickLabel', stimulus.layerNames);
+title('Proportion correct')
 colormap('Hot');
 colorbar;
-%% Plot heatmap of Ns
 
-figure;
+% Plot heatmap of Ns
+subplot(1,2,2);
 imagesc(Ns);
+for i=1:size(Ns,1)
+    for j =1:size(Ns,2)
+        text(j,i, num2str(Ns(i,j)));
+    end
+end
+title('Number of trials');
 xlabel('Oddball Texture');
 ylabel('Standard (non-oddball) Texture');
 set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
@@ -552,6 +570,7 @@ colormap('Hot');
 colorbar;
 
 %%
+keyboard
 figure; bar(accs');
 set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
 set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
