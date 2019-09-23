@@ -17,9 +17,10 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'plots=0','noeye=1', 'analyze=0'}, 'verbose=1');
+getArgs(varargin,{'plots=0','noeye=1', 'analyze=0', 'training=0'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
+stimulus.training = training;
 stimulus.analyze = analyze;
 clear noeye plots
 
@@ -99,9 +100,9 @@ stimulus.imNames = {'beans', 'blossoms', 'bubbly', 'clouds', 'crystals', 'dahlia
           'fronds', 'fur', 'glass', 'leaves', 'leopard', 'noodles', 'paisley', 'plant',...
           'rocks', 'scales', 'spikes', 'tiles', 'waves', 'worms'};
 stimulus.layerNames = {'PS', 'pool1', 'pool2', 'pool4'};
-stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/orig';
+stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/orig_eq';
 stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/tex_eq';
-stimulus.imSize = 6;
+stimulus.imSize = 8;
 stimulus.eccentricity = 10;
 stimulus.poolSizes = {'1x1'}; % Add back 2x2, 3x3, and 4x4 later.
 stimulus.cueEcc = 4;
@@ -124,6 +125,10 @@ task{1}.randVars.uniform.standard_layer = 1:length(stimulus.layerNames);
 task{1}.randVars.uniform.standard_poolsize = 1:length(stimulus.poolSizes);
 task{1}.randVars.uniform.targetPosition = 1:3; % Track target position
 
+if stimulus.training
+  task{1}.randVars.uniform.oddball_layer = 0;
+  task{1}.randVars.uniform.standard_layer = 1:2;
+end
 % Task variables to keep track of the status of each trial
 task{1}.randVars.calculated.detected = 0; % did they see the grating
 task{1}.randVars.calculated.dead = 0;
