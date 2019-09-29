@@ -104,7 +104,7 @@ stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/orig_eq';
 stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/tex_eq';
 stimulus.imSize = 8;
 stimulus.eccentricity = 10;
-stimulus.poolSizes = {'1x1'}; % Add back 2x2, 3x3, and 4x4 later.
+stimulus.poolSizes = {'1x1', '2x2', '3x3', '4x4'}; % Add back 2x2, 3x3, and 4x4 later.
 stimulus.cueEcc = 4;
 stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
