@@ -507,9 +507,10 @@ for fi = 1:length(files)
   end
   count = count + 1;
 end
+disp(sprintf('SUBJECT %s: Found %i runs with a total of %i trials', mglGetSID, length(data.accByRuns), data.nTrials));
 
 
-%%
+%% Get average accuracies across each condition.
 standard_pools = unique(data.standard_poolsize);
 standard_layers = unique(data.standard_layer);
 odd_pools = unique(data.oddball_poolsize);
@@ -518,21 +519,23 @@ odd_layers = unique(data.oddball_layer);
 accs = nan(length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
 SEs = nan( length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
 Ns = nan( length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
+x = 0; 
 for i = 1:length(standard_pools)
   for j = 1:length(standard_layers)
+    x = x+1; y = 0;
     for k = 1:length(odd_pools)
       for l = 1:length(odd_layers)
+        y = y+1;
         ct = data.correct(data.standard_poolsize==standard_pools(i) & data.standard_layer==standard_layers(j) & data.oddball_poolsize==odd_pools(k) & data.oddball_layer==odd_layers(l));
-        accs(i*j, k*l) = nanmean(ct);
-        SEs(i*j,k*l) = 1.96*nanstd(ct) / sqrt(length(ct));
-        Ns(i*j, k*l) = length(ct);
+        accs(x,y) = nanmean(ct);
+        SEs(x,y) = 1.96*nanstd(ct) / sqrt(length(ct));
+        Ns(x,y) = length(ct);
       end
     end
   end
 end
-%%
-
-%% Plot heatmap of accuracies (distractor conditions x target conditions)
+keyboard
+%% Plot heatmap of accuracies in each condition (distractor conditions x target conditions)
 figure;
 subplot(1,2,1);
 imagesc(accs);
@@ -568,6 +571,29 @@ set(gca, 'XTickLabel', ['Original' stimulus.layerNames]);
 set(gca, 'YTickLabel', stimulus.layerNames);
 colormap('Hot');
 colorbar;
+
+%% When oddball is ORIGINAL
+accs = nan(length(standard_pools), length(standard_layers));
+SEs = nan( length(standard_pools), length(standard_layers));
+Ns = nan( length(standard_pools), length(standard_layers));
+x = 0;
+for i = 1:length(standard_pools)
+  for j = 1:length(standard_layers)
+    ct = data.correct(data.standard_poolsize==standard_pools(i) & data.standard_layer==standard_layers(j) & data.oddball_layer==0);
+    accs(i,j) = nanmean(ct);
+    SEs(i,j) = 1.96*nanstd(ct) / sqrt(length(ct));
+    Ns(i,j) = length(ct);
+  end
+end
+figure;
+for i = 1:size(accs,2)
+  myerrorbar(1:size(accs,1), accs(:,i), 'yError', SEs(:,i), 'Symbol', 'o');
+end
+h = plot(accs, '.'); hold on;
+xlim([0, size(accs,1)+1]);
+legend(h, stimulus.poolSizes);
+set(gca, 'XTick', 1:size(accs,1));
+set(gca, 'XTickLabel', stimulus.layerNames);
 
 %%
 keyboard
