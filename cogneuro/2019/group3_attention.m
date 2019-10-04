@@ -89,7 +89,6 @@ stimulus.baseContrast = .30;
 % Set display parameters (image size, image eccentricity).
 stimulus.imSize = 6;
 stimulus.eccentricity = 10;
-stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
 % Trial parameters
 task{1}.synchToVol = zeros(size(task{1}.segmin));
