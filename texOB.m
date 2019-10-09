@@ -86,8 +86,8 @@ stimulus.seg.response = 3;
 stimulus.seg.feedback = 4;
 % Set fixation length to constant if not eye tracking.
 if stimulus.noeye==1
-  task{1}.segmin(1) = 0.1;
-  task{1}.segmax(1) = 0.1;
+  task{1}.segmin(1) = 0.2;
+  task{1}.segmax(1) = 0.2;
 end
 
 % Set when to synchtovol and getResponse
@@ -148,6 +148,7 @@ for i = 1:length(stimulus.imNames)
     for k = 1:length(stimulus.poolSizes)
       for l = 1:stimulus.nSamples
         ps = stimulus.poolSizes{k}; ln = stimulus.layerNames{j};
+        if strcmp(ln, 'PS'), ps = '1x1'; end
         smp = imread(sprintf('%s/%s_%s_%s_smp%i.png', stimulus.stimDir, ps, ln, imName, l));
         stims.(sprintf('%s_%s_%s_smp%i', imName, ps, ln, l)) = genTexFromIm(smp, stimulus.live.mask);
       end
@@ -225,23 +226,15 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 texDir = stimulus.stimDir;
 
 %% Load all 3 images for this trial
-imName = stimulus.imNames{task.thistrial.imgFam};
-layer = stimulus.layerNames{task.thistrial.layer};
-poolSize = stimulus.poolSizes{task.thistrial.poolSize};
-
-% Randomly select which location will contain the target.
-stimulus.live.targetImg = stimulus.live.stims.(imName);
-
-% Randomly select which samples to use as targets.
-smpls = randperm(stimulus.nSamples, 2);
-stimulus.live.d1 = stimulus.live.stims.(sprintf('%s_%s_%s_smp%i', imName, poolSize, layer, smpls(1)));
-stimulus.live.d2 = stimulus.live.stims.(sprintf('%s_%s_%s_smp%i', imName, poolSize, layer, smpls(2)));
-
 % Load all 3 images for this trial
 imName = stimulus.imNames{task.thistrial.imgFam};
 
 std_layer = stimulus.layerNames{task.thistrial.standard_layer};
 std_poolsize = stimulus.poolSizes{task.thistrial.standard_poolsize};
+if strcmp(std_layer, 'PS')
+    std_poolsize = '1x1';
+    task.thistrial.standard_poolsize = 1;
+end
 stimulus.live.d1 = stimulus.live.stims.(sprintf('%s_%s_%s_smp1', imName, std_poolsize, std_layer));
 stimulus.live.d2 = stimulus.live.stims.(sprintf('%s_%s_%s_smp2', imName, std_poolsize, std_layer));
 
@@ -252,6 +245,10 @@ if task.thistrial.oddball_layer==0
 else
   ob_poolsize = stimulus.poolSizes{task.thistrial.oddball_poolsize};
   ob_layer = stimulus.layerNames{task.thistrial.oddball_layer};
+  if strcmp(ob_layer, 'PS')
+      ob_poolsize = '1x1';
+      task.thistrial.oddball_poolsize=1;
+  end
   stimulus.live.targetImg = stimulus.live.stims.(sprintf('%s_%s_%s_smp%i', imName, ob_poolsize, ob_layer, 1));
   oddball_text = sprintf('%s - %s', ob_poolsize, ob_layer);
 end
