@@ -260,16 +260,26 @@ if ~task.thistrial.gotResponse
         % feeback
         stimulus.fixColor = stimulus.colors.green;%[0 1 0];
         end
-        disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i correct', ...
-            task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
+        if ~stimulus.bimodal
+            disp(sprintf('(alaisburr) Trial %i: %0.2f correct centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
+        else
+            disp(sprintf('(alaisburr) Trial %i: %0.2f %i correct centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.centerWhich, task.thistrial.whichButton))
+        end
     else
         % incorrect
         task.thistrial.correct = 0;
         if stimulus.auditoryTrain || stimulus.visualTrain
         stimulus.fixColor = stimulus.colors.red;%[1 0 0];
         end
-        disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i incorrect', ...
-            task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
+        if ~stimulus.bimodal
+            disp(sprintf('(alaisburr) Trial %i: %0.2f incorrect centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
+        else
+            disp(sprintf('(alaisburr) Trial %i: %0.2f %i incorrect centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.centerWhich, task.thistrial.whichButton))
+        end
     end
         
     task.thistrial.resp = task.thistrial.whichButton;
