@@ -16,7 +16,7 @@ width = 32; visual = 0; auditory = 0; bimodal = 0; auditoryTrain=0; visualTrain=
 getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=1'},'verbose=1');
 
 % if sum([visual,auditory,bimodal]) > 1
-%     warning('(alaisburr) More than one task type detected.');
+%     warning('(alaissburr) More than one task type detected.');
 %     return
 % elseif sum([visual,auditory,bimodal]) == 0
 %     warning('(alaisburr) Task type unspecified. Running visual task...')
