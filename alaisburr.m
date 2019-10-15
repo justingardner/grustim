@@ -12,8 +12,8 @@ mglEatKeys('12`');
 global stimulus
  
 % get arguments
-width = 32; visual = 0; auditory = 0; bimodal = 0; auditoryTrain=0; visualTrain=0; tenbit = 1; disp = 1;
-getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=1'},'verbose=1');
+width = 32; visual = 0; auditory = 0; bimodal = 0; auditoryTrain=0; visualTrain=0; tenbit = 0; disp = 1;
+getArgs(varargin,{'width=50','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=0'},'verbose=1');
 
 % if sum([visual,auditory,bimodal]) > 1
 %     warning('(alaissburr) More than one task type detected.');
@@ -87,7 +87,7 @@ task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 2;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 5;
+  task{1}{1}.numBlocks = 10;
 else
   task{1}{1}.randVars.uniform.sign = [1,-1];
 end
@@ -218,7 +218,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
-mglClearScreen(stimulus.colors.black);
+mglClearScreen(.28);
 mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 if stimulus.task ~= 2 %visual or bimodal condition
     if task.thistrial.thisseg == stimulus.interval(1)
