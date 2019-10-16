@@ -1,4 +1,4 @@
-% cogneuro_chichi.m
+% cogneuro_workingmemory.m.m
 %
 %      usage: cogneuro_workingmemory(scan) 
 %             scan is a tf value which when set to 1 waits for
@@ -7,19 +7,18 @@
 %       date: 03/03/2016
 %    purpose: Code for replicating Harrison & Tong, 2009
 %       
-function myscreen = cogneuro_chichi(scan,numJitter)
+function myscreen = cogneuro_workingmemory_sean(scan)
 
 % check arguments
-if ~any(nargin == [0 1 2])
+if ~any(nargin == [0 1])
   help cogneuro_workingmemory.m
   return
 end
 if nargin < 1, scan = 0; end
-if nargin < 1, numJitter = 4; end
 
 % set for debugging - makes the delay period shorter among other things.
 debugMode = 0;
-if scan, debugMode = 0;end
+
 % stimulus parameters get stored in a global variable
 global stimulus;
 
@@ -29,49 +28,51 @@ if stimulus.scan
   % wait for scanner acq pulse at beginning of experiment
   waitForBacktick = 1;
   % contrast of the stimulus
-  stimulus.contrast = 0.9;
+  stimulus.contrast = 0.175;
 else
   % no wait for scanner acq pulse at beginning of experiment
   waitForBacktick = 0;
   % contrast of the stimulus
-  stimulus.contrast = 0.9;
+  stimulus.contrast = 0.1;
 end
 
 % inner and outer width of stimulus
+stimulus.innerWidth = 1.5;
 stimulus.outerWidth = 10;
 % spatial frequency of grating stimulus
 stimulus.sf = 1;
 % set to false for sharp edged stimulus
 stimulus.gabor = 0;
-% stimulus eccentricity
-stimulus.eccentricity = 7.5;
 % fixation cross width
 stimulus.fixWidth = 1.5;
 
-% orientation jitter values
-stimulus.orientationJitterValues = [-5 -15 -30 5 15 30];
+% orientations to display (these are the two different orientations)
+stimulus.orientations = [25 115];
+% jitter of 3 degrees around those standard orientations
+stimulus.orientationJitter = 3;
+% constant vals are the differences in orientations
+% that the oberver is asked to discriminate (i.e if set to 3 and 6 then
+% the psychophysics is done as method of constant stimuli where
+% the probe stimulus is 3 or 6 degrees different from the memorized
+% grating.
+stimulus.constantVals = [3 6];
 
 % delay interval in seconds
 stimulus.delayInterval = 11;
-stimulus.itimin = 2;
-stimulus.itimax = 9;
 
 % only sets these in debug mode for testing
 if debugMode
   % sets delay interval shorted
-  stimulus.delayInterval = 1;
+  stimulus.delayInterval = 5;
   % make the task easier to see the difference in orientation
-  waitForBacktick = 0;
-  % set stimulus iti
-  stimulus.itimin = 2;
-  stimulus.itimax = 2;
-  % amount of change
-  stimulus.orientationJitterValues = 90;%[-5 -15 -30 5 15 30];
+%   stimulus.constantVals = [20 30];
 end
 
 % initalize the screen, set the background to gray
+myscreen = initScreen('fMRIproj32');
 myscreen.background = 128/255;
-myscreen = initScreen(myscreen);
+mglClearScreen(myscreen.background);mglFlush;
+mglClearScreen(myscreen.background);mglFlush;
 
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
@@ -79,26 +80,35 @@ myscreen = initScreen(myscreen);
 task{1}.waitForBacktick = 1;
 
 % length in seconds of different segments of the trial
-task{1}.segmin = [1 stimulus.delayInterval 1 2 stimulus.itimin];
-task{1}.segmax = [1 stimulus.delayInterval 1 2 stimulus.itimax];
+task{1}.segmin = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5];
+task{1}.segmax = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5];
 % synchToVol sets to wait for a scanner sync pulse after the end of the 
 % segment - in this case the last segment will last 2.5 seconds after
 % which the program will wait for the scanner sync pulse. This will insure
 % that the beginning of each trial will be synchronized to the acquisition
 % of an imaging volume.
-task{1}.synchToVol = [0 0 0 0 waitForBacktick];
+task{1}.synchToVol = [0 0 0 0 0 0 0 waitForBacktick];
 % get responses sets whether to aquire a keyboard response from the subject 
 % we only need to set it to 1 for the response interval at the end of the trial.
-task{1}.getResponse = [0 0 1 1 0];
+task{1}.getResponse = [0 0 0 0 0 0 0 1];
 % parameters
-task{1}.parameter.numJitter = numJitter;
-task{1}.randVars.uniform.match = [0 1];
-% orientation is the actual orientation shown
-task{1}.randVars.calculated.orientation = [nan nan nan nan];
-% orientation is the actual orientation shown
-task{1}.randVars.calculated.orientationJitter = [nan nan nan nan];
-% base orientation from which everything was randomized
-task{1}.randVars.calculated.baseOrientation = [nan nan nan nan];
+% cue can be 1 or 2 (meaning which stimulus, the first or second the subject should remember)
+% this is picked from a uniform distribution, so just varies randomly from trial to trial
+task{1}.randVars.uniform.cue = [1 2];
+% oreintationOrder specifies which orientation will be shown 1st and which 2nd
+task{1}.randVars.uniform.orientationOrder = [1 2];
+% sets whether the probe stimulus at the end will be clockwise or counterclockwise of the remembered stimulus
+task{1}.randVars.uniform.clockwiseCounterclockwise = [-1 1];
+% these values are calculated during the experiment
+% orientationJitter is the small amount of jitter that is 
+% added to each orientation (its an array of 2, one fore each orientation)
+task{1}.randVars.calculated.orientationJitter = [nan nan];
+% oreintation is the actual oreintation shown
+task{1}.randVars.calculated.orientation = [nan nan];
+% threshold is the threshold orientation shown
+task{1}.randVars.calculated.orientationThreshold = nan;
+% memorized orientation
+task{1}.randVars.calculated.memOrientation = nan;
 % random sets to randomize parameters
 task{1}.random = 1;
 
@@ -143,33 +153,27 @@ if task.thistrial.thisseg == 1
   % set fixation white
   stimulus.fixColor = [1 1 1];
 
-  % get a random base orientation
-  task.thistrial.baseOrientation = round(rand(1,4)*180);
+  % set the orientation jitter of both stimuli
+  task.thistrial.orientationJitter(1) = round(stimulus.orientationJitter*(2*(rand - 0.5)));
+  task.thistrial.orientationJitter(2) = round(stimulus.orientationJitter*(2*(rand - 0.5)));
 
-  % set all four orientations
-  task.thistrial.orientation = task.thistrial.baseOrientation;
+  % get the threshold value to test
+  [task.thistrial.orientationThreshold stimulus.s] = doStaircase('testValue',stimulus.s);
 
-  % second phase may (or may not) have jitter
-  task.thistrial.orientationJitter = task.thistrial.baseOrientation;
-  
-  % if a different trial (sameDifferent) then add orientation jitter
-  if ~task.thistrial.match
+  % set first and second orientation
+  task.thistrial.orientation(1) = stimulus.orientations(task.thistrial.orientationOrder);
+  task.thistrial.orientation(2) = stimulus.orientations(setdiff([1 2],task.thistrial.orientationOrder));
 
-    % figure out which stimuli will be jittered
-    stimulusNums = randperm(4);
-    jitterNums = stimulusNums(1:task.thistrial.numJitter);
+  % keep saved orientations to display
+  stimulus.displayOrientation(1) = task.thistrial.orientation(1) + task.thistrial.orientationJitter(1);
+  stimulus.displayOrientation(2) = task.thistrial.orientation(2) + task.thistrial.orientationJitter(2);
+  stimulus.matchOrientation = task.thistrial.orientation(task.thistrial.cue)+task.thistrial.orientationJitter(task.thistrial.cue)+task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise;
 
-    % figure out jitter values
-    for i = 1:length(jitterNums)
-      jitterVals(i) = stimulus.orientationJitterValues(randi(length(stimulus.orientationJitterValues)));
-    end
-
-    % set orientation jittered values
-    task.thistrial.orientationJitter(jitterNums) = mod(task.thistrial.orientation(jitterNums) + jitterVals,180);
-  end
-
-  % display orientations
-  disp(sprintf('Trial %i: [%i %i %i %i] -> [%i %i %i %i] numJitter: %i match: %i',task.trialnum,task.thistrial.orientation(1),task.thistrial.orientation(2),task.thistrial.orientation(3),task.thistrial.orientation(4),task.thistrial.orientationJitter(1),task.thistrial.orientationJitter(2),task.thistrial.orientationJitter(3),task.thistrial.orientationJitter(4),task.thistrial.numJitter,task.thistrial.match));
+  task.thistrial.memOrientation = task.thistrial.orientation(task.thistrial.cue);
+  % display what we have selected
+  disp(sprintf('Trial %i: Orientation 1: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(1),task.thistrial.orientationJitter(1),stimulus.displayOrientation(1)));
+  disp(sprintf('Trial %i: Orientation 2: %0.1f + %0.1f: %f',task.trialnum,task.thistrial.orientation(2),task.thistrial.orientationJitter(2),stimulus.displayOrientation(2)));
+  disp(sprintf('Trial %i: Match to %i (%0.1f): %0.1f',task.trialnum,task.thistrial.cue,task.thistrial.orientationThreshold*task.thistrial.clockwiseCounterclockwise,stimulus.matchOrientation));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -183,19 +187,17 @@ global stimulus
 mglClearScreen;
 
 if task.thistrial.thisseg == 1
-  % put up four grating in first semgent
-  mglBltTexture(stimulus.tex,stimulus.loc(1,:),0,0,task.thistrial.orientation(1));
-  mglBltTexture(stimulus.tex,stimulus.loc(2,:),0,0,task.thistrial.orientation(2));
-  mglBltTexture(stimulus.tex,stimulus.loc(3,:),0,0,task.thistrial.orientation(3));
-  mglBltTexture(stimulus.tex,stimulus.loc(4,:),0,0,task.thistrial.orientation(4));
-elseif task.thistrial.thisseg == 3 
-  % put up match stimulus
-  mglBltTexture(stimulus.tex,stimulus.loc(1,:),0,0,task.thistrial.orientationJitter(1));
-  mglBltTexture(stimulus.tex,stimulus.loc(2,:),0,0,task.thistrial.orientationJitter(2));
-  mglBltTexture(stimulus.tex,stimulus.loc(3,:),0,0,task.thistrial.orientationJitter(3));
-  mglBltTexture(stimulus.tex,stimulus.loc(4,:),0,0,task.thistrial.orientationJitter(4));
-elseif task.thistrial.thisseg == 5 
-  stimulus.fixColor = [1 1 1];
+  % put up grating in first semgent
+  mglBltTexture(stimulus.tex,[0 0],0,0,stimulus.displayOrientation(1));
+elseif task.thistrial.thisseg == 3
+  % put up grating in third segment
+  mglBltTexture(stimulus.tex,[0 0],0,0,stimulus.displayOrientation(2));
+elseif (task.thistrial.thisseg == 5) 
+  % put up text for which stimulus the subject should remember (1 or 2)
+  mglBltTexture(stimulus.text(task.thistrial.cue),[0 1.5],0,0,0);
+elseif task.thistrial.thisseg == 7
+  % put up match either clockwise or counterclockwise 
+  mglBltTexture(stimulus.tex,[0 0],0,0,stimulus.matchOrientation);
 end  
 
 % put up fixation cross, gluDisk can be used to make
@@ -211,11 +213,8 @@ function [task myscreen] = responseCallback(task,myscreen)
 global stimulus
 
 % figure out which button is the correct button for the trial
-if task.thistrial.match
-  corrButt = 1;
-else
-  corrButt = 2;
-end
+butts = [2 0 1];
+corrButt = butts(task.thistrial.clockwiseCounterclockwise+2);
 
 % here, we just check whether this is the first time we got a response
 if task.thistrial.gotResponse < 1
@@ -225,11 +224,15 @@ if task.thistrial.gotResponse < 1
     disp(sprintf('Trial %i: Correct (reaction time: %0.2fs)',task.trialnum,task.thistrial.reactionTime));
     % change fixation cross to green
     stimulus.fixColor = [0 1 0];
+    % and update the staircase
+    stimulus.s = doStaircase('update',stimulus.s,1);
   else
     % incorrect
     disp(sprintf('Trial %i: Incorrect (reaction time: %0.2fs)',task.trialnum,task.thistrial.reactionTime));
     % change fixation color to red
     stimulus.fixColor = [1 0 0];
+    % update the staircase
+    stimulus.s = doStaircase('update',stimulus.s,0);
   end
 end
 
@@ -247,11 +250,22 @@ grating = mglMakeGrating(stimulus.outerWidth,stimulus.outerWidth,stimulus.sf,0,0
 % calculate radius of each point in the grating
 r = sqrt(xMesh.^2 + yMesh.^2);
 
+% Now we make a circular gaussian ring based on the radius of each point
+gaussianRing = exp(-((r-(stimulus.outerWidth/4)).^2)/(stimulus.outerWidth/10)^2);
+% set small values to 0 to try to make sure that the stimulus goes back to the background color gracefully
+gaussianRing(gaussianRing < 0.01) = 0;
 
-% now compute the gabor by multiplying the grating by the gaussian
+% hard edge
+if ~stimulus.gabor
+  % just make the gaussian ring a hard cutoff (either 1 or 0)
+  gaussianRing(gaussianRing>0) = 1;
+  gaussianRing(r<stimulus.innerWidth/2) = 0;
+end
+
+% now compute the "gabor" by multiplying the grating by the ring stimulus.
 % we multiply that by the desired contrast. Then make those numbers go from 0 to 255
 % so that they can be display as a texture.
-gabor = round(255*(stimulus.contrast*grating.*gaussian+1)/2);
+gabor = round(255*(stimulus.contrast*grating.*gaussianRing+1)/2);
 
 % create the texture
 stimulus.tex = mglCreateTexture(gabor);
@@ -261,8 +275,5 @@ mglTextSet('Helvetica',32,[1 1 1],0,0,0);
 stimulus.text(1) = mglText('1');
 stimulus.text(2) = mglText('2');
 
-% set stimulus locations
-stimulus.loc(1,:) = round([cos(pi/4) sin(pi/4)]*stimulus.eccentricity);
-stimulus.loc(2,:) = round([cos(3*pi/4) sin(3*pi/4)]*stimulus.eccentricity);
-stimulus.loc(3,:) = round([cos(5*pi/4) sin(5*pi/4)]*stimulus.eccentricity);
-stimulus.loc(4,:) = round([cos(7*pi/4) sin(7*pi/4)]*stimulus.eccentricity);
+% start staircase
+stimulus.s = doStaircase('init','fixed','fixedVals',stimulus.constantVals);

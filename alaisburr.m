@@ -16,7 +16,7 @@ width = 32; visual = 0; auditory = 0; bimodal = 0; auditoryTrain=0; visualTrain=
 getArgs(varargin,{'width=32','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=1'},'verbose=1');
 
 % if sum([visual,auditory,bimodal]) > 1
-%     warning('(alaisburr) More than one task type detected.');
+%     warning('(alaissburr) More than one task type detected.');
 %     return
 % elseif sum([visual,auditory,bimodal]) == 0
 %     warning('(alaisburr) Task type unspecified. Running visual task...')
@@ -105,6 +105,7 @@ task{1}{1}.randVars.calculated.diff = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.centerInt = nan;
 task{1}{1}.randVars.calculated.displ = nan;
+task{1}{1}.randVars.calculated.left = nan;
  
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -250,6 +251,12 @@ global stimulus
 if ~task.thistrial.gotResponse
     % which one seemed more to the LEFT
     % centerWhich (1/2) first or second one more eccentric
+    if (task.thistrial.centerWhich == 1 && task.thistrial.whichButton == 2) || ...
+    (task.thistrial.centerWhich == 2 && task.thistrial.whichButton == 1)
+    task.thistrial.left = 'L';
+    else
+    task.thistrial.left = 'R';
+    end
     if (task.thistrial.centerWhich == 1 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 1) || ...
       (task.thistrial.diff < 0 && task.thistrial.whichButton == 2))) || ...
     (task.thistrial.centerWhich == 2 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 2) || ...
@@ -260,16 +267,26 @@ if ~task.thistrial.gotResponse
         % feeback
         stimulus.fixColor = stimulus.colors.green;%[0 1 0];
         end
-        disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i correct', ...
-            task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
+        if ~stimulus.bimodal
+            disp(sprintf('(alaisburr) Trial %i: %0.2f %c correct centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
+        else
+            disp(sprintf('(alaisburr) Trial %i: %0.2f %i %c correct centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
+        end
     else
         % incorrect
         task.thistrial.correct = 0;
         if stimulus.auditoryTrain || stimulus.visualTrain
         stimulus.fixColor = stimulus.colors.red;%[1 0 0];
         end
-        disp(sprintf('(alaisburr) Trial %i: %0.2f centerInt %i resp %i incorrect', ...
-            task.trialnum, task.thistrial.diff, task.thistrial.centerWhich, task.thistrial.whichButton))
+        if ~stimulus.bimodal
+            disp(sprintf('(alaisburr) Trial %i: %0.2f %c incorrect centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
+        else
+            disp(sprintf('(alaisburr) Trial %i: %0.2f %i %c incorrect centerInt %i resp %i', ...
+             task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
+        end
     end
         
     task.thistrial.resp = task.thistrial.whichButton;

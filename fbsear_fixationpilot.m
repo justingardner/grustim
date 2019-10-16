@@ -186,6 +186,7 @@ if ~isfield(stimulus,'runs')
     for ri = 1:4
         crun = struct;
         crun.idxs = order((idxs(ri)+1):idxs(ri+1));
+        crun.group = ri;
         crun.text = sprintf('Run group %i',ri);
         crun.oids = stimulus.fbsdata.ids(crun.idxs);
         crun.anns = stimulus.fbsdata.anns(crun.idxs,:);

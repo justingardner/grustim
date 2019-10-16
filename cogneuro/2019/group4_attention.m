@@ -1,13 +1,10 @@
-
-% cohCon
+% group4_attention 
 %
-%      usage: myscreen=cohcon()
-%         by: daniel birman
+%      usage: myscreen=group4_attention()
+%         by: dan birman
+% updated by: akshay jagadeesh (05/2019)
 %       date: 11/10/14
 %    purpose: contrast change detection with cued selective attention.
-%
-%        use: call flowAwe() to initialize. The first
-%             run takes significantly longer due to loading stimuli.
 %
 %      flags: stimFileNum (-1/#) - Load a specific stimfile from a
 %             subject's folder. Defaults to the last stimfile. Warning:
@@ -26,14 +23,14 @@
 %
 %   TR .5 = 296 volumes (10 * 14 * 2 + 16)
 
-function [myscreen] = cogneuro_attention_victoria(varargin)
+function [myscreen] = group4_attention(varargin)
 
 global stimulus
 clear fixStimulus
 %% Initialize Variables
 
 disp('****************************************');
-disp('** NEPR Into Cog Neuro Attention Task **');
+disp('** NEPR Into Cog Neuro Attention (Orientation Discrimination) Task **');
 disp('****************************************');
 % add arguments later
 stimFileNum = [];
@@ -78,24 +75,25 @@ stimulus.pedestals.initThresh.angle = 10.0; % angle that the staircase will star
 if stimulus.scan
     stimulus.contrast = .04; % 4%
 else
-    stimulus.contrast = .5;
+    stimulus.contrast = .15;
 end
 
 %% Setup Screen
 % Settings for Oban/Psychophysics room launch
+myscreen.background = 128/255;
 if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
+    myscreen.displayName = 'fMRIprojFlex';
 else
-    myscreen = initScreen('VPixx'); % this will default out if your computer isn't the psychophysics computer
+    myscreen.displayName = 'VPixx2';
 end
-
+myscreen=initScreen(myscreen);
 %% Open Old Stimfile
 % Do not modify this code
 stimulus.initStair = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_attention/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/group4_attention/%s',mglGetSID))
     % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/cogneuro_attention/%s/1*mat',mglGetSID));
+    files = dir(sprintf('~/data/group4_attention/%s/1*mat',mglGetSID));
     
     if length(files) >= 1
         if stimFileNum == -1
@@ -106,7 +104,7 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/cogneuro_attention/%s',mglGetSID
         else
             fname = files(stimFileNum).name;
         end
-        s = load(sprintf('~/data/cogneuro_attention/%s/%s',mglGetSID,fname));
+        s = load(sprintf('~/data/group4_attention/%s/%s',mglGetSID,fname));
         stimulus.staircase = s.stimulus.staircase;
         stimulus.counter = s.stimulus.counter + 1;
         
@@ -135,8 +133,8 @@ stimulus.seg.resp = 4;
 stimulus.seg.ITI = 5;
 
 % Trial timing (see above for what each column corresponds to)
-task{1}{1}.segmin = [0.5 5 0.5 2 1];
-task{1}{1}.segmax = [0.5 5 0.5 2 8];
+task{1}{1}.segmin = [0.5 1 1 2 1];
+task{1}{1}.segmax = [0.5 1 1 2 8];
 
 % When scanning we synchronize the stimulus to the scanner
 task{1}{1}.synchToVol = [0 0 0 0 0];
@@ -170,8 +168,13 @@ task{1}{1}.randVars.calculated.dir = nan;
 task{1}{1}.randVars.calculated.rot = nan;
 
 stimulus.curTrial = 0;
+stimulus.fixWidth = 1;
 
 %% Full Setup
+for i = 1:2
+  mglFixationCross(stimulus.fixWidth, 1, [1 1 1]);
+  mglFlush;
+end
 % Initialize task (note phase == 1) (this is for MGL)
 for phaseNum = 1:length(task{1})
     [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
@@ -290,6 +293,8 @@ global stimulus
 stimulus.live.cue = 0;
 stimulus.live.grate = 0;
 stimulus.live.fixColor = 0;
+stimulus.live.green = [0 1 0];
+stimulus.live.red = [1 0 0];
 
 % All we're going to do is adjust what gets shown based on what segment we
 % are in, the actual updating happens in the next function.
@@ -327,14 +332,19 @@ function upCue(task)
 % otherwise just draw the line over the fixation cross
 if task.thistrial.attend==1
     % left
-    mglLines2(0,0,-.75,0,1.5,1/255);
+    %mglLines2(0,0,-.75,0,1.5,1/255);
+    mglPolygon([-1,-.75, -2, -.75], [0, .5, 0, -.5], [0,0,0]);
 else
-    mglLines2(0,0,.75,0,1.5,1/255);
+    %mglLines2(0,0,.75,0,1.5,1/255);
+    mglPolygon([1,.75,2,.75], [0,.5,0,-.5], [0,0,0]);
 end
 
-function upFix(stimulus)
+function upFix(stimulus, fixColor)
 %%
-mglFixationCross(1.5,1.5,stimulus.live.fixColor);
+if ieNotDefined('fixColor')
+  fixColor = stimulus.live.fixColor;
+end
+mglFixationCross(1.5,1.5,fixColor);
 
 
 function stimulus = upGrate(stimulus)
@@ -353,7 +363,7 @@ global stimulus
 % setup
 responseText = {'Incorrect','Correct'};
 responsePos = {'Left','Right'};
-fixColors = {254/255,1};
+fixColors = {stimulus.live.red,stimulus.live.green};
 
 % check that we got a response and it's a key we want
 if any(task.thistrial.whichButton == stimulus.responseKeys)

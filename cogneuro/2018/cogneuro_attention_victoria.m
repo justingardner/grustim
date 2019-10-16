@@ -26,7 +26,7 @@
 %
 %   TR .5 = 296 volumes (10 * 14 * 2 + 16)
 
-function [myscreen] = cogneuro_attention(varargin)
+function [myscreen] = cogneuro_attention_victoria(varargin)
 
 global stimulus
 clear fixStimulus
@@ -84,7 +84,7 @@ end
 %% Setup Screen
 % Settings for Oban/Psychophysics room launch
 if stimulus.scan
-    myscreen = initScreen('fMRIprojFlex');
+    myscreen = initScreen('fMRIproj32');
 else
     myscreen = initScreen('VPixx'); % this will default out if your computer isn't the psychophysics computer
 end
@@ -135,8 +135,8 @@ stimulus.seg.resp = 4;
 stimulus.seg.ITI = 5;
 
 % Trial timing (see above for what each column corresponds to)
-task{1}{1}.segmin = [0.5 1 1 2 1];
-task{1}{1}.segmax = [0.5 1 1 2 8];
+task{1}{1}.segmin = [0.5 5 0.5 2 1];
+task{1}{1}.segmax = [0.5 5 0.5 2 8];
 
 % When scanning we synchronize the stimulus to the scanner
 task{1}{1}.synchToVol = [0 0 0 0 0];
