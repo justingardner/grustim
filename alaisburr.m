@@ -13,7 +13,7 @@ global stimulus
  
 % get arguments
 width = 32; visual = 0; auditory = 0; bimodal = 0; auditoryTrain=0; visualTrain=0; tenbit = 0; disp = 1;
-getArgs(varargin,{'width=50','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=0'},'verbose=1');
+getArgs(varargin,{'width=95','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=0'},'verbose=1');
 
 % if sum([visual,auditory,bimodal]) > 1
 %     warning('(alaissburr) More than one task type detected.');
@@ -85,16 +85,16 @@ task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
-  task{1}{1}.numBlocks = 2;
+  task{1}{1}.numBlocks = 16;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 10;
+  task{1}{1}.numBlocks = 16;
 else
   task{1}{1}.randVars.uniform.sign = [1,-1];
 end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-15 -7.5 -2.5 -1.25 0 1.25 2.5 7.5 15]; 
+task{1}{1}.parameter.posDiff = [-15 -12 -9.5 -7 -5 -3.75 -2.5 -1.25 0 1.25 2.5 3.75 5 7 9.5 12 15]; 
 if stimulus.task == 3
   task{1}{1}.parameter.displacement = [-5 0 5];
 end
@@ -218,7 +218,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
-mglClearScreen(.28);
+mglClearScreen(.87);
 mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 if stimulus.task ~= 2 %visual or bimodal condition
     if task.thistrial.thisseg == stimulus.interval(1)
@@ -251,16 +251,16 @@ global stimulus
 if ~task.thistrial.gotResponse
     % which one seemed more to the LEFT
     % centerWhich (1/2) first or second one more eccentric
-    if (task.thistrial.centerWhich == 1 && task.thistrial.whichButton == 2) || ...
-    (task.thistrial.centerWhich == 2 && task.thistrial.whichButton == 1)
+    if (task.thistrial.centerWhich == 1 && task.thistrial.whichButton == 1) || ...
+    (task.thistrial.centerWhich == 2 && task.thistrial.whichButton == 2)
     task.thistrial.left = 'L';
     else
     task.thistrial.left = 'R';
     end
-    if (task.thistrial.centerWhich == 1 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 1) || ...
-      (task.thistrial.diff < 0 && task.thistrial.whichButton == 2))) || ...
-    (task.thistrial.centerWhich == 2 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 2) || ...
-      (task.thistrial.diff < 0 && task.thistrial.whichButton == 1)))
+    if (task.thistrial.centerWhich == 1 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 2) || ...
+      (task.thistrial.diff < 0 && task.thistrial.whichButton == 1))) || ...
+    (task.thistrial.centerWhich == 2 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 1) || ...
+      (task.thistrial.diff < 0 && task.thistrial.whichButton == 2)))
         % correct
         task.thistrial.correct = 1;
         if stimulus.auditoryTrain || stimulus.visualTrain
