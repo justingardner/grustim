@@ -50,7 +50,7 @@ task{1}{1}.runfixedint  = 0; % run staircase
 task{1}{1}.blankrun     = 1;
 
 % stimulus and background
-task{1}{1}.parameter.backLum    = 160; %32;  % background luminance; units: fraction of full luminance 
+task{1}{1}.parameter.backLum    = 32; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 0; % noise luminance, if there is one.
 task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
 teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
@@ -164,8 +164,8 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     
     if stimulus.grabframe
         global frame
-        %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackpos_2afc_160back_500ms.mat', 'frame','-v7.3')
-        %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackpos_2afc_160back_100ms.mat', 'frame','-v7.3')
+        %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackpos_2afc_32back_500ms.mat', 'frame','-v7.3')
+        %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackpos_2afc_32back_100ms.mat', 'frame','-v7.3')
         frame = {};
         frame{sum(task.segmax)*myscreen.framesPerSecond} = [];
     end
