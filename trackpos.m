@@ -8,24 +8,24 @@ function myscreen = trackpos(varargin)
  
 
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
-
 % set up screen
 if isempty(mglGetSID)
     myscreen.subjectID  = -1;
 else
     myscreen.subjectID  = mglGetSID;
 end
-myscreen.saveData       = 1;
-% myscreen.displayName    = 'debug';
+myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
+myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
+myscreen.hideCursor = 1;
 myscreen                = initScreen(myscreen);
 
 %% parameters
 global stimulus; stimulus = struct;
 
 % Experimenter parameters
-noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking 
+noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 showmouse       = 0; 
-grabframe       = 0; 
+grabframe       = 1; 
 whitenoiseOn    = 0; % 1: white noise; 2: 
 fixateCenter    = 1;
 phasescrambleOn = 1;
@@ -43,7 +43,7 @@ task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial
 % task parameters for adaptation conditions
 if whitenoiseOn == 1 || phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
-    task{1}{1}.parameter.backLum            = 90;  % background luminance; units: luminance 
+    task{1}{1}.parameter.backLum            = 32; %160;%90;  % background luminance; units: luminance 
     task{1}{1}.parameter.noiseLum           = 32;
 else 
     task{1}{1}.parameter.backLum = 32;  % background luminance; units: fraction of full luminance 
@@ -124,7 +124,7 @@ for stepIdx = 1:length(teststimSteps)
     task{1}{idx}.parameter.noiseLum             = 0;    
     task{1}{idx}.segmin         = [30 3]; %fixation time constrained by the texture loading
     task{1}{idx}.segmax         = [30 3]; 
-    task{1}{idx}.numTrials      = 5;
+    task{1}{idx}.numTrials      = 1;
     
     for lumIdx = 1:length(teststimLum)
         % adaptation task
@@ -138,7 +138,7 @@ for stepIdx = 1:length(teststimSteps)
         task{1}{idx}.segmin     = [30 3]; %fixation time constrained a bit by the texture loading
         task{1}{idx}.segmax     = [30 3]; 
         task{1}{idx}.numTrials  = 10;
-        task{1}{1}.parameter.noiseLum           = 32;
+        task{1}{idx}.parameter.noiseLum           = 32;
 
     end
 end
@@ -208,7 +208,7 @@ mglClose
 endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
 if stimulus.grabframe
-    save('/Users/joshryu/Dropbox/GardnerLab/data/FYP/trackpos/frame_nored.mat', 'frame')
+    save('/Users/joshryu/Dropbox/GardnerLab/Stanford/Current/FYP/FYP talk/trackposTask.mat', 'frame')
 end
 
 end
@@ -244,6 +244,9 @@ function [task myscreen] = initTrialCallback(task, myscreen)
         tic
         if stimulus.backprecompute == 1;
             savefile            = '/Users/gru/proj/grustim/trackpos.mat';
+            if ~exist(savefile,'file')
+                savefile            = '/Users/jryu/proj/grustim/trackpos.mat';
+            end
             backsetidx          = randi(100); %1; %randi(63); % choose a random background set
             load(savefile,['backgroundnoise_rgb' num2str(backsetidx)]);
           
@@ -350,6 +353,14 @@ if task.thistrial.thisseg == 1
     %% frame counter.
     task.thistrial.framecount = 0;
     
+    if stimulus.grabframe
+        global frame
+        %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackposTask_nonoise_160back.mat', 'frame','-v7.3')
+        %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackposTask_noise_160back.mat', 'frame','-v7.3')
+        frame = {};
+        frame{task.segmax(1)*myscreen.framesPerSecond} = [];
+    end
+    
     % time debugging
     % stimulus.timedebug = nan(15,ceil(task.segmax(1)*myscreen.framesPerSecond)); %nanmean(diff(stimulus.timedebug),2)
 else %intertrial interval
@@ -446,8 +457,8 @@ end
 
 % stimulus.timedebug(8,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~2.86661e-5 s
 
-if stimulus.grabframe
-    global frame; frame{task.thistrial.thisseg} = mglFrameGrab;
+if stimulus.grabframe && (task.thistrial.thisseg== 1)
+    global frame; frame{task.thistrial.framecount} = mglFrameGrab;
 end
 
 end
