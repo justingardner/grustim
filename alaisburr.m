@@ -16,7 +16,11 @@
 %            reserved colors at the top and on the bottom the gradation
 %            of colors used for the gaussian
 %
-%            alaisbur('doGammaTest=1');
+%            alaisburr('doGammaTest=1');
+%
+%            To run with a noise background with SNR of 2.5 that updates 4.5 every sec
+%
+%            alaisBurr('SNR=2.5','backgroundFreq=4.5');
 %
 function myscreen = testalaisburr(varargin)
  
@@ -26,7 +30,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=0.5','SNR=3','doTestSNR=0'},'verbose=1');
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=0.5','SNR=3','doTestSNR=0','backgroundFreq=4.5'},'verbose=1');
 
 % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -136,12 +140,13 @@ myscreen = initStimulus('stimulus',myscreen);
 % to initialize the stimulus for your experiment.
 stimulus = initGaussian(stimulus,myscreen);
 
+% init auditory stimulus
 stimulus = initClick(stimulus,myscreen);
 if stimulus.auditoryTrain || stimulus.visualTrain
   stimulus = initStair(stimulus);
 end
 
-% check gamma if called ofr
+% check gamma if called for
 if doGammaTest && tenbit
   tf = testGammaTable(stimulus,myscreen);
   if ~tf,mglClose,return,end;
@@ -151,19 +156,21 @@ end
 if ~isinf(stimulus.SNR)
   % init background noise
   stimulus = initBackgroundNoise(stimulus, myscreen);
-  % if test then display several levels of SNR
-  if doTestSNR
-    for testSNR = 5:-0.5:0
-      stimulus = setBackgroundNoise(stimulus,testSNR);
-      imTexture = getStimulusWithBackgroundNoise(stimulus,0,0);
-      mglBltTexture(imTexture,[0 0]);mglFlush;
-      mglDeleteTexture(imTexture);
-      if ~askuser(sprintf('(alaisburr) Testing SNR of %0.2f',testSNR))
-	break;
-      end
+  % and set them
+  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,backgroundFreq);
+end
+
+% if test then display several levels of SNR
+if doTestSNR
+  for testSNR = 5:-0.5:0
+    stimulus = setBackgroundNoise(stimulus,myscreen,task,testSNR,1);
+    stimulus = setStimulusOnBackground(stimulus,0,0,1,1);
+    mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
+    if ~askuser(sprintf('(alaisburr) Testing SNR of %0.2f',testSNR))
+      break;
     end
-    mglClose;return
   end
+  mglClose;return
 end
 
 % put up display string
@@ -207,13 +214,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
+
+% set fixation cross color
+stimulus.fixColor = stimulus.colors.white;
+
 if task.thistrial.thisseg == 1
-  % get background noise image if we have snr set
-  if ~isinf(stimulus.SNR)
-    stimulus = setBackgroundNoise(stimulus,stimulus.SNR);
-  end
-  % put up fixation cross
-  stimulus.fixColor = stimulus.colors.white;
   % set random jittering between -0.5 and 0.5 deg
   task.thistrial.jitter = rand - 0.5; 
   % horizontal position of first, second stim
@@ -265,8 +270,24 @@ if task.thistrial.thisseg == 1
       stimulus.sound(int) = createITD(stimulus,task.thistrial.xposA(int));
     end
   end
+  
+  % setup background noise
+  if ~isinf(stimulus.SNR)
+    % get the order of the background noise images to display
+    stimulus.background.frameOrder = randperm(stimulus.background.n);
+    stimulus.background.frameNum = 0;
+    % set the frame timer
+    stimulus.background.frameStart = -inf;
+    % figure out which frame of noise that the stimulus will be imbeded on
+    stimulus.background.stim1Frame = ceil(sum(task.segmax(1:2))/stimulus.background.frameTime)-1;
+    stimulus.background.stim2Frame = ceil(sum(task.segmax(1:4))/stimulus.background.frameTime)-1;
+    % and create the stimuli on the background that we guess to be the
+    % one that should be being presented
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame));
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame));
+  end
 
-elseif task.thistrial.thisseg == 5
+elseif any(task.thistrial.thisseg == [2 4])
   % turn fixation color gray
   stimulus.fixColor = stimulus.colors.grey;
 end
@@ -285,7 +306,6 @@ global stimulus
 
 % clear screen and put up fixation cross
 mglClearScreen(stimulus.colors.black);
-mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 
 % visual or bimodal condition
 if stimulus.task ~= 2 
@@ -298,14 +318,28 @@ if stimulus.task ~= 2
       mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 1]);
     end
   else
-    stimulus = setBackgroundNoise(stimulus,stimulus.SNR);
     % otherwise display on noise background
     if task.thistrial.thisseg == stimulus.interval(1)
-      mglBltTexture(getStimulusWithBackgroundNoise(stimulus,task.thistrial.xposV(1),0),[0 0]);
+      mglBltTexture(stimulus.stimTexture(1),[0 0]);
+      if stimulus.background.frameNum ~= stimulus.background.stim1Frame
+	disp(sprintf('!!! (alaisburr) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
+      end
     elseif task.thistrial.thisseg == stimulus.interval(2)
-      mglBltTexture(getStimulusWithBackgroundNoise(stimulus,task.thistrial.xposV(2),0),[0 0]);
+      mglBltTexture(stimulus.stimTexture(2),[0 0]);
+      if stimulus.background.frameNum ~= stimulus.background.stim2Frame
+	disp(sprintf('!!! (alaisburr) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
+      end
     else
-      mglBltTexture(stimulus.background.imTexture,[0 0]);
+      % display background
+      % see if we need to update frame number
+      if mglGetSecs(stimulus.background.frameStart) > stimulus.background.frameTime
+	% update the count
+	stimulus.background.frameNum = mod(stimulus.background.frameNum,stimulus.background.n)+1;
+	% reset timer
+	stimulus.background.frameStart = mglGetSecs;
+      end
+      % draw the background texture
+      mglBltTexture(stimulus.backTexture(stimulus.background.frameOrder(stimulus.background.frameNum)),[0 0]);
     end
   end
 end
@@ -318,6 +352,8 @@ if stimulus.task ~= 1
     mglPlaySound(stimulus.sound(2));
   end
 end
+
+mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 
 % %draw fixation cross
 % if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
@@ -849,41 +885,72 @@ stimulus.background.y = stimulus.background.y(1:oddHeight,1:oddWidth);
 % get the fourier transform
 stimulus.background.gaussianTransform = getHalfFourier(stimulus.background.gaussian);
 
-% no background yet
-stimulus.imTexture = [];
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    setBackgroundNoise    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = setBackgroundNoise(stimulus, SNR)
+function stimulus = setBackgroundNoise(stimulus, myscreen, task, SNR, backgroundFreq)
+
+% figure out how many frames we should have
+% for the length of the trial so that we can
+% randomly show at least one per frame
+trialTime = sum(task{end}{end}.segmax);
+
+% make a few times more than necessary so that there will be more randomization
+numBackgrounds = round(trialTime * backgroundFreq * 2);
 
 % set the signal and noise max
 stimulus.background.noiseMax = 1 / (SNR + 1);
 stimulus.background.sigMax = 1 - stimulus.background.noiseMax;
 
-% randomize phase and reconstruct
-stimulus.background.gaussianTransform.phase = (rand(1,stimulus.background.gaussianTransform.n)*2*pi - pi);
-im = reconstructFromHalfFourier(stimulus.background.gaussianTransform);
+disppercent(-inf,'(alaisburr:setBackgroundNoise) Precomputing background noise images');
 
-% scale from 0 to noise max
-maxIm = max(im(:));
-minIm = min(im(:));
-stimulus.background.im = stimulus.background.noiseMax * (im - minIm) / (maxIm-minIm);
-
-if ~isempty(stimulus.imTexture)
-  mglDeleteTexture(stimulus.imTexture);
+% delete old textures
+if isfield(stimulus,'backTexture') && ~isempty(stimulus.backTexture)
+  for iBackground = 1:numBackgrounds
+    mglDeleteTexture(stimulus.backTexture(iBackground));
+  end
 end
 
-% make into texture
-stimulus.background.imTexture = mglCreateTexture(round(stimulus.colors.gaussRange*stimulus.background.im + stimulus.colors.minGaussianIndex));
+for iBackground = 1:numBackgrounds
+  % randomize phase and reconstruct
+  stimulus.background.gaussianTransform.phase = (rand(1,stimulus.background.gaussianTransform.n)*2*pi - pi);
+  im = reconstructFromHalfFourier(stimulus.background.gaussianTransform);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    getBackgroundNoise    %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function imTexture = getStimulusWithBackgroundNoise(stimulus, xPos, yPos)
+  % scale from 0 to noise max
+  maxIm = max(im(:));
+  minIm = min(im(:));
+  stimulus.background.im(iBackground,:,:) = stimulus.background.noiseMax * (im - minIm) / (maxIm-minIm);
+
+  % make into texture
+  stimulus.backTexture(iBackground) = mglCreateTexture(round(stimulus.colors.gaussRange*squeeze(stimulus.background.im(iBackground,:,:)) + stimulus.colors.minGaussianIndex));
+  
+  % update disppercent
+  disppercent(iBackground/numBackgrounds);
+end
+disppercent(inf);
+
+% set how many textures we have
+stimulus.background.n = numBackgrounds;
+
+% compute how long to show each frame for
+stimulus.background.frameTime = 1/backgroundFreq;
+stimulus.backgroundFreq = backgroundFreq;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+%    setStimuliOnNoise  %
+%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = setStimulusOnBackground(stimulus, xPos, yPos, stimulusNum, backgroundNum)
 
 % make the gaussian at the xPos, yPos and scale to signal max
-im = stimulus.background.im + stimulus.background.sigMax * exp(-(((stimulus.background.x-xPos).^2)/(2*(stimulus.width^2))+((stimulus.background.y-yPos).^2)/(2*(stimulus.width^2))));
+im = squeeze(stimulus.background.im(backgroundNum,:,:)) + stimulus.background.sigMax * exp(-(((stimulus.background.x-xPos).^2)/(2*(stimulus.width^2))+((stimulus.background.y-yPos).^2)/(2*(stimulus.width^2))));
 
-% scale and return texture
-imTexture = mglCreateTexture(round(stimulus.colors.gaussRange*im + stimulus.colors.minGaussianIndex));
+% delete any existing texture
+if isfield(stimulus,'stimTexture') && (length(stimulus.stimTexture) >= stimulusNum)
+  mglDeleteTexture(stimulus.stimTexture(stimulusNum));
+end
+
+% scale and set texture
+stimulus.stimTexture(stimulusNum) = mglCreateTexture(round(stimulus.colors.gaussRange*im + stimulus.colors.minGaussianIndex));
+
+
