@@ -4,24 +4,34 @@
 %         by: minyoung lee
 %       date: 
 %    purpose: replication of Alais & Burr, 2004
-
-function myscreen = alaisburr(varargin)
+%
+%            Set for visual / auditory or bimodal run:
+%            alaisburr('visual=1');
+%            alaisburr('auditory=1');
+%            alaisburr('bimodal=1');
+%
+%            set to run a test of the gamma settings - this is important
+%            because new versions of the operating system do not seem
+%            to set the gamma correctly. It will put up a screen with
+%            reserved colors at the top and on the bottom the gradation
+%            of colors used for the gaussian
+%
+%            alaisbur('doGammaTest=1');
+%
+function myscreen = testalaisburr(varargin)
  
 clear global stimulus
 mglEatKeys('12`');
 global stimulus
  
 % get arguments
-width = 32; visual = 0; auditory = 0; bimodal = 0; auditoryTrain=0; visualTrain=0; tenbit = 0; disp = 1;
-getArgs(varargin,{'width=95','visual=0','auditory=0','bimodal=0','disp=1','auditoryTrain=0','visualTrain=0','tenbit=0'},'verbose=1');
+bimodal = 0;
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=0.5','SNR=3','doTestSNR=0'},'verbose=1');
 
-% if sum([visual,auditory,bimodal]) > 1
-%     warning('(alaissburr) More than one task type detected.');
-%     return
-% elseif sum([visual,auditory,bimodal]) == 0
-%     warning('(alaisburr) Task type unspecified. Running visual task...')
-%     return
-% end
+% close screen if open - to make sure that gamma gets sets correctly
+mglClose;
+
+% set task
 if visual || visualTrain
     stimulus.task = 1;
 elseif auditory || auditoryTrain
@@ -29,13 +39,18 @@ elseif auditory || auditoryTrain
 else
     stimulus.task = 3;
 end
-stimulus.disp = disp;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%
+% set arguments in stimulus variable
+%%%%%%%%%%%%%%%%%%%%%%%%%
+stimulus.disp = dispPlots;
 stimulus.visual=visual;
 stimulus.auditory=auditory;
 stimulus.bimodal=bimodal;
 stimulus.auditoryTrain = auditoryTrain;
 stimulus.visualTrain = visualTrain;
 stimulus.tenbit = tenbit;
+stimulus.SNR = SNR;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
 stimulus.stimDur = .015; % 15ms
@@ -53,6 +68,9 @@ if stimulus.tenbit
 else
   stimulus.contrast = 0.5;
 end
+
+% set the stimulus contrast
+stimulus.contrast = stimulusContrast;
 
 stimulus.interval = [2 4];
 % fixation cross
@@ -85,16 +103,16 @@ task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
-  task{1}{1}.numBlocks = 16;
+  task{1}{1}.numBlocks = 2;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 16;
+  task{1}{1}.numBlocks = 5;
 else
   task{1}{1}.randVars.uniform.sign = [1,-1];
 end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-15 -12 -9.5 -7 -5 -3.75 -2.5 -1.25 0 1.25 2.5 3.75 5 7 9.5 12 15]; 
+task{1}{1}.parameter.posDiff = [-15 -7.5 -2.5 -1.25 0 1.25 2.5 7.5 15]; 
 if stimulus.task == 3
   task{1}{1}.parameter.displacement = [-5 0 5];
 end
@@ -117,17 +135,47 @@ myscreen = initStimulus('stimulus',myscreen);
 
 % to initialize the stimulus for your experiment.
 stimulus = initGaussian(stimulus,myscreen);
+
 stimulus = initClick(stimulus,myscreen);
 if stimulus.auditoryTrain || stimulus.visualTrain
   stimulus = initStair(stimulus);
 end
 
+% check gamma if called ofr
+if doGammaTest && tenbit
+  tf = testGammaTable(stimulus,myscreen);
+  if ~tf,mglClose,return,end;
+end
+
+% init the background noise if we have to
+if ~isinf(stimulus.SNR)
+  % init background noise
+  stimulus = initBackgroundNoise(stimulus, myscreen);
+  % if test then display several levels of SNR
+  if doTestSNR
+    for testSNR = 5:-0.5:0
+      stimulus = setBackgroundNoise(stimulus,testSNR);
+      imTexture = getStimulusWithBackgroundNoise(stimulus,0,0);
+      mglBltTexture(imTexture,[0 0]);mglFlush;
+      mglDeleteTexture(imTexture);
+      if ~askuser(sprintf('(alaisburr) Testing SNR of %0.2f',testSNR))
+	break;
+      end
+    end
+    mglClose;return
+  end
+end
+
+% put up display string
 mglWaitSecs(1);
 mglClearScreen(stimulus.colors.black);
 mglTextSet([],32,stimulus.colors.white);
 mglTextDraw('Press ` key to start when you are ready',[0 0]);
 mglFlush;
-mglWaitSecs(1);
+mglClearScreen(stimulus.colors.black);
+mglTextDraw('Press ` key to start when you are ready',[0 0]);
+mglFlush;
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -143,8 +191,15 @@ end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
+% display psychometric functions
 if stimulus.disp
-dispPsychometric(task{1}{1},stimulus);
+  % first check if there are any trials with responses
+  e = getTaskParameters(myscreen,task);
+  if any(~isnan(e{end}.response))
+    dispPsychometric(task{1}{1},stimulus);
+  else
+    disp(sprintf('(alaisburr) No subject responses to plot psychometric function with.'));
+  end
 end
  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -153,64 +208,73 @@ end
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 if task.thistrial.thisseg == 1
-    stimulus.fixColor = stimulus.colors.white;%[1 1 1];
-    task.thistrial.jitter = rand - 0.5; %random jittering between -0.5 and 0.5 deg
-    % horizontal position of first, second stim
+  % get background noise image if we have snr set
+  if ~isinf(stimulus.SNR)
+    stimulus = setBackgroundNoise(stimulus,stimulus.SNR);
+  end
+  % put up fixation cross
+  stimulus.fixColor = stimulus.colors.white;
+  % set random jittering between -0.5 and 0.5 deg
+  task.thistrial.jitter = rand - 0.5; 
+  % horizontal position of first, second stim
   if stimulus.auditoryTrain || stimulus.visualTrain
-      [testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
-      task.thistrial.diff = testValue * task.thistrial.sign;
+    % get test value
+    [testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
+    task.thistrial.diff = testValue * task.thistrial.sign;
 
-      if task.thistrial.centerWhich == 1
-            task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.diff + task.thistrial.jitter];
-            task.thistrial.xposA = task.thistrial.xposV;
-            task.thistrial.centerInt = 1;
-      else
-            task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.diff, task.thistrial.jitter];
-            task.thistrial.xposA = task.thistrial.xposV;
-            task.thistrial.centerInt = 2;
-      end
-
+    % Which stimulus should be displayed in the center (i.e. reference position)
+    if task.thistrial.centerWhich == 1
+      task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.diff + task.thistrial.jitter];
+      task.thistrial.xposA = task.thistrial.xposV;
+      task.thistrial.centerInt = 1;
+    else
+      task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.diff, task.thistrial.jitter];
+      task.thistrial.xposA = task.thistrial.xposV;
+      task.thistrial.centerInt = 2;
+    end
   else
     if stimulus.task == 3
-        if task.thistrial.centerWhich == 1
-            task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter + task.thistrial.displacement];
-            task.thistrial.xposA = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter - task.thistrial.displacement];
-            task.thistrial.centerInt = 1;
-        else
-            task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.posDiff + task.thistrial.displacement, task.thistrial.jitter];
-            task.thistrial.xposA = [task.thistrial.jitter + task.thistrial.posDiff - task.thistrial.displacement, task.thistrial.jitter];
-            task.thistrial.centerInt = 2;
-        end
-        task.thistrial.displ = task.thistrial.displacement;
+      if task.thistrial.centerWhich == 1
+	task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter + task.thistrial.displacement];
+	task.thistrial.xposA = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter - task.thistrial.displacement];
+	task.thistrial.centerInt = 1;
+      else
+	task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.posDiff + task.thistrial.displacement, task.thistrial.jitter];
+	task.thistrial.xposA = [task.thistrial.jitter + task.thistrial.posDiff - task.thistrial.displacement, task.thistrial.jitter];
+	task.thistrial.centerInt = 2;
+      end
+      task.thistrial.displ = task.thistrial.displacement;
     else
-
-        if task.thistrial.centerWhich == 1
-            task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
-            task.thistrial.xposA = task.thistrial.xposV;
-            task.thistrial.centerInt = 1;
-        else
-            task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.posDiff, task.thistrial.jitter];
-            task.thistrial.xposA = task.thistrial.xposV;
-            task.thistrial.centerInt = 2;
-        end
-
+      if task.thistrial.centerWhich == 1
+	task.thistrial.xposV = [task.thistrial.jitter, task.thistrial.posDiff + task.thistrial.jitter];
+	task.thistrial.xposA = task.thistrial.xposV;
+	task.thistrial.centerInt = 1;
+      else
+	task.thistrial.xposV = [task.thistrial.jitter + task.thistrial.posDiff, task.thistrial.jitter];
+	task.thistrial.xposA = task.thistrial.xposV;
+	task.thistrial.centerInt = 2;
+      end
     end
     task.thistrial.diff = task.thistrial.posDiff;
   end
     
-    if stimulus.task ~= 1 %auditory or bimodal condition
-        for int = 1:2
-            stimulus.sound(int) = createITD(stimulus,task.thistrial.xposA(int));
-        end
+  % auditory or bimodal condition
+  if stimulus.task ~= 1 
+    % create the necessary ITD for the sound position
+    for int = 1:2
+      stimulus.sound(int) = createITD(stimulus,task.thistrial.xposA(int));
     end
+  end
+
 elseif task.thistrial.thisseg == 5
+  % turn fixation color gray
   stimulus.fixColor = stimulus.colors.grey;
 end
 if task.thistrial.thisseg == 6
-    if exist('task.thistrial.reactionTime', 'var')
-        task.thistrial.rt = task.thistrial.reactionTime;
-    end
-    stimulus.trialnum = stimulus.trialnum+1;
+  if exist('task.thistrial.reactionTime', 'var')
+    task.thistrial.rt = task.thistrial.reactionTime;
+  end
+  stimulus.trialnum = stimulus.trialnum+1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -218,21 +282,41 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
-mglClearScreen(.87);
+
+% clear screen and put up fixation cross
+mglClearScreen(stimulus.colors.black);
 mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
-if stimulus.task ~= 2 %visual or bimodal condition
+
+% visual or bimodal condition
+if stimulus.task ~= 2 
+  % display visual stimulus
+  % on a blank background if snr is inf
+  if isinf(stimulus.SNR)
     if task.thistrial.thisseg == stimulus.interval(1)
-        mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 1]);
+      mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 1]);
     elseif task.thistrial.thisseg == stimulus.interval(2)
-        mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 1]);
+      mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 1]);
     end
+  else
+    stimulus = setBackgroundNoise(stimulus,stimulus.SNR);
+    % otherwise display on noise background
+    if task.thistrial.thisseg == stimulus.interval(1)
+      mglBltTexture(getStimulusWithBackgroundNoise(stimulus,task.thistrial.xposV(1),0),[0 0]);
+    elseif task.thistrial.thisseg == stimulus.interval(2)
+      mglBltTexture(getStimulusWithBackgroundNoise(stimulus,task.thistrial.xposV(2),0),[0 0]);
+    else
+      mglBltTexture(stimulus.background.imTexture,[0 0]);
+    end
+  end
 end
-if stimulus.task ~= 1 %auditory or bimodal condition
-    if task.thistrial.thisseg == stimulus.interval(1)
-        mglPlaySound(stimulus.sound(1));
-    elseif task.thistrial.thisseg == stimulus.interval(2)
-        mglPlaySound(stimulus.sound(2));
-    end
+
+% auditory or bimodal condition
+if stimulus.task ~= 1 
+  if task.thistrial.thisseg == stimulus.interval(1)
+    mglPlaySound(stimulus.sound(1));
+  elseif task.thistrial.thisseg == stimulus.interval(2)
+    mglPlaySound(stimulus.sound(2));
+  end
 end
 
 % %draw fixation cross
@@ -251,16 +335,16 @@ global stimulus
 if ~task.thistrial.gotResponse
     % which one seemed more to the LEFT
     % centerWhich (1/2) first or second one more eccentric
-    if (task.thistrial.centerWhich == 1 && task.thistrial.whichButton == 1) || ...
-    (task.thistrial.centerWhich == 2 && task.thistrial.whichButton == 2)
+    if (task.thistrial.centerWhich == 1 && task.thistrial.whichButton == 2) || ...
+    (task.thistrial.centerWhich == 2 && task.thistrial.whichButton == 1)
     task.thistrial.left = 'L';
     else
     task.thistrial.left = 'R';
     end
-    if (task.thistrial.centerWhich == 1 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 2) || ...
-      (task.thistrial.diff < 0 && task.thistrial.whichButton == 1))) || ...
-    (task.thistrial.centerWhich == 2 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 1) || ...
-      (task.thistrial.diff < 0 && task.thistrial.whichButton == 2)))
+    if (task.thistrial.centerWhich == 1 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 1) || ...
+      (task.thistrial.diff < 0 && task.thistrial.whichButton == 2))) || ...
+    (task.thistrial.centerWhich == 2 && ((task.thistrial.diff > 0 && task.thistrial.whichButton == 2) || ...
+      (task.thistrial.diff < 0 && task.thistrial.whichButton == 1)))
         % correct
         task.thistrial.correct = 1;
         if stimulus.auditoryTrain || stimulus.visualTrain
@@ -311,108 +395,89 @@ function stimulus = initStair(stimulus)
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initGaussian(stimulus,myscreen)
+
 global stimulus;
 if stimulus.tenbit
-% set maximum color index (for 24 bit color we have 8 bits per channel, so 255)
-maxIndex = 255;
+  % set maximum color index (for 24 bit color we have 8 bits per channel, so 255)
+  maxIndex = 255;
 
-% get gamma table
-if ~isfield(myscreen,'gammaTable')
-  stimulus.linearizedGammaTable = mglGetGammaTable;
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-  disp(sprintf('(alaisburr:initGratings) No gamma table found in myscreen. Contrast'));
-  disp(sprintf('         displays like this should be run with a valid calibration made by moncalib'));
-  disp(sprintf('         for this monitor.'));
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-end
-stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
+  % get gamma table
+  if ~isfield(myscreen,'gammaTable')
+    stimulus.linearizedGammaTable = mglGetGammaTable;
+    disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+    disp(sprintf('(alaisburr:initGratings) No gamma table found in myscreen. Contrast'));
+    disp(sprintf('         displays like this should be run with a valid calibration made by moncalib'));
+    disp(sprintf('         for this monitor.'));
+    disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+  end
+  stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
 
-% disppercent(-inf,'Creating gaussian textures');
+  % disppercent(-inf,'Creating gaussian textures');
 
-% calculate some colors information
-%  number of reserved colors
-stimulus.colors.nReservedColors = size(stimulus.colors.reservedColors,1);
-% number of colors possible for gratings, make sure that we 
-% have an odd number
-stimulus.colors.nGaussianColors = maxIndex+1-stimulus.colors.nReservedColors;
-% if iseven(stimulus.colors.nGaussianColors)
-%   stimulus.colors.nGaussianColors = stimulus.colors.nGaussianColors-1;
-% end
+  % calculate some colors information
+  %  number of reserved colors
+  stimulus.colors.nReservedColors = size(stimulus.colors.reservedColors,1);
+  % number of colors possible for gratings, make sure that we 
+  % have an odd number
+  stimulus.colors.nGaussianColors = maxIndex+1-stimulus.colors.nReservedColors;
+  % if iseven(stimulus.colors.nGaussianColors)
+  %   stimulus.colors.nGaussianColors = stimulus.colors.nGaussianColors-1;
+  % end
 
-% min,mid,max index of gaussian colors
-stimulus.colors.minGaussianIndex = maxIndex+1 - stimulus.colors.nGaussianColors;
-stimulus.colors.midGaussianIndex = stimulus.colors.minGaussianIndex + floor(stimulus.colors.nGaussianColors/2);
-stimulus.colors.maxGaussianIndex = maxIndex;
-% number of contrasts we can display (not including 0 contrast)
-stimulus.colors.nDisplayContrasts = floor(stimulus.colors.nGaussianColors-1);
+  % min,mid,max index of gaussian colors
+  stimulus.colors.minGaussianIndex = maxIndex+1 - stimulus.colors.nGaussianColors;
+  stimulus.colors.midGaussianIndex = stimulus.colors.minGaussianIndex + floor(stimulus.colors.nGaussianColors/2);
+  stimulus.colors.maxGaussianIndex = maxIndex;
+  % number of contrasts we can display (not including 0 contrast)
+  stimulus.colors.nDisplayContrasts = floor(stimulus.colors.nGaussianColors-1);
 
-% set the reserved colors - this gives a convenient value between 0 and 1 to use the reserved colors with
-for i = 1:stimulus.colors.nReservedColors
-  stimulus.colors.reservedColor(i) = (i-1)/maxIndex;
-end
+  % set the reserved colors - this gives a convenient value between 0 and 1 to use the reserved colors with
+  for i = 1:stimulus.colors.nReservedColors
+    stimulus.colors.reservedColor(i) = (i-1)/maxIndex;
+  end
 
-setGammaTableForMaxContrast(stimulus.contrast);
-contrastIndex = getContrastIndex(stimulus.contrast,1);
+  setGammaTableForMaxContrast(stimulus.contrast);
+  contrastIndex = getContrastIndex(stimulus.contrast,1);
 
-% make all the 1D gaussians. We compute all possible contrast values given the
-% range of indexes available to us. The 1st texture is black the nth texture is full
-% contrast for the current gamma setting
-gaussian = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.width/7,stimulus.width/7);
-iContrast = contrastIndex-1;
-% for iContrast = 0:stimulus.colors.nDisplayContrasts
-  % disppercent(iContrast/stimulus.colors.nDisplayContrasts);
-  % if myscreen.userHitEsc,mglClose;keyboard,end
+  % make all the 1D gaussians. We compute all possible contrast values given the
+  % range of indexes available to us. The 1st texture is black the nth texture is full
+  % contrast for the current gamma setting
+  stimulus.gaussian = mglMakeGaussian(7*stimulus.width, 7*stimulus.width, stimulus.width,stimulus.width);
+  stimulus.colors.gaussRange = contrastIndex-1;
   % make the grating
-  thisGaussian = round(iContrast*gaussian + stimulus.colors.minGaussianIndex);
+  thisGaussian = round(stimulus.colors.gaussRange*stimulus.gaussian + stimulus.colors.minGaussianIndex);
   % create the texture
-  % stimulus.tex(iContrast+1) = mglCreateTexture(thisGaussian);
   stimulus.tex = mglCreateTexture(thisGaussian);
-% end
-% disppercent(inf);
 
-% get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
-stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
-[1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
-% get the color values (i.e. reserved color)
-stimulus.colors.white = stimulus.colors.reservedColor(1);
-stimulus.colors.red = stimulus.colors.reservedColor(4);
-stimulus.colors.green = stimulus.colors.reservedColor(3);
-stimulus.colors.grey = stimulus.colors.reservedColor(2);
-stimulus.colors.cyan = stimulus.colors.reservedColor(5);
-
+  % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
+  stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
+  [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
+  % get the color values (i.e. reserved color)
+  stimulus.colors.white = stimulus.colors.reservedColor(1);
+  stimulus.colors.red = stimulus.colors.reservedColor(4);
+  stimulus.colors.green = stimulus.colors.reservedColor(3);
+  stimulus.colors.grey = stimulus.colors.reservedColor(2);
+  stimulus.colors.cyan = stimulus.colors.reservedColor(5);
+  
 else
 
-  gauss = mglMakeGaussian(stimulus.width, stimulus.width, stimulus.width/7, stimulus.width/7);
+  gauss = mglMakeGaussian(7*stimulus.width, 7*stimulus.width, stimulus.width, stimulus.width);
   gaussian = zeros(size(gauss,1), size(gauss,2), 4);
   for i = 1:3
       gaussian(:,:,i) = 255*ones(size(gauss,1), size(gauss,2));
   end
-    gaussian(:,:,4) = 255*gauss*stimulus.contrast;
-    stimulus.tex = mglCreateTexture(gaussian);
-    % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
-stimulus.colors.black = 0;
-% get the color values (i.e. reserved color)
-stimulus.colors.white = 1;
-stimulus.colors.grey = 0.3;
-stimulus.colors.green = [0 1 0];
-stimulus.colors.red = [1 0 0];
-stimulus.colors.cyan = [0 1 1];
+  gaussian(:,:,4) = 255*gauss*stimulus.contrast;
+  stimulus.tex = mglCreateTexture(gaussian);
+  % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
+  stimulus.colors.black = 0;
+  % get the color values (i.e. reserved color)
+  stimulus.colors.white = 1;
+  stimulus.colors.grey = 0.3;
+  stimulus.colors.green = [0 1 0];
+  stimulus.colors.red = [1 0 0];
+  stimulus.colors.cyan = [0 1 1];
 end
 
-% % compute the guassian
-% gauss = mglMakeGaussian(stimulus.width,stimulus.width, stimulus.width/8,stimulus.width/8);
-
-% gaussian = zeros(size(gauss,1), size(gauss,2), 4);
-% for i = 1:3
-%     gaussian(:,:,i) = 255*ones(size(gauss,1), size(gauss,2));
-% end
-%     gaussian(:,:,4) = 255*gauss*stimulus.contrast;
-    
-% %create texture
-% stimulus.tex = mglCreateTexture(gaussian);
-
- %stim centers
-% [stimulus.x, stimulus.y] = pol2cart(0*pi/180,stimulus.eccentricity);
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    getContrastIndex    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -489,9 +554,59 @@ end
 % set the gamma table
 mglSetGammaTable(gammaTable);
 
+% keep the gamma table
+stimulus.gammaTable = gammaTable;
+
 % remember what the current maximum contrast is that we can display
 stimulus.currentMaxContrast = maxContrast;
 
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    testGammaTable    %
+%%%%%%%%%%%%%%%%%%%%%%%%
+function tf = testGammaTable(stimulus, myscreen)
+
+% clear screen to black
+mglClearScreen(stimulus.colors.nReservedColors/255);
+
+% setup text
+mglTextSet('Helvetica',32,0.8,0,0,0);
+
+% setup rect dimensions
+rectHeight = myscreen.imageHeight/2;
+rectY = rectHeight/2;
+rectWidth = myscreen.imageWidth/stimulus.colors.nReservedColors;
+
+% make nReservedColors rectangles with the reserved colors
+for iColor = 1:stimulus.colors.nReservedColors
+  % get color index
+  colorIndex = stimulus.colors.reservedColor(iColor);
+  % make color square
+  rectX = -(myscreen.imageWidth/2) + rectWidth * (iColor-1)+rectWidth/2;
+  mglFillRect(rectX,rectY,[rectWidth rectHeight],colorIndex);
+  % draw text
+  mglTextDraw(sprintf('Color: %i',iColor),[rectX,rectY]);
+end
+
+disp(sprintf('(alaisburr:testGammaTable) Top row should be reserved colors'));
+
+% setup rect dimensions
+rectHeight = myscreen.imageHeight/2;
+rectY = -rectHeight/2;
+rectWidth = myscreen.imageWidth/(256-stimulus.colors.nReservedColors);
+
+% make nReservedColors rectangles with the reserved colors
+for iColor = stimulus.colors.nReservedColors:255
+  % get color index
+  colorIndex = iColor/255;
+  % make color square
+  rectX = -(myscreen.imageWidth/2) + rectWidth * (iColor-1)+rectWidth/2;
+  mglFillRect(rectX,rectY,[rectWidth rectHeight],colorIndex);
+end
+
+disp(sprintf('(alaisburr:testGammaTable) Bottom row should be stimulus colors'));
+mglFlush;
+
+tf = askuser('Continue');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Sound
@@ -656,7 +771,7 @@ for i = 1:length(testVal)
 end
 percent = k./n;
 
-figure;
+mlrSmartfig('alaisburr','reuse');clf;
 h = plot(testVal, percent, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 7);
 ylabel('Proportion of trials probe seen "left"');
 xlabel('Displacement of probe (degs)');
@@ -671,7 +786,7 @@ displacement = unique(displ);
 whichint = task.randVars.centerInt;
 whichint = whichint(ind);
 isLeft = cell(1);
-figure;
+mlrSmartfig('alaisburr','reuse');clf;
     brewer = brewermap(5, 'Set1');
     for d = 1:length(displacement)
       posdiffConflict{d} = posDiff(displ==displacement(d));
@@ -714,3 +829,61 @@ figure;
 
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    initBackgroundNoise    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initBackgroundNoise(stimulus,myscreen)
+
+% get the gaussian full size of the screen
+[stimulus.background.gaussian stimulus.background.x stimulus.background.y] = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width,stimulus.width);
+
+% now make sure that dimensions are odd numbers of pixels
+oddWidth = 2*floor(myscreen.screenWidth/2)+1;
+oddHeight = 2*floor(myscreen.screenHeight/2)+1;
+
+% resize everything to odd
+stimulus.background.gaussian = stimulus.background.gaussian(1:oddHeight,1:oddWidth);
+stimulus.background.x = stimulus.background.x(1:oddHeight,1:oddWidth);
+stimulus.background.y = stimulus.background.y(1:oddHeight,1:oddWidth);
+
+% get the fourier transform
+stimulus.background.gaussianTransform = getHalfFourier(stimulus.background.gaussian);
+
+% no background yet
+stimulus.imTexture = [];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    setBackgroundNoise    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = setBackgroundNoise(stimulus, SNR)
+
+% set the signal and noise max
+stimulus.background.noiseMax = 1 / (SNR + 1);
+stimulus.background.sigMax = 1 - stimulus.background.noiseMax;
+
+% randomize phase and reconstruct
+stimulus.background.gaussianTransform.phase = (rand(1,stimulus.background.gaussianTransform.n)*2*pi - pi);
+im = reconstructFromHalfFourier(stimulus.background.gaussianTransform);
+
+% scale from 0 to noise max
+maxIm = max(im(:));
+minIm = min(im(:));
+stimulus.background.im = stimulus.background.noiseMax * (im - minIm) / (maxIm-minIm);
+
+if ~isempty(stimulus.imTexture)
+  mglDeleteTexture(stimulus.imTexture);
+end
+
+% make into texture
+stimulus.background.imTexture = mglCreateTexture(round(stimulus.colors.gaussRange*stimulus.background.im + stimulus.colors.minGaussianIndex));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    getBackgroundNoise    %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function imTexture = getStimulusWithBackgroundNoise(stimulus, xPos, yPos)
+
+% make the gaussian at the xPos, yPos and scale to signal max
+im = stimulus.background.im + stimulus.background.sigMax * exp(-(((stimulus.background.x-xPos).^2)/(2*(stimulus.width^2))+((stimulus.background.y-yPos).^2)/(2*(stimulus.width^2))));
+
+% scale and return texture
+imTexture = mglCreateTexture(round(stimulus.colors.gaussRange*im + stimulus.colors.minGaussianIndex));
