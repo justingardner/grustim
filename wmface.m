@@ -48,11 +48,6 @@ stimulus.constantVals = [3 6];
 % delay interval in seconds
 stimulus.delayInterval = 11;
 
-% intialize the camera
-dispHeader('(cameraTest) Starting Camera Thread');
-mglCameraThread('init');
-stimulus.cameraImages = {};
-dispHeader;
 
 if debugMode
   stimulus.delayInterval = 5;
@@ -62,6 +57,24 @@ end
 % initalize the screen
 myscreen.background = 128/255;
 myscreen = initScreen(myscreen);
+
+% intialize the camera
+dispHeader('(cameraTest) Starting Camera Thread');
+mglCameraThread('init');
+stimulus.cameraImages = {};
+dispHeader;
+% place to save data
+% FIX, this should endup being put in myscreen.datadir;
+stimulus.cameraDataDir = '~/Desktop/camera';
+if ~isdir(stimulus.cameraDataDir),mkdir(stimulus.cameraDataDir);end
+if isempty(myscreen.SID)
+  stimulus.cameraFileStem = 'TEST';
+else
+  stimulus.cameraFileStem = sprintf('%s',myscreen.SID);
+end
+stimulus.cameraFileStem = sprintf('[%s_%s]',stimulus.cameraFileStem,datestr(now,'yyyymmdd'));
+%stimulus.videoType = 'MPEG-4';
+stimulus.videoType = 'raw';
 
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
@@ -158,6 +171,7 @@ zoom on
 
 % now cycle through each camera trial that we have
 retval = [];
+
 for iTrial = 1:length(c)
   % set output structure
   retval(iTrial).nImages = size(c{iTrial}.im,3);
@@ -181,8 +195,12 @@ for iTrial = 1:length(c)
   retval(iTrial).nImages = length(validImages);
   retval(iTrial).seg = retval(iTrial).seg(validImages);
   retval(iTrial).t = c{iTrial}.t(validImages)-segmentTimes(trialStartEvents(iTrial));
-  retval(iTrial).im = c{iTrial}.im(:,:,validImages);
   retval(iTrial).exposureTimes = c{iTrial}.exposureTimes(validImages);
+  if ~isempty(c{iTrial}.im)
+    retval(iTrial).im = c{iTrial}.im(:,:,validImages);
+  end
+  [retval(iTrial).filepath retval(iTrial).filename ext] = fileparts(c{iTrial}.filename);
+  retval(iTrial).filename = setext(retval(iTrial).filename,ext);
 end
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -222,7 +240,12 @@ elseif task.thistrial.thisseg == 9
   stimulus.fixColor = [1 1 1];
 elseif task.thistrial.thisseg == 10
   % save camera images
-  stimulus.cameraImages{end+1} = mglCameraThread('get');
+%  stimulus.cameraImages{end+1} = mglCameraThread('get');
+  % create filename for images
+  saveCameraTime = mglGetSecs;
+  filename = fullfile(stimulus.cameraDataDir,sprintf('%s-[%04i]',stimulus.cameraFileStem,task.trialnum));
+  stimulus.cameraImages{end+1} = mglCameraThread('save','videoFilename',filename,'videoType',stimulus.videoType);
+  disp(sprintf('(shaulWM) Save of camera file took %0.2fs',mglGetSecs(saveCameraTime)));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
