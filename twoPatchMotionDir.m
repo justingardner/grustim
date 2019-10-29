@@ -26,8 +26,11 @@ task{1}.segmin = [0.5 1 inf];
 task{1}.segmax = [0.5 1 inf];
 task{1}.getResponse = [0 0 1];
 task{1}.randVars.uniform.whichSide = [1 2];
-task{1}.numTrials = 140; % number of direction differences * number of sets desired (7*5)
 task{1}.parameter.eccentricity = [6 6];
+
+% number of direction differences * number of sets desired * number of coherences (7*6*5)
+task{1}.numTrials = 210; % 1 set = 1 trial per (number of direction differences * number of coherences)
+
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -36,17 +39,22 @@ end
 
 % global stimulus parameters
 global stimulus;
-stimulus.pedestalContrast = 0.5;
-stimulus.dots.coherence = .3; % 0-1
+stimulus.contrast = 0.5;
 stimulus.dots.speed = 5; % in deg/s
 stimulus.dots.width = 10; % diameter
-stimulus.dots.dirs = (-7.5 : 2.5 : 7.5); % difference in L/R motion directions (in deg)
+stimulus.dots.dirs = (-15 : 5 : 15); % difference in L/R motion directions (in deg)
 stimulus.nConditions = length(stimulus.dots.dirs);
 stimulus.dots.dirL = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
 stimulus.dots.dirR = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
 stimulus.dots.correctResponse = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
 stimulus.dots.correctResponse = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
 stimulus.setNumber = 0;
+stimulus.trialNumber = 0;
+
+% set coherence
+stimulus.dots.coherence = [.05 .30 .55 .70 .95]; % 0-1
+coherenceUnordered = repmat(stimulus.dots.coherence,1,task{1}.numTrials/length(stimulus.dots.coherence));
+stimulus.dots.coherenceOrder = coherenceUnordered(randperm(length(coherenceUnordered)));
 
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
@@ -98,14 +106,15 @@ if task.thistrial.thisseg == 1
     
     % get contrast for left and right
     if task.thistrial.whichSide == 1
-        leftContrast = stimulus.pedestalContrast;
-        rightContrast = stimulus.pedestalContrast;
+        leftContrast = stimulus.contrast;
+        rightContrast = stimulus.contrast;
     else
-        leftContrast = stimulus.pedestalContrast;
-        rightContrast = stimulus.pedestalContrast;
+        leftContrast = stimulus.contrast;
+        rightContrast = stimulus.contrast;
     end
     
     % dots
+    stimulus.trialNumber = stimulus.trialNumber+1;
     stimulus = initDots(stimulus,myscreen);
     
     % determine if left or right patch is more CW
@@ -211,7 +220,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initDots(stimulus,myscreen)
 
-coherence = strcat('coherence=',num2str(stimulus.dots.coherence));
+coherence = strcat('coherence=',num2str(stimulus.dots.coherenceOrder(stimulus.trialNumber)));
 width = strcat('width=',num2str(stimulus.dots.width));
 dirI = randi(360);
 stimulus.dots.dirL(stimulus.setNumber,stimulus.nTrialMod) = dirI;
