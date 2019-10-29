@@ -42,7 +42,7 @@ global stimulus;
 stimulus.contrast = 0.5;
 stimulus.dots.speed = 5; % in deg/s
 stimulus.dots.width = 10; % diameter
-stimulus.dots.dirs = (-15 : 5 : 15); % difference in L/R motion directions (in deg)
+stimulus.dots.dirs = (-10.5 : 3.5 : 10.5); % difference in L/R motion directions (in deg)
 stimulus.nConditions = length(stimulus.dots.dirs);
 stimulus.dots.dirL = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
 stimulus.dots.dirR = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
