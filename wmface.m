@@ -1,12 +1,12 @@
-% cameraTest
+% wmface
 %
 %        $Id$
-%      usage: cameraTest
+%      usage: wmface
 %         by: justin gardner
 %       date: 10/15/2019
-%    purpose: Code for testing camera. Task is from harrisontong.m
+%    purpose: working memory task based on Harrison & Tong with camera capture for Druckmann lab
 %
-function e = shaulWM(scan)
+function e = wmface(scan)
 
 % check arguments
 if ~any(nargin == [0 1])
@@ -48,11 +48,6 @@ stimulus.constantVals = [3 6];
 % delay interval in seconds
 stimulus.delayInterval = 11;
 
-% intialize the camera
-dispHeader('(cameraTest) Starting Camera Thread');
-mglCameraThread('init');
-stimulus.cameraImages = {};
-dispHeader;
 
 if debugMode
   stimulus.delayInterval = 5;
@@ -62,6 +57,22 @@ end
 % initalize the screen
 myscreen.background = 128/255;
 myscreen = initScreen(myscreen);
+
+% intialize the camera
+dispHeader('(cameraTest) Starting Camera Thread');
+mglCameraThread('init');
+stimulus.cameraImages = {};
+dispHeader;
+% place to save data
+% FIX, this should endup being put in myscreen.datadir;
+stimulus.cameraDataDir = '~/Desktop/camera';
+if ~isdir(stimulus.cameraDataDir),mkdir(stimulus.cameraDataDir);end
+if isempty(myscreen.SID)
+  stimulus.cameraFileStem = 'TEST';
+else
+  stimulus.cameraFileStem = sprintf('%s',myscreen.SID);
+end
+stimulus.cameraFileStem = sprintf('[%s_%s_%s]',stimulus.cameraFileStem,datestr(now,'yyyymmdd'),datestr(now,'hhmmss'));
 
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
@@ -117,74 +128,6 @@ dispHeader('(cameraTest) Ending Camera Thread');
 mglCameraThread('quit');
 dispHeader;
 
-% reprocess times
-e = getTaskParameters(myscreen,task);
-e.camera = alignCameraImages(myscreen,task,stimulus);
-
-save('~/Desktop/shaulWM','e','-v7.3');
-keyboard
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    alignCameraImages    %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function retval = alignCameraImages(myscreen,task,stimulus)
-
-% get camera images
-c = stimulus.cameraImages;
-
-% get segmentTimes
-segmentTrace = find(strcmp(myscreen.traceNames,'segmentTime'));
-segmentEvents = find(myscreen.events.tracenum == segmentTrace);
-segmentNums = myscreen.events.data(segmentEvents);
-segmentTimes = myscreen.events.time(segmentEvents);
-
-% find start time for each trial
-trialStartEvents = find(segmentNums==1);
-trialStartEvents = trialStartEvents(1:end);
-
-% for debugging - normalize everything to beginning of experiment
-startTime = segmentTimes(1);
-segmentTimes = segmentTimes - segmentTimes(1);
-for i = 1:length(c)
-  c{i}.t = c{i}.t-startTime;
-end
-mlrSmartfig('shaulWM_timecheck');
-vline(segmentTimes,'r-');hold on
-vline(segmentTimes(trialStartEvents),'g-');
-for i = 1:length(c)
-  vline(c{i}.t);
-end
-zoom on
-
-% now cycle through each camera trial that we have
-retval = [];
-for iTrial = 1:length(c)
-  % set output structure
-  retval(iTrial).nImages = size(c{iTrial}.im,3);
-  retval(iTrial).seg = nan(1,retval(iTrial).nImages);
-  % get the events for this trial
-  startTime = segmentTimes(trialStartEvents(iTrial));
-  % figure out which semgent each image happened in
-  % get max segment (note that we calculate here since sometimes the
-  % last trial may have missing segments)
-  maxSegment = max(segmentNums(trialStartEvents(iTrial):end));
-  for iSegment = 1:(maxSegment-1)
-    % get this segments time
-    thisSegTime = segmentTimes(trialStartEvents(iTrial)+iSegment);
-    % set all the images to have this segment if they match
-    retval(iTrial).seg((c{iTrial}.t >= startTime) & (c{iTrial}.t < thisSegTime)) = iSegment;
-    % update startTime
-    startTime = thisSegTime;
-  end
-  % only copy over images that are within the trial
-  validImages = find(~isnan(retval(iTrial).seg));
-  retval(iTrial).nImages = length(validImages);
-  retval(iTrial).seg = retval(iTrial).seg(validImages);
-  retval(iTrial).t = c{iTrial}.t(validImages)-segmentTimes(trialStartEvents(iTrial));
-  retval(iTrial).im = c{iTrial}.im(:,:,validImages);
-  retval(iTrial).exposureTimes = c{iTrial}.exposureTimes(validImages);
-end
-    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -222,7 +165,12 @@ elseif task.thistrial.thisseg == 9
   stimulus.fixColor = [1 1 1];
 elseif task.thistrial.thisseg == 10
   % save camera images
-  stimulus.cameraImages{end+1} = mglCameraThread('get');
+%  stimulus.cameraImages{end+1} = mglCameraThread('get');
+  % create filename for images
+  saveCameraTime = mglGetSecs;
+  filename = fullfile(stimulus.cameraDataDir,sprintf('%s-[%04i]',stimulus.cameraFileStem,task.trialnum));
+  stimulus.cameraImages{end+1} = mglCameraThread('save','videoFilename',filename);
+  disp(sprintf('(wmface) Save of camera file took %0.2fs',mglGetSecs(saveCameraTime)));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

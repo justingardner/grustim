@@ -13,7 +13,7 @@ function myscreen = twoPatchMotionDir(varargin)
 getArgs(varargin,'stimulusType=dots');
 
 % initalize the screen
-myscreen = initScreen;
+myscreen = initScreen();
 
 % fix: set waitForBacktick if you want to synch with the scanner
 % by waiting for the backtick key to be pressed before starting the experiment
@@ -26,8 +26,11 @@ task{1}.segmin = [0.5 1 inf];
 task{1}.segmax = [0.5 1 inf];
 task{1}.getResponse = [0 0 1];
 task{1}.randVars.uniform.whichSide = [1 2];
-task{1}.numTrials = 140; % number of direction differences * number of sets desired (7*5)
 task{1}.parameter.eccentricity = [6 6];
+
+% number of direction differences * number of sets desired * number of coherences (7*6*4)
+task{1}.numTrials = 168; % 1 set = 1 trial per (number of direction differences * number of coherences)
+
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -36,17 +39,35 @@ end
 
 % global stimulus parameters
 global stimulus;
-stimulus.pedestalContrast = 0.5;
-stimulus.dots.coherence = .3; % 0-1
+
+% set coherence
+stimulus.dots.coherence = [.05 .35 .65 .95]; % 0-1
+
+% set directions
+stimulus.dots.dirs = (-10.5 : 3.5 : 10.5); % difference in L/R motion directions (in deg)
+
+% create randomized loading vector so each trial loads a unique condition
+orderedCondsPerSet = cell(length(stimulus.dots.coherence),length(stimulus.dots.dirs));
+for i = 1:length(stimulus.dots.coherence)
+    for j = 1:length(stimulus.dots.dirs)
+        orderedCondsPerSet{i,j} = [stimulus.dots.coherence(i) stimulus.dots.dirs(j)];
+    end
+end
+orderedCondsPerSet = reshape(orderedCondsPerSet',[],1); % turn matrix into vector; coh1(dir1 dir2 ... dirN) ... cohN(dir1 ... dirN)
+stimulus.nSets = task{1}.numTrials/(length(stimulus.dots.coherence)*length(stimulus.dots.dirs));
+stimulus.orderedCondsTotal = repmat(orderedCondsPerSet,[stimulus.nSets 1]);
+stimulus.dots.conditions = stimulus.orderedCondsTotal(randperm(length(stimulus.orderedCondsTotal))); % completely randomized conditions across nSets
+
+stimulus.contrast = 0.5;
 stimulus.dots.speed = 5; % in deg/s
 stimulus.dots.width = 10; % diameter
-stimulus.dots.dirs = (-7.5 : 2.5 : 7.5); % difference in L/R motion directions (in deg)
-stimulus.nConditions = length(stimulus.dots.dirs);
-stimulus.dots.dirL = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
-stimulus.dots.dirR = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
-stimulus.dots.correctResponse = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
-stimulus.dots.correctResponse = zeros(task{1}.numTrials/stimulus.nConditions,stimulus.nConditions);
+
+stimulus.dots.dirL = zeros(1,task{1}.numTrials);
+stimulus.dots.dirR = zeros(1,task{1}.numTrials);
+stimulus.dots.response = zeros(1,task{1}.numTrials);
+stimulus.dots.correctResponse = zeros(1,task{1}.numTrials);
 stimulus.setNumber = 0;
+stimulus.trialNumber = 0;
 
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
@@ -82,37 +103,25 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus;
 
 if task.thistrial.thisseg == 1
-    
-    % shuffle the order of direction difference every stimulus.nConditions trials
-    stimulus.nTrialMod = mod(task.trialnum,stimulus.nConditions);
-    if stimulus.nTrialMod == 1
-        stimulus.dots.dirs = stimulus.dots.dirs(randperm(length(stimulus.dots.dirs)));
-        stimulus.dots.dirOffset = stimulus.dots.dirs(1);
-        stimulus.setNumber = stimulus.setNumber+1;
-    elseif stimulus.nTrialMod == 0
-        stimulus.dots.dirOffset = stimulus.dots.dirs(stimulus.nConditions);
-        stimulus.nTrialMod = stimulus.nConditions;
-    else
-        stimulus.dots.dirOffset = stimulus.dots.dirs(stimulus.nTrialMod);
-    end
-    
+        
     % get contrast for left and right
     if task.thistrial.whichSide == 1
-        leftContrast = stimulus.pedestalContrast;
-        rightContrast = stimulus.pedestalContrast;
+        leftContrast = stimulus.contrast;
+        rightContrast = stimulus.contrast;
     else
-        leftContrast = stimulus.pedestalContrast;
-        rightContrast = stimulus.pedestalContrast;
+        leftContrast = stimulus.contrast;
+        rightContrast = stimulus.contrast;
     end
     
     % dots
+    stimulus.trialNumber = stimulus.trialNumber+1;
     stimulus = initDots(stimulus,myscreen);
     
     % determine if left or right patch is more CW
-    if stimulus.dots.dirL(stimulus.setNumber,stimulus.nTrialMod) < stimulus.dots.dirR(stimulus.setNumber,stimulus.nTrialMod)
+    if stimulus.dots.dirL(stimulus.trialNumber) < stimulus.dots.dirR(stimulus.trialNumber)
         % left side is more CW
         task.thistrial.whichSide = 1;
-    elseif stimulus.dots.dirL(stimulus.setNumber,stimulus.nTrialMod) > stimulus.dots.dirR(stimulus.setNumber,stimulus.nTrialMod)
+    elseif stimulus.dots.dirL(stimulus.trialNumber) > stimulus.dots.dirR(stimulus.trialNumber)
         % right side is more CW
         task.thistrial.whichSide = 2;
     else
@@ -173,11 +182,11 @@ if task.thistrial.gotResponse < 1
         disp(sprintf(' !! Correct !!. Reaction time: %0.2f',task.thistrial.reactionTime));
         % change fixation color
         stimulus.fixColor = stimulus.correctFixColor;
-        stimulus.dots.correctResponse(stimulus.setNumber,stimulus.nTrialMod) = 1;
+        stimulus.dots.correctResponse(stimulus.trialNumber) = 1;
         if task.thistrial.whichButton == 1
-            stimulus.dots.response(stimulus.setNumber,stimulus.nTrialMod) = 0; % subject answered left
+            stimulus.dots.response(stimulus.trialNumber) = 0; % subject answered left
         elseif task.thistrial.whichButton == 2
-            stimulus.dots.response(stimulus.setNumber,stimulus.nTrialMod) = 1; % subject answered right
+            stimulus.dots.response(stimulus.trialNumber) = 1; % subject answered right
         end
         task = jumpSegment(task);
     elseif ~task.thistrial.whichSide
@@ -185,9 +194,9 @@ if task.thistrial.gotResponse < 1
         disp(sprintf(' -- Same direction --. Reaction time: %0.2f',task.thistrial.reactionTime));
         stimulus.fixColor = stimulus.neutralFixColor;
         if task.thistrial.whichButton == 1
-            stimulus.dots.response(stimulus.setNumber,stimulus.nTrialMod) = 0; % subject answered left
+            stimulus.dots.response(stimulus.trialNumber) = 0; % subject answered left
         elseif task.thistrial.whichButton == 2
-            stimulus.dots.response(stimulus.setNumber,stimulus.nTrialMod) = 1; % subject answered right
+            stimulus.dots.response(stimulus.trialNumber) = 1; % subject answered right
         end
         task = jumpSegment(task);
     else
@@ -195,11 +204,11 @@ if task.thistrial.gotResponse < 1
         disp(sprintf(' ++ Incorrect ++. Reaction time: %0.2f',task.thistrial.reactionTime));
         % change fixation color
         stimulus.fixColor = stimulus.incorrectFixColor;
-        stimulus.dots.correctResponse(stimulus.setNumber,stimulus.nTrialMod) = 0;
+        stimulus.dots.correctResponse(stimulus.trialNumber) = 0;
         if task.thistrial.whichButton == 1
-            stimulus.dots.response(stimulus.setNumber,stimulus.nTrialMod) = 0; % subject answered left
+            stimulus.dots.response(stimulus.trialNumber) = 0; % subject answered left
         elseif task.thistrial.whichButton == 2
-            stimulus.dots.response(stimulus.setNumber,stimulus.nTrialMod) = 1; % subject answered right
+            stimulus.dots.response(stimulus.trialNumber) = 1; % subject answered right
         end
         task = jumpSegment(task);
     end
@@ -211,13 +220,13 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initDots(stimulus,myscreen)
 
-coherence = strcat('coherence=',num2str(stimulus.dots.coherence));
+coherence = strcat('coherence=',num2str(stimulus.dots.conditions{stimulus.trialNumber}(1))); % coherence is the 1st value of cells in stimulus.dots.conditions
 width = strcat('width=',num2str(stimulus.dots.width));
 dirI = randi(360);
-stimulus.dots.dirL(stimulus.setNumber,stimulus.nTrialMod) = dirI;
-stimulus.dots.dirR(stimulus.setNumber,stimulus.nTrialMod) = dirI+stimulus.dots.dirOffset;
+stimulus.dots.dirL(stimulus.trialNumber) = dirI;
+stimulus.dots.dirR(stimulus.trialNumber) = dirI+stimulus.dots.conditions{stimulus.trialNumber}(2); % direction offset is the 2nd value of cells in stimulus.dots.conditions
 dirL = strcat('dir=',num2str(dirI));
-dirR = strcat('dir=',num2str(dirI+stimulus.dots.dirOffset));
+dirR = strcat('dir=',num2str(dirI+stimulus.dots.conditions{stimulus.trialNumber}(2)));
 speed = strcat('speed=',num2str(stimulus.dots.speed));
 
 % init the dot patches
