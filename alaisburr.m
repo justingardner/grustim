@@ -22,7 +22,7 @@
 %
 %            alaisBurr('SNR=2.5','backgroundFreq=4.5');
 %
-function myscreen = testalaisburr(varargin)
+function myscreen = alaisburr(varargin)
  
 clear global stimulus
 mglEatKeys('12`');
@@ -30,7 +30,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=0.5','SNR=3','doTestSNR=0','backgroundFreq=4.5'},'verbose=1');
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=0.5','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0'},'verbose=1');
 
 % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -57,8 +57,8 @@ stimulus.tenbit = tenbit;
 stimulus.SNR = SNR;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
-stimulus.stimDur = .015; % 15ms
-stimulus.gaussainDur = .015; % 15ms
+stimulus.stimDur = 3.015; % 15ms
+stimulus.gaussainDur = 3.015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
@@ -109,14 +109,14 @@ task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 2;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 5;
+  task{1}{1}.numBlocks = 16;
 else
   task{1}{1}.randVars.uniform.sign = [1,-1];
 end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-15 -7.5 -2.5 -1.25 0 1.25 2.5 7.5 15]; 
+task{1}{1}.parameter.posDiff = [-18 -15 -12 -10 -8 -6 -4 -2.5 -1.25 0 1.25 2.5 4 6 8 10 12 15 18]; 
 if stimulus.task == 3
   task{1}{1}.parameter.displacement = [-5 0 5];
 end
@@ -150,6 +150,28 @@ end
 if doGammaTest && tenbit
   tf = testGammaTable(stimulus,myscreen);
   if ~tf,mglClose,return,end;
+end
+
+if doTestStimSize
+  % clear screen
+  mglClearScreen(stimulus.colors.black);
+  % draw gaussian
+  mglBltTexture(stimulus.tex,[0 0]);
+  % draw fixation cross
+  mglFixationCross(1,1,stimulus.colors.white,[ 0 0]);
+  % draw circle around gaussian width
+  x0 = stimulus.width * cos(0);
+  y0 = stimulus.width * sin(0);
+  for iDeg = 1:360
+    x1 = stimulus.width * cos(d2r(iDeg));
+    y1 = stimulus.width * sin(d2r(iDeg));
+    mglLines2(x0, y0, x1, y1, 2, stimulus.colors.red);
+    x0 = x1;
+    y0 = y1;
+  end
+  mglFlush;
+  disp(sprintf('(alaisBurr) Screen width: %0.1f Screen height: %0.1f Gaussian width: %0.1f',myscreen.imageWidth, myscreen.imageHeight, width));
+  if ~askuser('Is this ok'), return,end
 end
 
 % init the background noise if we have to
