@@ -57,8 +57,8 @@ stimulus.tenbit = tenbit;
 stimulus.SNR = SNR;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
-stimulus.stimDur = 3.015; % 15ms
-stimulus.gaussainDur = 3.015; % 15ms
+stimulus.stimDur = 0.015; % 15ms
+stimulus.gaussainDur = 0.015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
