@@ -333,8 +333,9 @@ if task.thistrial.thisseg == 1
     stimulus.background.stim2Frame = ceil(sum(task.segmax(1:4))/stimulus.background.frameTime)-1;
     % and create the stimuli on the background that we guess to be the
     % one that should be being presented
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),stimulus.SNR);
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),stimulus.SNR);
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),task.thistrial.SNR);
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),task.thistrial.SNR);
+    disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.diff,task.thistrial.centerWhich));
   end
 
 elseif any(task.thistrial.thisseg == [2 4])
