@@ -174,25 +174,32 @@ if doTestStimSize
   if ~askuser('Is this ok'), return,end
 end
 
+% if test then display several levels of SNR
+if doTestSNR
+  % set to test these SNR levels
+  stimulus.SNR = [1];
+  % setup background
+  stimulus = initBackgroundNoise(stimulus, myscreen);
+  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,1);
+  % now cycle through each and display
+  for iSNR = 1:length(stimulus.SNR);
+    % create texture
+    stimulus = setStimulusOnBackground(stimulus,0,0,1,1,stimulus.SNR(iSNR));
+    % and blt texture
+    mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
+    if ~askuser(sprintf('(alaisburr) Testing SNR of %0.2f',stimulus.SNR(iSNR)))
+      break;
+    end
+  end
+  mglClose;return
+end
+
 % init the background noise if we have to
 if ~isinf(stimulus.SNR)
   % init background noise
   stimulus = initBackgroundNoise(stimulus, myscreen);
   % and set them
   stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,backgroundFreq);
-end
-
-% if test then display several levels of SNR
-if doTestSNR
-  for testSNR = 5:-0.5:0
-    stimulus = setBackgroundNoise(stimulus,myscreen,task,testSNR,1);
-    stimulus = setStimulusOnBackground(stimulus,0,0,1,1);
-    mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
-    if ~askuser(sprintf('(alaisburr) Testing SNR of %0.2f',testSNR))
-      break;
-    end
-  end
-  mglClose;return
 end
 
 % put up display string
@@ -305,8 +312,8 @@ if task.thistrial.thisseg == 1
     stimulus.background.stim2Frame = ceil(sum(task.segmax(1:4))/stimulus.background.frameTime)-1;
     % and create the stimuli on the background that we guess to be the
     % one that should be being presented
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame));
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame));
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),stimulus.SNR);
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),stimulus.SNR);
   end
 
 elseif any(task.thistrial.thisseg == [2 4])
@@ -920,9 +927,11 @@ trialTime = sum(task{end}{end}.segmax);
 % make a few times more than necessary so that there will be more randomization
 numBackgrounds = round(trialTime * backgroundFreq * 2);
 
-% set the signal and noise max
-stimulus.background.noiseMax = 1 / (SNR + 1);
-stimulus.background.sigMax = 1 - stimulus.background.noiseMax;
+% set the noise maximum (i.e. maximum luminance of noise)
+% set it so that we can achieve the maximu SNR that is asked for.
+stimulus.background.noiseMax = 1 / (max(SNR) + 1);
+% now set all the various SNR levels
+stimulus.background.sigMax = SNR * stimulus.background.noiseMax;
 
 disppercent(-inf,'(alaisburr:setBackgroundNoise) Precomputing background noise images');
 
@@ -962,10 +971,13 @@ stimulus.backgroundFreq = backgroundFreq;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 %    setStimuliOnNoise  %
 %%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = setStimulusOnBackground(stimulus, xPos, yPos, stimulusNum, backgroundNum)
+function stimulus = setStimulusOnBackground(stimulus, xPos, yPos, stimulusNum, backgroundNum, SNR)
+
+% get signal max for this trial
+sigMax = stimulus.background.sigMax(find(stimulus.SNR == SNR));
 
 % make the gaussian at the xPos, yPos and scale to signal max
-im = squeeze(stimulus.background.im(backgroundNum,:,:)) + stimulus.background.sigMax * exp(-(((stimulus.background.x-xPos).^2)/(2*(stimulus.width^2))+((stimulus.background.y-yPos).^2)/(2*(stimulus.width^2))));
+im = squeeze(stimulus.background.im(backgroundNum,:,:)) + sigMax * exp(-(((stimulus.background.x-xPos).^2)/(2*(stimulus.width^2))+((stimulus.background.y-yPos).^2)/(2*(stimulus.width^2))));
 
 % delete any existing texture
 if isfield(stimulus,'stimTexture') && (length(stimulus.stimTexture) >= stimulusNum)
