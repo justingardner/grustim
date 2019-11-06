@@ -22,6 +22,17 @@
 %
 %            alaisBurr('SNR=2.5','backgroundFreq=4.5');
 %
+%            Note that the way the noisy background works there is a maxSNR that
+%            can be achieved which is set by the parameter maxSNR (default to 4)
+%            If you set this higher, than the noisy background will be forced to
+%            have lower overall luminace (to achieve the higher SNR). If you set
+%            it lower than the noisy background will have higher overall luminance
+%            This also interacts with the stimulusContrast (default 1) setting
+%            which sets the overall luminance contrast that is used for the 
+%            stimulus. Setting stimulusContrast to 1 uses the full range of luminance
+%            values available. Setting to, say, 0.5 would use only half the range
+%            of luminance available (for stimulus and noise)
+%
 function myscreen = alaisburr(varargin)
  
 clear global stimulus
@@ -30,7 +41,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=0.5','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0'},'verbose=1');
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0','maxSNR=4'},'verbose=1');
 
 % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -120,6 +131,7 @@ task{1}{1}.parameter.posDiff = [-18 -15 -12 -10 -8 -6 -4 -2.5 -1.25 0 1.25 2.5 4
 if stimulus.task == 3
   task{1}{1}.parameter.displacement = [-5 0 5];
 end
+task{1}{1}.parameter.SNR = stimulus.SNR;
 
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
@@ -177,18 +189,26 @@ end
 % if test then display several levels of SNR
 if doTestSNR
   % set to test these SNR levels
-  stimulus.SNR = [1];
+  stimulus.SNR = [4 2 1.5 1 0.5];
   % setup background
   stimulus = initBackgroundNoise(stimulus, myscreen);
-  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,1);
+  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,1,maxSNR);
   % now cycle through each and display
-  for iSNR = 1:length(stimulus.SNR);
+  iSNR = 1;iBackground = 1;
+  while iSNR <= length(stimulus.SNR);
+    % clear screen
+    mglClearScreen;
     % create texture
-    stimulus = setStimulusOnBackground(stimulus,0,0,1,1,stimulus.SNR(iSNR));
+    stimulus = setStimulusOnBackground(stimulus,0,0,1,iBackground,stimulus.SNR(iSNR));
     % and blt texture
     mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
-    if ~askuser(sprintf('(alaisburr) Testing SNR of %0.2f',stimulus.SNR(iSNR)))
-      break;
+    % see if user wants to continue looking at this one
+    if ~askuser(sprintf('(alaisburr) SNR=%0.1f Display again',stimulus.SNR(iSNR)),-1)
+      % go to the next SNR level
+      iSNR = iSNR + 1;
+    else
+      % pick a new background to display on
+      iBackground = mod(iBackground,stimulus.background.n)+1;
     end
   end
   mglClose;return
@@ -199,7 +219,8 @@ if ~isinf(stimulus.SNR)
   % init background noise
   stimulus = initBackgroundNoise(stimulus, myscreen);
   % and set them
-  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,backgroundFreq);
+  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,backgroundFreq,maxSNR);
+  if isempty(stimulus);mglClose;return;end
 end
 
 % put up display string
@@ -917,7 +938,13 @@ stimulus.background.gaussianTransform = getHalfFourier(stimulus.background.gauss
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    setBackgroundNoise    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = setBackgroundNoise(stimulus, myscreen, task, SNR, backgroundFreq)
+function stimulus = setBackgroundNoise(stimulus, myscreen, task, SNR, backgroundFreq, maxSNR)
+
+if any(SNR > maxSNR)
+  disp(sprintf('(alaisburr:setBackgroundNoise) max SNR is: %0.1f and an SNR of %0.1f was called for. Need to set the maxSNR setting higher - but note that this will change the maximum luminance of the noise background',maxSNR,max(SNR)))
+  stimulus = [];
+  return
+end
 
 % figure out how many frames we should have
 % for the length of the trial so that we can
@@ -928,8 +955,8 @@ trialTime = sum(task{end}{end}.segmax);
 numBackgrounds = round(trialTime * backgroundFreq * 2);
 
 % set the noise maximum (i.e. maximum luminance of noise)
-% set it so that we can achieve the maximu SNR that is asked for.
-stimulus.background.noiseMax = 1 / (max(SNR) + 1);
+% set it so that we can achieve the maximum SNR that is asked for.
+stimulus.background.noiseMax = 1 / (maxSNR + 1);
 % now set all the various SNR levels
 stimulus.background.sigMax = SNR * stimulus.background.noiseMax;
 
