@@ -65,14 +65,14 @@ stimulus.cameraImages = {};
 dispHeader;
 % place to save data
 % FIX, this should endup being put in myscreen.datadir;
-stimulus.cameraDataDir = '~/Desktop/camera';
+stimulus.cameraDataDir = '~/data/wmtest'
 if ~isdir(stimulus.cameraDataDir),mkdir(stimulus.cameraDataDir);end
 if isempty(myscreen.SID)
   stimulus.cameraFileStem = 'TEST';
 else
   stimulus.cameraFileStem = sprintf('%s',myscreen.SID);
 end
-stimulus.cameraFileStem = sprintf('[%s_%s_%s]',stimulus.cameraFileStem,datestr(now,'yyyymmdd'),datestr(now,'hhmmss'));
+stimulus.cameraFileStem = sprintf('%s_%s_%s',stimulus.cameraFileStem,datestr(now,'yyyymmdd'),datestr(now,'hhmmss'));
 
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
@@ -91,7 +91,7 @@ task{1}.randVars.calculated.orientationJitter = [nan nan];
 task{1}.randVars.calculated.orientation = [nan nan];
 task{1}.randVars.calculated.orientationThreshold = nan;
 task{1}.random = 1;
-task{1}.numTrials = 3;
+task{1}.numTrials = 50;
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -168,9 +168,12 @@ elseif task.thistrial.thisseg == 10
 %  stimulus.cameraImages{end+1} = mglCameraThread('get');
   % create filename for images
   saveCameraTime = mglGetSecs;
-  filename = fullfile(stimulus.cameraDataDir,sprintf('%s-[%04i]',stimulus.cameraFileStem,task.trialnum));
+  filename = fullfile(stimulus.cameraDataDir,sprintf('%s-%04i',stimulus.cameraFileStem,task.trialnum));
   stimulus.cameraImages{end+1} = mglCameraThread('save','videoFilename',filename);
   disp(sprintf('(wmface) Save of camera file took %0.2fs',mglGetSecs(saveCameraTime)));
+  saveCameraTime = mglGetSecs;
+  save(fullfile(stimulus.cameraDataDir,stimulus.cameraFileStem),'myscreen','task');
+  disp(sprintf('(wmface) Saving stimfile took %0.2fs',mglGetSecs(saveCameraTime)));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
