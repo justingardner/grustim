@@ -88,6 +88,7 @@ end
 stimulus.contrast = stimulusContrast;
 
 stimulus.interval = [2 4];
+
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
@@ -132,6 +133,7 @@ if stimulus.task == 3
   task{1}{1}.parameter.displacement = [-5 0 5];
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
+task{1}{1}.parameter.width = stimulus.width;
 
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
@@ -165,25 +167,24 @@ if doGammaTest && tenbit
 end
 
 if doTestStimSize
-  % clear screen
-  mglClearScreen(stimulus.colors.black);
-  % draw gaussian
-  mglBltTexture(stimulus.tex,[0 0]);
-  % draw fixation cross
-  mglFixationCross(1,1,stimulus.colors.white,[ 0 0]);
-  % draw circle around gaussian width
-  x0 = stimulus.width * cos(0);
-  y0 = stimulus.width * sin(0);
-  for iDeg = 1:360
-    x1 = stimulus.width * cos(d2r(iDeg));
-    y1 = stimulus.width * sin(d2r(iDeg));
+  for iWidth = 1:length(stimulus.width)
+    % clear screen
+    mglClearScreen(stimulus.colors.black);
+    % draw gaussian
+    mglBltTexture(stimulus.tex(iWidth),[0 0]);
+    % draw fixation cross
+    mglFixationCross(1,1,stimulus.colors.white,[ 0 0]);
+    % draw circle around gaussian width
+    x0 = stimulus.width(iWidth) * cos(d2r(0:359));
+    y0 = stimulus.width(iWidth) * sin(d2r(0:359));
+    x1 = stimulus.width(iWidth) * cos(d2r(1:360));
+    y1 = stimulus.width(iWidth) * sin(d2r(1:360));
     mglLines2(x0, y0, x1, y1, 2, stimulus.colors.red);
-    x0 = x1;
-    y0 = y1;
+    mglFlush;
+    disp(sprintf('(alaisBurr) Screen width: %0.1f Screen height: %0.1f Gaussian width: %0.1f',myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth)));
+    askuser('Ok');
   end
-  mglFlush;
-  disp(sprintf('(alaisBurr) Screen width: %0.1f Screen height: %0.1f Gaussian width: %0.1f',myscreen.imageWidth, myscreen.imageHeight, width));
-  if ~askuser('Is this ok'), return,end
+  return
 end
 
 % if test then display several levels of SNR
@@ -195,20 +196,22 @@ if doTestSNR
   stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,1,maxSNR);
   % now cycle through each and display
   iSNR = 1;iBackground = 1;
-  while iSNR <= length(stimulus.SNR);
-    % clear screen
-    mglClearScreen;
-    % create texture
-    stimulus = setStimulusOnBackground(stimulus,0,0,1,iBackground,stimulus.SNR(iSNR));
-    % and blt texture
-    mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
-    % see if user wants to continue looking at this one
-    if ~askuser(sprintf('(alaisburr) SNR=%0.1f Display again',stimulus.SNR(iSNR)),-1)
-      % go to the next SNR level
-      iSNR = iSNR + 1;
-    else
-      % pick a new background to display on
-      iBackground = mod(iBackground,stimulus.background.n)+1;
+  for iWidth = 1:length(stimulus.width)
+    while iSNR <= length(stimulus.SNR);
+      % clear screen
+      mglClearScreen;
+      % create texture
+      stimulus = setStimulusOnBackground(stimulus,0,0,1,iBackground,stimulus.SNR(iSNR),stimulus.width(iWidth));
+      % and blt texture
+      mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
+      % see if user wants to continue looking at this one
+      if ~askuser(sprintf('(alaisburr) SNR=%0.1f Display again',stimulus.SNR(iSNR)),-1)
+        % go to the next SNR level
+	iSNR = iSNR + 1;
+      else
+	% pick a new background to display on
+	iBackground = mod(iBackground,stimulus.background.n)+1;
+      end
     end
   end
   mglClose;return
@@ -333,9 +336,9 @@ if task.thistrial.thisseg == 1
     stimulus.background.stim2Frame = ceil(sum(task.segmax(1:4))/stimulus.background.frameTime)-1;
     % and create the stimuli on the background that we guess to be the
     % one that should be being presented
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),task.thistrial.SNR);
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),task.thistrial.SNR);
-    disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.diff,task.thistrial.centerWhich));
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),task.thistrial.SNR,task.thistrial.width);
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),task.thistrial.SNR,task.thistrial.width);
+    disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i width: %0.1f',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.diff,task.thistrial.centerWhich,task.thistrial.width));
   end
 
 elseif any(task.thistrial.thisseg == [2 4])
@@ -525,20 +528,24 @@ if stimulus.tenbit
 
   setGammaTableForMaxContrast(stimulus.contrast);
   contrastIndex = getContrastIndex(stimulus.contrast,1);
-
-  % make all the 1D gaussians. We compute all possible contrast values given the
-  % range of indexes available to us. The 1st texture is black the nth texture is full
-  % contrast for the current gamma setting
-  stimulus.gaussian = mglMakeGaussian(7*stimulus.width, 7*stimulus.width, stimulus.width,stimulus.width);
+  
+  % get range of colors that the gaussian will have
   stimulus.colors.gaussRange = contrastIndex-1;
-  % make the grating
-  thisGaussian = round(stimulus.colors.gaussRange*stimulus.gaussian + stimulus.colors.minGaussianIndex);
-  % create the texture
-  stimulus.tex = mglCreateTexture(thisGaussian);
+
+  % cycle over widths
+  for iWidth = 1:length(stimulus.width)
+    % make each gaussian
+    stimulus.gaussian{iWidth} = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth),stimulus.width(iWidth));
+    % make the gaussian have the correct range of colors (i.e. avoid the reserved colors)
+    thisGaussian = round(stimulus.colors.gaussRange*stimulus.gaussian{iWidth} + stimulus.colors.minGaussianIndex);
+    
+    % create the texture
+    stimulus.tex(iWidth) = mglCreateTexture(thisGaussian);
+  end
 
   % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
   stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
-  [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
+
   % get the color values (i.e. reserved color)
   stimulus.colors.white = stimulus.colors.reservedColor(1);
   stimulus.colors.red = stimulus.colors.reservedColor(4);
@@ -548,15 +555,28 @@ if stimulus.tenbit
   
 else
 
-  gauss = mglMakeGaussian(7*stimulus.width, 7*stimulus.width, stimulus.width, stimulus.width);
-  gaussian = zeros(size(gauss,1), size(gauss,2), 4);
-  for i = 1:3
-      gaussian(:,:,i) = 255*ones(size(gauss,1), size(gauss,2));
+  dispHeader('THIS CODE HAS NOT BEEN TESTED');
+  keyboard
+  
+  % cycle over widths
+  for iWidth = 1:length(stimulus.width)
+
+    % make full screen gaussian
+    stimulus.gaussian{iWidth} = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth), stimulus.width(iWidth));
+    
+    % fill out the three color channels
+    stimulus.gaussianRGBA{iWidth} = repmat(stimulus.gaussian{iWidth},1,1,1,3);
+
+    % set alpha channel
+    stimulus.gaussianRGBA{iWidth}(:,:,:,4) = 255*stimulus.contrast;
+    
+    % create the texture
+    stimulus.tex{iWidth} = mglCreateTexture(stimulus.gaussian{iWidth});
   end
-  gaussian(:,:,4) = 255*gauss*stimulus.contrast;
-  stimulus.tex = mglCreateTexture(gaussian);
+  
   % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
   stimulus.colors.black = 0;
+  
   % get the color values (i.e. reserved color)
   stimulus.colors.white = 1;
   stimulus.colors.grey = 0.3;
@@ -921,20 +941,31 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initBackgroundNoise(stimulus,myscreen)
 
-% get the gaussian full size of the screen
-[stimulus.background.gaussian stimulus.background.x stimulus.background.y] = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width,stimulus.width);
+for iWidth = 1:length(stimulus.width)
+  % get the gaussian full size of the screen
+  [stimulus.background.gaussian{iWidth} stimulus.background.x stimulus.background.y] = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth), stimulus.width(iWidth));
 
-% now make sure that dimensions are odd numbers of pixels
-oddWidth = 2*floor(myscreen.screenWidth/2)+1;
-oddHeight = 2*floor(myscreen.screenHeight/2)+1;
+  % now make sure that dimensions are odd numbers of pixels
+  oddWidth = 2*floor(myscreen.screenWidth/2)+1;
+  oddHeight = 2*floor(myscreen.screenHeight/2)+1;
 
-% resize everything to odd
-stimulus.background.gaussian = stimulus.background.gaussian(1:oddHeight,1:oddWidth);
-stimulus.background.x = stimulus.background.x(1:oddHeight,1:oddWidth);
-stimulus.background.y = stimulus.background.y(1:oddHeight,1:oddWidth);
+  % resize everything to odd
+  stimulus.background.gaussian{iWidth} = stimulus.background.gaussian{iWidth}(1:oddHeight,1:oddWidth);
+  stimulus.background.x = stimulus.background.x(1:oddHeight,1:oddWidth);
+  stimulus.background.y = stimulus.background.y(1:oddHeight,1:oddWidth);
+  
+  % get the fourier transform
+  stimulus.background.gaussianTransform{iWidth} = getHalfFourier(stimulus.background.gaussian{iWidth});
+  
+  % pull out magnitude and dc for averaging
+  mag(iWidth,:) = stimulus.background.gaussianTransform{iWidth}.mag;
+  dc(iWidth) = stimulus.background.gaussianTransform{iWidth}.dc;
+end
 
-% get the fourier transform
-stimulus.background.gaussianTransform = getHalfFourier(stimulus.background.gaussian);
+% make average transform
+stimulus.background.averageGaussianTransform = stimulus.background.gaussianTransform{1};
+stimulus.background.averageGaussianTransform.dc = mean(dc);
+stimulus.background.averageGaussianTransform.mag = mean(mag);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    setBackgroundNoise    %
@@ -972,8 +1003,8 @@ end
 
 for iBackground = 1:numBackgrounds
   % randomize phase and reconstruct
-  stimulus.background.gaussianTransform.phase = (rand(1,stimulus.background.gaussianTransform.n)*2*pi - pi);
-  im = reconstructFromHalfFourier(stimulus.background.gaussianTransform);
+  stimulus.background.averageGaussianTransform.phase = (rand(1,stimulus.background.averageGaussianTransform.n)*2*pi - pi);
+  im = reconstructFromHalfFourier(stimulus.background.averageGaussianTransform);
 
   % scale from 0 to noise max
   maxIm = max(im(:));
@@ -999,13 +1030,13 @@ stimulus.backgroundFreq = backgroundFreq;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 %    setStimuliOnNoise  %
 %%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = setStimulusOnBackground(stimulus, xPos, yPos, stimulusNum, backgroundNum, SNR)
+function stimulus = setStimulusOnBackground(stimulus, xPos, yPos, stimulusNum, backgroundNum, SNR, width)
 
 % get signal max for this trial
 sigMax = stimulus.background.sigMax(find(stimulus.SNR == SNR));
 
 % make the gaussian at the xPos, yPos and scale to signal max
-im = squeeze(stimulus.background.im(backgroundNum,:,:)) + sigMax * exp(-(((stimulus.background.x-xPos).^2)/(2*(stimulus.width^2))+((stimulus.background.y-yPos).^2)/(2*(stimulus.width^2))));
+im = squeeze(stimulus.background.im(backgroundNum,:,:)) + sigMax * exp(-((((stimulus.background.x-xPos).^2) + (stimulus.background.y-yPos).^2))/(2*(width^2)));
 
 % delete any existing texture
 if isfield(stimulus,'stimTexture') && (length(stimulus.stimTexture) >= stimulusNum)
