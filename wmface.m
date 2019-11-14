@@ -6,6 +6,11 @@
 %       date: 10/15/2019
 %    purpose: working memory task based on Harrison & Tong with camera capture for Druckmann lab
 %
+%    Subjects are shown two  visual orientations and asked to remember either the first or the second.
+%    After a waiting period, subject is shown a third gradient and asked if it was rotated clockwise (1)
+%    or counterclockwise (2) from the remembered stimulus.
+%
+
 function e = wmface(scan)
 
 % check arguments
@@ -60,26 +65,31 @@ myscreen = initScreen(myscreen);
 
 % intialize the camera
 dispHeader('(cameraTest) Starting Camera Thread');
-mglCameraThread('init');
-stimulus.cameraImages = {};
+tf = mglCameraThread('init');
 dispHeader;
+if ~tf
+  endScreen(myscreen);
+  dispHeader('(wmface) Could not initialize camera');
+  return
+end
+stimulus.cameraImages = {};
+
 % place to save data
-% FIX, this should endup being put in myscreen.datadir;
-stimulus.cameraDataDir = '~/data/wmtest'
+stimulus.cameraDataDir = myscreen.datadir;
 if ~isdir(stimulus.cameraDataDir),mkdir(stimulus.cameraDataDir);end
 if isempty(myscreen.SID)
   stimulus.cameraFileStem = 'TEST';
 else
   stimulus.cameraFileStem = sprintf('%s',myscreen.SID);
 end
-stimulus.cameraFileStem = sprintf('%s_%s_%s',stimulus.cameraFileStem,datestr(now,'yyyymmdd'),datestr(now,'hhmmss'));
+stimulus.cameraFileStem = sprintf('%s_%s_%s',stimulus.cameraFileStem,datestr(now,'yyyymmdd'),datestr(now,'HHMMSS'));
 
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
 % signal that the scanner has started collecting data)
 task{1}.waitForBacktick = 1;
-task{1}.segmin = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5 2 1];
-task{1}.segmax = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 2.5 2 1];
+task{1}.segmin = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 5 1 1 inf];
+task{1}.segmax = [0.2 0.4 0.2 0.4 0.8 stimulus.delayInterval 0.5 5 1 1 inf];
 task{1}.getResponse = [0 0 0 0 0 0 0 1 0 0];
 task{1}.synchToVol = [0 0 0 0 0 0 0 waitForBacktick];
 % parameters
@@ -91,7 +101,7 @@ task{1}.randVars.calculated.orientationJitter = [nan nan];
 task{1}.randVars.calculated.orientation = [nan nan];
 task{1}.randVars.calculated.orientationThreshold = nan;
 task{1}.random = 1;
-task{1}.numTrials = 50;
+task{1}.numTrials = 60;
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -137,7 +147,7 @@ global stimulus;
 % set fixation white
 if task.thistrial.thisseg == 1
   % start saving camera
-  mglCameraThread('capture','timeToCapture',sum(task.segmax(1:(end-2))));
+  mglCameraThread('capture','timeToCapture',sum(task.segmax(1:(end-3))));
   
   stimulus.fixColor = [1 1 1];
 
@@ -164,16 +174,21 @@ if task.thistrial.thisseg == 1
 elseif task.thistrial.thisseg == 9
   stimulus.fixColor = [1 1 1];
 elseif task.thistrial.thisseg == 10
-  % save camera images
-%  stimulus.cameraImages{end+1} = mglCameraThread('get');
   % create filename for images
-  saveCameraTime = mglGetSecs;
+  stimulus.saveCameraTime = mglGetSecs;
   filename = fullfile(stimulus.cameraDataDir,sprintf('%s-%04i',stimulus.cameraFileStem,task.trialnum));
+  % tell thread to save images
   stimulus.cameraImages{end+1} = mglCameraThread('save','videoFilename',filename);
-  disp(sprintf('(wmface) Save of camera file took %0.2fs',mglGetSecs(saveCameraTime)));
-  saveCameraTime = mglGetSecs;
-  save(fullfile(stimulus.cameraDataDir,stimulus.cameraFileStem),'myscreen','task');
-  disp(sprintf('(wmface) Saving stimfile took %0.2fs',mglGetSecs(saveCameraTime)));
+  % now save the task variables (just in case we crash)
+  save(fullfile(stimulus.cameraDataDir,stimulus.cameraFileStem),'myscreen','task','stimulus');
+  disp(sprintf('(wmface) Setting to save and task variable save took: %0.2fs',mglGetSecs(stimulus.saveCameraTime)));
+elseif task.thistrial.thisseg == 11
+  % wait till camera is done
+  mglCameraThread('blockTillDone');
+  % display how long it took
+  disp(sprintf('(wmface) Save of camera files took %0.2fs',mglGetSecs(stimulus.saveCameraTime)));
+  % then jump to next segment (effectively end of trial)
+  task = jumpSegment(task);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
