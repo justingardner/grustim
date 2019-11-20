@@ -33,6 +33,20 @@
 %            values available. Setting to, say, 0.5 would use only half the range
 %            of luminance available (for stimulus and noise)
 %
+%            To run as a staircase (instead of constant stimuli)
+%
+%            alaisburr('visual=1','useStaircase=1');
+%
+%            By default this will get the threshold from the last run and restart
+%            a PEST staircase from there. If you want to start a new staircase
+%            with default parameters:
+%
+%            alaisburr('visual=1','useStaircase=1','restartStaircase=1');
+%
+%            By default there will be 40 trials per staircase, you can change this with:
+%
+%            alaisburr('visual=1','useStaircase=1','nStaircaseTrials=50');
+%
 function myscreen = alaisburr(varargin)
  
 clear global stimulus
@@ -41,7 +55,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0','maxSNR=4'},'verbose=1');
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0','maxSNR=4','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
 % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -66,6 +80,8 @@ stimulus.auditoryTrain = auditoryTrain;
 stimulus.visualTrain = visualTrain;
 stimulus.tenbit = tenbit;
 stimulus.SNR = SNR;
+stimulus.useStaircase = useStaircase;
+stimulus.restartStaircase = restartStaircase;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
 stimulus.stimDur = 0.015; % 15ms
@@ -94,21 +110,54 @@ stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 stimulus.colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 
-if stimulus.auditoryTrain || stimulus.visualTrain
-    stimulus.initialThreshold = 10;
-    stimulus.initialStepsize = 2.5;
-    stimulus.minThreshold = 0;
-    stimulus.maxThreshold = 15;
-    stimulus.minStepsize = 0.75;
-    stimulus.maxStepsize = 5;
-end
-
+% get screen params
 screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
 
 % initalize the screen
 myscreen.background = 0;  %black
 myscreen = initScreen;
+
+% get any previous stimfile and see if there is a staircase in it
+lastStimfile = getLastStimfile(myscreen);
+% if there was a visual staircase field than add it to this one
+if isfield(lastStimfile,'stimulus') && isfield(lastStimfile.stimulus,'visualStaircase')
+  stimulus.visualStaircase = lastStimfile.stimulus.visualStaircase;
+else
+  % default to empty list
+  stimulus.visualStaircase = {};
+end
+% if there was a auditory staircase field than add it to this one
+if isfield(lastStimfile,'stimulus') && isfield(lastStimfile.stimulus,'auditoryStaircase')
+  stimulus.auditoryStaircase = lastStimfile.stimulus.auditoryStaircase;
+else
+  % default to empty list
+  stimulus.auditoryStaircase = {};
+end
+
+% set up staircase for non-training conditions
+% set the staircase for the training conditions
+if stimulus.auditoryTrain || stimulus.visualTrain
+  % set up the staircase
+  stimulus.useStaircase = 1;
+  stimulus.initialThreshold = 10;
+  stimulus.initialStepsize = 2.5;
+  stimulus.minThreshold = 0;
+  stimulus.maxThreshold = 15;
+  stimulus.minStepsize = 0.75;
+  stimulus.maxStepsize = 5;
+elseif stimulus.useStaircase
+  % if there is a previous stimfile then the initStair
+  % will override these settings with the threshold
+  % from that previous run. Otherwise will use the
+  % below parameters
+  stimulus.initialThreshold = 5;
+  stimulus.initialStepsize = 1;
+  stimulus.minThreshold = 0;
+  stimulus.maxThreshold = 15;
+  stimulus.minStepsize = 0.25;
+  stimulus.maxStepsize = 3;
+end
 
 %%%%%%%%%%%%%%%%%%%%%
 % set up task
@@ -122,8 +171,10 @@ if stimulus.bimodal
   task{1}{1}.numBlocks = 2;
 elseif stimulus.visual || stimulus.auditory
   task{1}{1}.numBlocks = 16;
-else
+end
+if stimulus.useStaircase
   task{1}{1}.randVars.uniform.sign = [1,-1];
+  task{1}{1}.numTrials = nStaircaseTrials;
 end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
@@ -156,7 +207,9 @@ stimulus = initGaussian(stimulus,myscreen);
 
 % init auditory stimulus
 stimulus = initClick(stimulus,myscreen);
-if stimulus.auditoryTrain || stimulus.visualTrain
+
+% init the staircase
+if stimulus.useStaircase
   stimulus = initStair(stimulus);
 end
 
@@ -247,7 +300,19 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc && ~stimulus.endflag
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
- 
+
+% if this was a staircase run (and not a train run) then save the staircase
+if stimulus.useStaircase && ~(stimulus.auditoryTrain || stimulus.visualTrain) 
+  % save a visual staircase
+  if stimulus.visual
+    stimulus.visualStaircase{end+1} = stimulus.stair;
+  end
+  % save an auditory staircase
+  if stimulus.auditory
+    stimulus.auditoryStaircase{end+1} = stimulus.stair;
+  end
+    
+end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -275,7 +340,7 @@ if task.thistrial.thisseg == 1
   % set random jittering between -0.5 and 0.5 deg
   task.thistrial.jitter = rand - 0.5; 
   % horizontal position of first, second stim
-  if stimulus.auditoryTrain || stimulus.visualTrain
+  if stimulus.useStaircase
     % get test value
     [testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
     task.thistrial.diff = testValue * task.thistrial.sign;
@@ -438,8 +503,8 @@ if ~task.thistrial.gotResponse
         % correct
         task.thistrial.correct = 1;
         if stimulus.auditoryTrain || stimulus.visualTrain
-        % feeback
-        stimulus.fixColor = stimulus.colors.green;%[0 1 0];
+	  % feeback
+	  stimulus.fixColor = stimulus.colors.green;%[0 1 0];
         end
         if ~stimulus.bimodal
             disp(sprintf('(alaisburr) Trial %i: %0.2f %c correct centerInt %i resp %i', ...
@@ -452,7 +517,7 @@ if ~task.thistrial.gotResponse
         % incorrect
         task.thistrial.correct = 0;
         if stimulus.auditoryTrain || stimulus.visualTrain
-        stimulus.fixColor = stimulus.colors.red;%[1 0 0];
+	  stimulus.fixColor = stimulus.colors.red;%[1 0 0];
         end
         if ~stimulus.bimodal
             disp(sprintf('(alaisburr) Trial %i: %0.2f %c incorrect centerInt %i resp %i', ...
@@ -466,9 +531,13 @@ if ~task.thistrial.gotResponse
     task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
 
+    % change color of fixation to a neutral color for no-feedback conditions
     if ~(stimulus.auditoryTrain || stimulus.visualTrain)
       stimulus.fixColor = stimulus.colors.cyan;
-    else
+    end
+    
+    % update staircase
+    if stimulus.useStaircase
       stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     end
 end
@@ -476,10 +545,24 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStair(stimulus)
 
-   stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2',...
-        'initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize, ...
-    'minStepsize',stimulus.minStepsize,'maxStepsize',stimulus.maxStepsize,'minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,...
-     'stepRule=pest','dispFig=1');
+% check to see if there is an existing staircase to
+% run off of for visual
+if ~stimulus.restartStaircase && stimulus.visual && ~stimulus.visualTrain && ~isempty(stimulus.visualStaircase)
+  disp(sprintf('(alaisburr) Setting staircase to threshold from previous run'));
+  stimulus.stair = doStaircase('init',stimulus.visualStaircase{end});
+  return
+end
+
+% or for auditory
+if ~stimulus.restartStaircase && stimulus.auditory && ~stimulus.auditoryTrain && ~isempty(stimulus.auditoryStaircase)
+  disp(sprintf('(alaisburr) Setting staircase to threshold from previous run'));
+  stimulus.stair = doStaircase('init',stimulus.auditoryStaircase{end});
+  return
+end
+
+% init the staircase
+stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2','initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize,'minStepsize',stimulus.minStepsize,'maxStepsize',stimulus.maxStepsize,'minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,'stepRule=pest','dispFig=1');
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
