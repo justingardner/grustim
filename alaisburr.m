@@ -556,6 +556,9 @@ if stimulus.tenbit
 else
 
   dispHeader('THIS CODE HAS NOT BEEN TESTED');
+  % note that there is really no need to run this as a 10-bit anymore given the way the noisy
+  % background works - should be easy to make this old version work again, but haven't tested
+  % to get it back going - jg: 11/20/2019
   keyboard
   
   % cycle over widths
