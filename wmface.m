@@ -50,8 +50,19 @@ switch lower(taskType)
   % set auditory type
   stimulus.taskType = lower(taskType);
 
-  % set auditory stimulus parameters
-  stimulus.baseFreq = [loFreq hiFreq];
+  % sampling frequency
+  stimulus.audio.samplesPerSecond = 22000;
+  % amplitude of stimulus
+  stimulus.audio.amplitude = 0.1;
+  % length of stimulus in seconds
+  stimulus.audio.len = 0.5;
+  % set the frequencies
+  stimulus.audio.stimFreq = [loFreq hiFreq];
+  % range of comparison frequencies in percentage
+  % e.g. if set to 10, will compute frequencies that are -10 to 10 % of the stimulus frequency
+  stimulus.audio.comparisonPercentRange = 10;
+  % number of comparison freqencies in the range specified above
+  stimulus.audio.nComparisonFreq = 100;
 
   % set background color
   myscreen.background = 0;
@@ -317,6 +328,34 @@ if strcmp(stimulus.taskType,'visual')
   stimulus.text(2) = mglText('2');
 % setup auditory stimulus
 else
+  
+  % uninstall all sounds
+  mglInstallSound;
+  
+  % make a time sequence that goes over 2 pi every second
+  t = 0:(stimulus.audio.len*2*pi)/((stimulus.audio.len*stimulus.audio.samplesPerSecond)-1):(stimulus.audio.len*2*pi);
+
+  % cycle over stimulus frequencies
+  for iFreq = 1:length(stimulus.audio.stimFreq)
+    waveform = stimulus.audio.amplitude * sin(stimulus.audio.stimFreq(iFreq)*t);
+    stimulus.audio.stim(iFreq) = mglInstallSound(waveform,stimulus.audio.samplesPerSecond);
+  end
+  
+  % now make sounds that are in range around these frequencies
+  stimulus.audio.comparisonFreqPercentage = -stimulus.audio.comparisonPercentRange:(2*stimulus.audio.comparisonPercentRange)/(stimulus.audio.nComparisonFreq-1):stimulus.audio.comparisonPercentRange;
+
+  % cycle over comparison frequncies
+  for iComparisonFreq = 1:stimulus.audio.nComparisonFreq
+    % make the comparison frequency for each stimulus frequency
+    for iStimFreq = 1:length(stimulus.audio.stimFreq)
+      % compute the comparisonfrequency
+      stimulus.audio.comparisonFreq(iStimFreq,iComparisonFreq) = stimulus.audio.stimFreq(iStimFreq) + ((stimulus.audio.comparisonFreqPercentage(iComparisonFreq)/100)*stimulus.audio.stimFreq(iStimFreq));
+      % compute the waveform
+      waveform = stimulus.audio.amplitude * sin(stimulus.audio.comparisonFreq(iStimFreq,iComparisonFreq)*t);
+      % create the sounds
+      stimulus.audio.comparison(iStimFreq,iComparisonFreq) = mglInstallSound(waveform,stimulus.audio.samplesPerSecond);
+    end
+  end
   keyboard
 end
 % start staircase
