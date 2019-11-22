@@ -1,4 +1,4 @@
-% twoPatchMotionDir.m
+% twoPatchMotionDir.m 
 %
 %        $Id$
 %      usage: twoPatchMotionDir
@@ -7,6 +7,10 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: motion direction discrimination between 2 L/R patches
 %
+% NOTE: Use twoPatchMotionDirfMRI instead - now that the task is implemented
+% there as well, there should be no reason to use this version anymore, even
+% for pure psychophysics data collection
+
 function myscreen = twoPatchMotionDir(varargin)
 
 % check arguments
@@ -14,7 +18,7 @@ getArgs(varargin,'stimulusType=dots');
 
 % initalize the screen
 myscreen = initScreen();
-
+mglClearScreen(0.5);
 % fix: set waitForBacktick if you want to synch with the scanner
 % by waiting for the backtick key to be pressed before starting the experiment
 % (for systems that use NI digital I/O, this will wait for the digital
