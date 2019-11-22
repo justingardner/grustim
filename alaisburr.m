@@ -1050,8 +1050,13 @@ end
 
 % make average transform
 stimulus.background.averageGaussianTransform = stimulus.background.gaussianTransform{1};
-stimulus.background.averageGaussianTransform.dc = mean(dc);
-stimulus.background.averageGaussianTransform.mag = mean(mag);
+if length(stimulus.width) > 1
+  stimulus.background.averageGaussianTransform.dc = mean(dc);
+  stimulus.background.averageGaussianTransform.mag = mean(mag);
+else
+  stimulus.background.averageGaussianTransform.dc = dc;
+  stimulus.background.averageGaussianTransform.mag = mag;
+end  
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    setBackgroundNoise    %
