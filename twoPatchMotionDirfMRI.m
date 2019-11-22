@@ -16,7 +16,7 @@ function myscreen = twoPatchMotionDirfMRI(varargin)
 getArgs(varargin,'stimulusType=dots');
 
 % initalize the screen
-myscreen = initScreen();
+myscreen = initScreen('fMRIprojFlex');
 mglClearScreen(0.5);
 % fix: set waitForBacktick if you want to synch with the scanner
 % by waiting for the backtick key to be pressed before starting the experiment
@@ -89,7 +89,7 @@ stimulus = initDots(stimulus,myscreen);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = eyeCalibDisp(myscreen);
 
-mglSimulateRun(1,1000);
+%mglSimulateRun(1,1000);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
@@ -195,6 +195,8 @@ mglFixationCross(1,1,stimulus.fixColor);
 function [task myscreen] = responseCallback(task,myscreen)
 
 global stimulus
+
+disp(sprintf('Response received : %g', task.thistrial.whichButton));
 
 % check the response
 if task.thistrial.gotResponse < 1
