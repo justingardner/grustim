@@ -22,7 +22,32 @@
 %
 %            alaisBurr('SNR=2.5','backgroundFreq=4.5');
 %
-function myscreen = testalaisburr(varargin)
+%            Note that the way the noisy background works there is a maxSNR that
+%            can be achieved which is set by the parameter maxSNR (default to 4)
+%            If you set this higher, than the noisy background will be forced to
+%            have lower overall luminace (to achieve the higher SNR). If you set
+%            it lower than the noisy background will have higher overall luminance
+%            This also interacts with the stimulusContrast (default 1) setting
+%            which sets the overall luminance contrast that is used for the 
+%            stimulus. Setting stimulusContrast to 1 uses the full range of luminance
+%            values available. Setting to, say, 0.5 would use only half the range
+%            of luminance available (for stimulus and noise)
+%
+%            To run as a staircase (instead of constant stimuli)
+%
+%            alaisburr('visual=1','useStaircase=1');
+%
+%            By default this will get the threshold from the last run and restart
+%            a PEST staircase from there. If you want to start a new staircase
+%            with default parameters:
+%
+%            alaisburr('visual=1','useStaircase=1','restartStaircase=1');
+%
+%            By default there will be 40 trials per staircase, you can change this with:
+%
+%            alaisburr('visual=1','useStaircase=1','nStaircaseTrials=50');
+%
+function myscreen = alaisburr(varargin)
  
 clear global stimulus
 mglEatKeys('12`');
@@ -30,7 +55,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=0.5','SNR=3','doTestSNR=0','backgroundFreq=4.5'},'verbose=1');
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0','maxSNR=4','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
 % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -55,10 +80,12 @@ stimulus.auditoryTrain = auditoryTrain;
 stimulus.visualTrain = visualTrain;
 stimulus.tenbit = tenbit;
 stimulus.SNR = SNR;
+stimulus.useStaircase = useStaircase;
+stimulus.restartStaircase = restartStaircase;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
-stimulus.stimDur = .015; % 15ms
-stimulus.gaussainDur = .015; % 15ms
+stimulus.stimDur = 0.015; % 15ms
+stimulus.gaussainDur = 0.015; % 15ms
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
@@ -77,26 +104,60 @@ end
 stimulus.contrast = stimulusContrast;
 
 stimulus.interval = [2 4];
+
 % fixation cross
 stimulus.fixWidth = 1;
 stimulus.fixColor = [1 1 1];
 stimulus.colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 
-if stimulus.auditoryTrain || stimulus.visualTrain
-    stimulus.initialThreshold = 10;
-    stimulus.initialStepsize = 2.5;
-    stimulus.minThreshold = 0;
-    stimulus.maxThreshold = 15;
-    stimulus.minStepsize = 0.75;
-    stimulus.maxStepsize = 5;
-end
-
+% get screen params
 screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
 
 % initalize the screen
 myscreen.background = 0;  %black
 myscreen = initScreen;
+
+% get any previous stimfile and see if there is a staircase in it
+lastStimfile = getLastStimfile(myscreen);
+% if there was a visual staircase field than add it to this one
+if isfield(lastStimfile,'stimulus') && isfield(lastStimfile.stimulus,'visualStaircase')
+  stimulus.visualStaircase = lastStimfile.stimulus.visualStaircase;
+else
+  % default to empty list
+  stimulus.visualStaircase = {};
+end
+% if there was a auditory staircase field than add it to this one
+if isfield(lastStimfile,'stimulus') && isfield(lastStimfile.stimulus,'auditoryStaircase')
+  stimulus.auditoryStaircase = lastStimfile.stimulus.auditoryStaircase;
+else
+  % default to empty list
+  stimulus.auditoryStaircase = {};
+end
+
+% set up staircase for non-training conditions
+% set the staircase for the training conditions
+if stimulus.auditoryTrain || stimulus.visualTrain
+  % set up the staircase
+  stimulus.useStaircase = 1;
+  stimulus.initialThreshold = 10;
+  stimulus.initialStepsize = 2.5;
+  stimulus.minThreshold = 0;
+  stimulus.maxThreshold = 15;
+  stimulus.minStepsize = 0.75;
+  stimulus.maxStepsize = 5;
+elseif stimulus.useStaircase
+  % if there is a previous stimfile then the initStair
+  % will override these settings with the threshold
+  % from that previous run. Otherwise will use the
+  % below parameters
+  stimulus.initialThreshold = 5;
+  stimulus.initialStepsize = 1;
+  stimulus.minThreshold = 0;
+  stimulus.maxThreshold = 15;
+  stimulus.minStepsize = 0.25;
+  stimulus.maxStepsize = 3;
+end
 
 %%%%%%%%%%%%%%%%%%%%%
 % set up task
@@ -109,17 +170,21 @@ task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 2;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 5;
-else
+  task{1}{1}.numBlocks = 16;
+end
+if stimulus.useStaircase
   task{1}{1}.randVars.uniform.sign = [1,-1];
+  task{1}{1}.numTrials = nStaircaseTrials;
 end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-15 -7.5 -2.5 -1.25 0 1.25 2.5 7.5 15]; 
+task{1}{1}.parameter.posDiff = [-18 -15 -12 -10 -8 -6 -4 -2.5 -1.25 0 1.25 2.5 4 6 8 10 12 15 18]; 
 if stimulus.task == 3
   task{1}{1}.parameter.displacement = [-5 0 5];
 end
+task{1}{1}.parameter.SNR = stimulus.SNR;
+task{1}{1}.parameter.width = stimulus.width;
 
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan;
@@ -142,7 +207,9 @@ stimulus = initGaussian(stimulus,myscreen);
 
 % init auditory stimulus
 stimulus = initClick(stimulus,myscreen);
-if stimulus.auditoryTrain || stimulus.visualTrain
+
+% init the staircase
+if stimulus.useStaircase
   stimulus = initStair(stimulus);
 end
 
@@ -152,25 +219,64 @@ if doGammaTest && tenbit
   if ~tf,mglClose,return,end;
 end
 
+if doTestStimSize
+  for iWidth = 1:length(stimulus.width)
+    % clear screen
+    mglClearScreen(stimulus.colors.black);
+    % draw gaussian
+    mglBltTexture(stimulus.tex(iWidth),[0 0]);
+    % draw fixation cross
+    mglFixationCross(1,1,stimulus.colors.white,[ 0 0]);
+    % draw circle around gaussian width
+    x0 = stimulus.width(iWidth) * cos(d2r(0:359));
+    y0 = stimulus.width(iWidth) * sin(d2r(0:359));
+    x1 = stimulus.width(iWidth) * cos(d2r(1:360));
+    y1 = stimulus.width(iWidth) * sin(d2r(1:360));
+    mglLines2(x0, y0, x1, y1, 2, stimulus.colors.red);
+    mglFlush;
+    disp(sprintf('(alaisBurr) Screen width: %0.1f Screen height: %0.1f Gaussian width: %0.1f',myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth)));
+    askuser('Ok');
+  end
+  return
+end
+
+% if test then display several levels of SNR
+if doTestSNR
+  % set to test these SNR levels
+  stimulus.SNR = [4 2 1.5 1 0.5];
+  % setup background
+  stimulus = initBackgroundNoise(stimulus, myscreen);
+  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,1,maxSNR);
+  % now cycle through each and display
+  iSNR = 1;iBackground = 1;
+  for iWidth = 1:length(stimulus.width)
+    while iSNR <= length(stimulus.SNR);
+      % clear screen
+      mglClearScreen;
+      % create texture
+      stimulus = setStimulusOnBackground(stimulus,0,0,1,iBackground,stimulus.SNR(iSNR),stimulus.width(iWidth));
+      % and blt texture
+      mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
+      % see if user wants to continue looking at this one
+      if ~askuser(sprintf('(alaisburr) SNR=%0.1f Display again',stimulus.SNR(iSNR)),-1)
+        % go to the next SNR level
+	iSNR = iSNR + 1;
+      else
+	% pick a new background to display on
+	iBackground = mod(iBackground,stimulus.background.n)+1;
+      end
+    end
+  end
+  mglClose;return
+end
+
 % init the background noise if we have to
 if ~isinf(stimulus.SNR)
   % init background noise
   stimulus = initBackgroundNoise(stimulus, myscreen);
   % and set them
-  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,backgroundFreq);
-end
-
-% if test then display several levels of SNR
-if doTestSNR
-  for testSNR = 5:-0.5:0
-    stimulus = setBackgroundNoise(stimulus,myscreen,task,testSNR,1);
-    stimulus = setStimulusOnBackground(stimulus,0,0,1,1);
-    mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
-    if ~askuser(sprintf('(alaisburr) Testing SNR of %0.2f',testSNR))
-      break;
-    end
-  end
-  mglClose;return
+  stimulus = setBackgroundNoise(stimulus,myscreen,task,stimulus.SNR,backgroundFreq,maxSNR);
+  if isempty(stimulus);mglClose;return;end
 end
 
 % put up display string
@@ -194,7 +300,19 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc && ~stimulus.endflag
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
- 
+
+% if this was a staircase run (and not a train run) then save the staircase
+if stimulus.useStaircase && ~(stimulus.auditoryTrain || stimulus.visualTrain) 
+  % save a visual staircase
+  if stimulus.visual
+    stimulus.visualStaircase{end+1} = stimulus.stair;
+  end
+  % save an auditory staircase
+  if stimulus.auditory
+    stimulus.auditoryStaircase{end+1} = stimulus.stair;
+  end
+    
+end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -222,7 +340,7 @@ if task.thistrial.thisseg == 1
   % set random jittering between -0.5 and 0.5 deg
   task.thistrial.jitter = rand - 0.5; 
   % horizontal position of first, second stim
-  if stimulus.auditoryTrain || stimulus.visualTrain
+  if stimulus.useStaircase
     % get test value
     [testValue, stimulus.stair] = doStaircase('testValue', stimulus.stair);
     task.thistrial.diff = testValue * task.thistrial.sign;
@@ -283,8 +401,9 @@ if task.thistrial.thisseg == 1
     stimulus.background.stim2Frame = ceil(sum(task.segmax(1:4))/stimulus.background.frameTime)-1;
     % and create the stimuli on the background that we guess to be the
     % one that should be being presented
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame));
-    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame));
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),task.thistrial.SNR,task.thistrial.width);
+    stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),task.thistrial.SNR,task.thistrial.width);
+    disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i width: %0.1f',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.diff,task.thistrial.centerWhich,task.thistrial.width));
   end
 
 elseif any(task.thistrial.thisseg == [2 4])
@@ -384,8 +503,8 @@ if ~task.thistrial.gotResponse
         % correct
         task.thistrial.correct = 1;
         if stimulus.auditoryTrain || stimulus.visualTrain
-        % feeback
-        stimulus.fixColor = stimulus.colors.green;%[0 1 0];
+	  % feeback
+	  stimulus.fixColor = stimulus.colors.green;%[0 1 0];
         end
         if ~stimulus.bimodal
             disp(sprintf('(alaisburr) Trial %i: %0.2f %c correct centerInt %i resp %i', ...
@@ -398,7 +517,7 @@ if ~task.thistrial.gotResponse
         % incorrect
         task.thistrial.correct = 0;
         if stimulus.auditoryTrain || stimulus.visualTrain
-        stimulus.fixColor = stimulus.colors.red;%[1 0 0];
+	  stimulus.fixColor = stimulus.colors.red;%[1 0 0];
         end
         if ~stimulus.bimodal
             disp(sprintf('(alaisburr) Trial %i: %0.2f %c incorrect centerInt %i resp %i', ...
@@ -412,9 +531,13 @@ if ~task.thistrial.gotResponse
     task.thistrial.resp = task.thistrial.whichButton;
     task.thistrial.rt = task.thistrial.reactionTime;
 
+    % change color of fixation to a neutral color for no-feedback conditions
     if ~(stimulus.auditoryTrain || stimulus.visualTrain)
       stimulus.fixColor = stimulus.colors.cyan;
-    else
+    end
+    
+    % update staircase
+    if stimulus.useStaircase
       stimulus.stair = doStaircase('update', stimulus.stair, task.thistrial.correct);
     end
 end
@@ -422,10 +545,24 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStair(stimulus)
 
-   stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2',...
-        'initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize, ...
-    'minStepsize',stimulus.minStepsize,'maxStepsize',stimulus.maxStepsize,'minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,...
-     'stepRule=pest','dispFig=1');
+% check to see if there is an existing staircase to
+% run off of for visual
+if ~stimulus.restartStaircase && stimulus.visual && ~stimulus.visualTrain && ~isempty(stimulus.visualStaircase)
+  disp(sprintf('(alaisburr) Setting staircase to threshold from previous run'));
+  stimulus.stair = doStaircase('init',stimulus.visualStaircase{end});
+  return
+end
+
+% or for auditory
+if ~stimulus.restartStaircase && stimulus.auditory && ~stimulus.auditoryTrain && ~isempty(stimulus.auditoryStaircase)
+  disp(sprintf('(alaisburr) Setting staircase to threshold from previous run'));
+  stimulus.stair = doStaircase('init',stimulus.auditoryStaircase{end});
+  return
+end
+
+% init the staircase
+stimulus.stair = doStaircase('init','upDown', 'nup=1','ndown=2','initialThreshold', stimulus.initialThreshold, 'initialStepsize',stimulus.initialStepsize,'minStepsize',stimulus.minStepsize,'maxStepsize',stimulus.maxStepsize,'minThreshold',stimulus.minThreshold,'maxThreshold', stimulus.maxThreshold,'stepRule=pest','dispFig=1');
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
@@ -474,20 +611,24 @@ if stimulus.tenbit
 
   setGammaTableForMaxContrast(stimulus.contrast);
   contrastIndex = getContrastIndex(stimulus.contrast,1);
-
-  % make all the 1D gaussians. We compute all possible contrast values given the
-  % range of indexes available to us. The 1st texture is black the nth texture is full
-  % contrast for the current gamma setting
-  stimulus.gaussian = mglMakeGaussian(7*stimulus.width, 7*stimulus.width, stimulus.width,stimulus.width);
+  
+  % get range of colors that the gaussian will have
   stimulus.colors.gaussRange = contrastIndex-1;
-  % make the grating
-  thisGaussian = round(stimulus.colors.gaussRange*stimulus.gaussian + stimulus.colors.minGaussianIndex);
-  % create the texture
-  stimulus.tex = mglCreateTexture(thisGaussian);
+
+  % cycle over widths
+  for iWidth = 1:length(stimulus.width)
+    % make each gaussian
+    stimulus.gaussian{iWidth} = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth),stimulus.width(iWidth));
+    % make the gaussian have the correct range of colors (i.e. avoid the reserved colors)
+    thisGaussian = round(stimulus.colors.gaussRange*stimulus.gaussian{iWidth} + stimulus.colors.minGaussianIndex);
+    
+    % create the texture
+    stimulus.tex(iWidth) = mglCreateTexture(thisGaussian);
+  end
 
   % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
   stimulus.colors.black = stimulus.colors.minGaussianIndex/maxIndex;
-  [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
+
   % get the color values (i.e. reserved color)
   stimulus.colors.white = stimulus.colors.reservedColor(1);
   stimulus.colors.red = stimulus.colors.reservedColor(4);
@@ -497,15 +638,31 @@ if stimulus.tenbit
   
 else
 
-  gauss = mglMakeGaussian(7*stimulus.width, 7*stimulus.width, stimulus.width, stimulus.width);
-  gaussian = zeros(size(gauss,1), size(gauss,2), 4);
-  for i = 1:3
-      gaussian(:,:,i) = 255*ones(size(gauss,1), size(gauss,2));
+  dispHeader('THIS CODE HAS NOT BEEN TESTED');
+  % note that there is really no need to run this as a 10-bit anymore given the way the noisy
+  % background works - should be easy to make this old version work again, but haven't tested
+  % to get it back going - jg: 11/20/2019
+  keyboard
+  
+  % cycle over widths
+  for iWidth = 1:length(stimulus.width)
+
+    % make full screen gaussian
+    stimulus.gaussian{iWidth} = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth), stimulus.width(iWidth));
+    
+    % fill out the three color channels
+    stimulus.gaussianRGBA{iWidth} = repmat(stimulus.gaussian{iWidth},1,1,1,3);
+
+    % set alpha channel
+    stimulus.gaussianRGBA{iWidth}(:,:,:,4) = 255*stimulus.contrast;
+    
+    % create the texture
+    stimulus.tex{iWidth} = mglCreateTexture(stimulus.gaussian{iWidth});
   end
-  gaussian(:,:,4) = 255*gauss*stimulus.contrast;
-  stimulus.tex = mglCreateTexture(gaussian);
+  
   % get the color value for black (i.e. the number between 0 and 1 that corresponds to the minGaussianIndex)
   stimulus.colors.black = 0;
+  
   % get the color values (i.e. reserved color)
   stimulus.colors.white = 1;
   stimulus.colors.grey = 0.3;
@@ -870,25 +1027,42 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initBackgroundNoise(stimulus,myscreen)
 
-% get the gaussian full size of the screen
-[stimulus.background.gaussian stimulus.background.x stimulus.background.y] = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width,stimulus.width);
+for iWidth = 1:length(stimulus.width)
+  % get the gaussian full size of the screen
+  [stimulus.background.gaussian{iWidth} stimulus.background.x stimulus.background.y] = mglMakeGaussian(myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth), stimulus.width(iWidth));
 
-% now make sure that dimensions are odd numbers of pixels
-oddWidth = 2*floor(myscreen.screenWidth/2)+1;
-oddHeight = 2*floor(myscreen.screenHeight/2)+1;
+  % now make sure that dimensions are odd numbers of pixels
+  oddWidth = 2*floor(myscreen.screenWidth/2)+1;
+  oddHeight = 2*floor(myscreen.screenHeight/2)+1;
 
-% resize everything to odd
-stimulus.background.gaussian = stimulus.background.gaussian(1:oddHeight,1:oddWidth);
-stimulus.background.x = stimulus.background.x(1:oddHeight,1:oddWidth);
-stimulus.background.y = stimulus.background.y(1:oddHeight,1:oddWidth);
+  % resize everything to odd
+  stimulus.background.gaussian{iWidth} = stimulus.background.gaussian{iWidth}(1:oddHeight,1:oddWidth);
+  stimulus.background.x = stimulus.background.x(1:oddHeight,1:oddWidth);
+  stimulus.background.y = stimulus.background.y(1:oddHeight,1:oddWidth);
+  
+  % get the fourier transform
+  stimulus.background.gaussianTransform{iWidth} = getHalfFourier(stimulus.background.gaussian{iWidth});
+  
+  % pull out magnitude and dc for averaging
+  mag(iWidth,:) = stimulus.background.gaussianTransform{iWidth}.mag;
+  dc(iWidth) = stimulus.background.gaussianTransform{iWidth}.dc;
+end
 
-% get the fourier transform
-stimulus.background.gaussianTransform = getHalfFourier(stimulus.background.gaussian);
+% make average transform
+stimulus.background.averageGaussianTransform = stimulus.background.gaussianTransform{1};
+stimulus.background.averageGaussianTransform.dc = mean(dc);
+stimulus.background.averageGaussianTransform.mag = mean(mag);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    setBackgroundNoise    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = setBackgroundNoise(stimulus, myscreen, task, SNR, backgroundFreq)
+function stimulus = setBackgroundNoise(stimulus, myscreen, task, SNR, backgroundFreq, maxSNR)
+
+if any(SNR > maxSNR)
+  disp(sprintf('(alaisburr:setBackgroundNoise) max SNR is: %0.1f and an SNR of %0.1f was called for. Need to set the maxSNR setting higher - but note that this will change the maximum luminance of the noise background',maxSNR,max(SNR)))
+  stimulus = [];
+  return
+end
 
 % figure out how many frames we should have
 % for the length of the trial so that we can
@@ -898,9 +1072,11 @@ trialTime = sum(task{end}{end}.segmax);
 % make a few times more than necessary so that there will be more randomization
 numBackgrounds = round(trialTime * backgroundFreq * 2);
 
-% set the signal and noise max
-stimulus.background.noiseMax = 1 / (SNR + 1);
-stimulus.background.sigMax = 1 - stimulus.background.noiseMax;
+% set the noise maximum (i.e. maximum luminance of noise)
+% set it so that we can achieve the maximum SNR that is asked for.
+stimulus.background.noiseMax = 1 / (maxSNR + 1);
+% now set all the various SNR levels
+stimulus.background.sigMax = SNR * stimulus.background.noiseMax;
 
 disppercent(-inf,'(alaisburr:setBackgroundNoise) Precomputing background noise images');
 
@@ -913,8 +1089,8 @@ end
 
 for iBackground = 1:numBackgrounds
   % randomize phase and reconstruct
-  stimulus.background.gaussianTransform.phase = (rand(1,stimulus.background.gaussianTransform.n)*2*pi - pi);
-  im = reconstructFromHalfFourier(stimulus.background.gaussianTransform);
+  stimulus.background.averageGaussianTransform.phase = (rand(1,stimulus.background.averageGaussianTransform.n)*2*pi - pi);
+  im = reconstructFromHalfFourier(stimulus.background.averageGaussianTransform);
 
   % scale from 0 to noise max
   maxIm = max(im(:));
@@ -940,10 +1116,13 @@ stimulus.backgroundFreq = backgroundFreq;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 %    setStimuliOnNoise  %
 %%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = setStimulusOnBackground(stimulus, xPos, yPos, stimulusNum, backgroundNum)
+function stimulus = setStimulusOnBackground(stimulus, xPos, yPos, stimulusNum, backgroundNum, SNR, width)
+
+% get signal max for this trial
+sigMax = stimulus.background.sigMax(find(stimulus.SNR == SNR));
 
 % make the gaussian at the xPos, yPos and scale to signal max
-im = squeeze(stimulus.background.im(backgroundNum,:,:)) + stimulus.background.sigMax * exp(-(((stimulus.background.x-xPos).^2)/(2*(stimulus.width^2))+((stimulus.background.y-yPos).^2)/(2*(stimulus.width^2))));
+im = squeeze(stimulus.background.im(backgroundNum,:,:)) + sigMax * exp(-((((stimulus.background.x-xPos).^2) + (stimulus.background.y-yPos).^2))/(2*(width^2)));
 
 % delete any existing texture
 if isfield(stimulus,'stimTexture') && (length(stimulus.stimTexture) >= stimulusNum)
