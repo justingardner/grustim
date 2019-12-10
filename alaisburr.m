@@ -47,6 +47,11 @@
 %
 %            alaisburr('visual=1','useStaircase=1','nStaircaseTrials=50');
 %
+%            TO run w/out eye tracker calibration
+%
+%            alaisburr('doEyecalib=0');
+%
+%
 function myscreen = alaisburr(varargin)
  
 clear global stimulus
@@ -55,7 +60,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0','maxSNR=4','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0','maxSNR=4','useStaircase=0','nStaircaseTrials=40','restartStaircase=0','doEyecalib=1'},'verbose=1');
 
 % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -279,15 +284,20 @@ if ~isinf(stimulus.SNR)
   if isempty(stimulus);mglClose;return;end
 end
 
-% put up display string
-mglWaitSecs(1);
-mglClearScreen(stimulus.colors.black);
-mglTextSet([],32,stimulus.colors.white);
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
-mglFlush;
-mglClearScreen(stimulus.colors.black);
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
-mglFlush;
+if doEyecalib
+  % run eye calibration
+  myscreen = eyeCalibDisp(myscreen);
+else
+  % put up display string
+  mglWaitSecs(1);
+  mglClearScreen(stimulus.colors.black);
+  mglTextSet([],32,stimulus.colors.white);
+  mglTextDraw('Press ` key to start when you are ready',[0 0]);
+  mglFlush;
+  mglClearScreen(stimulus.colors.black);
+  mglTextDraw('Press ` key to start when you are ready',[0 0]);
+  mglFlush;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
