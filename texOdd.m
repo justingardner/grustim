@@ -3,7 +3,7 @@ function [ myscreen ] = texOdd( varargin )
 % TEXTURE ODDBALL TASK
 %  Oddball task using textures 
 %
-%  Usage: texOB(varargin)
+%  Usage: texOdd(varargin)
 %  Authors: Akshay Jagadeesh
 %  Date: 02/27/2018
 %
@@ -34,20 +34,20 @@ end
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/texOB/%s',mglGetSID))
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/texOdd/%s',mglGetSID))
   % Directory exists, check for a stimfile
-  files = dir(sprintf('~/data/texOB/%s/1*mat',mglGetSID));
+  files = dir(sprintf('~/data/texOdd/%s/1*mat',mglGetSID));
 
   if length(files) >= 1
     fname = files(end).name;
     
-    s = load(sprintf('~/data/texOB/%s/%s',mglGetSID,fname));
+    s = load(sprintf('~/data/texOdd/%s/%s',mglGetSID,fname));
     stimulus.counter = s.stimulus.counter + 1;
     clear s;
-    disp(sprintf('(texOB) Data file: %s loaded.',fname));
+    disp(sprintf('(texOdd) Data file: %s loaded.',fname));
   end
 end
-disp(sprintf('(texOB) This is run #%i',stimulus.counter));
+disp(sprintf('(texOdd) This is run #%i',stimulus.counter));
 
 %% Setup Screen
 myscreen = initScreen('VPixx2');
@@ -97,12 +97,13 @@ task{1}.getResponse = zeros(size(task{1}.segmin));
 task{1}.getResponse(stimulus.seg.response)=1;
 
 %%% Stimulus Variables
-stimulus.imNames = {'beans', 'blossoms', 'bubbly', 'clouds', 'crystals', 'dahlias',...
-          'fronds', 'fur', 'glass', 'leaves', 'leopard', 'noodles', 'paisley', 'plant',...
-          'rocks', 'scales', 'spikes', 'tiles', 'waves', 'worms'};
-stimulus.layerNames = {'PS', 'pool1', 'pool2', 'pool4'};
-stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/orig_eq';
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/tex-fMRI/tex_eq';
+stimulus.imNames = {'face', 'tulips', 'fur', 'bricks', 'blotch', 'bark'};
+%stimulus.imNames = {'beans', 'blossoms', 'bubbly', 'clouds', 'crystals', 'dahlias',...
+%          'fronds', 'fur', 'glass', 'leaves', 'leopard', 'noodles', 'paisley', 'plant',...
+%          'rocks', 'scales', 'spikes', 'tiles', 'waves', 'worms'};
+stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
+stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/textures/orig_color';
 stimulus.imSize = 4;
 if stimulus.periph
   stimulus.eccentricity = 10;
@@ -118,20 +119,20 @@ task{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
 
 % Make numTrials some multiple of number of TrialTypes 
-task{1}.numTrials = 168;
+task{1}.numTrials = 180;
 task{1}.random = 1;
 
 %%% Task Variables
 % Keep track of texturefamily, oddball layer/poolsize, standard layer/poolsize, and target position.
 task{1}.randVars.uniform.imgFam = 1:length(stimulus.imNames);
 task{1}.randVars.uniform.oddball_layer = [0]; % oddball is always original
-task{1}.randVars.uniform.standard_layer = 1:length(stimulus.layerNames);
-task{1}.randVars.uniform.standard_poolsize = 1:length(stimulus.poolSizes);
+task{1}.randVars.uniform.distractor_layer = 1:length(stimulus.layerNames);
+task{1}.randVars.uniform.distractor_poolsize = 1:length(stimulus.poolSizes);
 task{1}.randVars.uniform.targetPosition = 1:3; % Track target position
 
 if stimulus.training
   task{1}.randVars.uniform.oddball_layer = 0;
-  task{1}.randVars.uniform.standard_layer = 1:2;
+  task{1}.randVars.uniform.distractor_layer = 1:2;
   task{1}.numTrials = 50;
 end
 % Task variables to keep track of the status of each trial
@@ -180,7 +181,7 @@ clear smp smpName orig stims
 myscreen = eyeCalibDisp(myscreen);
 
 % let the user know
-disp(sprintf('(texOB) Starting run number: %i.',stimulus.counter));
+disp(sprintf('(texOdd) Starting run number: %i.',stimulus.counter));
 
 %% Main Task Loop
 mglClearScreen(0.5); 
@@ -233,11 +234,11 @@ texDir = stimulus.stimDir;
 % Load all 3 images for this trial
 imName = stimulus.imNames{task.thistrial.imgFam};
 
-std_layer = stimulus.layerNames{task.thistrial.standard_layer};
-std_poolsize = stimulus.poolSizes{task.thistrial.standard_poolsize};
+std_layer = stimulus.layerNames{task.thistrial.distractor_layer};
+std_poolsize = stimulus.poolSizes{task.thistrial.distractor_poolsize};
 if strcmp(std_layer, 'PS')
     std_poolsize = '1x1';
-    task.thistrial.standard_poolsize = 1;
+    task.thistrial.distractor_poolsize = 1;
 end
 stimulus.live.d1 = stimulus.live.stims.(sprintf('%s_%s_%s_smp1', imName, std_poolsize, std_layer));
 stimulus.live.d2 = stimulus.live.stims.(sprintf('%s_%s_%s_smp2', imName, std_poolsize, std_layer));
@@ -458,12 +459,12 @@ function data = analyzeData()
 %%
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/texOB/%s/19*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/texOdd/%s/19*stim*.mat',mglGetSID)));
 
 count = 1; 
 data = struct('response', [], 'reaction_time', [], 'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
 for fi = 1:length(files)
-  load(fullfile(sprintf('~/data/texOB/%s/%s',mglGetSID,files(fi).name)));
+  load(fullfile(sprintf('~/data/texOdd/%s/%s',mglGetSID,files(fi).name)));
   
   e = getTaskParameters(myscreen,task);
   if e.nTrials>1
@@ -499,24 +500,24 @@ end
 disp(sprintf('SUBJECT %s: Found %i runs with a total of %i trials', mglGetSID, length(data.accByRuns), data.nTrials));
 
 %% Get average accuracies across each condition.
-standard_pools = unique(data.standard_poolsize);
-standard_layers = unique(data.standard_layer);
+standard_pools = unique(data.distractor_poolsize);
+distractor_layers = unique(data.distractor_layer);
 odd_pools = unique(data.oddball_poolsize);
 odd_layers = unique(data.oddball_layer);
 
-accs = nan(length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
-SEs = nan( length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
-Ns = nan( length(standard_pools)*length(standard_layers), length(odd_pools)*length(odd_layers));
+accs = nan(length(standard_pools)*length(distractor_layers), length(odd_pools)*length(odd_layers));
+SEs = nan( length(standard_pools)*length(distractor_layers), length(odd_pools)*length(odd_layers));
+Ns = nan( length(standard_pools)*length(distractor_layers), length(odd_pools)*length(odd_layers));
 x = 0; 
 std_labels = {}; odd_labels = {};
 for i = 1:length(standard_pools)
-  for j = 1:length(standard_layers)
+  for j = 1:length(distractor_layers)
    x = x+1; y = 0;
-   std_labels{x} = sprintf('%s %s', stimulus.poolSizes{standard_pools(i)}, stimulus.layerNames{standard_layers(j)});
+   std_labels{x} = sprintf('%s %s', stimulus.poolSizes{standard_pools(i)}, stimulus.layerNames{distractor_layers(j)});
    for k = 1:length(odd_pools)
       for l = 1:length(odd_layers)
         y = y+1;
-        ct = data.correct(data.standard_poolsize==standard_pools(i) & data.standard_layer==standard_layers(j) & data.oddball_poolsize==odd_pools(k) & data.oddball_layer==odd_layers(l));
+        ct = data.correct(data.distractor_poolsize==standard_pools(i) & data.distractor_layer==distractor_layers(j) & data.oddball_poolsize==odd_pools(k) & data.oddball_layer==odd_layers(l));
         accs(x,y) = nanmean(ct);
         SEs(x,y) = 1.96*nanstd(ct) / sqrt(length(ct));
         Ns(x,y) = length(ct);
@@ -544,7 +545,7 @@ end
 xlabel('Oddball Texture');
 ylabel('Standard (non-oddball) Texture');
 set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
-set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
+set(gca, 'YTick', 1:length(standard_pools)*length(distractor_layers));
 set(gca, 'XTickLabel', odd_labels);
 set(gca, 'XTickLabelRotation', 45);
 set(gca, 'YTickLabel', std_labels);
@@ -565,7 +566,7 @@ title('Number of trials');
 xlabel('Oddball Texture');
 ylabel('Standard (non-oddball) Texture');
 set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
-set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
+set(gca, 'YTick', 1:length(standard_pools)*length(distractor_layers));
 set(gca, 'XTickLabel', odd_labels);
 set(gca, 'XTickLabelRotation', 45);
 set(gca, 'YTickLabel', std_labels);
@@ -573,17 +574,17 @@ colormap('Hot');
 colorbar;
 
 %% When oddball is ORIGINAL`
-accs = nan(length(standard_pools), length(standard_layers));
-SEs = nan( length(standard_pools), length(standard_layers));
-Ns = nan( length(standard_pools), length(standard_layers));
+accs = nan(length(standard_pools), length(distractor_layers));
+SEs = nan( length(standard_pools), length(distractor_layers));
+Ns = nan( length(standard_pools), length(distractor_layers));
 x = 0;
 for i = 1:length(standard_pools)
-  for j = 1:length(standard_layers)
-    if strcmp(stimulus.layerNames{standard_layers(j)}, 'PS')
-        ct = data.correct(data.standard_layer==standard_layers(j) & data.oddball_layer==0);
+  for j = 1:length(distractor_layers)
+    if strcmp(stimulus.layerNames{distractor_layers(j)}, 'PS')
+        ct = data.correct(data.distractor_layer==distractor_layers(j) & data.oddball_layer==0);
         if i~=1, ct = NaN; end
     else
-        ct = data.correct(data.standard_poolsize==standard_pools(i) & data.standard_layer==standard_layers(j) & data.oddball_layer==0);
+        ct = data.correct(data.distractor_poolsize==standard_pools(i) & data.distractor_layer==distractor_layers(j) & data.oddball_layer==0);
     end
     accs(i,j) = nanmean(ct);
     SEs(i,j) = 1.96*nanstd(ct) / sqrt(length(ct));
@@ -611,7 +612,7 @@ xlabel('Model layer to which distractors were feature-matched')
 keyboard
 figure; bar(accs');
 set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
-set(gca, 'YTick', 1:length(standard_pools)*length(standard_layers));
+set(gca, 'YTick', 1:length(standard_pools)*length(distractor_layers));
 set(gca, 'XTickLabel', ['Original' stimulus.layerNames]);
 legend(stimulus.layerNames);
 
