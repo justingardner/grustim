@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'periph=0','plots=0','noeye=0', 'analyze=0', 'training=0'}, 'verbose=1');
+getArgs(varargin,{'periph=0','plots=0','noeye=1', 'analyze=0', 'training=0'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.training = training;
@@ -102,8 +102,8 @@ stimulus.imNames = {'face', 'tulips', 'fur', 'bricks', 'blotch', 'bark'};
 %          'fronds', 'fur', 'glass', 'leaves', 'leopard', 'noodles', 'paisley', 'plant',...
 %          'rocks', 'scales', 'spikes', 'tiles', 'waves', 'worms'};
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
-stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/textures/orig_color';
+stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
+stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/textures/orig_color';
 stimulus.imSize = 4;
 if stimulus.periph
   stimulus.eccentricity = 10;
@@ -147,14 +147,14 @@ stims = struct();
 disppercent(-inf, 'Preloading images');
 for i = 1:length(stimulus.imNames)
   imName = stimulus.imNames{i};
-  orig = imread(sprintf('%s/%s.png', stimulus.origImDir, imName));
+  orig = imread(sprintf('%s/%s.jpg', stimulus.origImDir, imName));
   stims.(imName) = genTexFromIm(orig, stimulus.live.mask);
   for j = 1:length(stimulus.layerNames)
     for k = 1:length(stimulus.poolSizes)
       for l = 1:stimulus.nSamples
         ps = stimulus.poolSizes{k}; ln = stimulus.layerNames{j};
         if strcmp(ln, 'PS'), ps = '1x1'; end
-        smp = imread(sprintf('%s/%s_%s_%s_smp%i.png', stimulus.stimDir, ps, ln, imName, l));
+        smp = imread(sprintf('%s/%s_%s_%s_smp%i.jpg', stimulus.stimDir, ps, ln, imName, l));
         stims.(sprintf('%s_%s_%s_smp%i', imName, ps, ln, l)) = genTexFromIm(smp, stimulus.live.mask);
       end
     end
