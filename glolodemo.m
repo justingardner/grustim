@@ -97,7 +97,7 @@ task{2}{1}.waitForBacktick = 1;
 
 task{2}{2}.parameter.dirnum = [1:4;1:4];
 task{2}{2}.parameterCode.localdir =  [-1 1 -1 1];
-task{2}{2}.parameterCode.globaldir = [0 0 1 -1];
+task{2}{2}.parameterCode.globaldir = [1 -1 0 0];
 %task{2}{2}.parameterCode.localdir =  [-1  1];
 %task{2}{2}.parameterCode.globaldir = [1 -1];
 %task{2}.parameter.dirnum = [1;1];
