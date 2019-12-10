@@ -47,6 +47,11 @@
 %
 %            alaisburr('visual=1','useStaircase=1','nStaircaseTrials=50');
 %
+%            TO run w/out eye tracker calibration
+%
+%            alaisburr('doEyecalib=0');
+%
+%
 function myscreen = alaisburr(varargin)
  
 clear global stimulus
@@ -279,15 +284,20 @@ if ~isinf(stimulus.SNR)
   if isempty(stimulus);mglClose;return;end
 end
 
-% put up display string
-mglWaitSecs(1);
-mglClearScreen(stimulus.colors.black);
-mglTextSet([],32,stimulus.colors.white);
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
-mglFlush;
-mglClearScreen(stimulus.colors.black);
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
-mglFlush;
+if doEyecalib
+  % run eye calibration
+  myscreen = eyeCalibDisp(myscreen);
+else
+  % put up display string
+  mglWaitSecs(1);
+  mglClearScreen(stimulus.colors.black);
+  mglTextSet([],32,stimulus.colors.white);
+  mglTextDraw('Press ` key to start when you are ready',[0 0]);
+  mglFlush;
+  mglClearScreen(stimulus.colors.black);
+  mglTextDraw('Press ` key to start when you are ready',[0 0]);
+  mglFlush;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
