@@ -17,7 +17,7 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'periph=1','plots=0','noeye=0', 'analyze=0', 'training=0'}, 'verbose=1');
+getArgs(varargin,{'periph=0','plots=0','noeye=0', 'analyze=0', 'training=0'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.training = training;
