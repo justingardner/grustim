@@ -14,7 +14,7 @@
 %             For the auditory task, two tones are presented and then the word one or two.
 %             Subject is instructed to remember the first or second tone depending on the
 %             spoken cue. After a delay period, the subject will hear a third tone and
-%             report whether the third tone is higher (button 1) or lower (button 2) then the
+%             report whether the third tone is higher (button 2) or lower (button 1) then the
 %             remembered tone.
 %
 %             For the visual task, subjects are shown two gratings of different orientations in
