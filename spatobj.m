@@ -27,7 +27,8 @@ getArgs(varargin,{'plots=0','noeye=0','eyewindow=2','rebuild=1'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.eyewindow = eyewindow;
-stimulus.remainCategory = 1:20;
+stimulus.cats.focal = 1:20;
+stimulus.cats.distributed = 1:20;
 stimulus.rebuild = rebuild;
 stimulus.categories = {'artichoke','bathtub','cabbage butterfly','computer','mortar','greenhouse','padlock','toaster','paintbrush','football helmet','horned beetle','home theatre','stone wall','baked goods','coffee','spider','banana','clock','ferris wheel','seashore'};
 
@@ -90,7 +91,8 @@ end
 disp(sprintf('(spatobj) %i categories remaining (total trials %i)',length(stimulus.remainCategory),length(stimulus.remainCategory)*30));
 
 %% Setup Screen
-myscreen = initScreen('VPixx');
+myscreen = initScreen('test');
+% myscreen = initScreen('VPixx');
 % set background to black
 myscreen.background = 0;
 stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur when for 300 ms someone moves out of the fixation region
@@ -102,17 +104,24 @@ stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur whe
 % gammaTable(:,3) = (0:1/255:1);
 % mglSetGammaTable(gammaTable);
 %% Sizes
-stimulus.arrayWidth = round(7*myscreen.screenWidth/myscreen.imageWidth); % in pixels
-disp(sprintf('Images will be resized to %1.2f pixels to match 7 degrees',stimulus.arrayWidth));
+stimulus.arrayWidth = round(9*myscreen.screenWidth/myscreen.imageWidth); % in pixels
+disp(sprintf('Images will be resized to %1.2f pixels to match 9 degrees',stimulus.arrayWidth));
 
-%% Load stimulus
-if stimulus.rebuild
-    loadStimulus();
-else
-    if ~isfield(stimulus,'images')
-        warning('Images are not loaded. Do you need to rebuild=1?');
-    end
+% resize all of the images
+stop = 1;
+
+dataTemp = zeros(size(data,1),stimulus.arrayWidth,stimulus.arrayWidth,size(data,4));
+examplesTemp = zeros(size(examples,1),stimulus.arrayWidth,stimulus.arrayWidth,size(examples,4));
+
+for i = 1:size(data,1)
+    dataTemp(i,:,:,:) = imresize(squeeze(data(i,:,:,:)),[stimulus.arrayWidth, stimulus.arrayWidth]);
+    examplesTemp(i,:,:,:) = imresize(squeeze(data(i,:,:,:)),[stimulus.arrayWidth, stimulus.arrayWidth]);
 end
+
+data = dataTemp;
+examples = examplesTemp;
+
+clear dataTemp examplesTemp
 
 %% Plot and return
 if stimulus.plots==2
@@ -131,7 +140,16 @@ stimulus.colors.black = [0 0 0];
 
 stimulus.live = struct;
 
-%% Setup Task
+%% Setup Examples Phase
+
+exPhase = struct;
+exPhase.seglen = [inf inf inf inf inf inf];
+exPhase.waitForBackTick = 0;
+exPhase.numTrials = 1;
+exPhase.randVars.calculated.exampleNum = nan; % 1->5
+exPhase.randVars.calculated.targetCategory = nan; % 1->20
+
+%% Setup Task Phase
 
 % task waits for fixation on first segment
 stimulus.seg.iti = 1;
@@ -140,42 +158,63 @@ stimulus.seg.stim = 3;
 stimulus.seg.mask = 4;
 stimulus.seg.resp = 5; % resp and stim overlap
 
-task{1}{1}.segmin = [0.5 inf inf 1 1];
-task{1}{1}.segmax = [1.5 inf inf 1 1];
+taskPhase = struct;
+
+taskPhase.segmin = [0.5 inf inf 1 1];
+taskPhase.segmax = [1.5 inf inf 1 1];
 
 if stimulus.noeye
-    task{1}{1}.segmin(stimulus.seg.fix) = 0.5;
-    task{1}{1}.segmax(stimulus.seg.fix) = 0.5;
+    taskPhase.segmin(stimulus.seg.fix) = 0.5;
+    taskPhase.segmax(stimulus.seg.fix) = 0.5;
 end
 
-task{1}{1}.waitForBacktick = 1;
+taskPhase.waitForBacktick = 0;
 
-task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
-task{1}{1}.getResponse(stimulus.seg.mask) = 1;
-task{1}{1}.getResponse(stimulus.seg.resp) = 1;
+taskPhase.getResponse = zeros(1,length(taskPhase.segmin));
+taskPhase.getResponse(stimulus.seg.mask) = 1;
+taskPhase.getResponse(stimulus.seg.resp) = 1;
 
-task{1}{1}.numTrials = 30*20;
+taskPhase.numTrials = 40; % there are 20 images with the target and 20 without
 
-task{1}{1}.random = 1;
+taskPhase.random = 1;
 
-task{1}{1}.parameter.targetImg = 1:15;
-task{1}{1}.parameter.targetPresent = [0 1];
-task{1}{1}.randVars.calculated.duration = nan; % we will randomize duration from 50 ms to 150 ms;
-task{1}{1}.randVars.calculated.targetCategory = nan;
-task{1}{1}.randVars.calculated.dead = nan;
-task{1}{1}.randVars.calculated.responsePresent = nan;
-task{1}{1}.randVars.calculated.correct = nan;
-task{1}{1}.randVars.calculated.imgCat1 = nan;
-task{1}{1}.randVars.calculated.imgCat2 = nan;
-task{1}{1}.randVars.calculated.imgCat3 = nan;
-task{1}{1}.randVars.calculated.imgCat4 = nan;
+taskPhase.parameter.imageNumber = 1:20;
+taskPhase.parameter.targetPresent = [0 1];
+taskPhase.randVars.calculated.duration = nan; % we will randomize duration from 50 ms to 150 ms;
+taskPhase.randVars.calculated.targetCategory = nan;
+taskPhase.randVars.calculated.dead = nan;
+taskPhase.randVars.calculated.responsePresent = nan;
+taskPhase.randVars.calculated.focal = nan;
+taskPhase.randVars.calculated.correct = nan;
+taskPhase.randVars.calculated.imgCat1 = nan;
+taskPhase.randVars.calculated.imgCat2 = nan;
+taskPhase.randVars.calculated.imgCat3 = nan;
+taskPhase.randVars.calculated.imgCat4 = nan;
 
-task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
+%% Set up all phases
+for i = 1:length(stimulus.cats.focal)
+    % add a phase for each focal category remaining
+    task{1}{end+1} = exPhase;
+    task{1}{end+1} = taskPhase;
+    if i==1
+        % if this is the first phase pair, set backtick to 1
+        task{1}{1}.waitForBacktick = 1;
+        task{1}{2}.waitForBacktick = 1;
+    end
+end
+
+for i = 1:length(stimulus.cats.distributed)
+    task{1}{end+1} = exPhase;
+    task{1}{end+1} = taskPhase;
+end
 
 %% Full Setup
-% Initialize task (note phase == 1)
-for phaseNum = 1:length(task{1})
-    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],@startBlockCallback);
+% Initialize task phases
+for phaseNum = 1:2:length(task{1})
+    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,[],@exampleUpdateCallback,[],@exampleTrialCallback,[],[]);
+end
+for phaseNum = 2:2:length(task{1})
+    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 end
 
 %% EYE CALIB
