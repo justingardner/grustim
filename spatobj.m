@@ -9,20 +9,11 @@ function [ myscreen ] = spatobj( varargin )
 % REFERENCES
 % Lindsay, G. W., & Miller, K. D. (2018). How biological attention mechanisms improve task performance in a large-scale visual system model. eLife, 7, e38105.
 % 
-% EXPERIMENT CALL:
-% scanning
-% afcom('scan=1');
-% TESTING CALL:
-% afcom('cue=#','noeye=1','powerwheel=0');
 
-%% add npy-matlab
-if isempty(which('readNPY'))
-    addpath(genpath('~/proj/npy-matlab'));
-end
 
 %% Over-write the stimulus struct
 
-global stimulus 
+global stimulus resizedData resizedExamples
 stimulus = struct;
 stimulus.imagesLoaded = false;
 
@@ -32,35 +23,68 @@ noeye = 0;
 eyewindow=0; 
 rebuild = 0;
 
-getArgs(varargin,{'scan=0','plots=0','noeye=0','eyewindow=2','rebuild=1'});
+getArgs(varargin,{'plots=0','noeye=0','eyewindow=2','rebuild=1'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.eyewindow = eyewindow;
-stimulus.remainCategory = 1:20;
+stimulus.cats.focal = 0:19;
+stimulus.cats.distributed = 0:19;
 stimulus.rebuild = rebuild;
 
 clear plots noeye eyewindow load
 
+%% Load iamges
+
+if stimulus.rebuild
+    % load data images
+    data = load('~/data/spatobj/stimuli.mat');
+    data = data.data;
+    
+    % meta data columns
+    %   1        2               3
+    % idx  target categ  distractors_only
+    [metaHeader, metaData] = csvreadh('~/data/spatobj/stimuli_meta_ints.csv');
+    metaData = metaData(1:size(metaData,1)-1,:);
+    metaData(:,1) = metaData(:,1)+1; % add 1 for matlab indexing
+    
+    % NOTE: for now don't load the headers or data, because the data
+    % contain strings and csvreadh can't acutally handle that
+    
+    examples = load('~/data/spatobj/exemplars.mat');
+    stimulus.cats.categories = examples.cat_map;
+    examples = examples.data;
+    
+    exData = zeros(size(examples,1),2);
+    % exData columns
+    %   1        2
+    % idx    category
+    exData(:,1) = 1:size(exData,1);
+    temp = repmat(0:19,5,1);
+    exData(:,2) = temp(:);
+end
+
+%% Rename some categories
+orig = {'bakery','garden spider','long-horned beetle','analog clock'};
+new = {'baked goods','spider','beetle','clock'};
+
+for oi = 1:length(orig)
+    idx = cellfun(@(x) strcmp(x,orig{oi}),stimulus.cats.categories);
+    if any(idx)
+        stimulus.cats.categories{find(idx,1)} = new{oi};
+    end
+end
+
 %% Open Old Stimfile
 
-if ~stimulus.rebuild && ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s',mglGetSID))
-    % Directory exists, check for a stimefile
-    files = dir(sprintf('~/data/spatobj/%s/1*mat',mglGetSID));
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s',mglGetSID))
+    % Directory exists, check for a stimfile
+    files = dir(sprintf('~/data/spatobj/%s/*mat',mglGetSID));
 
     if length(files) >= 1
-        fname = files(1).name;
-        s = load(sprintf('~/data/spatobj/%s/%s',mglGetSID,fname));
-        stimulus.images = s.stimulus.images;
-        stimulus.categories = s.stimulus.categories;
-        stimulus.images_info = s.stimulus.images_info;
-        stimulus.distractors = s.stimulus.distractors;
-        stimulus.distractors_info = s.stimulus.distractors_info;
-        stimulus.imagesLoaded = s.stimulus.imagesLoaded;
-
         fname = files(end).name;
         s = load(sprintf('~/data/spatobj/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
-        stimulus.remainCategory = s.stimulus.remainCategory;
+        stimulus.cats = s.stimulus.cats;
         clear s;
         disp(sprintf('(spatobj) Data file: %s loaded.',fname));
     else
@@ -68,37 +92,25 @@ if ~stimulus.rebuild && ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s'
     end
 end
 
-disp(sprintf('(spatobj) %i categories remaining (total trials %i)',length(stimulus.remainCategory),length(stimulus.remainCategory)*30));
+disp(sprintf('(spatobj) %i focal categories remaining (total trials %i)',length(stimulus.cats.focal),length(stimulus.cats.focal)*40));
+disp(sprintf('(spatobj) %i distributed categories remaining (total trials %i)',length(stimulus.cats.distributed),length(stimulus.cats.distributed)*40));
 
 %% Setup Screen
-myscreen = initScreen('VPixx');
+myscreen = initScreen('test');
+warning('using test screen');
+% myscreen = initScreen('VPixx');
+
 % set background to black
 myscreen.background = 0;
 stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur when for 300 ms someone moves out of the fixation region
 
 %% Reset the gamma table to be blank:
+% should this even happen?
 gammaTable(:,1) = (0:1/255:1);
 gammaTable(:,2) = (0:1/255:1);
 gammaTable(:,3) = (0:1/255:1);
 mglSetGammaTable(gammaTable);
-%% Sizes
-stimulus.arrayWidth = round(7*myscreen.screenWidth/myscreen.imageWidth); % in pixels
-disp(sprintf('Images will be resized to %1.2f pixels to match 7 degrees',stimulus.arrayWidth));
-
-%% Load stimulus
-if stimulus.rebuild
-    loadStimulus();
-else
-    if ~isfield(stimulus,'images')
-        warning('Images are not loaded. Do you need to rebuild=1?');
-    end
-end
-
-%% Plot and return
-if stimulus.plots==2
-    dispInfo;
-    return
-end
+% warning('Gamma table is getting set right now -- probably needs to be turned off to correct images');
 
 %% Initialize Stimulus
 myscreen.stimulusNames{1} = 'stimulus';
@@ -110,8 +122,67 @@ stimulus.colors.white = [1 1 1];
 stimulus.colors.black = [0 0 0];
 
 stimulus.live = struct;
+stimulus.live.last = struct;
+stimulus.live.last.done = false
 
-%% Setup Task
+%% Sizes
+stimulus.arrayWidth = round(9*myscreen.screenWidth/myscreen.imageWidth); % in pixels
+disp(sprintf('Images will be resized to %1.2f pixels to match 9 degrees',stimulus.arrayWidth));
+
+if ~isempty(resizedData) && ~isempty(resizedExamples) && size(resizedData,2)==stimulus.arrayWidth
+    disp('Resized images are being loaded -- if this is the first run for this subject, [esc] and clear all');
+    data = resizedData;
+    examples = resizedExamples;
+else
+    disp('Resizing images');
+    dataTemp = zeros(size(data,1),stimulus.arrayWidth,stimulus.arrayWidth,size(data,4));
+    examplesTemp = zeros(size(examples,1),stimulus.arrayWidth,stimulus.arrayWidth,size(examples,4));
+
+    for i = 1:size(data,1)
+        dataTemp(i,:,:,:) = imresize(squeeze(data(i,:,:,:)),[stimulus.arrayWidth, stimulus.arrayWidth]);
+    end
+    for i = 1:size(examples,1)
+        examplesTemp(i,:,:,:) = imresize(squeeze(examples(i,:,:,:)),[stimulus.arrayWidth, stimulus.arrayWidth]);
+    end
+
+    data = dataTemp;
+    examples = examplesTemp;
+    
+    resizedData = uint8(data);
+    resizedExamples = uint8(examples);
+end
+
+    
+stimulus.live.metaHeader = metaHeader;
+stimulus.live.metaData = metaData;
+stimulus.live.data = uint8(data);
+stimulus.live.exHeader = {'index','category'};
+stimulus.live.exData = exData;
+stimulus.live.examples = uint8(examples);
+
+clear metaHeader metaData exData examples data dataTemp examplesTemp
+
+%% Plot and return
+if stimulus.plots==2
+    dispInfo;
+    return
+end
+
+%% Setup Examples Phase
+
+exPhase = struct;
+exPhase.segmin = [inf inf inf inf inf inf];
+exPhase.segmax = [inf inf inf inf inf inf];
+exPhase.getResponse = ones(size(exPhase.segmin));
+
+exPhase.waitForBacktick = 0;
+exPhase.numTrials = 1;
+exPhase.parameter.targetCategory = nan; % 0->19
+exPhase.parameter.focal = nan;
+exPhase.randVars.calculated.exampleNum = nan; % 1->5
+exPhase.random = 0;
+
+%% Setup Task Phase
 
 % task waits for fixation on first segment
 stimulus.seg.iti = 1;
@@ -120,42 +191,85 @@ stimulus.seg.stim = 3;
 stimulus.seg.mask = 4;
 stimulus.seg.resp = 5; % resp and stim overlap
 
-task{1}{1}.segmin = [0.5 inf inf 1 1];
-task{1}{1}.segmax = [1.5 inf inf 1 1];
+taskPhase = struct;
+
+taskPhase.segmin = [0.25 inf inf 1 1];
+taskPhase.segmax = [1 inf inf 1 1];
 
 if stimulus.noeye
-    task{1}{1}.segmin(stimulus.seg.fix) = 0.5;
-    task{1}{1}.segmax(stimulus.seg.fix) = 0.5;
+    taskPhase.segmin(stimulus.seg.fix) = 0.5;
+    taskPhase.segmax(stimulus.seg.fix) = 0.5;
 end
 
+taskPhase.waitForBacktick = 0;
+
+taskPhase.getResponse = zeros(1,length(taskPhase.segmin));
+taskPhase.getResponse(stimulus.seg.stim) = 1;
+taskPhase.getResponse(stimulus.seg.mask) = 1;
+taskPhase.getResponse(stimulus.seg.resp) = 1;
+
+taskPhase.numTrials = 40; % there are 20 images with the target and 20 without
+
+taskPhase.random = 1;
+
+taskPhase.parameter.imageNumber = 1:20;
+taskPhase.parameter.targetPresent = [0 1];
+taskPhase.parameter.targetCategory = nan;
+taskPhase.parameter.focal = nan;
+taskPhase.randVars.calculated.duration = nan; % we will randomize duration from 50 ms to 150 ms;
+taskPhase.randVars.calculated.dead = nan;
+taskPhase.randVars.calculated.responsePresent = nan;
+taskPhase.randVars.calculated.correct = nan;
+taskPhase.randVars.calculated.imgCat0 = nan;
+taskPhase.randVars.calculated.imgCat1 = nan;
+taskPhase.randVars.calculated.imgCat2 = nan;
+taskPhase.randVars.calculated.imgCat3 = nan;
+
+%% Set up all phases
+focalIdxOrder = randperm(length(stimulus.cats.focal));
+distIdxOrder = randperm(length(stimulus.cats.distributed));
+
+taskPhases = {};
+for i = 1:length(stimulus.cats.focal)
+    temp = taskPhase;
+    temp.parameter.targetCategory = stimulus.cats.focal(focalIdxOrder(i));
+    temp.parameter.focal = 1;
+    taskPhases{end+1} = temp;
+end
+for i = 1:length(stimulus.cats.distributed)
+    cCat = stimulus.cats.distributed(distIdxOrder(i));
+    temp.parameter.targetCategory = stimulus.cats.focal(focalIdxOrder(i));
+    temp.parameter.focal = 0;
+    taskPhases{end+1} = temp;
+end
+
+% re-order randomly
+taskPhases = taskPhases(randperm(length(taskPhases)));
+
+% now generate the real task list, including an exPhase before every task
+% phase
+task{1} = {};
+
+for i = 1:length(taskPhases)
+    temp = taskPhases{i};
+    exTemp = exPhase;
+    exTemp.parameter.targetCategory = temp.parameter.targetCategory;
+    exTemp.parameter.focal = temp.parameter.focal;
+    
+    task{1}{end+1} = exTemp;
+    task{1}{end+1} = temp;
+end
+
+% set the first exPhase to wait for backtick
 task{1}{1}.waitForBacktick = 1;
 
-task{1}{1}.getResponse = zeros(1,length(task{1}{1}.segmin));
-task{1}{1}.getResponse(stimulus.seg.mask) = 1;
-task{1}{1}.getResponse(stimulus.seg.resp) = 1;
-
-task{1}{1}.numTrials = 30*20;
-
-task{1}{1}.random = 1;
-
-task{1}{1}.parameter.targetImg = 1:15;
-task{1}{1}.parameter.targetPresent = [0 1];
-task{1}{1}.randVars.calculated.duration = nan; % we will randomize duration from 50 ms to 150 ms;
-task{1}{1}.randVars.calculated.targetCategory = nan;
-task{1}{1}.randVars.calculated.dead = nan;
-task{1}{1}.randVars.calculated.responsePresent = nan;
-task{1}{1}.randVars.calculated.correct = nan;
-task{1}{1}.randVars.calculated.imgCat1 = nan;
-task{1}{1}.randVars.calculated.imgCat2 = nan;
-task{1}{1}.randVars.calculated.imgCat3 = nan;
-task{1}{1}.randVars.calculated.imgCat4 = nan;
-
-task{1}{1}.synchToVol = zeros(1,length(task{1}{1}.segmin));
-
 %% Full Setup
-% Initialize task (note phase == 1)
-for phaseNum = 1:length(task{1})
-    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],@startBlockCallback);
+% Initialize task phases
+for phaseNum = 1:2:length(task{1})
+    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@exampleSegmentCallback,@exampleUpdateCallback,@exampleResponseCallback,@exampleTrialCallback,[],[]);
+end
+for phaseNum = 2:2:length(task{1})
+    [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,@endTrialCallback,[]);
 end
 
 %% EYE CALIB
@@ -166,17 +280,9 @@ if ~stimulus.noeye
     myscreen = eyeCalibDisp(myscreen);
 end
 
-%% Put up the current target category
-for i= 1:2
-    mglClearScreen;
-    mglFixationCross;
-    mglFlush
-end
-
 %% Main Task Loop
 
 phaseNum = 1;
-% Again, only one phase.
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     % update the task
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);
@@ -189,17 +295,13 @@ mglClearScreen;
 mglFlush
 myscreen.flushMode = 1;
 
-% track finished categories
-r = input('Was the last block completed? [enter to confirm]','s');
-if ~isempty(r)
-    stimulus.doneCategories(end) = [];
-end
-stimulus.remainCategory = setdiff(stimulus.remainCategory,stimulus.doneCategories);
-
-if ~stimulus.rebuild
-    % remove extra fields
-    stimulus = rmfield(stimulus,'images');
-    stimulus = rmfield(stimulus,'distractors');
+if stimulus.live.last.done
+    %we just finished a category, save it
+    if stimulus.live.last.focal
+        stimulus.cats.focal = setdiff(stimulus.cats.focal,stimulus.live.last.category);
+    else
+        stimulus.cats.distributed = setdiff(stimulus.cats.distributed,stimulus.live.last.category);
+    end
 end
 
 % if we got here, we are at the end of the experiment
@@ -215,49 +317,105 @@ end
 function dispInfo()
 %%
 
-function [task, myscreen] = startBlockCallback(task,myscreen)
+function [task, myscreen] = exampleSegmentCallback(task,myscreen)
 global stimulus
-% set the new category
-stimulus.live.curCategory = randsample(stimulus.remainCategory,1);
-if ~isfield(stimulus,'doneCategories')
-    stimulus.doneCategories = [];
+
+% if this is seg #1 do nothing, any other segment we get the image
+if task.thistrial.thisseg > 1
+    % build the current exemplar image
+    imgIdx = task.thistrial.targetCategory * 5 + task.thistrial.thisseg-1;
+    stimulus.live.exemplar = loadExemplar(imgIdx);
 end
-stimulus.doneCategories = [stimulus.doneCategories stimulus.live.curCategory];
 
-disp(sprintf('Starting new block, category: %s',stimulus.categories{stimulus.live.curCategory}));
+function [task, myscreen] = exampleTrialCallback(task,myscreen)
+%%
+global stimulus
 
+if stimulus.live.last.done
+    %we just finished a category, save it
+    if stimulus.live.last.focal
+        stimulus.cats.focal = setdiff(stimulus.cats.focal,stimulus.live.last.category);
+    else
+        stimulus.cats.distributed = setdiff(stimulus.cats.distributed,stimulus.live.last.category);
+    end
+end
 
+stimulus.live.last = struct;
+stimulus.live.last.done = false;
 
+function [task, myscreen] = exampleUpdateCallback(task,myscreen)
+%%
+global stimulus
+mglClearScreen();
+
+focalText = {'Search for:','Top right'};
+if task.thistrial.thisseg == 1
+    mglTextDraw(focalText{task.thistrial.focal+1},[0 1]);
+    mglTextDraw(stimulus.cats.categories{task.thistrial.targetCategory+1},[0 -1]);
+else
+    mglBltTexture(stimulus.live.exemplar,[0 0]);
+end
+
+function [task, myscreen] = exampleResponseCallback(task,myscreen)
+
+% when the user clicks, go to the next screen
+task = jumpSegment(task);
+
+function [task, myscreen] = endTrialCallback(task,myscreen)
+global stimulus
+
+if task.trialnum == task.numTrials
+    stimulus.live.last.done = true;
+end
 
 function [task, myscreen] = startTrialCallback(task,myscreen)
+%%
 global stimulus
 
-task.thistrial.category = stimulus.live.curCategory;
-
-
-task.thistrial.duration = rand*0.75 + 0.25;
-task.thistrial.seglen(stimulus.seg.stim) = task.thistrial.duration;
-
-% create the texture for this trial
-if task.thistrial.targetPresent
-    img = permute(squeeze(stimulus.images(task.thistrial.category,task.thistrial.targetImg,:,:,:)),[3 1 2]);
-    for i = 1:4
-        task.thistrial.(sprintf('imgCat%i',i)) = stimulus.images_info(task.thistrial.category,task.thistrial.targetImg,i);
-    end
-else
-    img = permute(squeeze(stimulus.distractors(task.thistrial.category,task.thistrial.targetImg,:,:,:)),[3 1 2]);
-    for i = 1:4
-        task.thistrial.(sprintf('imgCat%i',i)) = stimulus.distractors_info(task.thistrial.category,task.thistrial.targetImg,i);
-    end
+if task.trialnum == 1
+    % set the last info, so this block will get saved
+    stimulus.live.last = struct;
+    stimulus.live.last.done = false;
+    stimulus.live.last.focal = task.thistrial.focal;
+    stimulus.live.last.category = task.thistrial.targetCategory;
 end
-mask = img;
-img(4,:,:) = 255;
-stimulus.live.tex = mglCreateTexture(img);
-mask = mask(:);
-mask = mask(randperm(length(mask)));
-mask = reshape(mask,3,stimulus.arrayWidth,stimulus.arrayWidth);
-mask(4,:,:) = 255;
-stimulus.live.mask = mglCreateTexture(mask);
+
+% set the duration of this trial
+task.thistrial.duration = randsample([1 2 4 8 16 32],1);
+stimulus.live.framesRemaining = task.thistrial.duration;
+
+% stim segment is inf, so we have to jumpSegment when the frames are
+% elapsed
+
+% build the stimulus image for this trial
+
+% first get images of this target category
+cData = sel(stimulus.live.metaData,3,task.thistrial.targetCategory);
+if task.thistrial.targetPresent
+    cData = cData(cData(:,2)>=0,:);
+else
+    cData = sel(cData,2,-1);
+end
+
+if task.thistrial.focal
+    cData = cData(1:20,:);
+    % we have to cheat here because Kai didn't include a
+    % focal/distributed column, but it's organized in the right order so it
+    % should be fine
+else
+    cData = cData(21:end,:);
+end
+
+cData = cData(task.thistrial.imageNumber,:);
+
+task.thistrial.imgCat0 = cData(4);
+task.thistrial.imgCat1 = cData(5);
+task.thistrial.imgCat2 = cData(6);
+task.thistrial.imgCat3 = cData(7);
+
+imgIdx = cData(1);
+
+[stimulus.live.tex, stimulus.live.mask] = loadData(imgIdx);
 
 stimulus.live.fixColor = stimulus.colors.white;
 
@@ -266,7 +424,7 @@ stimulus.live.fixCount = 0;
 stimulus.live.eyeCount = 0;
 
 if task.thistrial.targetPresent
-    disp(sprintf('(spatobj) There is a %s in the array.',stimulus.categories{task.thistrial.category}));
+    disp(sprintf('(spatobj) There is a %s in the array.',stimulus.cats.categories{task.thistrial.targetCategory+1}));
 else
     disp(sprintf('(spatobj) No target'));
 end
@@ -292,24 +450,19 @@ if task.thistrial.dead
     return
 end
 
-
-if task.thistrial.thisseg==stimulus.seg.iti
-    % if this is the first trial
-    if mod(task.trialnum,30)==1
-        task.thistrial.seglen(stimulus.seg.iti) = 3;
-        mglTextDraw(sprintf('Look for: %s',stimulus.categories{stimulus.live.curCategory}),[0 1.5]);
-    end
-else
-    if task.thistrial.thisseg==stimulus.seg.stim
+if task.thistrial.thisseg==stimulus.seg.stim
+    if stimulus.live.framesRemaining > 0
         mglBltTexture(stimulus.live.tex,[0 0]);
+        stimulus.live.framesRemaining = stimulus.live.framesRemaining - 1;
     else
         mglBltTexture(stimulus.live.mask,[0 0]);
-    end
+    end 
+else
+    mglBltTexture(stimulus.live.mask,[0 0]);
 end
 
 mglGluDisk(0,0,0.5,stimulus.colors.black);
 mglFixationCross(0.5,0.5,stimulus.live.fixColor);
-
 
 % do eye position tracking, but only during some segments
 if (~stimulus.noeye) && (stimulus.eyewindow>0) && any(task.thistrial.thisseg==[stimulus.seg.fix stimulus.seg.stim])
@@ -370,136 +523,21 @@ end
 if task.thistrial.thisseg<stimulus.seg.resp
     task = jumpSegment(task,stimulus.seg.resp);
 end
-        
-function loadStimulus()
 
+function tex = loadExemplar(idx)
 global stimulus
+img = permute(imrotate(squeeze(stimulus.live.examples(idx,:,:,:)),-90),[3 1 2]);
+img(4,:,:) = 255;
+tex = mglCreateTexture(img);
 
-% load the file which tracks which images are shown to which participants
-trackFile = '~/data/spatobj/tracking.mat';
-if isfile(trackFile)
-    track = load(trackFile);
-    track = track.track;
-else
-    track = struct;
-    track.todo = 1:95;
-    track.done = {};
-end
-% mygroup is the number from 1:95 which corresponds to the images which
-% will be shown to this participant, in theory if we run for all 95 groups
-% we can match the dataset with the CNN dataset
-mygroup = randsample(track.todo,1);
-track.todo = setdiff(track.todo,mygroup);
-save(trackFile,'track');
-
-imsz = stimulus.arrayWidth;
-% for each category we will show all 15 examples once, and we will also
-% show one random image from a different category. This means we need to
-% load at least 15 extra random images from each category, although they
-% won't all get used. 
-aimages = zeros(20,15,imsz,imsz,3,'uint8');
-aimages_info = zeros(20,15,4,'uint8');
-
-adistractors = zeros(20,15,imsz,imsz,3,'uint8');
-adistractors_info = zeros(20,15,4,'uint8');
-
-%% distractors
-% the first thing to do is load all of the info files, and concatenate them
-% into one data array. We need to do this to search for distractor images
-% which don't include each of the categories. 
-ainfo = nan(20*15*20,7);
-count = 1;
-
-for cat = 0:19
-    info = readNPY(sprintf('~/data/spatobj/images/dat%i_info.npy',cat));
-    
-    for ci = 1:15
-        for gi = 1:95
-            ainfo(count,:) = [cat squeeze(info(ci,gi,:))' ci gi];
-            count = count+1;
-        end
-    end
-end
-clear info
-
-% now we will go through each category (1:20) and pick 15 distractor images
-% from the other categories which don't have this category in them
-distractorList = zeros(20,15,2); % this will be the category # and group # of the distractor image
-
-for cat = 0:19
-    % remove all rows which include this category
-    info = ainfo(~any(ainfo(:,1:5)==cat,2),:);
-    % pick 15 random categories
-    myDistCats = randsample(setdiff(0:19,cat),15);
-    % for each category, pick a random group from the available options
-    for di = 1:length(myDistCats)
-        dcat = myDistCats(di);
-        % check which groups are available
-        cinfo = info(info(:,1)==dcat,:);
-        % get 15 random images
-        idxs = randsample(1:size(cinfo,1),1);
-        % save these
-        distractorList(cat+1,di,:) = cinfo(idxs,6:7);
-    end
-end
-
-%% now load the actual images
-
-disppercent(-1/20);
-for cat = 0:19
-    dat = readNPY(sprintf('~/data/spatobj/images/dat%i.npy',cat));
-    info = readNPY(sprintf('~/data/spatobj/images/dat%i_info.npy',cat));
-    
-    % get all the images for my group
-    images = squeeze(dat(:,mygroup,:,:,:));
-    images_info = squeeze(info(:,mygroup,:));
-    
-    % resize images
-    images_sz = zeros(size(images,1),imsz,imsz,3);
-    for i = 1:size(images,1)
-        images_sz(i,:,:,:) = imresize(imrotate(squeeze(images(i,:,:,:)),-90),[imsz imsz]);
-    end
-    
-    aimages(cat+1,:,:,:,:) = uint8(images_sz);
-    aimages_info(cat+1,:,:) = uint8(images_info);
-    
-    % go through the distractors and pull any images that are needed
-    for dc = 0:19
-        for di = 1:15
-            if distractorList(dc+1,di,1)==cat
-                temp = dat(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:,:,:);
-                adistractors(dc+1,di,:,:,:) = uint8(imresize(imrotate(squeeze(temp),-90),[imsz imsz]));
-                adistractors_info(dc+1,di,:) = info(distractorList(dc+1,di,1),distractorList(dc+1,di,2),:);
-            end
-        end
-    end
-    
-    disppercent(cat/20);
-    
-    clear dat
-    clear info
-end
-disppercent(inf);
-
-%% and save
-stimulus.categories = {'paintbrush','wall clock','seashore','paddlewheel','padlock','garden spider','long-horned beetle','cabbage butterfly','toaster','greenhouse','bakery','stone wall','artichoke','modem','football helmet','stage','mortar','soup','dough','bathtub'};
-stimulus.imagesLoaded = true;
-stimulus.images = aimages;
-stimulus.images_info = aimages_info;
-stimulus.distractors = adistractors;
-stimulus.distractors_info = adistractors_info;
-
-%% test code (to check that images actually have their category)
-% figure;`2221211221212111122112121222
-% for cat = 1:20
-%     % pick a random image
-%     idx = randi(15);
-%     % display
-%     imagesc(squeeze(aimages(cat,idx,:,:,:)));
-%     % tell me what this is
-%     r = input(sprintf('Press [enter] if you see a %s',stimulus.categories{cat}),'s');
-%     if ~isempty(r)
-%         disp(aimages_info(cat,idx,:));
-%         warning(sprintf('Category %i index %i',cat,idx));
-%     end
-% end
+function [tex, mask] = loadData(idx)  
+global stimulus
+img = permute(imrotate(squeeze(stimulus.live.data(idx,:,:,:)),-90),[3 1 2]);
+mask = img;
+img(4,:,:) = 255;
+tex = mglCreateTexture(img);
+mask = mask(:);
+mask = mask(randperm(length(mask)));
+mask = reshape(mask,3,stimulus.arrayWidth,stimulus.arrayWidth);
+mask(4,:,:) = 255;
+mask = mglCreateTexture(mask);
