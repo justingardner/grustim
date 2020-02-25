@@ -39,6 +39,9 @@ else
   return
 end
 
+% init the confidence display parameters (see function definition below for definition of parameters)
+stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
+
 % init the staircases
 stimulus.pedestalContrast = 0.5;
 initialThreshold = 0.2;
@@ -61,11 +64,12 @@ stimulus = initStaircases(stimulus, myscreen, initialThreshold, initialStepsize,
 task{1}.waitForBacktick = 0;
 
 % task parameters
-task{1}.segmin = [0.5 0.5 2];
-task{1}.segmax = [0.5 0.5 2];
+task{1}.segmin = [0.5 0.5 2 inf];
+task{1}.segmax = [0.5 0.5 2 inf];
 task{1}.getResponse = [0 1 1];
 task{1}.parameter.eccentricity = stimulus.eccentricity;
 task{1}.randVars.uniform.whichSide = [1 2];
+task{1}.randVars.calculated.confidnece = nan;
 task{1}.random = 1;
 
 % initialize the task
@@ -153,6 +157,11 @@ if task.thistrial.thisseg == 1
 
   % set the fixation color
   stimulus.fixColor = stimulus.normalFixColor;
+elseif task.thistrial.thisseg == stimulus.confidence.segnum
+  % get starting position of mouse
+  stimulus.confidence.mouseStart = mglGetMouse;
+  % set starting confidnece
+  task.thistrial.confidence = 0.5;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -186,11 +195,87 @@ if task.thistrial.thisseg == 2
     stimulus.dotsLeft = stimulus.dotsLeft.draw(stimulus.dotsLeft);
     stimulus.dotsRight = stimulus.dotsRight.draw(stimulus.dotsRight);
   end
+elseif task.thistrial.thisseg == stimulus.confidence.segnum
+  % get relative position of mouse
+  lastMouse = stimulus.confidence.mouseStart;
+  stimulus.confidence.mouseStart = mglGetMouse;
+  mouseDistance = (stimulus.confidence.mouseStart.x-lastMouse.x) + (stimulus.confidence.mouseStart.y-lastMouse.y);
+  if mouseDistance > 10
+    task.thistrial.confidence = task.thistrial.confidence+0.025;
+  elseif mouseDistance < -10
+    task.thistrial.confidence = task.thistrial.confidence-0.025;
+  end
+
+  % check bounds
+  if task.thistrial.confidence > 1,task.thistrial.confidence = 1;end
+  if task.thistrial.confidence < 0,task.thistrial.confidence = 0;end
+  
+  % draw the confidence
+  drawConfidence(task.thistrial.confidence,stimulus);
+
+  % if mouse button down then we are done setting confidence
+  if ~isequal(stimulus.confidence.mouseStart.buttons,0)
+    task = jumpSegment(task);
+  end
 end
 
 % draw fixation cross
 mglFixationCross(1,1,stimulus.fixColor);
 
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    initConfidence    %
+%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initConfidence(stimulus,centerX,centerY,width,height,lineSize,lineColor,fillColor)
+
+% set the segment in which the confidence judgement happens
+stimulus.confidence.segnum = 4;
+  
+% set the dimensions of the confidence display
+stimulus.confidence.width = width;
+stimulus.confidence.height = height;
+stimulus.confidence.centerX = centerX;
+stimulus.confidence.centerY = centerY;
+
+% set line size and color
+stimulus.confidence.outlineSize = lineSize;
+stimulus.confidence.outlineColor = lineColor;
+stimulus.confidence.fillColor = fillColor;
+
+% now compute the x and y of the outline
+xL = stimulus.confidence.centerX-stimulus.confidence.width/2;
+xR = stimulus.confidence.centerX+stimulus.confidence.width/2;
+yB = stimulus.confidence.centerY-stimulus.confidence.height/2;
+yT = stimulus.confidence.centerY+stimulus.confidence.height/2;
+
+% dimensions of rectangle
+stimulus.confidence.X0 = [xL xR xR xL];
+stimulus.confidence.X1 = [xR xR xL xL];
+stimulus.confidence.Y0 = [yB yB yT yT];
+stimulus.confidence.Y1 = [yB yT yT yB];
+
+% dimensions of fill
+stimulus.confidence.fillX = [xL xR xR xL];
+stimulus.confidence.fillY = [yB yB yT yT];
+
+% values that need to be changed to reflect confidence level
+stimulus.confidence.fillTop = [0 0 1 1];
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+%    drawConfidence    %
+%%%%%%%%%%%%%%%%%%%%%%%%
+function drawConfidence(confidenceLevel, stimulus)
+
+% draw confidence level as a filled bar.
+
+% draw filled inside, compute top coordinate
+fillY = stimulus.confidence.fillY;
+fillY(find(stimulus.confidence.fillTop)) = stimulus.confidence.centerY+(-0.5+confidenceLevel)*stimulus.confidence.height;
+% now draw as a filled polygon
+mglPolygon(stimulus.confidence.fillX,fillY,stimulus.confidence.fillColor);
+
+% draw outline
+mglLines2(stimulus.confidence.X0,stimulus.confidence.Y0,stimulus.confidence.X1,stimulus.confidence.Y1,stimulus.confidence.outlineSize,stimulus.confidence.outlineColor);
+  
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    responseCallback    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
