@@ -170,8 +170,6 @@ if task.thistrial.thisseg == 1
   % set the fixation color
   stimulus.fixColor = stimulus.normalFixColor;
 elseif task.thistrial.thisseg == stimulus.confidence.segnum
-  % get starting position of mouse
-  stimulus.confidence.mouseStart = mglGetMouse;
   % set starting confidnece
   task.thistrial.confidence = 0.5;
 elseif task.thistrial.thisseg == stimulus.feedback.segnum
@@ -214,26 +212,11 @@ if task.thistrial.thisseg == 2
     stimulus.dotsRight = stimulus.dotsRight.draw(stimulus.dotsRight);
   end
 elseif task.thistrial.thisseg == stimulus.confidence.segnum
-  % get relative position of mouse
-  lastMouse = stimulus.confidence.mouseStart;
-  stimulus.confidence.mouseStart = mglGetMouse;
-  mouseDistance = (stimulus.confidence.mouseStart.x-lastMouse.x) + (stimulus.confidence.mouseStart.y-lastMouse.y);
-  if mouseDistance > 10
-    task.thistrial.confidence = task.thistrial.confidence+0.025;
-  elseif mouseDistance < -10
-    task.thistrial.confidence = task.thistrial.confidence-0.025;
-  end
-
-  % check bounds
-  if task.thistrial.confidence > 1,task.thistrial.confidence = 1;end
-  if task.thistrial.confidence < 0,task.thistrial.confidence = 0;end
-  
-  % draw the confidence
-  drawConfidence(task.thistrial.confidence,stimulus);
-
-  % if mouse button down then we are done setting confidence
-  if ~isequal(stimulus.confidence.mouseStart.buttons,0)
+  % set the confidence
+  [task.thistrial.confidence confidenceDone] = setConfidence(task.thistrial.confidence, stimulus);
+  if confidenceDone
     task = jumpSegment(task);
+    disp(sprintf('(cocon) Confidence: %0.2f',task.thistrial.confidence));
   end
 end
 
@@ -278,6 +261,11 @@ stimulus.confidence.fillY = [yB yB yT yT];
 % values that need to be changed to reflect confidence level
 stimulus.confidence.fillTop = [0 0 1 1];
 
+% turn off scrolling
+mglListener('eatscroll');
+% read all pending scroll events
+scrollEvents = mglListener('getAllScrollEvents');
+
 %%%%%%%%%%%%%%%%%%%%%%%%
 %    drawConfidence    %
 %%%%%%%%%%%%%%%%%%%%%%%%
@@ -293,7 +281,40 @@ mglPolygon(stimulus.confidence.fillX,fillY,stimulus.confidence.fillColor);
 
 % draw outline
 mglLines2(stimulus.confidence.X0,stimulus.confidence.Y0,stimulus.confidence.X1,stimulus.confidence.Y1,stimulus.confidence.outlineSize,stimulus.confidence.outlineColor);
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%    setConfidence    %
+%%%%%%%%%%%%%%%%%%%%%%%
+function [confidence confidenceDone] = setConfidence(confidence, stimulus)
+
+% get scroll
+scrollEvents = mglListener('getAllScrollEvents');
+if ~isempty(scrollEvents)
+  % get the sum of the vertical and horizontal scrolls
+  verticalScroll = -sum(scrollEvents.scrollVertical);
+  horizontalScroll = sum(scrollEvents.scrollHorizontal);
+  % set confidence
+  confidence = confidence+verticalScroll/100;
+else
+  horizontalScroll = 0;
+end
+
+% check bounds
+if confidence > 1,confidence = 1;end
+if confidence < 0,confidence = 0;end
   
+% draw the confidence
+drawConfidence(confidence,stimulus);
+
+% if mouse button down (or horizontal scroll is non-zero) then we are done setting confidence
+mouse = mglGetMouse;
+
+if ~isequal(mouse.buttons,0) || ~isequal(horizontalScroll,0)
+  confidenceDone = 1;
+else
+  confidenceDone = 0;
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    responseCallback    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
