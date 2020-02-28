@@ -96,9 +96,9 @@ disp(sprintf('(spatobj) %i focal categories remaining (total trials %i)',length(
 disp(sprintf('(spatobj) %i distributed categories remaining (total trials %i)',length(stimulus.cats.distributed),length(stimulus.cats.distributed)*40));
 
 %% Setup Screen
-myscreen = initScreen('test');
-warning('using test screen');
-% myscreen = initScreen('VPixx');
+% warning('using test screen');
+% myscreen = initScreen('test');
+myscreen = initScreen('VPixx');
 
 % set background to black
 myscreen.background = 0;
@@ -303,6 +303,9 @@ if stimulus.live.last.done
         stimulus.cats.distributed = setdiff(stimulus.cats.distributed,stimulus.live.last.category);
     end
 end
+
+% remove extra fields from stimulus to prevent file size from being huge
+stimulus = rmfield(stimulus,'live');
 
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
