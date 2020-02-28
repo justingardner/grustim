@@ -172,6 +172,8 @@ if task.thistrial.thisseg == 1
 elseif task.thistrial.thisseg == stimulus.confidence.segnum
   % set starting confidnece
   task.thistrial.confidence = 0.5;
+  scrollEvents = mglListener('getAllScrollEvents');
+  mglListener('getAllMouseEvents');
 elseif task.thistrial.thisseg == stimulus.feedback.segnum
   if isequal(task.thistrial.correctIncorrect,1)
     stimulus.fixColor = stimulus.correctFixColor;
