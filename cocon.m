@@ -311,7 +311,7 @@ drawConfidence(confidence,stimulus);
 % if mouse button down (or horizontal scroll is non-zero) then we are done setting confidence
 mouse = mglGetMouse;
 
-if ~isequal(mouse.buttons,0) || ~isequal(horizontalScroll,0)
+if ~isequal(mouse.buttons,0) % || ~isequal(horizontalScroll,0)
   confidenceDone = 1;
 else
   confidenceDone = 0;
