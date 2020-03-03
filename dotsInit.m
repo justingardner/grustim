@@ -156,6 +156,11 @@ dots.yCenter = yCenter;
 %%%%%%%%%%%%%%%%%%%%%%
 function dots = setCoherence(dots,coherence)
 
+if coherence > 1
+  disp(sprintf('(dotsInit:setCoherence) Coherence value of %0.1f is greater than 1, setting to: %f',coherence,coherence/100));
+  coherence = coherence/100;
+end
+  
 % set the coherence
 dots.coherence = coherence;
   
