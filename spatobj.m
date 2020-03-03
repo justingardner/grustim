@@ -33,6 +33,27 @@ stimulus.rebuild = rebuild;
 
 clear plots noeye eyewindow load
 
+%% Open Old Stimfile
+
+if ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s',mglGetSID))
+    % Directory exists, check for a stimfile
+    files = dir(sprintf('~/data/spatobj/%s/*mat',mglGetSID));
+
+    if length(files) >= 1
+        fname = files(end).name;
+        s = load(sprintf('~/data/spatobj/%s/%s',mglGetSID,fname));
+        % copy staircases and run numbers
+        stimulus.cats = s.stimulus.cats;
+        clear s;
+        disp(sprintf('(spatobj) Data file: %s loaded.',fname));
+    else
+        warning('(spatobj) Unable to load previous data files. If this is *not* the first run there is something wrong.');
+    end
+end
+
+disp(sprintf('(spatobj) %i categories remaining (total trials %i)',length(stimulus.cats.remaining),length(stimulus.cats.remaining)*80));
+
+
 %% Load iamges
 
 if stimulus.rebuild
@@ -74,26 +95,6 @@ for oi = 1:length(orig)
         stimulus.cats.categories{find(idx,1)} = new{oi};
     end
 end
-
-%% Open Old Stimfile
-
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s',mglGetSID))
-    % Directory exists, check for a stimfile
-    files = dir(sprintf('~/data/spatobj/%s/*mat',mglGetSID));
-
-    if length(files) >= 1
-        fname = files(end).name;
-        s = load(sprintf('~/data/spatobj/%s/%s',mglGetSID,fname));
-        % copy staircases and run numbers
-        stimulus.cats = s.stimulus.cats;
-        clear s;
-        disp(sprintf('(spatobj) Data file: %s loaded.',fname));
-    else
-        warning('(spatobj) Unable to load previous data files. If this is *not* the first run there is something wrong.');
-    end
-end
-
-disp(sprintf('(spatobj) %i categories remaining (total trials %i)',length(stimulus.cats.remaining),length(stimulus.cats.remaining)*80));
 
 %% Setup Screen
 % warning('using test screen');
