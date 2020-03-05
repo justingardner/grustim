@@ -15,7 +15,7 @@
 function myscreen = cocon(varargin)
 
 % check arguments
-getArgs(varargin,{'stimulusType=dots','getConfidence=0','scannerMode=0','taskType=newsome','runType=staircase'});
+getArgs(varargin,{'stimulusType=dots','getConfidence=0','scannerMode=0','taskType=newsome','runType=staircase','threshold=nan'});
 
 % initalize the screen
 myscreen.background = 0.5;
@@ -76,9 +76,16 @@ if strcmp(stimulus.runType,'staircase')
   stimulus = initStaircases(stimulus, myscreen, initialThreshold, initialStepsize, nTrialsPerStaircase, dispStaircaseFig, useLastThreshold);
 elseif any(strcmp(stimulus.runType,{'low','high'}))
   % this is a regular run, set number of trials
-  stimulus.nTrials = 150;
+  stimulus.nTrials = 50;
   % get threshold
-  stimulus.threshold = getThreshold(stimulus, myscreen);
+  if isnan(threshold)
+    stimulus.threshold = getThreshold(stimulus, myscreen);
+  else
+    % use passed in thershold
+    stimulus.threshold.threshold = threshold;
+  end
+  disp(sprintf('(cocon) Threshold: %f',stimulus.threshold));
+    
   if isempty(stimulus.threshold)
     endScreen(myscreen);
     return
