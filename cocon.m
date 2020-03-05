@@ -15,7 +15,7 @@
 function myscreen = cocon(varargin)
 
 % check arguments
-getArgs(varargin,{'stimulusType=dots','getConfidence=0','scannerMode=0','taskType=newsome','runType=staircase'});
+getArgs(varargin,{'stimulusType=dots','getConfidence=1','scannerMode=0','taskType=newsome','runType=staircase'});
 
 % initalize the screen
 myscreen.background = 0.5;
@@ -62,8 +62,8 @@ end
 
 if strcmp(stimulus.runType,'staircase')
   % init the staircases
-  initialThreshold = 10;
-  initialStepsize = 2;
+  initialThreshold = 25;
+  initialStepsize = 5;
   % displays the staircase as trial data comes in a figure
   dispStaircaseFig = 1;
   % number of trials per staircase
@@ -107,6 +107,11 @@ else
   task{1}.segmin = [0.5 1 2];
   task{1}.segmax = [0.5 1 2];
   task{1}.getResponse = [0 1 1];
+end
+
+if ~strcmp(stimulus.runType,'staircase')
+    % no feedback
+    stimulus.feedback.segnum = nan;
 end
 
 % taks paraeters
