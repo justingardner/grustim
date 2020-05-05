@@ -7,74 +7,132 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: 2AFC motion direction paradigm for testing COherence CONtext
 %
+%             getConfidence=1 (sets whether to run confidence measurement)
+%             taskType=newsome (which task, can be newsome or dirdiff)
+%             runType=staircase (first run as staircase to get threshold. Then run as low or high
+%               for low or high cohernce context);
+%
 function myscreen = cocon(varargin)
 
 % check arguments
-getArgs(varargin,'stimulusType=dots');
+getArgs(varargin,{'stimulusType=dots','getConfidence=0','scannerMode=0','taskType=newsome','runType=staircase','threshold=nan'});
 
 % initalize the screen
-myscreen = initScreen;
+myscreen.background = 0.5;
+myscreen = initScreen(myscreen.background);
 
 % init the stimulus
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
+
+% init info about what kind of stimulus and task we are doing
 stimulus.stimulusType = lower(stimulusType);
+stimulus.getConfidence = getConfidence;
+stimulus.taskType = lower(taskType);
+stimulus.runType = lower(runType);
+
+% set which variable to staircase
+stimulus.staircase = 'coherence';
+% set which variable over which each staircase is made
+% for example, you might want to have one staricase for
+% each direction difference
+stimulus.staircaseOver = 'delta';
 
 % stimulus parameters
 stimulus.width = 10;
+stimulus.speed = 2.5;
 stimulus.eccentricity = [7.5];
 stimulus.coherence = [0.25 0.5];
+stimulus.delta = 15;
+
+% select the range of values to use for low and high coherence. These are multiplicative of threshold
+stimulus.lowVals = [0.5 1 1.5];
+stimulus.highVals = [1.5 2 2.5];
 
 % init the stimulus
 if strcmp(stimulus.stimulusType,'dots')
   % init the dots
   stimulus = initDotsStimulus(stimulus, myscreen);
   stimulus.isGrating = false;
-elseif strcmp(stimulus.stimulusType,'grating')
-  % init the grating
-  stimulus = initGratingStimulus(stimulus, myscreen);
-  stimulus.isGrating = true;
 else
   disp(sprintf('(cocon) Unknown stimulus type: %s',stimulus.stimulusType));
-  endScreen;
+  endScreen(myscreen);
   return
 end
 
-% init the confidence display parameters (see function definition below for definition of parameters)
-stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
-stimulus.feedback.segnum = 5;
+if strcmp(stimulus.runType,'staircase')
+  % init the staircases
+  initialThreshold = 25;
+  initialStepsize = 5;
+  % displays the staircase as trial data comes in a figure
+  dispStaircaseFig = 1;
+  % number of trials per staircase
+  nTrialsPerStaircase = 40;
+  % how many staircases to run until program ends
+  stimulus.nStaircases = 2;
+  % whether to try to start from the last computed threshold
+  useLastThreshold = false;
+  % call with the above parameters
+  stimulus = initStaircases(stimulus, myscreen, initialThreshold, initialStepsize, nTrialsPerStaircase, dispStaircaseFig, useLastThreshold);
+elseif any(strcmp(stimulus.runType,{'low','high'}))
+  % this is a regular run, set number of trials
+  stimulus.nTrials = 50;
+  % get threshold
+  if isnan(threshold)
+    stimulus.threshold = getThreshold(stimulus, myscreen);
+  else
+    % use passed in thershold
+    stimulus.threshold.threshold = threshold;
+  end
+  disp(sprintf('(cocon) Threshold: %f',stimulus.threshold));
+    
+  if isempty(stimulus.threshold)
+    endScreen(myscreen);
+    return
+  end
+  % now init constant stimulus
+  stimulus = initConstantStimuli(stimulus);
+end
 
-% init the staircases
-initialThreshold = 30;
-initialStepsize = 5;
-% displays the staircase as trial data comes in a figure
-dispStaircaseFig = 1;
-% number of trials per staircase
-nTrialsPerStaircase = 10;
-% how many staircases to run until program ends
-stimulus.nStaircases = 2;
-% whether to try to start from the last computed threshold
-useLastThreshold = false;
-% call with the above parameters
-stimulus = initStaircases(stimulus, myscreen, initialThreshold, initialStepsize, nTrialsPerStaircase, dispStaircaseFig, useLastThreshold);
+% wait for backtick to start
+task{1}.waitForBacktick = scannerMode;
 
-% fix: set waitForBacktick if you want to synch with the scanner
-% by waiting for the backtick key to be pressed before starting the experiment
-% (for systems that use NI digital I/O, this will wait for the digital
-% signal that the scanner has started collecting data)
-task{1}.waitForBacktick = 0;
+% task timing and response
+if stimulus.getConfidence
+  % init the confidence display parameters (see function definition below for definition of parameters)
+  stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
+  stimulus.feedback.segnum = 5;
 
-% task parameters
-task{1}.segmin = [0.5 1 inf inf 0.5];
-task{1}.segmax = [0.5 1 inf inf 0.5];
-task{1}.getResponse = [0 1 1];
+  % the fifth segment is the one in which the confidence judgement comes up
+  task{1}.segmin = [0.5 1 inf inf 0.5];
+  task{1}.segmax = [0.5 1 inf inf 0.5];
+  task{1}.getResponse = [0 1 1 0 0];
+else
+  % set feedback segment
+  stimulus.feedback.segnum = [2 3];
+  % not confidence judgement
+  task{1}.segmin = [0.5 1 2];
+  task{1}.segmax = [0.5 1 2];
+  task{1}.getResponse = [0 1 1];
+end
+
+if ~strcmp(stimulus.runType,'staircase')
+    % no feedback
+    stimulus.feedback.segnum = nan;
+end
+
+% taks paraeters
 task{1}.parameter.eccentricity = stimulus.eccentricity;
-task{1}.parameter.coherence = stimulus.coherence;
-task{1}.randVars.uniform.whichSide = [1 2];
 task{1}.randVars.calculated.confidnece = nan;
 task{1}.randVars.calculated.correctIncorrect = nan;
-task{1}.randVars.calculated.direction = nan;
+task{1}.randVars.uniform.whichAnswer = [1 2];
 task{1}.random = 1;
+task{1}.randVars.calculated.direction = nan;
+
+% now set the variable that we will staircase on
+task{1}.randVars.calculated.(stimulus.staircase) = nan;
+% and the variable that we will staircase over
+task{1}.parameter.(stimulus.staircaseOver) = stimulus.(stimulus.staircaseOver);
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -120,43 +178,36 @@ global stimulus;
 if task.thistrial.thisseg == 1
 
   % get which staircase, note that we have kxn staircases - k coherences and n staircases
-  stimulus.thisStaircase = find(stimulus.coherence==task.thistrial.coherence);
-  stimulus.thisStaircase(2) = stimulus.staircaseCompleted(stimulus.thisStaircase)+1;
+  stimulus.whichStaircase = find(stimulus.(stimulus.staircaseOver)==task.thistrial.(stimulus.staircaseOver));
+  stimulus.staircaseNum = stimulus.staircaseCompleted(stimulus.whichStaircase)+1;
 
-  % get the delta direction to test
-  [delta stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2))] = doStaircase('testValue',stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)));
+  % get the staircase value to test
+  [staircaseVal stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum)] = doStaircase('testValue',stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum));
 
-  % make sure delta does not go below zero
-  stimulus.delta = max(0,delta);
+  % now set the values
+  task.thistrial.(stimulus.staircase) = staircaseVal;
+
+  % for dirdiff task, we set up two patches
+  if strcmp(stimulus.taskType,'dirdiff')
+    % make sure delta does not go below zero
+    task.thistrial.delta = max(0,task.thistrial.delta);
+
+    % set  direction
+    task.thistrial.direction = round(rand*360);
+    if task.thistrial.whichAnswer == 1
+      leftDirection = mod(task.thistrial.direction+stimulus.delta,360);
+      rightDirection = task.thistrial.direction;
+    else
+      leftDirection = task.thistrial.direction;
+      rightDirection = mod(task.thistrial.direction+stimulus.delta,360);
+    end
+
+    % display what is going on
+    disp(sprintf('%i: Coherence: %0.1f Side: %i delta: %0.2f (Direction %0.1f vs %0.1f Eccentricity: %0.1f)',task.trialnum,task.thistrial.coherence,task.thistrial.whichAnswer,stimulus.delta,leftDirection,rightDirection,task.thistrial.eccentricity));
   
-  % set  direction
-  task.thistrial.direction = round(rand*360);
-  if task.thistrial.whichSide == 1
-    leftDirection = mod(task.thistrial.direction+stimulus.delta,360);
-    rightDirection = task.thistrial.direction;
-  else
-    leftDirection = task.thistrial.direction;
-    rightDirection = mod(task.thistrial.direction+stimulus.delta,360);
-  end
-
-  % display what is going on
-  disp(sprintf('%i: Coherence: %0.1f Side: %i delta: %0.2f (Direction %0.1f vs %0.1f Eccentricity: %0.1f)',task.trialnum,task.thistrial.coherence,task.thistrial.whichSide,stimulus.delta,leftDirection,rightDirection,task.thistrial.eccentricity));
-  
-  % grating
-  if stimulus.isGrating
-    disp(sprintf('NOT YET IMPLEMENTED'));
-    mglClose;
-    keyboard
-    % set the gamma table
-    setGammaTableForMaxContrast(stimulus.pedestalContrast+stimulus.delta);
-    % set the grating indexes
-    stimulus.leftContrastIndex = getContrastIndex(leftContrast);
-    stimulus.rightContrastIndex = getContrastIndex(rightContrast);
-  % dots
-  else
     % set the coherence
-    stimulus.dotsLeft = stimulus.dotsLeft.setCoherence(stimulus.dotsLeft,task.thistrial.coherence);
-    stimulus.dotsRight = stimulus.dotsRight.setCoherence(stimulus.dotsRight,task.thistrial.coherence);
+    stimulus.dotsLeft = stimulus.dotsLeft.setCoherence(stimulus.dotsLeft,task.thistrial.coherence/100);
+    stimulus.dotsRight = stimulus.dotsRight.setCoherence(stimulus.dotsRight,task.thistrial.coherence/100);
 
     % set the position
     stimulus.dotsLeft = stimulus.dotsLeft.setCenter(stimulus.dotsLeft,-task.thistrial.eccentricity,0);
@@ -165,21 +216,24 @@ if task.thistrial.thisseg == 1
     % set the direction
     stimulus.dotsLeft = stimulus.dotsLeft.setDir(stimulus.dotsLeft,leftDirection);
     stimulus.dotsRight = stimulus.dotsRight.setDir(stimulus.dotsRight,rightDirection);
+  elseif strcmp(stimulus.taskType,'newsome')
+    % do a left/right discrimination task
+    stimulus.dots = stimulus.dots.setCoherence(stimulus.dots,task.thistrial.coherence/100);
+    stimulus.dots = stimulus.dots.setCenter(stimulus.dots,0,task.thistrial.eccentricity);
+    % set the direction to left if answer is 1 and right for answer is 2
+    stimulus.dots = stimulus.dots.setDir(stimulus.dots,180*(1-(task.thistrial.whichAnswer-1)));
+    disp(sprintf('%i: Coherence: %0.1f Direction: %i',task.trialnum,task.thistrial.coherence,180*(1-(task.thistrial.whichAnswer-1))));
   end
 
   % set the fixation color
   stimulus.fixColor = stimulus.normalFixColor;
-elseif task.thistrial.thisseg == stimulus.confidence.segnum
+
+% confidence segment
+elseif stimulus.getConfidence && (task.thistrial.thisseg == stimulus.confidence.segnum)
   % set starting confidnece
   task.thistrial.confidence = 0.5;
   scrollEvents = mglListener('getAllScrollEvents');
   mglListener('getAllMouseEvents');
-elseif task.thistrial.thisseg == stimulus.feedback.segnum
-  if isequal(task.thistrial.correctIncorrect,1)
-    stimulus.fixColor = stimulus.correctFixColor;
-  elseif isequal(task.thistrial.correctIncorrect,0)
-    stimulus.fixColor = stimulus.incorrectFixColor;
-  end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -193,18 +247,8 @@ global stimulus
 mglClearScreen(stimulus.backgroundColor);
 
 if task.thistrial.thisseg == 2
-  % grating stimulus
-  if stimulus.isGrating
-    % blt gratings
-    mglBltTexture(stimulus.tex(stimulus.leftContrastIndex),[-task.thistrial.eccentricity 0 stimulus.grating.height]);
-    mglBltTexture(stimulus.tex(stimulus.rightContrastIndex),[task.thistrial.eccentricity 0 stimulus.grating.height]);
 
-    % and mask with the gaussian
-    mglBltTexture(stimulus.mask,[-task.thistrial.eccentricity 0]);
-    mglBltTexture(stimulus.mask,[task.thistrial.eccentricity 0]);
-
-  % dots stimulus
-  else
+  if strcmp(stimulus.taskType,'dirdiff')
     % update the dots
     stimulus.dotsLeft = stimulus.dotsLeft.update(stimulus.dotsLeft);
     stimulus.dotsRight = stimulus.dotsRight.update(stimulus.dotsRight);
@@ -212,13 +256,29 @@ if task.thistrial.thisseg == 2
     % draw the dots
     stimulus.dotsLeft = stimulus.dotsLeft.draw(stimulus.dotsLeft);
     stimulus.dotsRight = stimulus.dotsRight.draw(stimulus.dotsRight);
+  else
+    % update and draw single patch
+    stimulus.dots = stimulus.dots.update(stimulus.dots);
+    stimulus.dots = stimulus.dots.draw(stimulus.dots);
   end
-elseif task.thistrial.thisseg == stimulus.confidence.segnum
+    
+elseif stimulus.getConfidence && (task.thistrial.thisseg == stimulus.confidence.segnum)
   % set the confidence
   [task.thistrial.confidence confidenceDone] = setConfidence(task.thistrial.confidence, stimulus);
   if confidenceDone
     task = jumpSegment(task);
     disp(sprintf('(cocon) Confidence: %0.2f',task.thistrial.confidence));
+  end
+end
+
+% feedback segment
+if any(task.thistrial.thisseg == stimulus.feedback.segnum)
+  % if correct
+  if isequal(task.thistrial.correctIncorrect,1)
+    stimulus.fixColor = stimulus.correctFixColor;
+  % if incorrect
+  elseif isequal(task.thistrial.correctIncorrect,0)
+    stimulus.fixColor = stimulus.incorrectFixColor;
   end
 end
 
@@ -310,8 +370,9 @@ drawConfidence(confidence,stimulus);
 
 % if mouse button down (or horizontal scroll is non-zero) then we are done setting confidence
 mouse = mglGetMouse;
+keyEvent = mglGetKeyEvent;
 
-if ~isequal(mouse.buttons,0) % || ~isequal(horizontalScroll,0)
+if ~isequal(mouse.buttons,0) || ~isempty(keyEvent)
   confidenceDone = 1;
 else
   confidenceDone = 0;
@@ -327,7 +388,7 @@ global stimulus
 % check the response
 if task.thistrial.gotResponse < 1
   % see if it is correct
-  if isequal(task.thistrial.whichButton,task.thistrial.whichSide)
+  if isequal(task.thistrial.whichButton,task.thistrial.whichAnswer)
     % report answer
     disp(sprintf(' !! Correct !!. Reaction time: %0.2f',task.thistrial.reactionTime));
     % save it in task
@@ -335,7 +396,7 @@ if task.thistrial.gotResponse < 1
     % change fixation color
     stimulus.fixColor = stimulus.responseFixColor;
     % and update staircase
-    stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)) = doStaircase('update',stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)),1,stimulus.delta);
+    stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum) = doStaircase('update',stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum),1,task.thistrial.(stimulus.staircase));
   else
     % report answer
     disp(sprintf(' ++ Incorrect ++. Reaction time: %0.2f',task.thistrial.reactionTime));
@@ -344,19 +405,21 @@ if task.thistrial.gotResponse < 1
     % change fixation color
     stimulus.fixColor = stimulus.responseFixColor;
     % and update staircase
-    stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)) = doStaircase('update',stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)),0,stimulus.delta);
+    stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum) = doStaircase('update',stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum),0,task.thistrial.(stimulus.staircase));
   end    
   % see if we are done
-  if doStaircase('stop',stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)))
+  if doStaircase('stop',stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum))
     % update variable that says we are done
-    stimulus.staircaseCompleted(stimulus.thisStaircase(1)) = stimulus.staircaseCompleted(stimulus.thisStaircase(1)) + 1;
+    stimulus.staircaseCompleted(stimulus.whichStaircase) = stimulus.staircaseCompleted(stimulus.whichStaircase) + 1;
     % and initialze the next staircase
-    if stimulus.thisStaircase(2) < stimulus.nStaircases
-      stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)+1) = doStaircase('init',stimulus.s(stimulus.thisStaircase(1),stimulus.thisStaircase(2)));
+    if stimulus.staircaseNum < stimulus.nStaircases
+      stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum+1) = doStaircase('init',stimulus.s(stimulus.whichStaircase,stimulus.staircaseNum));
     end
   end
-  % jump to confidence rating part of text  
-  task = jumpSegment(task);
+  if stimulus.getConfidence
+    % jump to confidence rating part of text  
+    task = jumpSegment(task);
+  end
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -364,9 +427,16 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initDotsStimulus(stimulus,myscreen)
 
-% init the dot patchs
-stimulus.dotsLeft = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=0','width',stimulus.width,'speed=2.5');
-stimulus.dotsRight = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=180','width',stimulus.width,'speed=2.5');
+if strcmp(stimulus.taskType,'dirdiff')
+  % init the dot patchs
+  stimulus.dotsLeft = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=0','width',stimulus.width,'speed',stimulus.speed);
+  stimulus.dotsRight = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=180','width',stimulus.width,'speed',stimulus.speed);
+elseif strcmp(stimulus.taskType,'newsome')
+  stimulus.dots = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=180','width',stimulus.width,'speed',stimulus.speed);
+else
+  disp(sprintf('(cocon:initDotsStimulus) Unknown task type: %s',stimulus.taskType));
+  keyboard
+end
 
 % set background color
 stimulus.backgroundColor = 0.5;
@@ -379,7 +449,7 @@ stimulus.responseFixColor = [1 1 1];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the staircases
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initStaircases(stimulus, myscreen,initialThreshold,initialStepsize,nTrials,dispStaircaseFig,useLastThreshold)
+function stimulus = initStaircases(stimulus,myscreen,initialThreshold,initialStepsize,nTrials,dispStaircaseFig,useLastThreshold)
 
 if ~useLastThreshold
   % if we are not using last threshold, 
@@ -390,213 +460,132 @@ else
   stimfile = getLastStimfile(myscreen);
 end
 
-% check that the last stimfile had the same coherences
+% check that the last stimfile had the same values
 if ~isempty(stimfile)
-  if ~isfield(stimfile,'stimulus') || ~isfield(stimfile.stimulus,'coherence') || ~isequal(stimfile.stimulus.coherence,stimulus.coherence)
+  if ~isfield(stimfile,'stimulus') || ~isfield(stimfile.stimulus,stimulus.staircaseOver) || ~isequal(stimfile.stimulus.(stimulus.staircaseOver),stimulus.(stimulus.staircaseOver))
     % dump this stimfile, since it does not match current eccentricity
-    disp(sprintf('(cocon) Found stimfile, but does not have coherence match. Ignoring'));
+    disp(sprintf('(cocon) Found stimfile, but does not have %s match. Ignoring',stimulus.staircaseOver));
     stimfile = [];
   end
 end
 
+% get the variable to staircase over
+staircaseOver = stimulus.(stimulus.staircaseOver);
+nStaircase = length(staircaseOver);
+
 % if no stimfile found
 if isempty(stimfile)
   % then initialize
-  for iStaircase = 1:length(stimulus.coherence)
+  for iStaircase = 1:nStaircase
     % print message of what we are doing
-    disp(sprintf('(cocon) Initializing staircase for coherence: %0.2f',stimulus.coherence(iStaircase)));
+    disp(sprintf('(cocon) Initializing staircase for %s: %0.2f',stimulus.staircaseOver,staircaseOver(iStaircase)));
     % init staircase
-    stimulus.s(iStaircase,1) = doStaircase('init','upDown','nup=1','ndown=2','initialStepsize',initialStepsize,'nTrials',nTrials,'initialThreshold',initialThreshold,'subplotCols',length(stimulus.coherence),'subplotNum',iStaircase,'dispFig',dispStaircaseFig,'subplotName',sprintf('Coherence: %0.2f',stimulus.coherence(iStaircase)),'minThreshold',0,'stepRule=pest','maxStepsize',0.5,'minStepsize',0.005);
+    stimulus.s(iStaircase,1) = doStaircase('init','upDown','nup=1','ndown=2','initialStepsize',initialStepsize,'nTrials',nTrials,'initialThreshold',initialThreshold,'subplotCols',nStaircase,'subplotNum',iStaircase,'dispFig',dispStaircaseFig,'subplotName',sprintf('%s: %0.2f',stimulus.staircaseOver,staircaseOver(iStaircase)),'minThreshold',0,'stepRule=pest','maxStepsize',0.5,'minStepsize',0.005);
   end
 else
   disp(sprintf('(cocon) Found stimfile'))
   % init using threshold from last stimfile
-  for iStaircase = 1:length(stimulus.coherence)
+  for iStaircase = 1:nStaircase
     % print message of what we are doing
     threshold = doStaircase('threshold',stimfile.stimulus.s(iStaircase,:));
-    disp(sprintf('(cocon) Initializing staircase for coherence: %0.2f from last stimfile with threshold: %0.2f',stimulus.coherence(iStaircase),threshold.threshold));
+    disp(sprintf('(cocon) Initializing staircase for %s: %0.2f from last stimfile with threshold: %0.2f',stimulus.staircaseOver,staircaseOver(iStaircase),threshold.threshold));
     % init staircase
     stimulus.s(iStaircase,1) = doStaircase('init',stimfile.stimulus.s(iStaircase,end));
   end
 end
 
 % set that the staircases are not yet done
-stimulus.staircaseCompleted = zeros(1,length(stimulus.coherence));
+stimulus.staircaseCompleted = zeros(1,nStaircase);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function to init the grating stimulus
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initGratingStimulus(stimulus,myscreen)
-
-% these are the reserved colors, if you need them later
-% you can display them by setting your color to the appropriate
-% index in stimulus.colors.reservedColor e.g. to get the
-% second color, in this case white, you would do
-% mglClearScreen(stimulus.colors.reservedColor(2));
-stimulus.colors.reservedColors = [1 1 1; 0 1 0; 1 0 0];
-
-% grating parameters
-stimulus.grating.n = 4;
-stimulus.grating.sf = 2;
-stimulus.grating.tf = 2;
-stimulus.grating.width = stimulus.width;
-stimulus.grating.height = stimulus.width;
-stimulus.grating.windowType = 'gabor'; % should be gabor or thresh
-stimulus.grating.sdx = stimulus.grating.width/7;
-stimulus.grating.sdy = stimulus.grating.width/7;
-
-% init the gratins
-stimulus = initGratings(stimulus,myscreen);
-
-% set background color
-stimulus.backgroundColor = stimulus.colors.grayColor;
-
-% and fixation color
-stimulus.normalFixColor = stimulus.colors.reservedColor(1);
-stimulus.correctFixColor = stimulus.colors.reservedColor(2);
-stimulus.incorrectFixColor = stimulus.colors.reservedColor(3);
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     initGratings - from taskTemplateContrast10bit
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initGratings(stimulus,myscreen)
-
-% set maximum color index (for 24 bit color we have 8 bits per channel, so 255)
-maxIndex = 255;
-
-% get gamma table
-if ~isfield(myscreen,'gammaTable')
-  stimulus.linearizedGammaTable = mglGetGammaTable;
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-  disp(sprintf('(taskTemplateContrast10bit:initGratings) No gamma table found in myscreen. Contrast'));
-  disp(sprintf('         displays like this should be run with a valid calibration made by moncalib'));
-  disp(sprintf('         for this monitor.'));
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-end
-stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
-
-disppercent(-inf,'Creating grating textures');
-
-% calculate some colors information
-%  number of reserved colors
-stimulus.colors.nReservedColors = size(stimulus.colors.reservedColors,1);
-
-% number of colors possible for gratings, make sure that we 
-% have an odd number
-stimulus.colors.nGratingColors = maxIndex+1-stimulus.colors.nReservedColors;
-if iseven(stimulus.colors.nGratingColors)
-  stimulus.colors.nGratingColors = stimulus.colors.nGratingColors-1;
-end
-% min, mid and max index of gratings colors (index values are 0 based)
-stimulus.colors.minGratingIndex = maxIndex+1-stimulus.colors.nGratingColors;
-stimulus.colors.midGratingIndex = stimulus.colors.minGratingIndex+floor(stimulus.colors.nGratingColors/2);
-stimulus.colors.maxGratingIndex = maxIndex;
-% number of contrasts we can display (not including 0 contrast)
-stimulus.colors.nDisplayContrasts = floor(stimulus.colors.nGratingColors/2);
-
-% get the color value for gray (i.e. the number between 0 and 1 that corresponds to the midGratingIndex)
-stimulus.colors.grayColor = stimulus.colors.midGratingIndex/maxIndex;
-
-% set the reserved colors - this gives a convenient value between 0 and 1 to use the reserved colors with
-for i = 1:stimulus.colors.nReservedColors
-  stimulus.colors.reservedColor(i) = (i-1)/maxIndex;
-end
-
-% make the window through with the gratings will be displayed
-gaussianWin = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sdx,stimulus.grating.sdy);
-if strcmp(stimulus.grating.windowType,'gabor')
-  % a gaussian window
-  win = maxIndex-maxIndex*gaussianWin;
-else
-  % a simple window
-  win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
-end
-mask = ones(size(win,1),size(win,2),4)*stimulus.colors.midGratingIndex;
-mask(:,:,4) = win;
-stimulus.mask = mglCreateTexture(mask);
-
-% make all the 1D gratings. We compute all possible contrast values given the
-% range of indexes available to us. The 1st texture is gray the nth texture is full
-% contrast for the current gamma setting
-for iContrast = 0:stimulus.colors.nDisplayContrasts
-  disppercent(iContrast/stimulus.colors.nDisplayContrasts);
-  if myscreen.userHitEsc,mglClose;keyboard,end
-  % make the grating
-  thisGrating = round(iContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,0)+stimulus.colors.midGratingIndex);
-  % create the texture
-  stimulus.tex(iContrast+1) = mglCreateTexture(thisGrating);
-end
-disppercent(inf);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% sets the gamma table so that we can have
-% finest possible control over the stimulus contrast.
-%
-% stimulus.reservedColors should be set to the reserved colors (for cue colors, etc).
-% maxContrast is the maximum contrast you want to be able to display.
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function setGammaTableForMaxContrast(maxContrast)
-
-global stimulus;
-% if you just want to show gray, that's ok, but to make the
-% code work properly we act as if you want to display a range of contrasts
-if maxContrast <= 0,maxContrast = 0.01;end
-
-% set the reserved colors
-gammaTable(1:size(stimulus.colors.reservedColors,1),1:size(stimulus.colors.reservedColors,2))=stimulus.colors.reservedColors;
-
-% set the gamma table
-if maxContrast > 0
-  % create the rest of the gamma table
-  cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
-  luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nGratingColors-1)):cmax;
-
-  % now get the linearized range
-  redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-  greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-  blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
+% and clear threshold field
+stimulus.threshold = [];
   
-  % add these values to the table
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
-else
-  % if we are asked for 0 contrast then simply set all the values to gray
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,1)=interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,0.5,'linear');
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,2)=interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,0.5,'linear');
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,3)=interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,0.5,'linear');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% function to get threshold
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function threshold = getThreshold(stimulus,myscreen)
+
+% get the last stimfile
+stimfile = getLastStimfile(myscreen);
+if isempty(stimfile)
+  disp(sprintf('(cocon:getThreshold) No stimfile found, you need to run a staircase first!'));
+  threshold = [];
+  return
 end
 
-% set the gamma table
-mglSetGammaTable(gammaTable);
+disp(sprintf('(cocon) Found stimfile'));
 
-% remember what the current maximum contrast is that we can display
-stimulus.currentMaxContrast = maxContrast;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    getContrastIndex    %
-%%%%%%%%%%%%%%%%%%%%%%%%%%
-function contrastIndex = getContrastIndex(desiredContrast,verbose)
-
-if nargin < 2,verbose = 0;end
-
-global stimulus;
-if desiredContrast < 0, desiredContrast = 0;end
-
-% now find closest matching contrast we can display with this gamma table
-contrastIndex = min(round(stimulus.colors.nDisplayContrasts*desiredContrast/stimulus.currentMaxContrast),stimulus.colors.nDisplayContrasts);
-
-% display the desired and actual contrast values if verbose is set
-if verbose
-  actualContrast = stimulus.currentMaxContrast*(contrastIndex/stimulus.colors.nDisplayContrasts);
-  disp(sprintf('(getContrastIndex) Desired contrast: %0.4f Actual contrast: %0.4f Difference: %0.4f',desiredContrast,actualContrast,desiredContrast-actualContrast));
+% now see if we have the proper staircases run for these conditions
+% check that the last stimfile had the same values
+if ~isfield(stimfile,'stimulus') || ~isfield(stimfile.stimulus,stimulus.staircaseOver) || ~isequal(stimfile.stimulus.(stimulus.staircaseOver),stimulus.(stimulus.staircaseOver))
+  % dump this stimfile, since it does not match current variable settings
+  disp(sprintf('(cocon:getThreshold) Found stimfile, but does not have %s match. Need to run staircase again.',stimulus.staircaseOver));
+  threshold = [];
+  return
 end
 
-% out of range check
-if round(stimulus.colors.nDisplayContrasts*desiredContrast/stimulus.currentMaxContrast)>stimulus.colors.nDisplayContrasts
- disp(sprintf('(getContrastIndex) Desired contrast (%0.9f) out of range max contrast : %0.9f',desiredContrast,stimulus.currentMaxContrast));
- keyboard
+% see if threshold already exists
+if isfield(stimulus,'threshold') && ~isempty(stimulus.threshold)
+  disp(sprintf('(cocon:getThreshold) Found existing threshold: %s',num2str(stimulus.threshold.threshold)));
+  threshold = stimulus.threshold;
+  return
+end
+    
+% get number of staircases
+staircaseOver = stimulus.(stimulus.staircaseOver);
+nStaircase = length(staircaseOver);
+nRepeats = size(stimfile.stimulus.s,2);
+
+% now get the threshold values
+for iStaircase = 1:nStaircase
+  staircases = {};
+  % collect all staircases with more than 80% of trials run
+  for iRepeat = 1:nRepeats
+    % get the staircase
+    thisStaircase = stimfile.stimulus.s(iStaircase,iRepeat);
+    % get how many trials were run
+    if (thisStaircase.trialNum/thisStaircase.stopCriterion) > 0.8
+      disp(sprintf('(cocon:getThreshold) Using staircase for %s: %0.2f (%i/%i) has (%i/%i) trials',stimulus.staircaseOver,staircaseOver(iStaircase),iRepeat,nRepeats,thisStaircase.trialNum,thisStaircase.stopCriterion));
+      staircases{end+1} = thisStaircase;
+    else
+      disp(sprintf('(cocon:getThreshold) IGNORING Staircase for %s: %0.2f (%i/%i) has (%i/%i) trials - TOO FEW TRIALS',stimulus.staircaseOver,staircaseOver(iStaircase),iRepeat,nRepeats,thisStaircase.trialNum,thisStaircase.stopCriterion));
+    end
+  end
+  % no staircases found, return empty
+  if isempty(staircases)
+    disp(sprintf('(cocon:getThreshold) No staircases found'));
+    threshold = [];
+    return
+  end
+  % get threshold
+  threshold(iStaircase) = doStaircase('threshold',cell2mat(staircases));
+  % print message of what we are doing
+  disp(sprintf('(cocon:getThreshold) Staircase for %s: %0.2f from last stimfile had threshold: %0.2f',stimulus.staircaseOver,staircaseOver(iStaircase),threshold.threshold));
+end
+  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% function to init constant stimuli
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initConstantStimuli(stimulus,myscreen)
+
+% get number of thresholds
+nThreshold = length(stimulus.threshold);
+
+% set doStaircase to run constant stimuli
+for iThreshold = 1:nThreshold
+  threshold = stimulus.threshold(iThreshold).threshold;
+  % get the fixed values
+  if strcmp(stimulus.runType,'low')
+    fixedVals = threshold * stimulus.lowVals;
+  else    
+    fixedVals = threshold * stimulus.highVals;
+  end
+  % display what we are doing
+  disp(sprintf('(cocon:initConstantStimuli) Running %s with values: %s (threshold=%f)',stimulus.runType,num2str(fixedVals),threshold));
+  % set the staircase to run constant stimuli
+  stimulus.s(iThreshold,1) = doStaircase('init','fixed','fixedVals',fixedVals,'nTrials',stimulus.nTrials,'dispFig',true);
 end
 
-% 1 based indexes (0th index is gray, nDisplayContrasts+1 is full contrast)
-contrastIndex = contrastIndex+1;
-
+% set this so the code knows wow many staircases have been run (in this case staircase is a set of constant stimuli)
+stimulus.staircaseCompleted = zeros(1,nThreshold);
+stimulus.nStaircases = 1;
