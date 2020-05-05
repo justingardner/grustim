@@ -97,13 +97,13 @@ task{1}.getResponse = zeros(size(task{1}.segmin));
 task{1}.getResponse(stimulus.seg.response)=1;
 
 %%% Stimulus Variables
-stimulus.imNames = {'face', 'tulips', 'fur', 'bricks', 'blotch', 'bark'};
+stimulus.imNames = {'face', 'jetplane', 'elephant', 'sand', 'lawn', 'tulips', 'dirt', 'fireworks', 'bananas'};
 %stimulus.imNames = {'beans', 'blossoms', 'bubbly', 'clouds', 'crystals', 'dahlias',...
 %          'fronds', 'fur', 'glass', 'leaves', 'leopard', 'noodles', 'paisley', 'plant',...
 %          'rocks', 'scales', 'spikes', 'tiles', 'waves', 'worms'};
 stimulus.layerNames = {'pool1', 'pool2', 'pool4'};
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texAttPool';
-stimulus.origImDir = '~/proj/TextureSynthesis/stimuli/textures/orig_color';
+stimulus.stimDir = '~/proj/texture_stimuli/color/textures';
+stimulus.origImDir = '~/proj/texture_stimuli/color/originals';
 stimulus.imSize = 4;
 if stimulus.periph
   stimulus.eccentricity = 10;
@@ -119,7 +119,7 @@ task{1}.parameter.layer = 1:length(stimulus.layerNames);
 task{1}.parameter.poolSize = 1:length(stimulus.poolSizes);
 
 % Make numTrials some multiple of number of TrialTypes 
-task{1}.numTrials = 180;
+task{1}.numTrials = 240;
 task{1}.random = 1;
 
 %%% Task Variables
@@ -154,7 +154,11 @@ for i = 1:length(stimulus.imNames)
       for l = 1:stimulus.nSamples
         ps = stimulus.poolSizes{k}; ln = stimulus.layerNames{j};
         if strcmp(ln, 'PS'), ps = '1x1'; end
-        smp = imread(sprintf('%s/%s_%s_%s_smp%i.jpg', stimulus.stimDir, ps, ln, imName, l));
+        filename = sprintf('%s/%s_%s_%s_smp%i.%s', stimulus.stimDir, ps, ln, imName, l, 'png');
+        if ~isfile(filename)
+            filename = sprintf('%s/%s_%s_%s_smp%i.%s', stimulus.stimDir, ps, ln, imName, l, 'jpg');
+        end
+        smp = imread(filename);
         stims.(sprintf('%s_%s_%s_smp%i', imName, ps, ln, l)) = genTexFromIm(smp, stimulus.live.mask);
       end
     end
@@ -283,7 +287,7 @@ for i = 1:2
     mglBltTexture(stimulus.live.targetImg, [targetLoc(1), targetLoc(2), imSz, imSz]);
     mglBltTexture(stimulus.live.d1, [distLocs(1,:) imSz imSz]);
     mglBltTexture(stimulus.live.d2, [distLocs(2,:) imSz, imSz]);
-    upFix(stimulus, stimulus.colors.white);
+    upFix(stimulus, stimulus.colors.black);
   elseif task.thistrial.thisseg == stimulus.seg.feedback
     if task.thistrial.response == task.thistrial.targetPosition
       task.thistrial.correct = 1;
