@@ -453,16 +453,28 @@ stimulus.live.grating  = mglCreateTexture(alphamask); % high contrast
 
 
 %%%%%%%%%%%%%%%%%%%%%%%
+%    fixResponse %
+%  fix the response mapping which I messed up like an idiot
+%%%%%%%%%%%%%%%%%%%%%%%
+function resp = fixResponse(response)
+
+resp(response==11) = 1;
+resp(response==14) = 2;
+resp(response==12) = 3;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
 %    analyzeData %
 %%%%%%%%%%%%%%%%%%%%%%%
 function data = analyzeData()
 %%
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/texOdd/%s/19*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/texOdd/%s/20*stim*.mat',mglGetSID)));
 
 count = 1; 
-data = struct('response', [], 'reaction_time', [], 'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
+data = struct('response', [], 'reaction_time', [], 'periphery',[], 'eccentricity', [], ...
+              'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
 for fi = 1:length(files)
   load(fullfile(sprintf('~/data/texOdd/%s/%s',mglGetSID,files(fi).name)));
   
@@ -484,12 +496,14 @@ for fi = 1:length(files)
         data.(f{i}) = [data.(f{i}) e.randVars.(f{i})];
     end
     
-    data.response = [data.response e.response-10];
-
+    data.response = [data.response fixResponse(e.response)];
     data.reaction_time = [data.reaction_time e.reactionTime];
     data.nTrials = data.nTrials + e.nTrials;
+    
+    data.periphery = [data.periphery ones(1,e.nTrials)*stimulus.periph];
+    data.eccentricity = [data.eccentricity ones(1,e.nTrials)*stimulus.eccentricity];
 
-    % Calculate number of valid trials by excluding eye movements
+    % Calculate number of valid trials by excluding eye movement trials and no-response trials.
     data.nValTrials = data.nValTrials + sum(~isnan(e.response));
     
     data.accByRuns = [data.accByRuns nanmean(e.randVars.correct)];
@@ -497,95 +511,22 @@ for fi = 1:length(files)
   end
   count = count + 1;
 end
+data.imSize = stimulus.imSize;
+
 disp(sprintf('SUBJECT %s: Found %i runs with a total of %i trials', mglGetSID, length(data.accByRuns), data.nTrials));
 
-%% Get average accuracies across each condition.
-standard_pools = unique(data.distractor_poolsize);
+keyboard
+
+%% First, plot results across both eccentricities.
+distractor_pools = unique(data.distractor_poolsize);
 distractor_layers = unique(data.distractor_layer);
-odd_pools = unique(data.oddball_poolsize);
-odd_layers = unique(data.oddball_layer);
-
-accs = nan(length(standard_pools)*length(distractor_layers), length(odd_pools)*length(odd_layers));
-SEs = nan( length(standard_pools)*length(distractor_layers), length(odd_pools)*length(odd_layers));
-Ns = nan( length(standard_pools)*length(distractor_layers), length(odd_pools)*length(odd_layers));
-x = 0; 
-std_labels = {}; odd_labels = {};
-for i = 1:length(standard_pools)
-  for j = 1:length(distractor_layers)
-   x = x+1; y = 0;
-   std_labels{x} = sprintf('%s %s', stimulus.poolSizes{standard_pools(i)}, stimulus.layerNames{distractor_layers(j)});
-   for k = 1:length(odd_pools)
-      for l = 1:length(odd_layers)
-        y = y+1;
-        ct = data.correct(data.distractor_poolsize==standard_pools(i) & data.distractor_layer==distractor_layers(j) & data.oddball_poolsize==odd_pools(k) & data.oddball_layer==odd_layers(l));
-        accs(x,y) = nanmean(ct);
-        SEs(x,y) = 1.96*nanstd(ct) / sqrt(length(ct));
-        Ns(x,y) = length(ct);
-        if odd_layers(l)==0
-            odd_labels{y} = 'Original';
-        elseif odd_layers(l)==1
-            odd_labels{y} = 'P-S';
-        else
-            odd_labels{y} = sprintf('%s %s', stimulus.poolSizes{odd_pools(k)}, stimulus.layerNames{odd_layers(l)});
-        end
-      end
-    end
-  end
-end
-
-%% Plot heatmap of accuracies in each condition (distractor conditions x target conditions)
-figure;
-%subplot(1,2,1);
-imagesc(accs);
-for i=1:size(accs,1)
-    for j =1:size(accs,2)
-        text(j-0.5,i, sprintf('%.2f', accs(i,j)));
-    end
-end
-xlabel('Oddball Texture');
-ylabel('Standard (non-oddball) Texture');
-set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
-set(gca, 'YTick', 1:length(standard_pools)*length(distractor_layers));
-set(gca, 'XTickLabel', odd_labels);
-set(gca, 'XTickLabelRotation', 45);
-set(gca, 'YTickLabel', std_labels);
-title('Proportion correct')
-colormap('Hot');
-colorbar;
-
-% Plot heatmap of Ns
-%subplot(1,2,2);
-figure;
-imagesc(Ns);
-for i=1:size(Ns,1)
-    for j =1:size(Ns,2)
-        text(j,i, sprintf('%i', Ns(i,j)));
-    end
-end
-title('Number of trials');
-xlabel('Oddball Texture');
-ylabel('Standard (non-oddball) Texture');
-set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
-set(gca, 'YTick', 1:length(standard_pools)*length(distractor_layers));
-set(gca, 'XTickLabel', odd_labels);
-set(gca, 'XTickLabelRotation', 45);
-set(gca, 'YTickLabel', std_labels);
-colormap('Hot');
-colorbar;
-
-%% When oddball is ORIGINAL`
-accs = nan(length(standard_pools), length(distractor_layers));
-SEs = nan( length(standard_pools), length(distractor_layers));
-Ns = nan( length(standard_pools), length(distractor_layers));
+accs = nan(length(distractor_pools), length(distractor_layers));
+SEs = nan( length(distractor_pools), length(distractor_layers));
+Ns = nan( length(distractor_pools), length(distractor_layers));
 x = 0;
-for i = 1:length(standard_pools)
+for i = 1:length(distractor_pools)
   for j = 1:length(distractor_layers)
-    if strcmp(stimulus.layerNames{distractor_layers(j)}, 'PS')
-        ct = data.correct(data.distractor_layer==distractor_layers(j) & data.oddball_layer==0);
-        if i~=1, ct = NaN; end
-    else
-        ct = data.correct(data.distractor_poolsize==standard_pools(i) & data.distractor_layer==distractor_layers(j) & data.oddball_layer==0);
-    end
+    ct = data.correct(data.distractor_poolsize==distractor_pools(i) & data.distractor_layer==distractor_layers(j));
     accs(i,j) = nanmean(ct);
     SEs(i,j) = 1.96*nanstd(ct) / sqrt(length(ct));
     Ns(i,j) = length(ct);
@@ -595,60 +536,144 @@ end
 figure;
 colors = brewermap(4, 'Set1');
 handles = [];
-for i = 1:size(accs,2)
-  h = myerrorbar(1:size(accs,1), accs(i,:), 'yError', SEs(i,:), 'Symbol', 'o', 'Color', colors(i,:)); hold on;
+for i = 1:size(accs,1)
+  h = myerrorbar(1:size(accs,2), accs(i,:), 'yError', SEs(i,:), 'Symbol', 'o', 'Color', colors(i,:)); hold on;
   handles = [handles h];
 end
-xlim([0, size(accs,1)+1]);
+xlim([0, length(distractor_layers)+1]);
 hline(1/3, ':k');
 legend(handles, stimulus.poolSizes);
-title('Comparison to original');
-set(gca, 'XTick', 1:size(accs,1));
+title('Overall results');
+set(gca, 'XTick', 1:length(distractor_layers));
 set(gca, 'XTickLabel', stimulus.layerNames);
 ylabel('Accuracy (proportion correct)')
 xlabel('Model layer to which distractors were feature-matched')
 
-%%
-keyboard
-figure; bar(accs');
-set(gca, 'XTick', 1:length(odd_pools)*length(odd_layers));
-set(gca, 'YTick', 1:length(standard_pools)*length(distractor_layers));
-set(gca, 'XTickLabel', ['Original' stimulus.layerNames]);
-legend(stimulus.layerNames);
+%% Next, split out results by eccentricity.
+eccentricities = unique(data.periphery);
+accs = nan(length(distractor_pools), length(distractor_layers), length(eccentricities));
+SEs  = nan(length(distractor_pools), length(distractor_layers), length(eccentricities));
+Ns   = nan(length(distractor_pools), length(distractor_layers), length(eccentricities));
+for i = 1:length(distractor_pools)
+  for j = 1:length(distractor_layers)
+    for k = 1:length(eccentricities)
+      ct = data.correct(data.distractor_poolsize==distractor_pools(i) & data.distractor_layer==distractor_layers(j) & data.periphery==eccentricities(k));
+      accs(i,j,k) = nanmean(ct);
+      SEs(i,j,k) = 1.96*nanstd(ct) / sqrt(length(ct));
+      Ns(i,j,k) = length(ct);
+    end
+  end
+end
 
-%%
 figure;
-subplot(2,1,1);
-myerrorbar(1:length(all_layers), mean(accs, 1), 'yError', mean(SEs,1), 'Symbol', 'o');
-hold on; 
-xlim([0 length(all_layers)+1]); ylim([0 1]);
-hline(1/3, ':k');
-xlabel('Layer'); ylabel('Accuracy');
-set(gca, 'XTick', 1:length(all_layers));
-set(gca, 'XTickLabel', stimulus.layerNames);
-
-subplot(2,1,2);
-myerrorbar(6./(1:length(all_pools)), mean(accs,2), 'yError', mean(SEs,2), 'Symbol', 'o');
-hold on; 
-xlim([0, 7]); ylim([0 1]);
-hline(1/3, ':k');
-xlabel('Pooling Region Size (degs)'); ylabel('Accuracy');
-set(gca, 'XTick', sort(6./(1:length(all_pools)), 'ascend'));
-%set(gca, 'XTickLabel', stimulus.poolSizes);
-
-
-%%
-figure;
-handles = []; cols = brewermap(length(all_pools)+1, 'Blues');
-for i = 1:length(all_pools)
-  h = myerrorbar(1:length(all_layers), accs(i,:), 'yError', SEs(i,:), 'Symbol', 'o', 'Color', cols(i+1,:)); 
-  hold on;
+colors = brewermap(4, 'Set2');
+subplot(1,3,1);
+handles = [];
+for i = 1:size(accs,1)
+  h = myerrorbar(1:length(distractor_layers), accs(i,:,1), 'yError', SEs(i,:,1), 'Symbol', 'o', 'Color', colors(i,:)); hold on;
   handles = [handles h];
 end
-xlim([0 length(all_layers)+1]); ylim([0 1]);
+xlim([0, length(distractor_layers)+1]); ylim([0.25, 1]);
 hline(1/3, ':k');
-xlabel('Layer'); ylabel('Accuracy');
 legend(handles, stimulus.poolSizes);
-set(gca, 'XTick', 1:length(all_layers));
+title('Foveal (ecc=3deg)');
+set(gca, 'XTick', 1:length(distractor_layers));
+set(gca, 'XTickLabel', stimulus.layerNames);
+ylabel('Accuracy (proportion correct)')
+xlabel('Model layer to which distractors were feature-matched')
+
+subplot(1,3,2);
+handles = [];
+for i = 1:size(accs,1)
+  h = myerrorbar(1:length(distractor_layers), accs(i,:,2), 'yError', SEs(i,:,2), 'Symbol', 's', 'Color', colors(i,:)); hold on;
+  handles = [handles h];
+end
+xlim([0, length(distractor_layers)+1]); ylim([0.25, 1]);
+hline(1/3, ':k');
+legend(handles, stimulus.poolSizes);
+title('Peripheral (ecc=10deg)');
+set(gca, 'XTick', 1:length(distractor_layers));
+set(gca, 'XTickLabel', stimulus.layerNames);
+ylabel('Accuracy (proportion correct)')
+xlabel('Model layer to which distractors were feature-matched')
+
+subplot(1,3,3);
+delta_acc = accs(:,:,1) - accs(:,:,2);
+bar(delta_acc'); colormap(colors);
+title('Difference in performance between foveal and peripheral');
+ylabel('Delta Performance (foveal - peripheral)');
+legend(stimulus.poolSizes);
+set(gca, 'XTick', 1:length(distractor_layers));
 set(gca, 'XTickLabel', stimulus.layerNames);
 box off;
+
+%%
+
+%% Finally, split out results by individual images.
+imageClasses = unique(data.imgFam);
+accs = nan(length(distractor_pools), length(distractor_layers), length(eccentricities), length(imageClasses));
+SEs  = nan(length(distractor_pools), length(distractor_layers), length(eccentricities), length(imageClasses));
+Ns   = nan(length(distractor_pools), length(distractor_layers), length(eccentricities), length(imageClasses));
+for i = 1:length(distractor_pools)
+  for j = 1:length(distractor_layers)
+    for k = 1:length(eccentricities)
+      for l = 1:length(imageClasses)
+        ct = data.correct(data.distractor_poolsize==distractor_pools(i) & data.distractor_layer==distractor_layers(j) ...
+                          & data.periphery==eccentricities(k) & data.imgFam==imageClasses(l));
+        accs(i,j,k,l) = nanmean(ct);
+        SEs(i,j,k,l) = 1.96*nanstd(ct) / sqrt(length(ct));
+        Ns(i,j,k,l) = length(ct);
+      end
+    end
+  end
+end
+
+figure;
+for l = 1:length(imageClasses)
+  subplot(1,length(imageClasses),l);
+  delta_acc = accs(:,:,1,l) - accs(:,:,2,l);
+  bar(delta_acc'); colormap(colors);
+  title(sprintf('Image Class: %s', stimulus.imNames{l}));
+  ylabel('Delta Performance (foveal - peripheral)');
+  legend(stimulus.poolSizes, 'Location', 'northwest');
+  set(gca, 'XTick', 1:length(distractor_layers));
+  set(gca, 'XTickLabel', stimulus.layerNames);
+  box off;
+end
+
+%% Plot mean accuracies across conditions, split by individual images.
+periph_acc = squeeze(accs(:,:,2,:));
+periph_Ns = squeeze(Ns(:,:,2,:));
+periph_SEs = squeeze(SEs(:,:,2,:));
+
+figure;
+for l = 1:length(imageClasses)
+  subplot(1,length(imageClasses),l);
+  
+  handles = [];
+  for i = 1:size(accs,1)
+    h = myerrorbar(1:length(distractor_layers), periph_acc(i,:,l), 'yError', periph_SEs(i,:,2), 'Symbol', 'o', 'Color', colors(i,:)); hold on;
+    handles = [handles h];
+  end
+  xlim([0, length(distractor_layers)+1]); ylim([0.25, 1]);
+  hline(1/3, ':k');
+  legend(handles, stimulus.poolSizes);
+  title(sprintf('%s', stimulus.imNames{l}));
+  set(gca, 'XTick', 1:length(distractor_layers));
+  set(gca, 'XTickLabel', stimulus.layerNames);
+  ylabel('Accuracy (proportion correct)')
+  xlabel('Model layer to which distractors were feature-matched')
+end
+
+%% Save results
+data.accuracy = accs;
+data.numTrials = Ns;
+data.stdErr = SEs;
+data.layerNames = stimulus.layerNames;
+data.imNames = stimulus.imNames;
+data.poolSizes = stimulus.poolSizes;
+data.origImDir = stimulus.origImDir;
+data.stimDir = stimulus.stimDir;
+
+save(sprintf('~/proj/texOdd/data/%s_behavior.mat', mglGetSID), '-struct', 'data');
+keyboard
