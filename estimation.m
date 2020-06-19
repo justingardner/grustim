@@ -60,7 +60,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=1','visual=0','auditory=0','bimodal=0','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=1','visual=0','auditory=0','bimodal=1','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
  % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -172,14 +172,14 @@ task{1}{1}.waitForBacktick = 1;
 
 
 stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
-stimulus.feedback.segnum = 7;
+stimulus.feedback.segnum = 8;
 
   
   
 % trial: Fixation + left cue (.015s/.0015s) + ISI (.5s) + probe stimulus (.015) + ISI + right cue (.015s/.0015s) + Resp + ITI
-task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur 5 1];
-task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur 5 1];
-task{1}{1}.getResponse = [0 0 0 0 0 0 1 0];
+task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 5];
+task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 5];
+task{1}{1}.getResponse = [0 0 0 0 0 0 0 1];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 10;
 elseif stimulus.visual || stimulus.auditory
@@ -415,7 +415,7 @@ elseif any(task.thistrial.thisseg == [2 4 6])
   stimulus.fixColor = stimulus.colors.grey;
   
 elseif (task.thistrial.thisseg == stimulus.confidence.segnum)
-  % set starting confidnece
+  % set starting confidence
   task.thistrial.confidence = 0.5;
   scrollEvents = mglListener('getAllScrollEvents');
   mglListener('getAllMouseEvents');
@@ -426,7 +426,6 @@ if task.thistrial.thisseg == 8
     task.thistrial.rt = task.thistrial.reactionTime;
   end
   stimulus.trialnum = stimulus.trialnum+1;
-  
   
 end
 
@@ -497,9 +496,12 @@ if task.thistrial.thisseg == stimulus.confidence.segnum
   [task.thistrial.confidence confidenceDone] = setConfidence(task.thistrial.confidence, stimulus);
   if confidenceDone
     task = jumpSegment(task);
-    disp(sprintf('(estimation) Estimate: %0.2f',task.thistrial.confidence));
+    disp(sprintf('(estimation) Estimate: %0.2f',task.thistrial.confidence))
+    task.thistrial.centerWhich = task.thistrial.confidence;
+    task.thistrial.resp = task.thistrial.confidence;
+    task.thistrial.est = task.thistrial.confidence;
+    task.randVars.calculated.est = [task.randVars.calculated.est, task.thistrial.confidence];
   end
-  task.thistrial.est = task.thistrial.confidence;
 end
 
 mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
@@ -558,8 +560,6 @@ if ~task.thistrial.gotResponse
         end
     end
         
-    task.thistrial.resp = task.thistrial.confidence;
-    task.thistrial.est = task.thistrial.confidence
     task.thistrial.rt = task.thistrial.reactionTime;
 
     % change color of fixation to a neutral color for no-feedback conditions
@@ -1175,7 +1175,7 @@ stimulus.stimTexture(stimulusNum) = mglCreateTexture(round(stimulus.colors.gauss
 function stimulus = initConfidence(stimulus,centerX,centerY,width,height,lineSize,lineColor,fillColor)
 
 % set the segment in which the confidence judgement happens
-stimulus.confidence.segnum = 7;
+stimulus.confidence.segnum = 8;
   
 % set the dimensions of the confidence display
 stimulus.confidence.width = width;
@@ -1261,6 +1261,7 @@ if ~isequal(mouse.buttons,0) || ~isempty(keyEvent)
 else
   confidenceDone = 0;
 end
+
 
 
 
