@@ -60,7 +60,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=1','visual=0','auditory=0','bimodal=1','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=[1 4]','visual=0','auditory=0','bimodal=1','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
  % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -173,7 +173,7 @@ task{1}{1}.waitForBacktick = 1;
 
 stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
 stimulus.feedback.segnum = 8;
-
+mglTextSet('Helvetica',32,[0 0.5 1 1],0,0,0,0,0,0,0);
   
   
 % trial: Fixation + left cue (.015s/.0015s) + ISI (.5s) + probe stimulus (.015) + ISI + right cue (.015s/.0015s) + Resp + ITI
@@ -192,9 +192,9 @@ end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-10 0 10]; 
+task{1}{1}.parameter.posDiff = [-10 0 10]; % cue offset from center
 if stimulus.task == 3
-  task{1}{1}.parameter.displacement = [-5 0 5];
+  task{1}{1}.parameter.displacement = [-5 0 5]; % audio-visual discrepancy in bimodal trials 
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
 task{1}{1}.parameter.width = stimulus.width;
@@ -407,7 +407,7 @@ if task.thistrial.thisseg == 1
     stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),task.thistrial.SNR,task.thistrial.width);
     stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),task.thistrial.SNR,task.thistrial.width);
     stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(3),0,3,stimulus.background.frameOrder(stimulus.background.stim3Frame),task.thistrial.SNR,task.thistrial.width);
-    disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i width: %0.1f',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.diff,task.thistrial.centerWhich,task.thistrial.width));
+    disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i width: %0.1f',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.displacement,task.thistrial.centerWhich,task.thistrial.width));
   end
 
 elseif any(task.thistrial.thisseg == [2 4 6])
@@ -1220,15 +1220,18 @@ function drawConfidence(confidenceLevel, stimulus)
 % draw confidence level as a filled bar.
 
 % draw filled inside, compute top coordinate
-fillY = stimulus.confidence.fillY;
-fillY(find(stimulus.confidence.fillTop)) = stimulus.confidence.centerY+(-0.5+confidenceLevel)*stimulus.confidence.height;
+%fillY = stimulus.confidence.fillY;
+%fillY(find(stimulus.confidence.fillTop)) = stimulus.confidence.centerY+(-0.5+confidenceLevel)*stimulus.confidence.height;
 % now draw as a filled polygon
-mglPolygon(stimulus.confidence.fillX,fillY,stimulus.confidence.fillColor);
+%mglPolygon(stimulus.confidence.fillX,fillY,stimulus.confidence.fillColor);
 
 % draw outline
-mglLines2(stimulus.confidence.X0,stimulus.confidence.Y0,stimulus.confidence.X1,stimulus.confidence.Y1,stimulus.confidence.outlineSize,stimulus.confidence.outlineColor);
+%mglLines2(stimulus.confidence.X0,stimulus.confidence.Y0,stimulus.confidence.X1,stimulus.confidence.Y1,stimulus.confidence.outlineSize,stimulus.confidence.outlineColor);
 
-%%%%%%%%%%%%%%%%%%%%%%%
+guessValue = sprintf('%.0f',confidenceLevel*100);
+mglTextDraw(guessValue,[0 0]);
+
+%%%%%%%%%%%%%%%%%%%%%%% 
 %    setConfidence    %
 %%%%%%%%%%%%%%%%%%%%%%%
 function [confidence confidenceDone] = setConfidence(confidence, stimulus)
