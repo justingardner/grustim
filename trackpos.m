@@ -14,10 +14,10 @@ if isempty(mglGetSID)
 else
     myscreen.subjectID  = mglGetSID;
 end
-myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
-myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
+myscreen.displayName = 'joshipad2'; % myscreen.screenNumber = 1; 
+%myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 myscreen.hideCursor = 1;
-myscreen                = initScreen(myscreen);
+myscreen            = initScreen(myscreen);
 
 %% parameters
 global stimulus; stimulus = struct;
@@ -25,7 +25,7 @@ global stimulus; stimulus = struct;
 % Experimenter parameters
 noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 showmouse       = 0; 
-grabframe       = 1; 
+grabframe       = 0; 
 whitenoiseOn    = 0; % 1: white noise; 2: 
 fixateCenter    = 1;
 phasescrambleOn = 1;
