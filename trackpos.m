@@ -14,6 +14,7 @@ if isempty(mglGetSID)
 else
     myscreen.subjectID  = mglGetSID;
 end
+
 %myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
 %myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 %myscreen.hideCursor = 1;
