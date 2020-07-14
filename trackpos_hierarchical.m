@@ -15,6 +15,7 @@ else
     myscreen.subjectID  = mglGetSID;
 end
 myscreen.displayName = 'joshipad2'; %
+myscreen.displayName = 'windowed';
 % myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 % myscreen.hideCursor = 1;
 
@@ -32,8 +33,9 @@ experimenter.fixateCenter    = 1;
 experimenter.phasescrambleOn = 1; % consider different noise? (i.e. pink noise? https://www.mathworks.com/help/audio/ref/pinknoise.html)
 
 experimenter.precompute_path = '~/proj/grustim/trackpos_hierarchical/testrun/'; %required if using precompute
-experimenter.precompute      = 0; %1; % load precomputed stimulus
-experimenter.precompute_backonly  = 1; % todo: load precomputed background only
+% 1: load precomputed stimulus (background and stim)
+% 2: load precomputed background and stimulus position only (during background trials)
+experimenter.precompute      = 2; 
 experimenter.precompute_gen  = 0; %1; % generate and save stimulus
 experimenter.downsample_spatRes  = 2; % downsample spatially
 if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,end
@@ -227,11 +229,11 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     % fixation cross
     stimulus.fixColor = [1 1 1];
     
-    if stimulus.experimenter.precompute == 1
-        % load stimulus and everything.
-        savedfile = [stimulus.experimenter.precompute_path, ...
-                    sprintf('cond%d_block%d_trial%d.mat',stimulus.condNum, stimulus.blockNum, task.trialnum)];
-        
+    % precomputed stuff here
+    savedfile = [stimulus.experimenter.precompute_path, ...
+        sprintf('cond%d_block%d_trial%d.mat',stimulus.condNum, stimulus.blockNum, task.trialnum)];
+    
+    if stimulus.experimenter.precompute == 1 % load stimulus and background.     
         if ~exist(savedfile), error('Cannot find precomputed image file');, end
         
         img = load(savedfile, 'img');
@@ -246,7 +248,18 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
         stimulus.posx           = s.posx;
         stimulus.posy           = s.posy;
         stimulus.objects        = s.objects;
-    else % do not precompuate 
+    elseif stimulus.experimenter.precompute == 2 % precompute background only
+        img = load(savedfile, 'backgroundnoise_rgb');
+        stimulus.backgroundnoise_rgb = img.backgroundnoise_rgb;
+        s = load(savedfile, 'stimulus');
+        s = s.stimulus;
+
+        stimulus.source_velx    = s.source_velx;
+        stimulus.source_vely    = s.source_vely;
+        stimulus.posx           = s.posx;
+        stimulus.posy           = s.posy;
+        stimulus.objects        = s.objects;
+    else
         stimulus = InitGroupStim(stimulus,myscreen,task);
     end
 end
@@ -317,13 +330,15 @@ if (task.thistrial.thisseg== 1)
     task.thistrial.framecount = task.thistrial.framecount + 1;
     
     % **** display stimulus and background
-    if stimulus.experimenter.precompute
+    if stimulus.experimenter.precompute == 1
         img = mglCreateTexture(stimulus.img(:,:,:,task.thistrial.framecount));
-        mglBltTexture(img,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth again.
-    else
+        mglBltTexture(img,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth
+    elseif stimulus.experimenter.precompute == 2
+        img = mglCreateTexture(stimulus.backgroundnoise_rgb(:,:,:,task.thistrial.framecount));
+        mglBltTexture(img,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth
         for obj = 1:length(stimulus.objects)
             stimobj = stimulus.objects{obj};
-            
+
             mglBltTexture(stimobj.gaussian,...
                 [stimobj.position(1,task.thistrial.framecount), ...
                  stimobj.position(2,task.thistrial.framecount)]);
@@ -334,9 +349,24 @@ if (task.thistrial.thisseg== 1)
             mglClearScreen(0)
             mglFlush
             %}
+            % todo: blip background
         end
-        
-        % todo: blip background
+    else
+        for obj = 1:length(stimulus.objects)
+            stimobj = stimulus.objects{obj};
+
+            mglBltTexture(stimobj.gaussian,...
+                [stimobj.position(1,task.thistrial.framecount), ...
+                 stimobj.position(2,task.thistrial.framecount)]);
+
+            % check stimuli, flush onto screen
+            %{
+            % figure;plot(stimobj.position(1,:))
+            mglClearScreen(0)
+            mglFlush
+            %}
+            % todo: blip background
+        end
     end
 
     % *** display mouse position
@@ -481,7 +511,7 @@ function stimulus = generateStimPath(stimulus,myscreen)
     posx             = nan(nobject,nframes); % object x 
     posy             = nan(nobject,nframes); % object x 
     
-    maxiters = 5000;
+    maxiters = 10000;
     for iters = 1:maxiters
         source_velx = repmat(source_stds, [1, nframes]) .* normrnd(0, 1, nsource,nframes);
         source_vely = repmat(source_stds, [1, nframes]) .* normrnd(0, 1, nsource,nframes);
@@ -495,50 +525,79 @@ function stimulus = generateStimPath(stimulus,myscreen)
         posy = repmat(stimulus.start_pos(:,2), [1, nframes]) + cumsum(vely,2);
         
         % check overlap between stimuli (3 std boundary?) 
-        % true if there are at least one overlap
-        x_ub = posx + 3*repmat(stimulus.stimSize, [1, nframes]);
-        x_lb = posx - 3*repmat(stimulus.stimSize, [1, nframes]);
-        y_ub = posy + 3*repmat(stimulus.stimSize, [1, nframes]);
-        y_lb = posy - 3*repmat(stimulus.stimSize, [1, nframes]);
-        
+        % true if there are at least one overlap        
         if nobject > 1
-            check_overlap = false(nobject,nframes);
-            for obj = 1:nobject
-                otherobjs       = logical(ones(nobject,1));
-                otherobjs(obj)  = false;
-
-                check1 = repmat(posx(obj,:), [nobject-1, 1]) < x_ub(otherobjs,:);
-                check2 = repmat(posx(obj,:), [nobject-1, 1]) > x_lb(otherobjs,:);
-                check3 = repmat(posx(obj,:), [nobject-1, 1]) < y_ub(otherobjs,:);
-                check4 = repmat(posx(obj,:), [nobject-1, 1]) < y_lb(otherobjs,:);
-
-                check_overlap(otherobjs,:) = check_overlap(otherobjs,:) | check1 | check2 | check3 | check4;
+            check_overlap = false(nchoosek(nobject,2),nframes);
+            obj_dist = zeros(nchoosek(nobject,2),nframes);
+            idx_combo = 1;
+            for obj = 1:(nobject-1)
+                for otherobj = (obj+1):nobject
+                    xdiff = (posx(obj,:) - posx(otherobj,:)).^2;
+                    ydiff = (posy(obj,:) - posy(otherobj,:)).^2;
+                    obj_dist(idx_combo,:) = sqrt(xdiff + ydiff);
+                    
+                    thresh = stimulus.stimSize(obj) + stimulus.stimSize(otherobj);
+                    check_overlap(idx_combo,:) = obj_dist(idx_combo,:) < 3*repmat(thresh, [1, nframes]);
+                    
+                    idx_combo = idx_combo +1;
+                end
             end
         else
             check_overlap = false(nobject,nframes);
         end
         
+        %{
+        % check distances
+        figure; 
+        subplot(5,1,1);hold on; title('X position')
+        subplot(5,1,2);hold on; title('Y position')
+        subplot(5,1,3);hold on; title('Pairwise distances')
+        subplot(5,1,4);hold on; title('Overlap')
+        cmap = colormap(hsv(nobject));
+        for obj = 1:nobject
+            subplot(5,1,1); plot(posx(obj,:), 'color',cmap(obj,:));
+            %plot(x_ub(obj,:),':', 'color',cmap(obj,:));
+            %plot(x_lb(obj,:),':', 'color',cmap(obj,:));
+            subplot(5,1,2); plot(posy(obj,:), 'color',cmap(obj,:))
+            %plot(y_ub(obj,:),':', 'color',cmap(obj,:));
+            %plot(y_lb(obj,:),':', 'color',cmap(obj,:));
+        end
+        for idx_combo = 1:nchoosek(nobject,2)
+            subplot(5,1,3); plot(obj_dist(idx_combo,:))
+            subplot(5,1,4); plot(check_overlap(idx_combo,:))
+        end
+        
+        % check which combination is weird
+        any(~check_overlap,2)
+        %}
+            
+        
         % check if stimulus is out of bounds
         % true if there are at least one out of bound
+        x_ub = posx + 3*repmat(stimulus.stimSize, [1, nframes]);
+        x_lb = posx - 3*repmat(stimulus.stimSize, [1, nframes]);
+        y_ub = posy + 3*repmat(stimulus.stimSize, [1, nframes]);
+        y_lb = posy - 3*repmat(stimulus.stimSize, [1, nframes]);
+
         check1 = x_ub > myscreen.imageWidth/2;
         check2 = y_ub > myscreen.imageHeight/2;
-        check3 = x_lb < myscreen.imageWidth/2;
-        check4 = y_lb < myscreen.imageHeight/2;
+        check3 = x_lb < -myscreen.imageWidth/2;
+        check4 = y_lb < -myscreen.imageHeight/2;
         check_bounds = check1 | check2 | check3 | check4;
         
-        check = check_bounds | check_overlap;
-        
-        check = false; % without any checks
+        %check = check_bounds | check_overlap;
+        % check = false; % without any checks
         
         %if iters % 
         % disp('still checking... ')
                     
-        if ~any(check(:)) % if there arent any "true"
+        if ~any(check_bounds(:)) && ~any(check_overlap(:)) % if there arent any "true"
+            disp('(genstim) suitable stimulus found!')
             break
         end
     end
     
-    if any(check(:))
+    if any(check_bounds(:)) || any(check_overlap(:))
         error('The stimulus too big/fast and cannot be constrained within the screen. Please reset parameters.')
     end
 
@@ -583,28 +642,28 @@ balancedTree.L = [1, 0, 1, 0, 0 ,0 ,1, 0, 0; ...
                  1, 1, 0, 0, 0 ,1, 0 , 0, 0; ... 
                  1, 0, 0, 1, 0 , 0 , 0 , 1, 0;...
                  1, 0, 0, 1, 0 , 0 , 0 , 0, 1]; 
-star_pos = [0,0;-1,1;-1,-1;1,1;1,-1]; % scale by 1/8 of the screen width in degrees
-balancedTree.start_pos  = star_pos .* repmat([myscreen.imageWidth/8, myscreen.imageHeight/8], [size(star_pos,1),1]);
+start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]*1.5; % scale by 1/8 of the screen width in degrees
+balancedTree.start_pos  = start_pos .* repmat([myscreen.imageWidth/4, myscreen.imageHeight/4], [size(start_pos,1),1]);
 balancedTree.colors       = [1, 1, 1;...
                              1, 0, 0;...
                              1, 0, 0;...
                              0, 0, 1;...
                              0, 0, 1]; 
-balancedTree.sourceStd    = [0.5; 0.5; 0.5; 0.5; 0.5; 0.5; 0.5; 0.5; 0.5];
+balancedTree.sourceStd    = [0.25; 0.25; 0.25; 0.25; 0.25; 0.25; 0.25; 0.25; 0.25];
 balancedTree.stimSize     = [0.5; 0.5; 0.5; 0.5; 0.5];
 
 % 5 independent objects
 independent5 = struct();
 independent5.name = 'independent5';
 independent5.L = eye(5); 
-star_pos = [0,0;-1,1;-1,-1;1,1;1,-1]; % scale by 1/8 of the screen width in degrees
-independent5.start_pos  = star_pos .* repmat([myscreen.imageWidth/8, myscreen.imageHeight/8], [size(star_pos,1),1]);
+start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]*1.5; % scale by 1/8 of the screen width in degrees
+independent5.start_pos  = start_pos .* repmat([myscreen.imageWidth/4, myscreen.imageHeight/4], [size(start_pos,1),1]);
 independent5.colors       = [1, 1, 1;...
                              1, 0, 0;...
                              1, 0, 0;...
                              0, 0, 1;...
                              0, 0, 1]; 
-independent5.sourceStd    = [1.5; 1.5; 1.5;1.5;1.5];
+independent5.sourceStd    = [0.75; 0.75; 0.75;0.75;0.75];
 independent5.stimSize     = [0.5; 0.5; 0.5; 0.5; 0.5];
 
 % some predefined structures todo: make these into "packages"
