@@ -49,7 +49,7 @@ stimulus.delta = 15;
 stimulus.lowVals = [0.5 1 1.5];
 stimulus.highVals = [1.5 2 2.5];
 stimulus.fullVals = [0.5 1 1.5 2 2.5];
-stimulus.fixedFullVals = [0 5 10 15 20 25 35 45 60];
+stimulus.fixedFullVals = [0 5 7 10 12 15 20 25];
 
 % init the stimulus
 if strcmp(stimulus.stimulusType,'dots')
@@ -268,6 +268,7 @@ if task.thistrial.thisseg == 2
     % update and draw single patch
     stimulus.dots = stimulus.dots.update(stimulus.dots);
     stimulus.dots = stimulus.dots.draw(stimulus.dots);
+    
   end
   
 
