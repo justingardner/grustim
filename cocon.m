@@ -76,7 +76,7 @@ if strcmp(stimulus.runType,'staircase')
   useLastThreshold = false;
   % call with the above parameters
   stimulus = initStaircases(stimulus, myscreen, initialThreshold, initialStepsize, nTrialsPerStaircase, dispStaircaseFig, useLastThreshold);
-elseif any(strcmp(stimulus.runType,{'low','high','full','fixedfull'}))
+elseif any(strcmp(stimulus.runType,{'josh1','josh2','full','fixedfull'}))
   % this is a regular run, set number of trials
   stimulus.nTrials = 50;
   % get threshold
@@ -596,10 +596,10 @@ disp(stimulus.runType);
 for iThreshold = 1:nThreshold
   threshold = stimulus.threshold(iThreshold).threshold;
   % get the fixed values
-  if strcmp(stimulus.runType,'low')
-    fixedVals = threshold * stimulus.lowVals;
-  elseif strcmp(stimulus.runType,'high')
-    fixedVals = threshold * stimulus.highVals;
+  if strcmp(stimulus.runType,'josh1')
+    fixedVals = 5.8256 * stimulus.lowVals;
+  elseif strcmp(stimulus.runType,'josh2')
+    fixedVals = 5.8256 * stimulus.highVals;
   elseif strcmp(stimulus.runType,'full')
     fixedVals = threshold * stimulus.fullVals;
   elseif strcmp(stimulus.runType,'fixedfull')
