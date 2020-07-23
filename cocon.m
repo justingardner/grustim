@@ -597,9 +597,9 @@ for iThreshold = 1:nThreshold
   threshold = stimulus.threshold(iThreshold).threshold;
   % get the fixed values
   if strcmp(stimulus.runType,'josh1')
-    fixedVals = 5.8256 * stimulus.lowVals;
+    fixedVals = [0 1.5 2.5];
   elseif strcmp(stimulus.runType,'josh2')
-    fixedVals = 5.8256 * stimulus.highVals;
+    fixedVals = [2.5 6 8];
   elseif strcmp(stimulus.runType,'full')
     fixedVals = threshold * stimulus.fullVals;
   elseif strcmp(stimulus.runType,'fixedfull')
