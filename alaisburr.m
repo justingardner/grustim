@@ -186,7 +186,8 @@ task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
 task{1}{1}.parameter.posDiff = [-15 -11 -8 -6 -4 -2 2 4 6 8 11 15]; 
 if stimulus.task == 3
-  task{1}{1}.parameter.displacement = [-5 0 5];
+    %bimodal displacement
+  task{1}{1}.parameter.displacement = [0];
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
 task{1}{1}.parameter.width = stimulus.width;
