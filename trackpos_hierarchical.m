@@ -15,15 +15,7 @@ else
     myscreen.subjectID  = mglGetSID;
 end
 
-%myscreen.displayName = 'joshipad2'; %
-%myscreen.displayName = 'windowed';
-% myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
-% myscreen.hideCursor = 1;
-
 myscreen                = initScreen(myscreen);
-% mglSetGammaTable(0,1,1,0,1,1,0,1,1)
-% t = mglGetGammaTable; figure; hold on; plot(t.redTable,'r'); plot(t.blueTable,'b'); plot(t.greenTable,'g');
-
 
 %% parameters
 global stimulus; stimulus = struct;
@@ -50,8 +42,12 @@ if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,en
 design_block = struct();
 design_block.time_stim = 30;
 design_block.time_fix = 3;
-design_block.nTrials_train = 1; % learning period
-design_block.nTrials_track = 1; % testing period; with noise
+design_block.nTrials_train  = 1; % learning period
+design_block.nTrials_track  = 1; % testing period; with noise
+
+design_block.backLum        = 96;
+design_block.noiseLum       = 32;
+design_block.stimLum        = min(64, 255 - design_block.backLum);
 
 task{1}{1}.segmin = [design_block.time_stim, design_block.time_fix]; % fixation for shorter bc of the segment start takes time.
 task{1}{1}.segmax = [design_block.time_stim, design_block.time_fix]; 
@@ -62,12 +58,7 @@ task{1}{1}.waitForBacktick = 0; %wait for backtick before starting each trial
 % task parameters for adaptation conditions
 if experimenter.phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
-    task{1}{1}.parameter.backLum            = 96; % todo: check if it works with colored noise
-    task{1}{1}.parameter.noiseLum           = 32; % todo: this is not changing right now . fix this.
-else 
-    task{1}{1}.parameter.backLum = 32;  % background luminance; units: fraction of full luminance 
 end
-task{1}{1}.parameter.stimLum = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
 
 % calculated parameters
 task{1}{1}.randVars.calculated.randomSeed = 0;
@@ -156,8 +147,6 @@ if ~stimulus.experimenter.showmouse, mglDisplayCursor(0);, end %hide cursor
 % todo: put everything into phases instead of tasknumbers
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
-    stimulus.condNum = floor(phaseNum/2)+1; % todo: make more flexible
-    stimulus.blockNum = mod(phaseNum,2)+1;  % todo: make blocknum more flexible
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
@@ -188,21 +177,26 @@ function task = configureExperiment(task, myscreen, design, design_block)
         task{1}{phaseNum}                                = task{1}{1};  
         task{1}{phaseNum}.numTrials                      = design_block.nTrials_train;
         task{1}{phaseNum}.parameter.phasescrambleOn      = 0;
-        task{1}{phaseNum}.parameter.noiseLum             = 0;
+        task{1}{phaseNum}.parameter.stimLum            = design_block.stimLum;
+        task{1}{phaseNum}.parameter.backLum            = design_block.backLum;
+        task{1}{phaseNum}.parameter.noiseLum           = design_block.noiseLum;
         task{1}{phaseNum}.randVars.calculated.trackStim  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
          
         % tracking period
         task{1}{phaseNum+1}                                = task{1}{phaseNum}; % inherit other parameters  
         task{1}{phaseNum+1}.numTrials                      = design_block.nTrials_track;
         task{1}{phaseNum+1}.parameter.phasescrambleOn      = 1;
-        task{1}{phaseNum+1}.parameter.noiseLum             = 32;
+        
     end
 end
 
 %% Initialize trials 
 function [task, myscreen] = initTrialCallback(task, myscreen)
     global stimulus    
-    disp(['(trackpos_hierarchical) running stimulus ', stimulus.design(stimulus.condNum).name])
+    condNum = floor((task.thistrial.thisphase-1)/2)+1; % todo: make more flexible
+    blockNum = 2-mod(task.thistrial.thisphase,2);  % todo: make blocknum more flexible
+    
+    disp(['(trackpos_hierarchical) running stimulus ', stimulus.design(condNum).name])
     
     % todo: use these
     % task.thistrial.thisphase
@@ -216,17 +210,17 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     % up. 
 
     % find current design parameters
-    currDesign = stimulus.design(stimulus.condNum);
+    currDesign = stimulus.design(condNum);
     stimulus.L                  = currDesign.L; % motion structure
     stimulus.start_pos          = currDesign.start_pos;
-    stimulus.colors             = currDesign.colors;
+    stimulus.obj_colors         = currDesign.colors;
     stimulus.sourceStd          = currDesign.sourceStd; % std/s ... we convert to std per frame later
     stimulus.stimSize           = currDesign.stimSize; 
 
     % other parameters (todo: take these out of thistrial)
     stimulus.phasescrambleOn    = task.thistrial.phasescrambleOn;
     stimulus.stimLum            = task.thistrial.stimLum;
-    stimulus.backLum            = task.thistrial.backLum;
+    stimulus.backLum            = task.thistrial.backLum; % why save this in stimulus?
     stimulus.noiseLum           = task.thistrial.noiseLum;
 
     % fixation cross
@@ -234,36 +228,67 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     
     % precomputed stuff here
     savedfile = [stimulus.experimenter.precompute_path, ...
-        sprintf('cond%d_block%d_trial%d.mat',stimulus.condNum, stimulus.blockNum, task.trialnum)];
+        sprintf('cond%d_block%d_trial%d.mat',condNum, blockNum, task.trialnum)];
     
     if stimulus.experimenter.precompute == 1 % load stimulus and background.     
         if ~exist(savedfile), error('Cannot find precomputed image file');, end
         
+        % load stimulus and background
+        tic
         img = load(savedfile, 'img');
         stimulus.img = img.img;
-        s = load(savedfile, 'stimulus');
-        s = s.stimulus;
+        tt = toc;
+        disp(['(trackpos_hierarchical) took ', num2str(tt), ' s to load stimulus'])
         
-        % todo: do I need to load anything else from the stimulus?
-        % I think the stimulus and s should be the same..
-        stimulus.source_velx    = s.source_velx;
-        stimulus.source_vely    = s.source_vely;
-        stimulus.posx           = s.posx;
-        stimulus.posy           = s.posy;
-        stimulus.objects        = s.objects;
-    elseif stimulus.experimenter.precompute == 2 % precompute background only        
-        if ~exist(savedfile), error('Cannot find precomputed image file');, end
-
-        img = load(savedfile, 'backgroundnoise_rgb');
-        stimulus.backgroundnoise_rgb = img.backgroundnoise_rgb;
         s = load(savedfile, 'stimulus');
         s = s.stimulus;
-
+        % todo: do I need to load anything else from the stimulus?
         stimulus.source_velx    = s.source_velx;
         stimulus.source_vely    = s.source_vely;
         stimulus.posx           = s.posx;
         stimulus.posy           = s.posy;
         stimulus.objects        = s.objects;
+        
+        % check if the cond and blockNum are same.
+%         if s.condNum ~= condNum || s.blockNum ~= blockNum
+%             error('The loaded stimulus cond/block numbers do not match the current cond/block numbers')
+%         end
+        
+    elseif stimulus.experimenter.precompute == 2 % precompute background only
+        if ~exist(savedfile), error('Cannot find precomputed image file');, end
+        
+        % load background
+        if task.thistrial.phasescrambleOn
+            tic
+            img = load(savedfile, 'backgroundnoise_rgb');
+            stimulus.backgroundnoise_rgb = img.backgroundnoise_rgb;
+            
+            % normalize noiseLum.. for testing noiseLevels
+            for fr = 1:size(stimulus.backgroundnoise_rgb,4)
+                back = stimulus.backgroundnoise_rgb(:,:,:,fr);
+                stimulus.backgroundnoise_rgb(4,:,:,fr) = uint8(double(back(4,:,:))/double(max(max(back(4,:,:))))*task.thistrial.noiseLum);
+            end
+            tt = toc;
+            disp(['(trackpos_hierarchical) took ', num2str(tt), ' s to load background'])
+        end
+        s = load(savedfile, 'stimulus'); % ~1s to load
+        s = s.stimulus;
+        % todo: do I need to load anything else from the stimulus?
+        stimulus.source_velx    = s.source_velx;
+        stimulus.source_vely    = s.source_vely;
+        stimulus.posx           = s.posx;
+        stimulus.posy           = s.posy;
+        stimulus.objects        = s.objects;
+        
+        % check if the cond and blockNum are same.
+%         if s.condNum ~= condNum || s.blockNum ~= blockNum
+%             error('The loaded stimulus cond/block numbers do not match the current cond/block numbers')
+%         end
+        
+        % regenerate stimulus texture
+        for n = 1:length(stimulus.objects)
+            stimulus.objects{n} = myInitObjects(stimulus.objects{n},myscreen); 
+        end
     else
         stimulus = InitGroupStim(stimulus,myscreen,task);
     end
@@ -301,15 +326,23 @@ if task.thistrial.thisseg == 1
     
     % save images of the screen.
     if stimulus.experimenter.grabframe
-        global frame
-        % save frames every task segment
-        savefile = [stimulus.experimenter.precompute_path, ...
-            sprintf('grabframe_task%d_block%d_trial%d.mat',...
-                    stimulus.condNum, stimulus.blockNum, task.trialnum)];
-        save(savefile, 'frame','-v7.3')
-        
-        % delete and intialize new frames
-        frame = {}; frame{stimulus.design_block.time_stim*myscreen.framesPerSecond} = [];
+        if task.thistrial.thisphase > 1
+            global frame
+            % save frames every task segment
+
+            % take the index of the previous frame, for which the frames have
+            % been collected
+            condNum = floor((task.thistrial.thisphase-2)/2)+1; % todo: make more flexible
+            blockNum = 2-mod((task.thistrial.thisphase-1),2);  % todo: make blocknum more flexible
+
+            savefile = [stimulus.experimenter.precompute_path, ...
+                sprintf('grabframe_task%d_block%d_trial%d.mat',...
+                        condNum, blockNum, task.trialnum)];
+            save(savefile, 'frame','-v7.3')
+
+            % delete and intialize new frames
+            frame = {}; frame{stimulus.design_block.time_stim*myscreen.framesPerSecond} = [];
+        end
     end
     
     % time debugging
@@ -331,11 +364,7 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 %% Update Screen
 global stimulus 
 
-% for debugging gamma:
-%gam = 0.5;
-%mglSetGammaTable((0:1/256:1).^gam); % set table to linear, so we can just clear Screen
-
-mglClearScreen(stimulus.backLum/256);
+mglClearScreen(task.thistrial.backLum/255);
 
 if (task.thistrial.thisseg== 1)
     task.thistrial.framecount = task.thistrial.framecount + 1;
@@ -345,8 +374,10 @@ if (task.thistrial.thisseg== 1)
         img = mglCreateTexture(stimulus.img(:,:,:,task.thistrial.framecount));
         mglBltTexture(img,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth
     elseif stimulus.experimenter.precompute == 2
-        img = mglCreateTexture(stimulus.backgroundnoise_rgb(:,:,:,task.thistrial.framecount));
-        mglBltTexture(img,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth
+        if task.thistrial.phasescrambleOn
+            img = mglCreateTexture(stimulus.backgroundnoise_rgb(:,:,:,task.thistrial.framecount));
+            mglBltTexture(img,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth
+        end
         for obj = 1:length(stimulus.objects)
             stimobj = stimulus.objects{obj};
 
@@ -458,7 +489,7 @@ function stimulus = InitGroupStim(stimulus,myscreen,task)
     s = struct();
     stimulus.objects = {};
     for n = 1:nobject
-        s.color = stimulus.colors(n,:); % todo: indicate color
+        s.color = stimulus.obj_colors(n,:); % todo: indicate color
         s.stimSize = stimulus.stimSize(n);
         s.stimLum = stimulus.stimLum;
         stimulus.objects{n} = myInitObjects(s,myscreen); 
@@ -492,13 +523,13 @@ function obj = myInitObjects(obj,myscreen)
     
     % for loading the objects
     if isfield(obj,'gaussian'), mglDeleteTexture(obj.gaussian);, end 
-    gaussian               =  mglMakeGaussian(obj.patchsize,obj.patchsize,...
-                                              obj.stimSize,obj.stimSize)*(obj.stimLum);
+    gaussian        		=  mglMakeGaussian(obj.patchsize,obj.patchsize,...
+                                       		   obj.stimSize,obj.stimSize);
     % gaussian_rgb = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
     gaussian_rgb           = 255*repmat([obj.color; 1], 1, size(gaussian,2),size(gaussian,1));
-    gaussian_rgb(4,:,:)    = round(gaussian');
+    gaussian_rgb(4,:,:)    = round(gaussian' *obj.stimLum);
     gaussian_rgb           = uint8(gaussian_rgb);
-    obj.gaussian           = mglCreateTexture(gaussian_rgb); % pre-generate texture here
+    obj.gaussian = mglCreateTexture(gaussian_rgb); % pre-generate texture here
 end
 
 function stimulus = generateStimPath(stimulus,myscreen)
@@ -778,7 +809,7 @@ function precompute_gen_script(task, myscreen, stimulus)
         currDesign                  = stimulus.design(stimulus.condNum);
         stimulus.L                  = currDesign.L; % motion structure
         stimulus.start_pos          = currDesign.start_pos;
-        stimulus.colors             = currDesign.colors;
+        stimulus.obj_colors             = currDesign.colors;
         stimulus.sourceStd          = currDesign.sourceStd; % std/s ... we convert to std per frame later
         stimulus.stimSize           = currDesign.stimSize; 
 
@@ -850,7 +881,7 @@ for idx1 = 1:nframes
         %          uint8(255*repmat(ccc, [1, x_npixels,y_npixels]) ...
         %            .* permute(cat(3,gaussian',gaussian',gaussian')/max(gaussian(:)),[3,1,2])) ;
         obj_img(1:3,:,:)    = uint8(255*repmat(stimobj.color, [1, x_npixels,y_npixels]));
-        obj_img(4,:,:)      = uint8(gaussian'/max(gaussian(:)) * stimobj.stimLum); % alpha channel
+        obj_img(4,:,:)      = uint8(gaussian'/max(gaussian(:))); % alpha channel
         
         % add to the ground image
         stim_rgb(:,:,:,idx1) = add_rgba_uint8(stim_rgb(:,:,:,idx1), obj_img);
@@ -907,7 +938,6 @@ tic
 backgroundnoise_rgb  = zeros(4,x_npixels,y_npixels,nframes,'uint8');
 
 if stimulus.noiseLum ~= 0 
-    noise_alpha = stimulus.noiseLum;
     % for random color noise distribution:
     %{
     colorstd = 5; %stimulus.objects{1}.stimSize
@@ -926,7 +956,7 @@ if stimulus.noiseLum ~= 0
             back                = backgaussianFFT; %0.02s
             back.phase          = rand(size(back.mag))*2*pi; % scramble phase % 0.02s
             backgroundnoise     = round(reconstructFromHalfFourier(back));   %0.04s
-            back_img(4,:,:)     = uint8(backgroundnoise'/max(backgroundnoise(:))*noise_alpha);  % normalize contrast %0.025s        
+            back_img(4,:,:)     = uint8(backgroundnoise'/max(backgroundnoise(:)));  % normalize contrast %0.025s        
             back_img(1:3,:,:)   = uint8(255*repmat(stimobj.color, [1, x_npixels,y_npixels]));
 
             % add to the ground image
@@ -979,6 +1009,10 @@ if stimulus.noiseLum ~= 0
 end
 t_backgen = toc;
 disp(['(genstim_precompute) Took ', num2str(t_backgen), ' sec to generate background images'])
+
+% adjust luminance before adding alpha
+stim_rgb(4,:,:,:) = stim_rgb(4,:,:,:)*stimobj.stimLum; 
+backgroundnoise_rgb(4,:,:,:) = backgroundnoise_rgb(4,:,:,:)*stimulus.noiseLum;
 
 img = add_rgba_uint8(stim_rgb, backgroundnoise_rgb);
 save(savefile, 'stimulus', 'img', 'stim_rgb','backgroundnoise_rgb', '-v7.3')

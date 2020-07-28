@@ -1,5 +1,5 @@
-% cocon.m
-%
+                                                                                                                                                                                                                                                                                  % cocon.m
+%1243544%
 %        $Id$
 %      usage: cocon
 %         by: justin gardner
@@ -48,6 +48,8 @@ stimulus.delta = 15;
 % select the range of values to use for low and high coherence. These are multiplicative of threshold
 stimulus.lowVals = [0.5 1 1.5];
 stimulus.highVals = [1.5 2 2.5];
+stimulus.fullVals = [0.5 1 1.5 2 2.5];
+stimulus.fixedFullVals = [0 5 7 10 12 15 20 25];
 
 % init the stimulus
 if strcmp(stimulus.stimulusType,'dots')
@@ -74,7 +76,7 @@ if strcmp(stimulus.runType,'staircase')
   useLastThreshold = false;
   % call with the above parameters
   stimulus = initStaircases(stimulus, myscreen, initialThreshold, initialStepsize, nTrialsPerStaircase, dispStaircaseFig, useLastThreshold);
-elseif any(strcmp(stimulus.runType,{'low','high'}))
+elseif any(strcmp(stimulus.runType,{'josh1','josh2','full','fixedfull'}))
   % this is a regular run, set number of trials
   stimulus.nTrials = 50;
   % get threshold
@@ -84,7 +86,7 @@ elseif any(strcmp(stimulus.runType,{'low','high'}))
     % use passed in thershold
     stimulus.threshold.threshold = threshold;
   end
-  disp(sprintf('(cocon) Threshold: %f',stimulus.threshold));
+  disp(sprintf('(cocon) Threshold: %f',stimulus.threshold.threshold));
     
   if isempty(stimulus.threshold)
     endScreen(myscreen);
@@ -121,21 +123,22 @@ if ~strcmp(stimulus.runType,'staircase')
     stimulus.feedback.segnum = nan;
 end
 
-% taks paraeters
+% taks parameters
 task{1}.parameter.eccentricity = stimulus.eccentricity;
 task{1}.randVars.calculated.confidnece = nan;
 task{1}.randVars.calculated.correctIncorrect = nan;
 task{1}.randVars.uniform.whichAnswer = [1 2];
 task{1}.random = 1;
 task{1}.randVars.calculated.direction = nan;
-
 % now set the variable that we will staircase on
 task{1}.randVars.calculated.(stimulus.staircase) = nan;
 % and the variable that we will staircase over
 task{1}.parameter.(stimulus.staircaseOver) = stimulus.(stimulus.staircaseOver);
-
+task{1}.randVars.calculated.initialConfidence = nan;
+task{1}.randVars.uniform.rangeGetConfidence = [0:0.1:1];
 % initialize the task
-for phaseNum = 1:length(task)
+len = length(task);
+for phaseNum = 1:len
   [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
 end
 
@@ -151,6 +154,7 @@ phaseNum = 1;
 while ~all(stimulus.staircaseCompleted == stimulus.nStaircases) && ~myscreen.userHitEsc
   % update the task
   [task myscreen phaseNum] = updateTask(task,myscreen,phaseNum);
+  
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -171,9 +175,11 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function [task myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus;
+
 
 if task.thistrial.thisseg == 1
 
@@ -217,6 +223,7 @@ if task.thistrial.thisseg == 1
     stimulus.dotsLeft = stimulus.dotsLeft.setDir(stimulus.dotsLeft,leftDirection);
     stimulus.dotsRight = stimulus.dotsRight.setDir(stimulus.dotsRight,rightDirection);
   elseif strcmp(stimulus.taskType,'newsome')
+    
     % do a left/right discrimination task
     stimulus.dots = stimulus.dots.setCoherence(stimulus.dots,task.thistrial.coherence/100);
     stimulus.dots = stimulus.dots.setCenter(stimulus.dots,0,task.thistrial.eccentricity);
@@ -231,7 +238,8 @@ if task.thistrial.thisseg == 1
 % confidence segment
 elseif stimulus.getConfidence && (task.thistrial.thisseg == stimulus.confidence.segnum)
   % set starting confidnece
-  task.thistrial.confidence = 0.5;
+  task.thistrial.confidence = randsample(task.randVars.uniform.rangeGetConfidence, 1);
+  task.thistrial.initialConfidence = task.thistrial.confidence ;
   scrollEvents = mglListener('getAllScrollEvents');
   mglListener('getAllMouseEvents');
 end
@@ -260,19 +268,25 @@ if task.thistrial.thisseg == 2
     % update and draw single patch
     stimulus.dots = stimulus.dots.update(stimulus.dots);
     stimulus.dots = stimulus.dots.draw(stimulus.dots);
-  end
     
+  end
+  
+
 elseif stimulus.getConfidence && (task.thistrial.thisseg == stimulus.confidence.segnum)
+  
   % set the confidence
   [task.thistrial.confidence confidenceDone] = setConfidence(task.thistrial.confidence, stimulus);
   if confidenceDone
     task = jumpSegment(task);
     disp(sprintf('(cocon) Confidence: %0.2f',task.thistrial.confidence));
+    task.thistrial.confidnece = task.thistrial.confidence;
   end
 end
 
 % feedback segment
+% 
 if any(task.thistrial.thisseg == stimulus.feedback.segnum)
+  
   % if correct
   if isequal(task.thistrial.correctIncorrect,1)
     stimulus.fixColor = stimulus.correctFixColor;
@@ -281,6 +295,7 @@ if any(task.thistrial.thisseg == stimulus.feedback.segnum)
     stimulus.fixColor = stimulus.incorrectFixColor;
   end
 end
+
 
 % draw fixation cross
 mglFixationCross(1,1,stimulus.fixColor);
@@ -292,13 +307,11 @@ function stimulus = initConfidence(stimulus,centerX,centerY,width,height,lineSiz
 
 % set the segment in which the confidence judgement happens
 stimulus.confidence.segnum = 4;
-  
 % set the dimensions of the confidence display
 stimulus.confidence.width = width;
 stimulus.confidence.height = height;
 stimulus.confidence.centerX = centerX;
 stimulus.confidence.centerY = centerY;
-
 % set line size and color
 stimulus.confidence.outlineSize = lineSize;
 stimulus.confidence.outlineColor = lineColor;
@@ -309,6 +322,8 @@ xL = stimulus.confidence.centerX-stimulus.confidence.width/2;
 xR = stimulus.confidence.centerX+stimulus.confidence.width/2;
 yB = stimulus.confidence.centerY-stimulus.confidence.height/2;
 yT = stimulus.confidence.centerY+stimulus.confidence.height/2;
+
+
 
 % dimensions of rectangle
 stimulus.confidence.X0 = [xL xR xR xL];
@@ -337,7 +352,7 @@ function drawConfidence(confidenceLevel, stimulus)
 
 % draw filled inside, compute top coordinate
 fillY = stimulus.confidence.fillY;
-fillY(find(stimulus.confidence.fillTop)) = stimulus.confidence.centerY+(-0.5+confidenceLevel)*stimulus.confidence.height;
+fillY(find(stimulus.confidence.fillTop)) = stimulus.confidence.centerY + (-0.5+confidenceLevel)*stimulus.confidence.height;
 % now draw as a filled polygon
 mglPolygon(stimulus.confidence.fillX,fillY,stimulus.confidence.fillColor);
 
@@ -418,7 +433,10 @@ if task.thistrial.gotResponse < 1
   end
   if stimulus.getConfidence
     % jump to confidence rating part of text  
-    task = jumpSegment(task);
+    task = jumpSegment(task, stimulus.confidence.segnum);
+  else
+    mglClose;
+    keyboard;
   end
 end
 
@@ -451,6 +469,7 @@ stimulus.responseFixColor = [1 1 1];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircases(stimulus,myscreen,initialThreshold,initialStepsize,nTrials,dispStaircaseFig,useLastThreshold)
 
+
 if ~useLastThreshold
   % if we are not using last threshold, 
   % then don't bother trying to load last stimfile
@@ -472,17 +491,19 @@ end
 % get the variable to staircase over
 staircaseOver = stimulus.(stimulus.staircaseOver);
 nStaircase = length(staircaseOver);
-
 % if no stimfile found
 if isempty(stimfile)
   % then initialize
+  disp('here');
   for iStaircase = 1:nStaircase
     % print message of what we are doing
     disp(sprintf('(cocon) Initializing staircase for %s: %0.2f',stimulus.staircaseOver,staircaseOver(iStaircase)));
     % init staircase
-    stimulus.s(iStaircase,1) = doStaircase('init','upDown','nup=1','ndown=2','initialStepsize',initialStepsize,'nTrials',nTrials,'initialThreshold',initialThreshold,'subplotCols',nStaircase,'subplotNum',iStaircase,'dispFig',dispStaircaseFig,'subplotName',sprintf('%s: %0.2f',stimulus.staircaseOver,staircaseOver(iStaircase)),'minThreshold',0,'stepRule=pest','maxStepsize',0.5,'minStepsize',0.005);
+%     stimulus.s(iStaircase, 1) = doStaircase('init','quest','tGuess',log10(0.5),'tGuessSd=2','nTrials', nTrials,'subplotCols',nStaircase,'subplotNum',iStaircase,'dispFig',dispStaircaseFig);
+    stimulus.s(iStaircase,1) = doStaircase('init','upDown','nup=1','ndown=2','initialStepsize',initialStepsize,'nTrials',nTrials,'initialThreshold',initialThreshold,'subplotCols',nStaircase,'subplotNum',iStaircase,'dispFig',dispStaircaseFig,'subplotName',sprintf('%s: %0.2f',stimulus.staircaseOver,staircaseOver(iStaircase)),'minThreshold',0,'stepRule=levitt','maxStepsize',0.5,'minStepsize',0.005);
   end
 else
+  disp('no, here');
   disp(sprintf('(cocon) Found stimfile'))
   % init using threshold from last stimfile
   for iStaircase = 1:nStaircase
@@ -570,15 +591,19 @@ function stimulus = initConstantStimuli(stimulus,myscreen)
 
 % get number of thresholds
 nThreshold = length(stimulus.threshold);
-
+disp(stimulus.runType);
 % set doStaircase to run constant stimuli
 for iThreshold = 1:nThreshold
   threshold = stimulus.threshold(iThreshold).threshold;
   % get the fixed values
-  if strcmp(stimulus.runType,'low')
-    fixedVals = threshold * stimulus.lowVals;
-  else    
-    fixedVals = threshold * stimulus.highVals;
+  if strcmp(stimulus.runType,'josh1')
+    fixedVals = [0 1.5 2.5];
+  elseif strcmp(stimulus.runType,'josh2')
+    fixedVals = [2.5 6 8];
+  elseif strcmp(stimulus.runType,'full')
+    fixedVals = threshold * stimulus.fullVals;
+  elseif strcmp(stimulus.runType,'fixedfull')
+    fixedVals = stimulus.fixedFullVals;
   end
   % display what we are doing
   disp(sprintf('(cocon:initConstantStimuli) Running %s with values: %s (threshold=%f)',stimulus.runType,num2str(fixedVals),threshold));
@@ -586,6 +611,6 @@ for iThreshold = 1:nThreshold
   stimulus.s(iThreshold,1) = doStaircase('init','fixed','fixedVals',fixedVals,'nTrials',stimulus.nTrials,'dispFig',true);
 end
 
-% set this so the code knows wow many staircases have been run (in this case staircase is a set of constant stimuli)
+% set this so the code knows how many staircases have been run (in this case staircase is a set of constant stimuli)
 stimulus.staircaseCompleted = zeros(1,nThreshold);
 stimulus.nStaircases = 1;
