@@ -14,12 +14,16 @@ if isempty(mglGetSID)
 else
     myscreen.subjectID  = mglGetSID;
 end
-myscreen.displayName = 'joshipad2'; %
-myscreen.displayName = 'windowed';
+
+%myscreen.displayName = 'joshipad2'; %
+%myscreen.displayName = 'windowed';
 % myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 % myscreen.hideCursor = 1;
 
 myscreen                = initScreen(myscreen);
+% mglSetGammaTable(0,1,1,0,1,1,0,1,1)
+% t = mglGetGammaTable; figure; hold on; plot(t.redTable,'r'); plot(t.blueTable,'b'); plot(t.greenTable,'g');
+
 
 %% parameters
 global stimulus; stimulus = struct;
@@ -35,7 +39,7 @@ experimenter.phasescrambleOn = 1; % consider different noise? (i.e. pink noise? 
 experimenter.precompute_path = '~/proj/grustim/trackpos_hierarchical/testrun/'; %required if using precompute
 % 1: load precomputed stimulus (background and stim)
 % 2: load precomputed background and stimulus position only (during background trials)
-experimenter.precompute      = 2; 
+experimenter.precompute      = 0; 
 experimenter.precompute_gen  = 0; %1; % generate and save stimulus
 experimenter.downsample_spatRes  = 2; % downsample spatially
 if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,end
@@ -44,10 +48,10 @@ if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,en
 % S1: Stimulus (30s) 
 % S2: Fixation (3s)
 design_block = struct();
-design_block.time_stim = 10;
+design_block.time_stim = 30;
 design_block.time_fix = 3;
-design_block.nTrials_train  = 1; % learning period
-design_block.nTrials_track   = 1; % testing period; with noise
+design_block.nTrials_train = 1; % learning period
+design_block.nTrials_track = 1; % testing period; with noise
 
 task{1}{1}.segmin = [design_block.time_stim, design_block.time_fix]; % fixation for shorter bc of the segment start takes time.
 task{1}{1}.segmax = [design_block.time_stim, design_block.time_fix]; 
@@ -58,7 +62,7 @@ task{1}{1}.waitForBacktick = 0; %wait for backtick before starting each trial
 % task parameters for adaptation conditions
 if experimenter.phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
-    task{1}{1}.parameter.backLum            = 32; % todo: check if it works with colored noise
+    task{1}{1}.parameter.backLum            = 96; % todo: check if it works with colored noise
     task{1}{1}.parameter.noiseLum           = 32; % todo: this is not changing right now . fix this.
 else 
     task{1}{1}.parameter.backLum = 32;  % background luminance; units: fraction of full luminance 
@@ -196,7 +200,6 @@ function task = configureExperiment(task, myscreen, design, design_block)
 end
 
 %% Initialize trials 
-
 function [task, myscreen] = initTrialCallback(task, myscreen)
     global stimulus    
     disp(['(trackpos_hierarchical) running stimulus ', stimulus.design(stimulus.condNum).name])
@@ -248,7 +251,9 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
         stimulus.posx           = s.posx;
         stimulus.posy           = s.posy;
         stimulus.objects        = s.objects;
-    elseif stimulus.experimenter.precompute == 2 % precompute background only
+    elseif stimulus.experimenter.precompute == 2 % precompute background only        
+        if ~exist(savedfile), error('Cannot find precomputed image file');, end
+
         img = load(savedfile, 'backgroundnoise_rgb');
         stimulus.backgroundnoise_rgb = img.backgroundnoise_rgb;
         s = load(savedfile, 'stimulus');
@@ -262,6 +267,8 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     else
         stimulus = InitGroupStim(stimulus,myscreen,task);
     end
+    
+    task.thistrial.framecount = 0;
 end
 
 %% Start segment
@@ -324,7 +331,11 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 %% Update Screen
 global stimulus 
 
-mglClearScreen(stimulus.backLum/255);
+% for debugging gamma:
+%gam = 0.5;
+%mglSetGammaTable((0:1/256:1).^gam); % set table to linear, so we can just clear Screen
+
+mglClearScreen(stimulus.backLum/256);
 
 if (task.thistrial.thisseg== 1)
     task.thistrial.framecount = task.thistrial.framecount + 1;
@@ -481,14 +492,13 @@ function obj = myInitObjects(obj,myscreen)
     
     % for loading the objects
     if isfield(obj,'gaussian'), mglDeleteTexture(obj.gaussian);, end 
-    gaussian        =  mglMakeGaussian(obj.patchsize,obj.patchsize,...
-                            obj.stimSize,obj.stimSize)*(obj.stimLum);
+    gaussian               =  mglMakeGaussian(obj.patchsize,obj.patchsize,...
+                                              obj.stimSize,obj.stimSize)*(obj.stimLum);
     % gaussian_rgb = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
     gaussian_rgb           = 255*repmat([obj.color; 1], 1, size(gaussian,2),size(gaussian,1));
     gaussian_rgb(4,:,:)    = round(gaussian');
     gaussian_rgb           = uint8(gaussian_rgb);
-    obj.gaussian = mglCreateTexture(gaussian_rgb); % pre-generate texture here
-    
+    obj.gaussian           = mglCreateTexture(gaussian_rgb); % pre-generate texture here
 end
 
 function stimulus = generateStimPath(stimulus,myscreen)
@@ -496,7 +506,7 @@ function stimulus = generateStimPath(stimulus,myscreen)
 
     tic
     [nobject, nsource] = size(stimulus.L);
-    nframes            = myscreen.framesPerSecond*30; % 30s; %/downsample_timeRes;
+    nframes            = myscreen.framesPerSecond*stimulus.design_block.time_stim + 100; % 30s; %/downsample_timeRes;
     
     source_stds = stimulus.sourceStd/sqrt(myscreen.framesPerSecond); % change to deg/frame
 
@@ -588,8 +598,9 @@ function stimulus = generateStimPath(stimulus,myscreen)
         %check = check_bounds | check_overlap;
         % check = false; % without any checks
         
-        %if iters % 
-        % disp('still checking... ')
+        if mod(iters, 1000) == 0
+            disp('(genstim) still checking... ')
+        end
                     
         if ~any(check_bounds(:)) && ~any(check_overlap(:)) % if there arent any "true"
             disp('(genstim) suitable stimulus found!')
@@ -632,6 +643,7 @@ singleblob.colors = [1, 1, 1];
 singleblob.sourceStd = 0.5; 
 singleblob.stimSize = 0.5;
 
+sum3std = 0.5;
 % 9 motion sources (7 effective -- 3 for the center collapses to one
 % source, but to balance each of the object effective variance..)
 % two branched tree; 1 => body; 2,3=> layer2; 4-5 => layer 3
@@ -642,28 +654,29 @@ balancedTree.L = [1, 0, 1, 0, 0 ,0 ,1, 0, 0; ...
                  1, 1, 0, 0, 0 ,1, 0 , 0, 0; ... 
                  1, 0, 0, 1, 0 , 0 , 0 , 1, 0;...
                  1, 0, 0, 1, 0 , 0 , 0 , 0, 1]; 
-start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]*1.5; % scale by 1/8 of the screen width in degrees
+start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]; % scale by 1/8 of the screen width in degrees
 balancedTree.start_pos  = start_pos .* repmat([myscreen.imageWidth/4, myscreen.imageHeight/4], [size(start_pos,1),1]);
 balancedTree.colors       = [1, 1, 1;...
                              1, 0, 0;...
                              1, 0, 0;...
                              0, 0, 1;...
                              0, 0, 1]; 
-balancedTree.sourceStd    = [0.25; 0.25; 0.25; 0.25; 0.25; 0.25; 0.25; 0.25; 0.25];
+std1 = sqrt(sum3std^2/3);
+balancedTree.sourceStd    = ones(9,1)*std1;
 balancedTree.stimSize     = [0.5; 0.5; 0.5; 0.5; 0.5];
 
 % 5 independent objects
 independent5 = struct();
 independent5.name = 'independent5';
 independent5.L = eye(5); 
-start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]*1.5; % scale by 1/8 of the screen width in degrees
+start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]; % scale by 1/8 of the screen width in degrees
 independent5.start_pos  = start_pos .* repmat([myscreen.imageWidth/4, myscreen.imageHeight/4], [size(start_pos,1),1]);
 independent5.colors       = [1, 1, 1;...
                              1, 0, 0;...
                              1, 0, 0;...
                              0, 0, 1;...
                              0, 0, 1]; 
-independent5.sourceStd    = [0.75; 0.75; 0.75;0.75;0.75];
+independent5.sourceStd    = ones(5,1) * sum3std;
 independent5.stimSize     = [0.5; 0.5; 0.5; 0.5; 0.5];
 
 % some predefined structures todo: make these into "packages"
@@ -752,7 +765,7 @@ function precompute_gen_script(task, myscreen, stimulus)
 % stimulus is not global, contained inside the script
 % note that the precomputeStimulus saves and loads the stimulus struct!
 
-    for condNum = 1:length(stimulus.design.ncond)
+    for condNum = 1:length(stimulus.design)
     for blockNum = 1:2
         % todo: make the blockNumber per condition more flexible?
         phaseNum = 2*(condNum-1) + blockNum;
@@ -789,6 +802,10 @@ end
 function img = precomputeStimulus(myscreen,stimulus)
 % note that the precomputeStimulus saves and loads the stimulus struct!
 % generate a noisy stimulus
+% Approximate generation time on csnl:
+%     -(15s trial, 60 hz, ds= 2) stimulus generation: 380s
+%     -(15s trial, 60 hz, ds= 2) background generation: 661s
+%     -(15s trial, 60 hz, ds= 2) saving: 200s for stimulus
 disp(['(genstim_precompute) Generating images for: ', ...
           'cond ', num2str(stimulus.condNum), ...
        ', block ', num2str(stimulus.blockNum), ...
@@ -801,7 +818,7 @@ savefile = [stimulus.experimenter.precompute_path, ...
     sprintf('cond%d_block%d_trial%d.mat',stimulus.condNum, stimulus.blockNum, stimulus.trialNum)];
 
 downsample_spatRes  = stimulus.experimenter.downsample_spatRes;
-nframes             = myscreen.framesPerSecond*30; % 30s; %/downsample_timeRes; 
+nframes             = myscreen.framesPerSecond*stimulus.design_block.time_stim +100; % 30s; %/downsample_timeRes; 
 xsize_deg           = round(myscreen.imageWidth/downsample_spatRes);
 ysize_deg           = round(myscreen.imageHeight/downsample_spatRes);
 
