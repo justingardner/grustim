@@ -22,32 +22,34 @@ global stimulus; stimulus = struct;
 
 % Experimenter parameters
 experimenter = struct();
-experimenter.noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+experimenter.noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 experimenter.showmouse       = 1; 
-experimenter.grabframe       = 0; % grab frame
+experimenter.grabframe       = 1; % grab frame
 experimenter.fixateCenter    = 1;
 experimenter.phasescrambleOn = 1; % consider different noise? (i.e. pink noise? https://www.mathworks.com/help/audio/ref/pinknoise.html)
 
 experimenter.precompute_path = '~/proj/grustim/trackpos_hierarchical/testrun/'; %required if using precompute
 % 1: load precomputed stimulus (background and stim)
 % 2: load precomputed background and stimulus position only (during background trials)
-experimenter.precompute      = 0; 
-experimenter.precompute_gen  = 0; %1; % generate and save stimulus
-experimenter.downsample_spatRes  = 2; % downsample spatially
+experimenter.precompute      = 2; % 1 or 2
+experimenter.precompute_gen  = 1; %1; % generate and save stimulus
+experimenter.downsample_spatRes  = 5; % downsample spatially
 if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,end
 
 %% Basic task design (todo: move into configureExperiment function?)
+% Block 1: Training
+% Block 2: Testing (with noise)
 % S1: Stimulus (30s) 
 % S2: Fixation (3s)
 design_block = struct();
 design_block.time_stim = 30;
 design_block.time_fix = 3;
-design_block.nTrials_train  = 1; % learning period
-design_block.nTrials_track  = 1; % testing period; with noise
+design_block.nTrials_train  = 5; % learning period
+design_block.nTrials_track  = 10; % testing period; with noise
 
 design_block.backLum        = 96;
 design_block.noiseLum       = 32;
-design_block.stimLum        = min(64, 255 - design_block.backLum);
+design_block.stimLum        = min(96, 255 - design_block.backLum);
 
 task{1}{1}.segmin = [design_block.time_stim, design_block.time_fix]; % fixation for shorter bc of the segment start takes time.
 task{1}{1}.segmax = [design_block.time_stim, design_block.time_fix]; 
@@ -177,16 +179,16 @@ function task = configureExperiment(task, myscreen, design, design_block)
         task{1}{phaseNum}                                = task{1}{1};  
         task{1}{phaseNum}.numTrials                      = design_block.nTrials_train;
         task{1}{phaseNum}.parameter.phasescrambleOn      = 0;
-        task{1}{phaseNum}.parameter.stimLum            = design_block.stimLum;
-        task{1}{phaseNum}.parameter.backLum            = design_block.backLum;
-        task{1}{phaseNum}.parameter.noiseLum           = design_block.noiseLum;
+        task{1}{phaseNum}.parameter.stimLum              = design_block.stimLum;
+        task{1}{phaseNum}.parameter.backLum              = design_block.backLum;
+        task{1}{phaseNum}.parameter.noiseLum             = 0;
         task{1}{phaseNum}.randVars.calculated.trackStim  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
          
         % tracking period
         task{1}{phaseNum+1}                                = task{1}{phaseNum}; % inherit other parameters  
         task{1}{phaseNum+1}.numTrials                      = design_block.nTrials_track;
         task{1}{phaseNum+1}.parameter.phasescrambleOn      = 1;
-        
+        task{1}{phaseNum+1}.parameter.noiseLum             = design_block.noiseLum;
     end
 end
 
@@ -264,10 +266,9 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
             stimulus.backgroundnoise_rgb = img.backgroundnoise_rgb;
             
             % normalize noiseLum.. for testing noiseLevels
-            for fr = 1:size(stimulus.backgroundnoise_rgb,4)
-                back = stimulus.backgroundnoise_rgb(:,:,:,fr);
-                stimulus.backgroundnoise_rgb(4,:,:,fr) = uint8(double(back(4,:,:))/double(max(max(back(4,:,:))))*task.thistrial.noiseLum);
-            end
+            stimulus.backgroundnoise_rgb(4,:,:,:) = ...
+                uint8(stimulus.backgroundnoise_rgb(4,:,:,:)*(task.thistrial.noiseLum/255));
+            
             tt = toc;
             disp(['(trackpos_hierarchical) took ', num2str(tt), ' s to load background'])
         end
@@ -289,7 +290,7 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
         for n = 1:length(stimulus.objects)
             stimulus.objects{n} = myInitObjects(stimulus.objects{n},myscreen); 
         end
-    else
+    else % generate objects only (no background... do not try to generate background on spot)
         stimulus = InitGroupStim(stimulus,myscreen,task);
     end
     
@@ -415,7 +416,7 @@ if (task.thistrial.thisseg== 1)
     mInfo = mglGetMouse(myscreen.screenNumber);
     mimg_x = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-    mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
+    mglGluDisk(mimg_x, mimg_y, 0.05, [1 0 0])
 
     % *** record stimulus position and mouse position
     task.thistrial.trackStim(task.thistrial.framecount,:) = [stimulus.posx(1,task.thistrial.framecount), ...
@@ -425,17 +426,17 @@ if (task.thistrial.thisseg== 1)
     
     % change fixation
     if stimulus.experimenter.fixateCenter == 1
-        mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
-        mglGluDisk(0,0,0.1,rand(1,3),60,1);
+        mglGluAnnulus(0,0,0.15,0.2,stimulus.fixColor,60,1);
+        mglGluDisk(0,0,0.05,rand(1,3),60,1);
     end
     
 elseif (task.thistrial.thisseg == 2) % fixation segment. 
     if stimulus.experimenter.fixateCenter == 1 % stop the flashing
         rng(task.thistrial.randomSeed,'twister');
-        mglGluDisk(0,0,0.1,rand(1,3),60,1);
+        mglGluDisk(0,0,0.05,rand(1,3),60,1);
     end
     
-    mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
+    mglGluAnnulus(0,0,0.15,0.2,stimulus.fixColor,60,1);
 end
 
 % fixation cross for all tasks. 
@@ -670,11 +671,15 @@ singleblob = struct();
 singleblob.name = 'singleblob';
 singleblob.L = 1;
 singleblob.start_pos = [0,0];
-singleblob.colors = [1, 1, 1]; 
+singleblob.colors = [1, 1, 1;...
+                     0, 1, 0;...
+                     0, 1, 0;...
+                     0, 0, 1;...
+                     0, 0, 1];  % add other colors for noise
 singleblob.sourceStd = 0.5; 
 singleblob.stimSize = 0.5;
 
-sum3std = 0.5;
+sum3std =singleblob.sourceStd;
 % 9 motion sources (7 effective -- 3 for the center collapses to one
 % source, but to balance each of the object effective variance..)
 % two branched tree; 1 => body; 2,3=> layer2; 4-5 => layer 3
@@ -685,11 +690,11 @@ balancedTree.L = [1, 0, 1, 0, 0 ,0 ,1, 0, 0; ...
                  1, 1, 0, 0, 0 ,1, 0 , 0, 0; ... 
                  1, 0, 0, 1, 0 , 0 , 0 , 1, 0;...
                  1, 0, 0, 1, 0 , 0 , 0 , 0, 1]; 
-start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]; % scale by 1/8 of the screen width in degrees
+start_pos = [0,0;-0.75,0.75;-0.75,-0.75;0.75,0.75;0.75,-0.75]; % scale by 1/4 of the screen width in degrees
 balancedTree.start_pos  = start_pos .* repmat([myscreen.imageWidth/4, myscreen.imageHeight/4], [size(start_pos,1),1]);
 balancedTree.colors       = [1, 1, 1;...
-                             1, 0, 0;...
-                             1, 0, 0;...
+                             0, 1, 0;...
+                             0, 1, 0;...
                              0, 0, 1;...
                              0, 0, 1]; 
 std1 = sqrt(sum3std^2/3);
@@ -700,11 +705,11 @@ balancedTree.stimSize     = [0.5; 0.5; 0.5; 0.5; 0.5];
 independent5 = struct();
 independent5.name = 'independent5';
 independent5.L = eye(5); 
-start_pos = [0,0;-1,1;-1,-1;1,1;1,-1]; % scale by 1/8 of the screen width in degrees
+start_pos = [0,0;-0.75,0.75;-0.75,-0.75;0.75,0.75; 0.75,-0.75]; % scale by 1/4 of the screen width in degrees
 independent5.start_pos  = start_pos .* repmat([myscreen.imageWidth/4, myscreen.imageHeight/4], [size(start_pos,1),1]);
 independent5.colors       = [1, 1, 1;...
-                             1, 0, 0;...
-                             1, 0, 0;...
+                             0, 1, 0;...
+                             0, 1, 0;...
                              0, 0, 1;...
                              0, 0, 1]; 
 independent5.sourceStd    = ones(5,1) * sum3std;
@@ -741,9 +746,11 @@ for n = 1:length(selected_packages)
     [a, c2] = size(design(n).start_pos);
     if a ~= nobject, error('The start_pos should have nobject elements');,end
     if c2 ~= 2, error('The start_pos should have 2 positions (x,y)');,end
+    %{
     [a, c3] = size(design(n).colors);
     if a ~= nobject, error('The colors should have nobject elements');,end
     if c3 ~= 3, error('The colors should have 3 colors elements (rgb)');,end
+    %}
     b = size(design(n).sourceStd);
     if b ~= nsources, error('The sourceStd should have nsources colors elements');,end
     a = size(design(n).stimSize);
@@ -809,7 +816,7 @@ function precompute_gen_script(task, myscreen, stimulus)
         currDesign                  = stimulus.design(stimulus.condNum);
         stimulus.L                  = currDesign.L; % motion structure
         stimulus.start_pos          = currDesign.start_pos;
-        stimulus.obj_colors             = currDesign.colors;
+        stimulus.obj_colors         = currDesign.colors;
         stimulus.sourceStd          = currDesign.sourceStd; % std/s ... we convert to std per frame later
         stimulus.stimSize           = currDesign.stimSize; 
 
@@ -822,7 +829,7 @@ function precompute_gen_script(task, myscreen, stimulus)
         % fixation cross
         stimulus.fixColor = [1 1 1];
         stimulus = InitGroupStim(stimulus,myscreen,task);
-        img = precomputeStimulus(myscreen,stimulus);
+        precomputeStimulus(myscreen,stimulus);
     end
     end
     end
@@ -830,7 +837,7 @@ function precompute_gen_script(task, myscreen, stimulus)
     done = 1;
 end
 
-function img = precomputeStimulus(myscreen,stimulus)
+function precomputeStimulus(myscreen,stimulus)
 % note that the precomputeStimulus saves and loads the stimulus struct!
 % generate a noisy stimulus
 % Approximate generation time on csnl:
@@ -863,81 +870,83 @@ x_npixels = size(backgaussian,2);
 y_npixels = size(backgaussian,1);
 
 %% generate objects
-stim_rgb  = zeros(4,x_npixels,y_npixels,nframes,'uint8');
+if stimulus.experimenter.precompute == 1
+    stim_rgb  = zeros(4,x_npixels,y_npixels,nframes,'uint8');
 
-tic
-for idx1 = 1:nframes 
-    for obj = 1:length(stimulus.objects)
-        stimobj = stimulus.objects{obj};
-        obj_img = zeros(4,x_npixels,y_npixels,'uint8'); % object image for a single time
-        
-        % generate Gaussian 
-        % todo: flip xsize and ysize??
-        gaussian = mglMakeGaussian(xsize_deg,ysize_deg,...
-                    stimobj.stimSize/downsample_spatRes, stimobj.stimSize/downsample_spatRes,...
-                    stimobj.position(1,idx1)/downsample_spatRes, stimobj.position(2,idx1)/downsample_spatRes);
-                
-        %stim_rgb(1:3,:,:,idx1)  = stim_rgb(1:3,:,:,idx1) + ...
-        %          uint8(255*repmat(ccc, [1, x_npixels,y_npixels]) ...
-        %            .* permute(cat(3,gaussian',gaussian',gaussian')/max(gaussian(:)),[3,1,2])) ;
-        obj_img(1:3,:,:)    = uint8(255*repmat(stimobj.color, [1, x_npixels,y_npixels]));
-        obj_img(4,:,:)      = uint8(gaussian'/max(gaussian(:))); % alpha channel
-        
-        % add to the ground image
-        stim_rgb(:,:,:,idx1) = add_rgba_uint8(stim_rgb(:,:,:,idx1), obj_img);
-        
-        % check stimuli
-        % figure;plot(stimobj.position(1,:))
-        % imagesc the stimuli
+    tic
+    for idx1 = 1:nframes 
+        for obj = 1:length(stimulus.objects)
+            stimobj = stimulus.objects{obj};
+            obj_img = zeros(4,x_npixels,y_npixels,'uint8'); % object image for a single time
+
+            % generate Gaussian 
+            % todo: flip xsize and ysize??
+            gaussian = mglMakeGaussian(xsize_deg,ysize_deg,...
+                        stimobj.stimSize/downsample_spatRes, stimobj.stimSize/downsample_spatRes,...
+                        stimobj.position(1,idx1)/downsample_spatRes, stimobj.position(2,idx1)/downsample_spatRes);
+
+            %stim_rgb(1:3,:,:,idx1)  = stim_rgb(1:3,:,:,idx1) + ...
+            %          uint8(255*repmat(ccc, [1, x_npixels,y_npixels]) ...
+            %            .* permute(cat(3,gaussian',gaussian',gaussian')/max(gaussian(:)),[3,1,2])) ;
+            obj_img(1:3,:,:)    = uint8(255*repmat(stimobj.color, [1, x_npixels,y_npixels]));
+            obj_img(4,:,:)      = uint8(gaussian'/max(gaussian(:))); % alpha channel
+
+            % add to the ground image
+            stim_rgb(:,:,:,idx1) = add_rgba_uint8(stim_rgb(:,:,:,idx1), obj_img);
+
+            % check stimuli
+            % figure;plot(stimobj.position(1,:))
+            % imagesc the stimuli
+            %{
+            sum(sum(sum(stim_rgb(:,:,:,idx1) == obj_img)))
+
+            figure;
+            subplot(2,2,1);imagesc(squeeze(double(stim_rgb(1,:,:,idx1)) - double(obj_img(1,:,:))));colorbar;
+            subplot(2,2,2);imagesc(squeeze(double(stim_rgb(2,:,:,idx1)) - double(obj_img(2,:,:))));colorbar;
+            subplot(2,2,3);imagesc(squeeze(double(stim_rgb(3,:,:,idx1)) - double(obj_img(3,:,:))));colorbar;
+            subplot(2,2,4);imagesc(squeeze(double(stim_rgb(4,:,:,idx1)) - double(obj_img(4,:,:))));colorbar;
+
+            figure;
+            subplot(4,2,1);imagesc(squeeze(double(stim_rgb(1,:,:,idx1))));colorbar;
+            subplot(4,2,2);imagesc(squeeze(double(obj_img(1,:,:))));colorbar;
+            subplot(4,2,3);imagesc(squeeze(double(stim_rgb(2,:,:,idx1))));colorbar;
+            subplot(4,2,4);imagesc(squeeze(double(obj_img(2,:,:))));colorbar;
+            subplot(4,2,5);imagesc(squeeze(double(stim_rgb(3,:,:,idx1))));colorbar;
+            subplot(4,2,6);imagesc(squeeze(double(obj_img(3,:,:))));colorbar;
+            subplot(4,2,7);imagesc(squeeze(double(stim_rgb(4,:,:,idx1))));colorbar;
+            subplot(4,2,8);imagesc(squeeze(double(obj_img(4,:,:))));colorbar;
+            %}               
+            % flush onto screen
+            %{
+            mglClearScreen(0)
+            txt = mglCreateTexture(obj_img);
+            mglBltTexture(txt,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth again.
+            mglFlush
+
+            mglClearScreen(0)
+            txt = mglCreateTexture(stim_rgb(:,:,:,idx1));
+            mglBltTexture(txt,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth again.
+            mglFlush
+            %}
+        end   
+
         %{
-        sum(sum(sum(stim_rgb(:,:,:,idx1) == obj_img)))
-        
-        figure;
-        subplot(2,2,1);imagesc(squeeze(double(stim_rgb(1,:,:,idx1)) - double(obj_img(1,:,:))));colorbar;
-        subplot(2,2,2);imagesc(squeeze(double(stim_rgb(2,:,:,idx1)) - double(obj_img(2,:,:))));colorbar;
-        subplot(2,2,3);imagesc(squeeze(double(stim_rgb(3,:,:,idx1)) - double(obj_img(3,:,:))));colorbar;
-        subplot(2,2,4);imagesc(squeeze(double(stim_rgb(4,:,:,idx1)) - double(obj_img(4,:,:))));colorbar;
-        
-        figure;
-        subplot(4,2,1);imagesc(squeeze(double(stim_rgb(1,:,:,idx1))));colorbar;
-        subplot(4,2,2);imagesc(squeeze(double(obj_img(1,:,:))));colorbar;
-        subplot(4,2,3);imagesc(squeeze(double(stim_rgb(2,:,:,idx1))));colorbar;
-        subplot(4,2,4);imagesc(squeeze(double(obj_img(2,:,:))));colorbar;
-        subplot(4,2,5);imagesc(squeeze(double(stim_rgb(3,:,:,idx1))));colorbar;
-        subplot(4,2,6);imagesc(squeeze(double(obj_img(3,:,:))));colorbar;
-        subplot(4,2,7);imagesc(squeeze(double(stim_rgb(4,:,:,idx1))));colorbar;
-        subplot(4,2,8);imagesc(squeeze(double(obj_img(4,:,:))));colorbar;
-        %}               
-        % flush onto screen
-        %{
-        mglClearScreen(0)
-        txt = mglCreateTexture(obj_img);
-        mglBltTexture(txt,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth again.
-        mglFlush
-        
         mglClearScreen(0)
         txt = mglCreateTexture(stim_rgb(:,:,:,idx1));
         mglBltTexture(txt,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth again.
         mglFlush
         %}
-    end   
-    
-    %{
-    mglClearScreen(0)
-    txt = mglCreateTexture(stim_rgb(:,:,:,idx1));
-    mglBltTexture(txt,[0 0 myscreen.imageWidth myscreen.imageHeight]) %strecth again.
-    mglFlush
-    %}
+    end
+    t_stimgen = toc;
+    disp(['(genstim_precompute) Took ', num2str(t_stimgen), ' sec to generate object images'])
 end
-t_stimgen = toc;
-disp(['(genstim_precompute) Took ', num2str(t_stimgen), ' sec to generate object images'])
 
 %% noise
 % background noise
 tic
 backgroundnoise_rgb  = zeros(4,x_npixels,y_npixels,nframes,'uint8');
 
-if stimulus.noiseLum ~= 0 
+if stimulus.noiseLum > 0 
     % for random color noise distribution:
     %{
     colorstd = 5; %stimulus.objects{1}.stimSize
@@ -949,15 +958,16 @@ if stimulus.noiseLum ~= 0
 
     for idx1 = 1:nframes %nframes
         % draw noise from the stimulus colors
-        for obj = 1:length(stimulus.objects)
-            stimobj = stimulus.objects{obj};
+        for obj = 1:size(stimulus.obj_colors,1) %length(stimulus.objects)
+            % stimobj = stimulus.objects{obj};
+            back_color = stimulus.obj_colors(obj,:);
             back_img = zeros(4,x_npixels,y_npixels,'uint8'); % object image for a single time
 
             back                = backgaussianFFT; %0.02s
             back.phase          = rand(size(back.mag))*2*pi; % scramble phase % 0.02s
             backgroundnoise     = round(reconstructFromHalfFourier(back));   %0.04s
-            back_img(4,:,:)     = uint8(backgroundnoise'/max(backgroundnoise(:)));  % normalize contrast %0.025s        
-            back_img(1:3,:,:)   = uint8(255*repmat(stimobj.color, [1, x_npixels,y_npixels]));
+            back_img(4,:,:)     = uint8(255*backgroundnoise'/max(backgroundnoise(:)));  % normalize contrast %0.025s        
+            back_img(1:3,:,:)   = uint8(255*repmat(back_color', [1, x_npixels,y_npixels]));
 
             % add to the ground image
             backgroundnoise_rgb(:,:,:,idx1) = add_rgba_uint8(backgroundnoise_rgb(:,:,:,idx1), ...
@@ -1010,13 +1020,23 @@ end
 t_backgen = toc;
 disp(['(genstim_precompute) Took ', num2str(t_backgen), ' sec to generate background images'])
 
-% adjust luminance before adding alpha
-stim_rgb(4,:,:,:) = stim_rgb(4,:,:,:)*stimobj.stimLum; 
-backgroundnoise_rgb(4,:,:,:) = backgroundnoise_rgb(4,:,:,:)*stimulus.noiseLum;
+%% save stuff
+if stimulus.experimenter.precompute == 1 
+    % adjust luminance before adding alpha
+    stim_rgb(4,:,:,:) = stim_rgb(4,:,:,:); 
+    backgroundnoise_rgb(4,:,:,:) = backgroundnoise_rgb(4,:,:,:);
 
-img = add_rgba_uint8(stim_rgb, backgroundnoise_rgb);
-save(savefile, 'stimulus', 'img', 'stim_rgb','backgroundnoise_rgb', '-v7.3')
+    img = add_rgba_uint8(stim_rgb, backgroundnoise_rgb);
+    save(savefile, 'stimulus', 'img', 'stim_rgb','backgroundnoise_rgb', '-v7.3')
+else
+    save(savefile, 'stimulus', 'backgroundnoise_rgb', '-v7.3')
+end
 
 ttt = toc(timer_allgen);
 disp(['(genstim_precompute) Trial generation complete. Took ', num2str(ttt), ' sec'])
+end
+
+function randomchecks
+    std(diff(r.task{1}{3}.randVars.trackStim{1}))
+    std(diff(r.task{1}{4}.randVars.trackStim{1}))
 end
