@@ -1271,38 +1271,6 @@ stimulus.background.n = numBackgrounds;
 stimulus.background.frameTime = 1/backgroundFreq;
 stimulus.backgroundFreq = backgroundFreq;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%
-%    setStimuliOnNoise  %
-%%%%%%%%%%%%%%%%%%%%%%%%%
-
-function threshold = getThreshold(stimulus,myscreen)
-
-% get the last stimfile
-stimfile = getLastStimfile(myscreen);
-if isempty(stimfile)
-  disp(sprintf('(alaisburr:getThreshold) No stimfile found, you need to run a staircase first!'));
-  threshold = [];
-  return
-end
-
-disp(sprintf('(alaisburr) Found stimfile'));
-
-% now see if we have the proper staircases run for these conditions
-% check that the last stimfile had the same values
-if ~isfield(stimfile,'stimulus') || ~isfield(stimfile.stimulus,stimulus.staircaseOver) || ~isequal(stimfile.stimulus.(stimulus.staircaseOver),stimulus.(stimulus.staircaseOver))
-  % dump this stimfile, since it does not match current variable settings
-  disp(sprintf('(cocon:getThreshold) Found stimfile, but does not have %s match. Need to run staircase again.',stimulus.staircaseOver));
-  threshold = [];
-  return
-end
-
-% see if threshold already exists
-if isfield(stimulus,'threshold') && ~isempty(stimulus.threshold)
-  disp(sprintf('(cocon:getThreshold) Found existing threshold: %s',num2str(stimulus.threshold.threshold)));
-  threshold = stimulus.threshold;
-  return
-end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%
 %    setStimuliOnNoise  %
