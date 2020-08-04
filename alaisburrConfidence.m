@@ -1,6 +1,6 @@
 % alaisburr.m
 %
-%      usage: myscreen = alaisburr()
+%      usage: myscreen = alaisburrConfidence()
 %         by: minyoung lee
 %       date: 
 %    purpose: replication of Alais & Burr, 2004
@@ -16,11 +16,11 @@
 %            reserved colors at the top and on the bottom the gradation
 %            of colors used for the gaussian
 %
-%            alaisburr('doGammaTest=1');
+%            alaisburrCoonfidence('doGammaTest=1');
 %
 %            To run with a noise background with SNR of 2.5 that updates 4.5 every sec
 %
-%            alaisBurr('SNR=2.5','backgroundFreq=4.5');
+%            alaisBurrConfidence('SNR=2.5','backgroundFreq=4.5');
 %
 %            Note that the way the noisy background works there is a maxSNR that
 %            can be achieved which is set by the parameter maxSNR (default to 4)
@@ -60,7 +60,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','useStaircase=0','nStaircaseTrials=40','restartStaircase=0', 'getConfidence=1', 'runType=full', 'threshold=7.5'},'verbose=1');
+getArgs(varargin,{'width=10','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','useStaircase=0','nStaircaseTrials=40','restartStaircase=0', 'getConfidence=1', 'runType=full', 'threshold=7.5'},'verbose=1');
 
  % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -169,7 +169,7 @@ end
 % set up task
 %%%%%%%%%%%%%%%%%%%%% 
 task{1}{1}.waitForBacktick = 1;
-
+task{1}{1}.numTrials = 60;
 if stimulus.getConfidence
 % init the confidence display parameters (see function definition below for definition of parameters)
   stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
@@ -223,7 +223,7 @@ task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.centerInt = nan;
 task{1}{1}.randVars.calculated.displ = nan;
 task{1}{1}.randVars.calculated.left = nan;
- 
+
 % initialize the task
 for phaseNum = 1:length(task{1})
   [task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
@@ -1224,7 +1224,7 @@ end
 % for the length of the trial so that we can
 % randomly show at least one per frame
 
-trialTime = 1;
+trialTime = 7.03;
 % trialTime = sum(task{end}{end}.segmax);
 
 
