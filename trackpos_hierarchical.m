@@ -15,24 +15,25 @@ else
     myscreen.subjectID  = mglGetSID;
 end
 
+myscreen.saveData       = 1; % save stimfile to data directory
 myscreen                = initScreen(myscreen);
 
 %% parameters
 global stimulus; stimulus = struct;
 
 % Experimenter parameters
-experimenter = struct();
-experimenter.noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
-experimenter.showmouse       = 1; 
-experimenter.grabframe       = 1; % grab frame
+experimenter                 = struct();
+experimenter.noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+experimenter.showmouse       = 0; 
+experimenter.grabframe       = 0; % grab frame
 experimenter.fixateCenter    = 1;
 experimenter.phasescrambleOn = 1; % consider different noise? (i.e. pink noise? https://www.mathworks.com/help/audio/ref/pinknoise.html)
 
-experimenter.precompute_path = '~/proj/grustim/trackpos_hierarchical/testrun/'; %required if using precompute
+experimenter.precompute_path = '~/proj/grustim/trackpos_hierarchical/pilot0/'; %required if using precompute
 % 1: load precomputed stimulus (background and stim)
 % 2: load precomputed background and stimulus position only (during background trials)
-experimenter.precompute      = 2; % 1 or 2
-experimenter.precompute_gen  = 1; %1; % generate and save stimulus
+experimenter.precompute          = 2; % 1 or 2
+experimenter.precompute_gen      = 1; %1; % generate and save stimulus
 experimenter.downsample_spatRes  = 5; % downsample spatially
 if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,end
 
@@ -44,13 +45,20 @@ if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,en
 design_block = struct();
 design_block.time_stim = 30;
 design_block.time_fix = 3;
-design_block.nTrials_train  = 5; % learning period
-design_block.nTrials_track  = 10; % testing period; with noise
+design_block.nTrials_train  = 1; % learning period
+design_block.nTrials_track  = 32; % testing period; with noise
 
 design_block.backLum        = 96;
 design_block.noiseLum       = 32;
-design_block.stimLum        = min(96, 255 - design_block.backLum);
+design_block.stimLum        = [32, 96]; %randomize luminance of target
+design_block.distLum        = [32, 96]; %randomize luminance of distractors
+    
+% Experimental Design
+% predefined packages
+selected_packages = {'singleblob', 'balancedTree', 'singleblob', 'independent5'};
+design = load_packages(myscreen, selected_packages);
 
+%% get variables
 task{1}{1}.segmin = [design_block.time_stim, design_block.time_fix]; % fixation for shorter bc of the segment start takes time.
 task{1}{1}.segmax = [design_block.time_stim, design_block.time_fix]; 
 task{1}{1}.numTrials = design_block.nTrials_train;
@@ -63,17 +71,12 @@ if experimenter.phasescrambleOn == 1
 end
 
 % calculated parameters
-task{1}{1}.randVars.calculated.randomSeed = 0;
-task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
-task{1}{1}.randVars.calculated.trackStim = nan; % defined later in the task configurations
-task{1}{1}.randVars.calculated.trackEye  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
-task{1}{1}.randVars.calculated.trackTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond));
-task{1}{1}.randVars.calculated.trackEyeTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond)); % for referencing edf file
-
-%% Experimental Design
-% predefined packages
-selected_packages = {'balancedTree', 'independent5', 'singleblob'};
-design = load_packages(myscreen, selected_packages);
+task{1}{1}.randVars.calculated.randomSeed       = 0;
+task{1}{1}.randVars.calculated.trackResp        = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
+task{1}{1}.randVars.calculated.trackStim        = nan; % defined later in the task configurations
+task{1}{1}.randVars.calculated.trackEye         = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
+task{1}{1}.randVars.calculated.trackTime        = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond));
+task{1}{1}.randVars.calculated.trackEyeTime     = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond)); % for referencing edf file
 
 % design.offset = 0; % if there are additional tasks before this, add the number of tasks here.
 task = configureExperiment(task, myscreen, design, design_block);
@@ -96,6 +99,8 @@ myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus.experimenter       = experimenter;
 stimulus.design             = design; % also save design
 stimulus.design_block       = design_block;
+
+stimulus.eyemousedebug      = 0;
 
 if stimulus.experimenter.grabframe
     global frame
@@ -179,16 +184,26 @@ function task = configureExperiment(task, myscreen, design, design_block)
         task{1}{phaseNum}                                = task{1}{1};  
         task{1}{phaseNum}.numTrials                      = design_block.nTrials_train;
         task{1}{phaseNum}.parameter.phasescrambleOn      = 0;
-        task{1}{phaseNum}.parameter.stimLum              = design_block.stimLum;
+        
+        task{1}{phaseNum}.parameter.stimLum              = 96; %design_block.stimLum;
         task{1}{phaseNum}.parameter.backLum              = design_block.backLum;
         task{1}{phaseNum}.parameter.noiseLum             = 0;
+        
         task{1}{phaseNum}.randVars.calculated.trackStim  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
          
         % tracking period
         task{1}{phaseNum+1}                                = task{1}{phaseNum}; % inherit other parameters  
-        task{1}{phaseNum+1}.numTrials                      = design_block.nTrials_track;
         task{1}{phaseNum+1}.parameter.phasescrambleOn      = 1;
         task{1}{phaseNum+1}.parameter.noiseLum             = design_block.noiseLum;
+        
+        task{1}{phaseNum+1}.randVars.uniform.stimLum       = design_block.stimLum;
+        if strcmp(design(condNum).name,'singleblob') 
+            task{1}{phaseNum+1}.numTrials                  = 16;
+        else % add distractor luminance
+            task{1}{phaseNum+1}.numTrials                  = design_block.nTrials_track;
+            task{1}{phaseNum+1}.randVars.uniform.distLum   = design_block.distLum;
+        end
+        task{1}{phaseNum+1}.randVars.len_                  = task{1}{phaseNum+1}.numTrials;
     end
 end
 
@@ -200,11 +215,20 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     
     disp(['(trackpos_hierarchical) running stimulus ', stimulus.design(condNum).name])
     
+    if isfield(task.thistrial,'distLum')
+        distLum = task.thistrial.distLum;
+    else
+        distLum = task.thistrial.stimLum;
+    end
+    disp(['(trackpos_hierarchical_trial) trialnum = ', num2str(task.trialnum), ...
+        '; stimLum = ', num2str(task.thistrial.stimLum), ...
+        '; distLum = ', num2str(distLum)])
+    
     % todo: use these
     % task.thistrial.thisphase
     % task.thistrial.thisseg
     % task.blockTrialnum
-    % task.trailnum
+    % task.trialnum
     % task.blocknum 
     
     % todo: this part is called similarly twice by the precompute and
@@ -272,6 +296,7 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
             tt = toc;
             disp(['(trackpos_hierarchical) took ', num2str(tt), ' s to load background'])
         end
+        
         s = load(savedfile, 'stimulus'); % ~1s to load
         s = s.stimulus;
         % todo: do I need to load anything else from the stimulus?
@@ -288,7 +313,12 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
         
         % regenerate stimulus texture
         for n = 1:length(stimulus.objects)
-            stimulus.objects{n} = myInitObjects(stimulus.objects{n},myscreen); 
+            if n == 1 || ~isfield(task.thistrial,'distLum')
+                stimulus.objects{n}.stimLum = task.thistrial.stimLum; % modulate luminacne outside pregeneration
+            else 
+                stimulus.objects{n}.stimLum = task.thistrial.distLum; % modulate luminacne outside pregeneration
+            end
+            stimulus.objects{n}         = myInitObjects(stimulus.objects{n},myscreen); 
         end
     else % generate objects only (no background... do not try to generate background on spot)
         stimulus = InitGroupStim(stimulus,myscreen,task);
@@ -416,7 +446,7 @@ if (task.thistrial.thisseg== 1)
     mInfo = mglGetMouse(myscreen.screenNumber);
     mimg_x = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-    mglGluDisk(mimg_x, mimg_y, 0.05, [1 0 0])
+    mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
 
     % *** record stimulus position and mouse position
     task.thistrial.trackStim(task.thistrial.framecount,:) = [stimulus.posx(1,task.thistrial.framecount), ...
@@ -426,17 +456,17 @@ if (task.thistrial.thisseg== 1)
     
     % change fixation
     if stimulus.experimenter.fixateCenter == 1
-        mglGluAnnulus(0,0,0.15,0.2,stimulus.fixColor,60,1);
-        mglGluDisk(0,0,0.05,rand(1,3),60,1);
+        mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
+        mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
     
 elseif (task.thistrial.thisseg == 2) % fixation segment. 
     if stimulus.experimenter.fixateCenter == 1 % stop the flashing
         rng(task.thistrial.randomSeed,'twister');
-        mglGluDisk(0,0,0.05,rand(1,3),60,1);
+        mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
     
-    mglGluAnnulus(0,0,0.15,0.2,stimulus.fixColor,60,1);
+    mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
 end
 
 % fixation cross for all tasks. 
