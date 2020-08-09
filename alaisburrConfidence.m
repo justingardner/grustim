@@ -121,7 +121,7 @@ screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
 
 % initalize the screen
-myscreen.background = 0;  %black
+myscreen.background = 0.5;  %black
 myscreen = initScreen;
 
 % get any previous stimfile and see if there is a staircase in it
@@ -200,9 +200,11 @@ task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
 stimulus.runType = lower(runType);
 if strcmp(stimulus.runType,'high')
-  task{1}{1}.parameter.posDiff = [-2 -1.5 -1 1 1.5 2] * threshold; 
+  task{1}{1}.parameter.posDiff = [-15 -13 -11.7294 11.7294 13 15];
+%   task{1}{1}.parameter.posDiff = [-2 -1.5 -1 1 1.5 2] * threshold; 
 elseif strcmp(stimulus.runType,'low')
-  task{1}{1}.parameter.posDiff = [-1 -0.5 -0.25 0.25 0.5 1] * threshold; 
+    task{1}{1}.parameter.posDiff = [-11.7294 -5.0067 -0.9625 0.9625 5.0067 11.7294];
+%   task{1}{1}.parameter.posDiff = [-1 -0.5 -0.25 0.25 0.5 1] * threshold; 
 elseif strcmp(stimulus.runType,'full')
   task{1}{1}.parameter.posDiff = [-15 -11 -8 -6 -4 -2 2 4 6 8 11 15];
 end
@@ -488,7 +490,7 @@ if stimulus.task ~= 2
       if stimulus.background.frameNum ~= stimulus.background.stim2Frame
 	disp(sprintf('!!! (alaisburr) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
       end
-    else
+    elseif task.thistrial.thisseg ~= stimulus.confidence.segnum
       % display background
       % see if we need to update frame number
       if mglGetSecs(stimulus.background.frameStart) > stimulus.background.frameTime
@@ -499,14 +501,15 @@ if stimulus.task ~= 2
       end
       % draw the background texture
       mglBltTexture(stimulus.backTexture(stimulus.background.frameOrder(stimulus.background.frameNum)),[0 0]);
+      mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
     end
   end
 end
 
 if stimulus.getConfidence && (task.thistrial.thisseg == stimulus.confidence.segnum)
   % set the confidence
-  
   [task.thistrial.confidence confidenceDone] = setConfidence(task.thistrial.confidence, stimulus);
+  mglFixationCross(stimulus.fixWidth,1.5,stimulus.confidence.outlineColor);
   if confidenceDone
     task = jumpSegment(task);
     disp(sprintf('(alaisburr) Confidence: %0.2f',task.thistrial.confidence)); 
@@ -522,7 +525,7 @@ if stimulus.task ~= 1
   end
 end
 
-mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
+
 
 % %draw fixation cross
 % if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
