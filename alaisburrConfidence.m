@@ -169,7 +169,7 @@ end
 % set up task
 %%%%%%%%%%%%%%%%%%%%% 
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.numTrials = 60;
+task{1}{1}.numTrials = 20;
 if stimulus.getConfidence
 % init the confidence display parameters (see function definition below for definition of parameters)
   stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
@@ -200,10 +200,10 @@ task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
 stimulus.runType = lower(runType);
 if strcmp(stimulus.runType,'high')
-  task{1}{1}.parameter.posDiff = [-15 -13 -11.7294 11.7294 13 15];
+  task{1}{1}.parameter.posDiff = [-0.35 -4.6694 4.6694 0.35];
 %   task{1}{1}.parameter.posDiff = [-2 -1.5 -1 1 1.5 2] * threshold; 
 elseif strcmp(stimulus.runType,'low')
-    task{1}{1}.parameter.posDiff = [-11.7294 -5.0067 -0.9625 0.9625 5.0067 11.7294];
+    task{1}{1}.parameter.posDiff = [-11.8752 -4.6694 4.6694 11.8752];
 %   task{1}{1}.parameter.posDiff = [-1 -0.5 -0.25 0.25 0.5 1] * threshold; 
 elseif strcmp(stimulus.runType,'full')
   task{1}{1}.parameter.posDiff = [-15 -11 -8 -6 -4 -2 2 4 6 8 11 15];
@@ -350,6 +350,8 @@ if stimulus.useStaircase && ~(stimulus.auditoryTrain || stimulus.visualTrain)
   end
     
 end
+stimulus = rmfield(stimulus, 'background');
+stimulus = rmfield(stimulus, 'gaussian');
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -1226,8 +1228,8 @@ end
 % figure out how many frames we should have
 % for the length of the trial so that we can
 % randomly show at least one per frame
-
-trialTime = 7.03;
+trialTime = 5;
+% trialTime = 7.03;
 % trialTime = sum(task{end}{end}.segmax);
 
 
