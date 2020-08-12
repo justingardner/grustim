@@ -192,9 +192,11 @@ end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-10 0 10]; % cue offset from center
+task{1}{1}.parameter.posDiff = [-20:.8:20]; 
+task{1}{1}.parameter.rightCue = max(task{1}{1}.parameter.posDiff);
+task{1}{1}.parameter.numberOffsets = length(task{1}{1}.parameter.posDiff)
 if stimulus.task == 3
-  task{1}{1}.parameter.displacement = [-5 0 5]; % audio-visual discrepancy in bimodal trials 
+  task{1}{1}.parameter.displacement = [0]; % audio-visual discrepancy in bimodal trials 
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
 task{1}{1}.parameter.width = stimulus.width;
@@ -356,8 +358,6 @@ global stimulus
 stimulus.fixColor = stimulus.colors.white;
 
 if task.thistrial.thisseg == 1
-  % set random jittering between -0.5 and 0.5 deg
-  task.thistrial.jitter = rand - 0.5; 
   % horizontal position of first, second stim
   if stimulus.auditoryTrain || stimulus.visualTrain
     % get test value
@@ -367,18 +367,18 @@ if task.thistrial.thisseg == 1
   %set cue locations
   task.thistrial.xposV(1) = -20;
   task.thistrial.xposV(3) = 20;
-  task.thistrial.xposV(2) = [task.thistrial.posDiff + task.thistrial.jitter];
+  task.thistrial.xposV(2) = [task.thistrial.posDiff];
   task.thistrial.xposA(1) = -20;
   task.thistrial.xposA(3) = 20;
   %visual  stimulus position
     if stimulus.task ~= 3
-     task.thistrial.xposV(2) = task.thistrial.posDiff + task.thistrial.jitter;
+     task.thistrial.xposV(2) = task.thistrial.posDiff;
      task.thistrial.xposA(2) = task.thistrial.xposV(2);
     end
       %add displacement for bimodal condition
     if stimulus.task == 3
-	task.thistrial.xposV(2) = [task.thistrial.posDiff + task.thistrial.jitter + task.thistrial.displacement];
-	task.thistrial.xposA(2) = [task.thistrial.posDiff + task.thistrial.jitter - task.thistrial.displacement];
+	task.thistrial.xposV(2) = [task.thistrial.posDiff + task.thistrial.displacement];
+	task.thistrial.xposA(2) = [task.thistrial.posDiff - task.thistrial.displacement];
     task.thistrial.displ = task.thistrial.displacement;
     end
     task.thistrial.diff = task.thistrial.posDiff;
@@ -465,6 +465,10 @@ if stimulus.task ~= 2
       if stimulus.background.frameNum ~= stimulus.background.stim2Frame
 	disp(sprintf('!!! (alaisburr) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
       end
+      
+    elseif task.thistrial.thisseg == 8
+        mglBltTexture(stimulus.backTexture(stimulus.background.frameOrder(stimulus.background.frameNum)),[0 0]);
+        
     else
       % display background
       % see if we need to update frame number
