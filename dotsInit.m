@@ -33,8 +33,9 @@
 %            Instead, use the callbacks to change the stimulus
 %
 %            dots = dots.setSpeed(dots, speed) - speeds is in deg/s
-%            dots = dots.dir(dots, dir) - dir is in deg or -1 - 1 for flow
+%            dots = dots.setDir(dots, dir) - dir is in deg or -1 - 1 for flow
 %            dots = dots.setContrast(dots,contrast) - contrast is 0 - 1
+%            dots = dots.setCoherence(dots,coherence) - coherence is 0 - 1
 %            dots = dots.setCenter(dots,x,y) - sets the x,y center in deg
 %
 %            To draw the dots, you update (which changes their position and
@@ -134,6 +135,10 @@ dots.white = dots.blackOrWhite == 1;
 dots.setContrast = @setContrast;
 dots = dots.setContrast(dots,dots.contrast);
 
+% set coherence
+dots.setCoherence = @setCoherence;
+dots = dots.setCoherence(dots,dots.coherence);
+
 % update them once (to make sure all fields get filled in)
 dots = dots.update(dots);
 
@@ -146,6 +151,19 @@ function dots = setCenter(dots,xCenter,yCenter)
 dots.xCenter = xCenter;
 dots.yCenter = yCenter;
 
+%%%%%%%%%%%%%%%%%%%%%%
+%    setCoherence    %
+%%%%%%%%%%%%%%%%%%%%%%
+function dots = setCoherence(dots,coherence)
+
+if coherence > 1
+  disp(sprintf('(dotsInit:setCoherence) Coherence value of %0.1f is greater than 1, setting to: %f',coherence,coherence/100));
+  coherence = coherence/100;
+end
+  
+% set the coherence
+dots.coherence = coherence;
+  
 %%%%%%%%%%%%%%%%%%%%%
 %    setContrast    %
 %%%%%%%%%%%%%%%%%%%%%

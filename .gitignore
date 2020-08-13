@@ -3,3 +3,4 @@
 *.DS_Store
 
 trackpos.mat
+*.mat

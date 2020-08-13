@@ -233,8 +233,8 @@ end
 function stimulus = initDotsStimulus(stimulus,myscreen)
 
 % init the dot patchs
-stimulus.dotsLeft = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=0');
-stimulus.dotsRight = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=180');
+stimulus.dotsLeft = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=0','width',stimulus.width);
+stimulus.dotsRight = dotsInit('framesPerSecond',myscreen.framesPerSecond,'dir=180','width',stimulus.width);
 
 % set background color
 stimulus.backgroundColor = 0.5;

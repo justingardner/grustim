@@ -47,6 +47,11 @@
 %
 %            alaisburr('visual=1','useStaircase=1','nStaircaseTrials=50');
 %
+%            TO run w/out eye tracker calibration
+%
+%            alaisburr('doEyecalib=0');
+%
+%
 function myscreen = alaisburr(varargin)
  
 clear global stimulus
@@ -55,9 +60,9 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=3','doTestSNR=0','backgroundFreq=4.5','doTestStimSize=0','maxSNR=4','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
-% close screen if open - to make sure that gamma gets sets correctly
+ % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
 
 % set task
@@ -168,9 +173,9 @@ task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
-  task{1}{1}.numBlocks = 2;
+  task{1}{1}.numBlocks = 10;
 elseif stimulus.visual || stimulus.auditory
-  task{1}{1}.numBlocks = 16;
+  task{1}{1}.numBlocks = 20;
 end
 if stimulus.useStaircase
   task{1}{1}.randVars.uniform.sign = [1,-1];
@@ -179,9 +184,10 @@ end
 % parameters & randomization
 task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
-task{1}{1}.parameter.posDiff = [-18 -15 -12 -10 -8 -6 -4 -2.5 -1.25 0 1.25 2.5 4 6 8 10 12 15 18]; 
+task{1}{1}.parameter.posDiff = [-15 -11 -8 -6 -4 -2 2 4 6 8 11 15]; 
 if stimulus.task == 3
-  task{1}{1}.parameter.displacement = [-5 0 5];
+    %bimodal displacement
+  task{1}{1}.parameter.displacement = [0];
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
 task{1}{1}.parameter.width = stimulus.width;
@@ -279,15 +285,20 @@ if ~isinf(stimulus.SNR)
   if isempty(stimulus);mglClose;return;end
 end
 
-% put up display string
-mglWaitSecs(1);
-mglClearScreen(stimulus.colors.black);
-mglTextSet([],32,stimulus.colors.white);
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
-mglFlush;
-mglClearScreen(stimulus.colors.black);
-mglTextDraw('Press ` key to start when you are ready',[0 0]);
-mglFlush;
+if doEyecalib
+  % run eye calibration
+  myscreen = eyeCalibDisp(myscreen);
+else
+  % put up display string
+  mglWaitSecs(1);
+  mglClearScreen(stimulus.colors.black);
+  mglTextSet([],32,stimulus.colors.white);
+  mglTextDraw('Press ` key to start when you are ready',[0 0]);
+  mglFlush;
+  mglClearScreen(stimulus.colors.black);
+  mglTextDraw('Press ` key to start when you are ready',[0 0]);
+  mglFlush;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop

@@ -14,9 +14,10 @@ if isempty(mglGetSID)
 else
     myscreen.subjectID  = mglGetSID;
 end
-myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
-myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
-myscreen.hideCursor = 1;
+
+%myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
+%myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
+%myscreen.hideCursor = 1;
 myscreen                = initScreen(myscreen);
 
 %% parameters
@@ -25,7 +26,7 @@ global stimulus; stimulus = struct;
 % Experimenter parameters
 noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 showmouse       = 0; 
-grabframe       = 1; 
+grabframe       = 0; 
 whitenoiseOn    = 0; % 1: white noise; 2: 
 fixateCenter    = 1;
 phasescrambleOn = 1;
@@ -38,12 +39,12 @@ task{1}{1}.segmin = [30 3]; % fixation for shorter bc of the segment start takes
 task{1}{1}.segmax = [30 3]; 
 task{1}{1}.numTrials = 2;
 task{1}{1}.getResponse = [1 0]; %segment to get response.
-task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
+task{1}{1}.waitForBacktick = 0; %wait for backtick before starting each trial 
 
 % task parameters for adaptation conditions
 if whitenoiseOn == 1 || phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
-    task{1}{1}.parameter.backLum            = 32; %160;%90;  % background luminance; units: luminance 
+    task{1}{1}.parameter.backLum            = 30; %160;%90;  % background luminance; units: luminance 
     task{1}{1}.parameter.noiseLum           = 32;
 else 
     task{1}{1}.parameter.backLum = 32;  % background luminance; units: fraction of full luminance 
@@ -416,7 +417,7 @@ if (task.thistrial.thisseg== 1)
     % stimulus.timedebug(5,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~7.67331e-5 s
 
     if stimulus.fixateCenter == 1
-        mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+        mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
         mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
     
@@ -426,7 +427,7 @@ elseif (task.thistrial.thisseg == 2)
         mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
     
-    mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+    mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
 end
 
 % fixation cross for all tasks. 
@@ -475,7 +476,7 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     % set standard deviation of stimulus
     
     % stimulus size
-    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 2;,end %unit: imageX, in deg. 
+    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 0.4;,end %unit: imageX, in deg. 
     stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
     
     %stimulus initial position. uniform distribution across the screen
