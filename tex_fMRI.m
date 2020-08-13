@@ -122,7 +122,7 @@ for i = 1:stimulus.nTexFams
        if size(sd,3)==3, sd = rgb2gray(sd); end
       stimulus.live.tex.(sprintf('%s_%s_smp%i', layerI, imName, j)) = genTexFromIm(sd, mask);
     end
-    
+ 
     % Load noise samples.
     nd = imread(sprintf('%s/noise_%s%s_%s_smp1.png', stimulus.noiseDir, stimulus.poolSize, layerI, imName));
     if size(nd,3)==3, nd=rgb2gray(nd); end
