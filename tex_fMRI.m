@@ -26,19 +26,6 @@ clear scan testing sType;
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/tex_fMRI/%s',mglGetSID))
-  % Directory exists, check for a stimfile
-  files = dir(sprintf('~/data/tex_fMRI/%s/1*mat',mglGetSID));
-
-  if length(files) >= 1
-    fname = files(end).name;
-    
-    s = load(sprintf('~/data/tex_fMRI/%s/%s',mglGetSID,fname));
-    stimulus.counter = s.stimulus.counter + 1;
-    clear s;
-    disp(sprintf('(tex_fMRI) Data file: %s loaded.',fname));
-  end
-end
 trialTypes = {'FAST_no-baseline', 'SLOW_no-baseline', 'SLOW_baseline'};
 disp(sprintf('-------------------------'));
 disp(sprintf('(tex_fMRI) Run Type %i: %s',stimulus.type, trialTypes{stimulus.type}));
