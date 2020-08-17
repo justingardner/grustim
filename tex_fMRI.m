@@ -26,19 +26,6 @@ clear scan testing sType;
 %% Open Old Stimfile
 stimulus.counter = 1;
 
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/tex_fMRI/%s',mglGetSID))
-  % Directory exists, check for a stimfile
-  files = dir(sprintf('~/data/tex_fMRI/%s/1*mat',mglGetSID));
-
-  if length(files) >= 1
-    fname = files(end).name;
-    
-    s = load(sprintf('~/data/tex_fMRI/%s/%s',mglGetSID,fname));
-    stimulus.counter = s.stimulus.counter + 1;
-    clear s;
-    disp(sprintf('(tex_fMRI) Data file: %s loaded.',fname));
-  end
-end
 trialTypes = {'FAST_no-baseline', 'SLOW_no-baseline', 'SLOW_baseline'};
 disp(sprintf('-------------------------'));
 disp(sprintf('(tex_fMRI) Run Type %i: %s',stimulus.type, trialTypes{stimulus.type}));
@@ -122,7 +109,7 @@ for i = 1:stimulus.nTexFams
        if size(sd,3)==3, sd = rgb2gray(sd); end
       stimulus.live.tex.(sprintf('%s_%s_smp%i', layerI, imName, j)) = genTexFromIm(sd, mask);
     end
-    
+ 
     % Load noise samples.
     nd = imread(sprintf('%s/noise_%s%s_%s_smp1.png', stimulus.noiseDir, stimulus.poolSize, layerI, imName));
     if size(nd,3)==3, nd=rgb2gray(nd); end

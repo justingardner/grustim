@@ -60,7 +60,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=[1 4]','visual=0','auditory=0','bimodal=1','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=[1 4]','visual=0','auditory=0','bimodal=0','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
  % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -120,7 +120,7 @@ screenParams = mglGetScreenParams;
 stimulus.displayDistance = screenParams{1}.displayDistance*.01;
 
 % initalize the screen
-myscreen.background = 0;  %black
+myscreen.background = 0.5;  %black
 myscreen = initScreen;
 
 % get any previous stimfile and see if there is a staircase in it
@@ -177,8 +177,8 @@ mglTextSet('Helvetica',32,[0 0.5 1 1],0,0,0,0,0,0,0);
   
   
 % trial: Fixation + left cue (.015s/.0015s) + ISI (.5s) + probe stimulus (.015) + ISI + right cue (.015s/.0015s) + Resp + ITI
-task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 5];
-task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 5];
+task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 10];
+task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 10];
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 10;
@@ -407,7 +407,7 @@ if task.thistrial.thisseg == 1
     stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(1),0,1,stimulus.background.frameOrder(stimulus.background.stim1Frame),task.thistrial.SNR,task.thistrial.width);
     stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(2),0,2,stimulus.background.frameOrder(stimulus.background.stim2Frame),task.thistrial.SNR,task.thistrial.width);
     stimulus = setStimulusOnBackground(stimulus,task.thistrial.xposV(3),0,3,stimulus.background.frameOrder(stimulus.background.stim3Frame),task.thistrial.SNR,task.thistrial.width);
-    disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i width: %0.1f',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.displacement,task.thistrial.centerWhich,task.thistrial.width));
+    %disp(sprintf('Trial %i: SNR: %0.1f posDiff: %0.1f diff: %0.1f centerWhich: %i width: %0.1f',task.trialnum,task.thistrial.SNR,task.thistrial.posDiff,task.thistrial.displacement,task.thistrial.centerWhich,task.thistrial.width));
   end
 
 elseif any(task.thistrial.thisseg == [2 4 6])
