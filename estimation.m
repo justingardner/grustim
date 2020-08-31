@@ -1,14 +1,17 @@
-% alaisburr.m
+% estimation.m
 %
-%      usage: myscreen = alaisburr()
-%         by: minyoung lee
-%       date: 
-%    purpose: replication of Alais & Burr, 2004
+%      usage: myscreen = estimation()
+%         by: josh wilson
+%       date: August 2020
+%    purpose: Estimate the position of a probe stimulus between 2 cues on a
+%             0 (left) to 100 (right) scale. Can be run unimodally as a
+%             visual or auditory task, or as a bimodal task with or without
+%             discrepancy between the auditory and visual cue components.
 %
 %            Set for visual / auditory or bimodal run:
-%            alaisburr('visual=1');
-%            alaisburr('auditory=1');
-%            alaisburr('bimodal=1');
+%            estimation('visual=1');
+%            estimation('auditory=1');
+%            estimation('bimodal=1');
 %
 %            set to run a test of the gamma settings - this is important
 %            because new versions of the operating system do not seem
@@ -16,14 +19,19 @@
 %            reserved colors at the top and on the bottom the gradation
 %            of colors used for the gaussian
 %
-%            alaisburr('doGammaTest=1');
+%            estimation('doGammaTest=1');
 %
-%            To run with a noise background with SNR of 2.5 that updates 4.5 every sec
+%            You can adjust the SNR and background update frequency.
+%            Each should be adjusted to your liking, but be sure to adjust
+%            the frequency to minimize the error messages ('Stimulus is
+%            being displayed on a different noisy background...'). I've
+%            found that 2.05 works. To run with a noise background with SNR of 1.3 that updates
+%            every 2.05 sec:
 %
-%            alaisBurr('SNR=2.5','backgroundFreq=4.5');
+%            estimation('SNR=1.3','backgroundFreq=2.05');
 %
 %            Note that the way the noisy background works there is a maxSNR that
-%            can be achieved which is set by the parameter maxSNR (default to 4)
+%            can be achieved which is set by the parameter maxSNR.
 %            If you set this higher, than the noisy background will be forced to
 %            have lower overall luminace (to achieve the higher SNR). If you set
 %            it lower than the noisy background will have higher overall luminance
@@ -32,27 +40,8 @@
 %            stimulus. Setting stimulusContrast to 1 uses the full range of luminance
 %            values available. Setting to, say, 0.5 would use only half the range
 %            of luminance available (for stimulus and noise)
-%
-%            To run as a staircase (instead of constant stimuli)
-%
-%            alaisburr('visual=1','useStaircase=1');
-%
-%            By default this will get the threshold from the last run and restart
-%            a PEST staircase from there. If you want to start a new staircase
-%            with default parameters:
-%
-%            alaisburr('visual=1','useStaircase=1','restartStaircase=1');
-%
-%            By default there will be 40 trials per staircase, you can change this with:
-%
-%            alaisburr('visual=1','useStaircase=1','nStaircaseTrials=50');
-%
-%            TO run w/out eye tracker calibration
-%
-%            alaisburr('doEyecalib=0');
-%
-%
-function myscreen = alaisburr(varargin)
+
+function myscreen = estimation(varargin)
  
 clear global stimulus
 mglEatKeys('12`');
@@ -250,7 +239,7 @@ if doTestStimSize
     y1 = stimulus.width(iWidth) * sin(d2r(1:360));
     mglLines2(x0, y0, x1, y1, 2, stimulus.colors.red);
     mglFlush;
-    disp(sprintf('(alaisBurr) Screen width: %0.1f Screen height: %0.1f Gaussian width: %0.1f',myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth)));
+    disp(sprintf('(estimation) Screen width: %0.1f Screen height: %0.1f Gaussian width: %0.1f',myscreen.imageWidth, myscreen.imageHeight, stimulus.width(iWidth)));
     askuser('Ok');
   end
   return
@@ -274,7 +263,7 @@ if doTestSNR
       % and blt texture
       mglBltTexture(stimulus.stimTexture(1),[0 0]);mglFlush;
       % see if user wants to continue looking at this one
-      if ~askuser(sprintf('(alaisburr) SNR=%0.1f Display again',stimulus.SNR(iSNR)),-1)
+      if ~askuser(sprintf('(estimation) SNR=%0.1f Display again',stimulus.SNR(iSNR)),-1)
         % go to the next SNR level
 	iSNR = iSNR + 1;
       else
@@ -344,7 +333,7 @@ if stimulus.disp
   if any(~isnan(e{end}.response))
     dispPsychometric(task{1}{1},stimulus);
   else
-    disp(sprintf('(alaisburr) No subject responses to plot psychometric function with.'));
+    disp(sprintf('(estimation) No subject responses to plot psychometric function with.'));
   end
 end
  
@@ -453,17 +442,17 @@ if stimulus.task ~= 2
     if task.thistrial.thisseg == stimulus.interval(1)
       mglBltTexture(stimulus.stimTexture(1),[0 0]);
       if stimulus.background.frameNum ~= stimulus.background.stim1Frame
-	disp(sprintf('!!! (alaisburr) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
+	disp(sprintf('!!! (estimation) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
       end
     elseif task.thistrial.thisseg == stimulus.interval(2)
       mglBltTexture(stimulus.stimTexture(2),[0 0]);
       if stimulus.background.frameNum ~= stimulus.background.stim2Frame
-	disp(sprintf('!!! (alaisburr) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
+	disp(sprintf('!!! (estimation) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
       end
     elseif task.thistrial.thisseg == stimulus.interval(3)
       mglBltTexture(stimulus.stimTexture(3),[0 0]);
       if stimulus.background.frameNum ~= stimulus.background.stim2Frame
-	disp(sprintf('!!! (alaisburr) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
+	disp(sprintf('!!! (estimation) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
       end
       
     elseif task.thistrial.thisseg == 8
@@ -543,10 +532,10 @@ if ~task.thistrial.gotResponse
 	  stimulus.fixColor = stimulus.colors.green;%[0 1 0];
         end
         if ~stimulus.bimodal
-            disp(sprintf('(alaisburr) Trial %i: %0.2f %c correct centerInt %i resp %i', ...
+            disp(sprintf('(estimation) Trial %i: %0.2f %c correct centerInt %i resp %i', ...
              task.trialnum, task.thistrial.diff, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
         else
-            disp(sprintf('(alaisburr) Trial %i: %0.2f %i %c correct centerInt %i resp %i', ...
+            disp(sprintf('(estimation) Trial %i: %0.2f %i %c correct centerInt %i resp %i', ...
              task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
         end
     else
@@ -556,10 +545,10 @@ if ~task.thistrial.gotResponse
 	  stimulus.fixColor = stimulus.colors.red;%[1 0 0];
         end
         if ~stimulus.bimodal
-            disp(sprintf('(alaisburr) Trial %i: %0.2f %c incorrect centerInt %i resp %i', ...
+            disp(sprintf('(estimation) Trial %i: %0.2f %c incorrect centerInt %i resp %i', ...
              task.trialnum, task.thistrial.diff, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
         else
-            disp(sprintf('(alaisburr) Trial %i: %0.2f %i %c incorrect centerInt %i resp %i', ...
+            disp(sprintf('(estimation) Trial %i: %0.2f %i %c incorrect centerInt %i resp %i', ...
              task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
         end
     end
@@ -583,14 +572,14 @@ function stimulus = initStair(stimulus)
 % check to see if there is an existing staircase to
 % run off of for visual
 if ~stimulus.restartStaircase && stimulus.visual && ~stimulus.visualTrain && ~isempty(stimulus.visualStaircase)
-  disp(sprintf('(alaisburr) Setting staircase to threshold from previous run'));
+  disp(sprintf('(estimation) Setting staircase to threshold from previous run'));
   stimulus.stair = doStaircase('init',stimulus.visualStaircase{end});
   return
 end
 
 % or for auditory
 if ~stimulus.restartStaircase && stimulus.auditory && ~stimulus.auditoryTrain && ~isempty(stimulus.auditoryStaircase)
-  disp(sprintf('(alaisburr) Setting staircase to threshold from previous run'));
+  disp(sprintf('(estimation) Setting staircase to threshold from previous run'));
   stimulus.stair = doStaircase('init',stimulus.auditoryStaircase{end});
   return
 end
@@ -613,7 +602,7 @@ if stimulus.tenbit
   if ~isfield(myscreen,'gammaTable')
     stimulus.linearizedGammaTable = mglGetGammaTable;
     disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-    disp(sprintf('(alaisburr:initGratings) No gamma table found in myscreen. Contrast'));
+    disp(sprintf('(estimation:initGratings) No gamma table found in myscreen. Contrast'));
     disp(sprintf('         displays like this should be run with a valid calibration made by moncalib'));
     disp(sprintf('         for this monitor.'));
     disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
@@ -815,7 +804,7 @@ for iColor = 1:stimulus.colors.nReservedColors
   mglTextDraw(sprintf('Color: %i',iColor),[rectX,rectY]);
 end
 
-disp(sprintf('(alaisburr:testGammaTable) Top row should be reserved colors'));
+disp(sprintf('(estimation:testGammaTable) Top row should be reserved colors'));
 
 % setup rect dimensions
 rectHeight = myscreen.imageHeight/2;
@@ -831,7 +820,7 @@ for iColor = stimulus.colors.nReservedColors:255
   mglFillRect(rectX,rectY,[rectWidth rectHeight],colorIndex);
 end
 
-disp(sprintf('(alaisburr:testGammaTable) Bottom row should be stimulus colors'));
+disp(sprintf('(estimation:testGammaTable) Bottom row should be stimulus colors'));
 mglFlush;
 
 tf = askuser('Continue');
@@ -999,7 +988,7 @@ for i = 1:length(testVal)
 end
 percent = k./n;
 
-mlrSmartfig('alaisburr','reuse');clf;
+mlrSmartfig('estimation','reuse');clf;
 h = plot(testVal, percent, 'o', 'MarkerEdgeColor', 'k', 'MarkerFaceColor', 'k', 'MarkerSize', 7);
 ylabel('Proportion of trials probe seen "left"');
 xlabel('Displacement of probe (degs)');
@@ -1014,7 +1003,7 @@ displacement = unique(displ);
 whichint = task.randVars.centerInt;
 whichint = whichint(ind);
 isLeft = cell(1);
-mlrSmartfig('alaisburr','reuse');clf;
+mlrSmartfig('estimation','reuse');clf;
     brewer = brewermap(5, 'Set1');
     for d = 1:length(displacement)
       posdiffConflict{d} = posDiff(displ==displacement(d));
@@ -1099,7 +1088,7 @@ end
 function stimulus = setBackgroundNoise(stimulus, myscreen, task, SNR, backgroundFreq, maxSNR)
 
 if any(SNR > maxSNR)
-  disp(sprintf('(alaisburr:setBackgroundNoise) max SNR is: %0.1f and an SNR of %0.1f was called for. Need to set the maxSNR setting higher - but note that this will change the maximum luminance of the noise background',maxSNR,max(SNR)))
+  disp(sprintf('(estimation:setBackgroundNoise) max SNR is: %0.1f and an SNR of %0.1f was called for. Need to set the maxSNR setting higher - but note that this will change the maximum luminance of the noise background',maxSNR,max(SNR)))
   stimulus = [];
   return
 end
@@ -1118,7 +1107,7 @@ stimulus.background.noiseMax = 1 / (maxSNR + 1);
 % now set all the various SNR levels
 stimulus.background.sigMax = SNR * stimulus.background.noiseMax;
 
-disppercent(-inf,'(alaisburr:setBackgroundNoise) Precomputing background noise images');
+disppercent(-inf,'(estimation:setBackgroundNoise) Precomputing background noise images');
 
 % delete old textures
 if isfield(stimulus,'backTexture') && ~isempty(stimulus.backTexture)
