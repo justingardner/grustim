@@ -49,7 +49,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=[1 4]','visual=0','auditory=0','bimodal=0','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=[10]','visual=0','auditory=0','bimodal=0','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
  % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -166,8 +166,8 @@ mglTextSet('Helvetica',32,[0 0.5 1 1],0,0,0,0,0,0,0);
   
   
 % trial: Fixation + left cue (.015s/.0015s) + ISI (.5s) + probe stimulus (.015) + ISI + right cue (.015s/.0015s) + Resp + ITI
-task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 10];
-task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 10];
+task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 15];
+task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 15];
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1];
 if stimulus.bimodal
   task{1}{1}.numBlocks = 10;
@@ -185,7 +185,7 @@ task{1}{1}.parameter.posDiff = [-20:.8:20];
 task{1}{1}.parameter.rightCue = max(task{1}{1}.parameter.posDiff);
 task{1}{1}.parameter.numberOffsets = length(task{1}{1}.parameter.posDiff)
 if stimulus.task == 3
-  task{1}{1}.parameter.displacement = [0]; % audio-visual discrepancy in bimodal trials 
+  task{1}{1}.parameter.displacement = [0 2.4]; % audio-visual discrepancy in bimodal trials 
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
 task{1}{1}.parameter.width = stimulus.width;
@@ -497,7 +497,15 @@ if task.thistrial.thisseg == stimulus.confidence.segnum
   end
 end
 
-mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
+mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor,[-20 -10]);
+mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor,[-10 -10]);
+mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor,[0 -10]);
+mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor,[10 -10]);
+mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor,[20 -10]);
+
+
+
+
 
 % %draw fixation cross
 % if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
