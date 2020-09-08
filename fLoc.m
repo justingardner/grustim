@@ -122,17 +122,14 @@ end
 % Select trials
 task{1}.parameter.category = 1:(length(stimulus.categories)+1); % 1: characters, 2: bodies, 3: faces, 4: places, 5: objects, 6: blank
 task{1}.parameter.subcategory = 1:2;
+task{1}.randVars.calculated.category_str = NaN;
+task{1}.randVars.calculated.subcategory_str = NaN;
+task{1}.randVars.calculated.blank = NaN;
 
 %% Init task
 [task{1}, myscreen] = initTask(task{1}, myscreen, @startSegmentCallback, @screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% set the second task to be the fixation staircase task
-%[task{2} myscreen] = fixStairInitTask(myscreen);
-
-%% EYE CALIB
-%myscreen = eyeCalibDisp(myscreen);
-
 %% Main Task Loop
 
 mglClearScreen(0.5); 
@@ -170,6 +167,14 @@ function [task, myscreen] = startTrialCallback(task,myscreen)
 
 global stimulus
 
+if task.thistrial.category <= length(stimulus.categories)
+  task.thistrial.category_str = stimulus.categories{task.thistrial.category};
+  task.thistrial.subcategory_str = stimulus.subcategories.(task.thistrial.category_str){task.thistrial.subcategory};
+  task.thistrial.blank = 0;
+else
+  task.thistrial.blank = 1;
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -178,10 +183,9 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 if task.thistrial.category <= length(stimulus.categories)
+  % If non-blank trial
   seg_sample = randi(stimulus.num_samples);
-  trial_category = stimulus.categories{task.thistrial.category};
-  trial_subcat = stimulus.subcategories.(trial_category){task.thistrial.subcategory};
-  seg_image = stimulus.images.(sprintf('%s_%i', trial_subcat, seg_sample));
+  seg_image = stimulus.images.(sprintf('%s_%i', task.thistrial.subcategory_str, seg_sample));
   for i = 1:2
     mglClearScreen(0.5);
     mglBltTexture(seg_image, [0, 0, stimulus.imSize, stimulus.imSize]);
@@ -190,8 +194,6 @@ if task.thistrial.category <= length(stimulus.categories)
   end
 end
     
-% Save segment start time;
-task.thistrial.tSegStart(task.thistrial.thisseg) = mglGetSecs;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -202,7 +204,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
 % Select which stimulus to display as a function of time since seg start
-timeSinceSegStart = mglGetSecs(task.thistrial.tSegStart(task.thistrial.thisseg));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Called When a Response Occurs %%%%%%%%%%%%%%%%%%%%
