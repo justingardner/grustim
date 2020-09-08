@@ -26,12 +26,13 @@ stimulus = struct;
 
 % add arguments later
 scan = 0;
-getArgs(varargin,{'scan=0'}, 'verbose=1');
+getArgs(varargin,{'scan=0', 'oban=1'}, 'verbose=1');
 stimulus.scan = scan;
+stimulus.oban = oban;
 clear scan;
 
 %% Setup Screen
-if stimulus.scan
+if stimulus.scan || stimulus.oban;
   myscreen = initScreen('fMRIprojFlex');
 else
   myscreen = initScreen('VPixx2');
