@@ -15,9 +15,10 @@
 %             speed: speed of dots
 %             dir: direction of dots (in degrees for linear)
 %             coherence: coherence of dots (from 0 to 1)
-%             type: type of dots. linear (default) is 2D linear
-%                   motion. opticFlow is an optic flow field (note 
-%                   that direction for opticFlow goes from -1 to 1 (in to out)
+%             type: type of dots. 
+%                   linear (default): 2D linear motion.
+%                   opticFlow: optic flow field (diection for opticFlow goes from -1 to 1 (in to out))
+%                   glass: Glass pattern
 %             dotSize: size in pixels of dots
 %             density: dots per deg^2
 %             contrast: contrast of dots
@@ -68,7 +69,7 @@ function dots = dotsInit(varargin)
 
 % parse arguments
 contrast = 1;type='linear';dir = 1;
-getArgs(varargin,{'xCenter=0','yCenter=0','width=5','height=[]','speed=1','dir=1','coherence=1','type=linear','dotSize=4','density=5','contrast=1','framesPerSecond=60','mask=1','drawType=mgl'});
+getArgs(varargin,{'xCenter=0','yCenter=0','width=5','height=[]','speed=1','dir=1','coherence=1','type=linear','dotSize=4','density=5','contrast=1','framesPerSecond=60','mask=1','drawType=mgl','dotColor=blackAndWhite'});
 
 % set parameters of dots
 dots.width = width;
@@ -89,6 +90,7 @@ dots.contrast = contrast;
 dots.framesPerSecond = framesPerSecond;
 dots.setCenter = @setCenter;
 dots = dots.setCenter(dots,xCenter,yCenter);
+dots.color = dotColor;
 
 % mask
 dots.mask = mask;
@@ -103,14 +105,27 @@ if strcmp(dots.type,'linear')
   dots.setSpeed = @setSpeedLinear;
   dots.setDir = @setDirLinear;
   dots.update = @updateDotsLinear;
+  % no orientation for linear dots
+  dots.setOrientation = @(dots,param) parameterDoesNotExist(dots,param,'orientation');
   % init the dots
   dots = initDotsLinear(dots);
 elseif strcmp(dots.type,'opticflow')
   dots.setSpeed = @setSpeedOpticflow;
   dots.setDir = @setDirOpticflow;
   dots.update = @updateDotsOpticflow;
+  % no orientation for opticflow
+  dots.setOrientation = @(dots,param) parameterDoesNotExist(dots,param,'orientation');
   % init the dots
   dots = initDotsOpticflow(dots);
+elseif strcmp(dots.type,'glass')
+  % no speed or direction for glass patterns
+  dots.setSpeed = @(dots,param) parameterDoesNotExist(dots,param,'speed');
+  dots.setDir = @(dots,param) parameterDoesNotExist(dots,param,'dir');
+  dots.setOrientation = @setOrientationGlass;
+  dots.update = @updateDotsGlass;
+  dots.setGlassType = @setGlassType;
+  % init the dots
+  dots = initDotsGlass(dots);
 else
   disp(sprintf('(dotsInit) Unknown dot type: %s',dots.type));
   keyboard
@@ -127,9 +142,20 @@ else
 end
 
 % set color of each dot
-dots.blackOrWhite  = 2*(rand(1,dots.n) > 0.5)-1;
-dots.black = dots.blackOrWhite == -1;
-dots.white = dots.blackOrWhite == 1;
+if strcmp(dots.color,'blackAndWhite')
+  dots.blackOrWhite  = 2*(rand(1,dots.n) > 0.5)-1;
+  dots.black = dots.blackOrWhite == -1;
+  dots.white = dots.blackOrWhite == 1;
+elseif strcmp(dots.color,'black')
+  dots.black = ones(1,dots.n);
+  dots.white = zeros(1,dots.n);
+elseif strcmp(dots.color,'white')
+  dots.black = zeros(1,dots.n);
+  dots.white = ones(1,dots.n);
+else
+  disp(sprintf('(dotsInit) Unknown color setting: %s',color));
+  keyboard
+end
 
 % set contrast
 dots.setContrast = @setContrast;
@@ -235,6 +261,40 @@ axis square
 drawnow;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% parameter does not exist
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = parameterDoesNotExist(dots,param,parameterName)
+
+% display warning
+disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
+disp(sprintf('(dotsInit:) !!! Dots of type: %s do not have a %s !!!',dots.type,parameterName));
+disp('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Linear
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% create dots for linear
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = initDotsLinear(dots)
+
+% get the number of dots
+dots.n = round(dots.width*dots.height*dots.density);
+
+% get max and min points for dots
+dots.xmin = -dots.width/2;
+dots.xmax = dots.width/2;
+dots.ymin = -dots.height/2;
+dots.ymax = dots.height/2;
+
+% get initial position
+dots.x = rand(1,dots.n)*dots.width;
+dots.y = rand(1,dots.n)*dots.height;
+
+% get the step size
+dots.stepsize = dots.speed/dots.framesPerSecond;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set the dots speed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function dots = setSpeedLinear(dots,speed)
@@ -282,6 +342,72 @@ dots.x(dots.x < dots.xmin) = dots.x(dots.x < dots.xmin)+dots.width;
 dots.x(dots.x > dots.xmax) = dots.x(dots.x > dots.xmax)-dots.width;
 dots.y(dots.y < dots.ymin) = dots.y(dots.y < dots.ymin)+dots.height;
 dots.y(dots.y > dots.ymax) = dots.y(dots.y > dots.ymax)-dots.height;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Optic flow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% create dots for optic flow
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = initDotsOpticflow(dots)
+
+% focal length to projection plane
+% projection plane is defined to be 
+% 1 unit wide and high, so with 
+% this focal length, we are looking at
+% a view of the world with a 90 deg fov
+dots.f = .5;
+
+% translation and rotation matrices
+dots = setSpeedOpticflow(dots,dots.speed);
+dots.R = [0 0 0];
+
+% maximum depth of points
+dots.maxZ = 10;dots.minZ = dots.f;
+dots.maxX = 10;
+dots.maxY = 10;
+
+% make a brick of points
+dots.n = round(dots.width*dots.height*dots.density);
+
+% initial position of dots
+dots.X = 2*dots.maxX*rand(1,dots.n)-dots.maxX;
+dots.Y = 2*dots.maxY*rand(1,dots.n)-dots.maxY;
+dots.Z = (dots.maxZ-dots.minZ)*rand(1,dots.n)+dots.minZ;
+
+% get projection on to plane
+dots.xproj = dots.f*dots.X./dots.Z;
+dots.yproj = dots.f*dots.Y./dots.Z;
+
+% put into screen coordinates
+dots.x = dots.xproj*dots.width+dots.xCenter;
+dots.y = dots.yproj*dots.height+dots.yCenter;
+
+% set incoherent dots to 0
+dots.isIncoherent = rand(1,dots.n) > dots.coherence;
+dots.incoherentn = sum(dots.isIncoherent);
+dots.isCoherent = ~dots.isIncoherent;
+
+% init random translation
+dots.randT = zeros(3,dots.incoherentn);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set the dots speed
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = setSpeedOpticflow(dots,speed)
+
+% get the step size
+dots.speed = speed;
+dots.T = [0 0 dots.speed/dots.framesPerSecond];
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% set the dots direction
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = setDirOpticflow(dots,direction)
+
+% get the step size
+dots.T = [0 0 direction*dots.speed/dots.framesPerSecond];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step dots for opticflow
@@ -349,12 +475,15 @@ dots.y = dots.yproj*dots.height+dots.yCenter;
 %disp(sprintf('min: %f median: %f',minSpeed,medianSpeed));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% create dots for linear2
+% Glass patterns
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dots = initDotsLinear(dots)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% create dots for Glass
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = initDotsGlass(dots)
 
 % get the number of dots
-dots.n = round(dots.width*dots.height*dots.density);
+dots.n = 2 * round(dots.width*dots.height*dots.density/2);
 
 % get max and min points for dots
 dots.xmin = -dots.width/2;
@@ -362,72 +491,72 @@ dots.xmax = dots.width/2;
 dots.ymin = -dots.height/2;
 dots.ymax = dots.height/2;
 
-% get initial position
-dots.x = rand(1,dots.n)*dots.width;
-dots.y = rand(1,dots.n)*dots.height;
+% set color to white
+dots.color = 'white';
 
-% get the step size
-dots.stepsize = dots.speed/dots.framesPerSecond;
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% set the dots speed
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dots = setSpeedOpticflow(dots,speed)
-
-% get the step size
-dots.speed = speed;
-dots.T = [0 0 dots.speed/dots.framesPerSecond];
-
+% set the glass type
+dots = setGlassType(dots,'translation',0.1);
+% set orientation
+dots = setOrientationGlass(dots,0);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% set the dots direction
+% set the orientation
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dots = setDirOpticflow(dots,direction)
+function dots = setOrientationGlass(dots,orientation)
 
-% get the step size
-dots.T = [0 0 direction*dots.speed/dots.framesPerSecond];
+% keep orientation in radians
+dots.orientation = pi*orientation/180;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% create dots for optic flow
+% set the glass type
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function dots = initDotsOpticflow(dots)
+function dots = setGlassType(dots,type,stepSize)
 
-% focal length to projection plane
-% projection plane is defined to be 
-% 1 unit wide and high, so with 
-% this focal length, we are looking at
-% a view of the world with a 90 deg fov
-dots.f = .5;
+% make lower
+type = lower(type);
 
-% translation and rotation matrices
-dots = setSpeedOpticflow(dots,dots.speed);
-dots.R = [0 0 0];
+% check type
+if ~any(strcmp(type,{'translation','rotation','expansion'}))
+  disp(sprintf('(initDots:setGlassType) Unknown Glass type: %s'));
+  keyboard
+end
 
-% maximum depth of points
-dots.maxZ = 10;dots.minZ = dots.f;
-dots.maxX = 10;
-dots.maxY = 10;
+% set the type as a number for faster check in screen update
+dots.glassType = find(strcmp(type,{'translation','rotation','expansion'}));
 
-% make a brick of points
-dots.n = round(dots.width*dots.height*dots.density);
+% set the stepSize
+if strcmp(type,'rotation')
+  dots.stepSize = pi*stepSize/180;
+else
+  dots.stepSize = stepSize;
+end
+  
 
-% initial position of dots
-dots.X = 2*dots.maxX*rand(1,dots.n)-dots.maxX;
-dots.Y = 2*dots.maxY*rand(1,dots.n)-dots.maxY;
-dots.Z = (dots.maxZ-dots.minZ)*rand(1,dots.n)+dots.minZ;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% step dots for glass
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function dots = updateDotsGlass(dots)
 
-% get projection on to plane
-dots.xproj = dots.f*dots.X./dots.Z;
-dots.yproj = dots.f*dots.Y./dots.Z;
+% get one pattern
+dots.x = rand(1,dots.n/2)*dots.width + dots.xmin;
+dots.y = rand(1,dots.n/2)*dots.height + dots.ymin;
 
-% put into screen coordinates
-dots.x = dots.xproj*dots.width+dots.xCenter;
-dots.y = dots.yproj*dots.height+dots.yCenter;
+% which glass Type
+if dots.glassType == 1
+  % translation
+  dots.x(end+1:end+dots.n/2) = dots.x + cos(dots.orientation) * dots.stepSize;
+  dots.y(end+1:end+dots.n/2) = dots.y + sin(dots.orientation) * dots.stepSize;
+  % FIX what to do if outside of min and max?
+elseif dots.glassType == 2
+  % rotation
+  [theta r] = cart2pol(dots.x,dots.y);
+  theta = theta + dots.stepSize;
+  [dots.x(end+1:end+dots.n/2) dots.y(end+1:end+dots.n/2)] = pol2cart(theta,r);
+elseif dots.glassType == 3
+  % expansion
+  [theta r] = cart2pol(dots.x,dots.y);
+  r = r + r * dots.stepSize;
+  [dots.x(end+1:end+dots.n/2) dots.y(end+1:end+dots.n/2)] = pol2cart(theta,r);
+end
+  
 
-% set incoherent dots to 0
-dots.isIncoherent = rand(1,dots.n) > dots.coherence;
-dots.incoherentn = sum(dots.isIncoherent);
-dots.isCoherent = ~dots.isIncoherent;
-
-% init random translation
-dots.randT = zeros(3,dots.incoherentn);
