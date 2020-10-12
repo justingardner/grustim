@@ -23,13 +23,15 @@ noeye = 0;
 eyewindow=0; 
 rebuild = 0;
 test =0;
+practice = 0;
 
-getArgs(varargin,{'plots=0','noeye=0','eyewindow=2','rebuild=1','test=0'});
+getArgs(varargin,{'plots=0','noeye=0','eyewindow=2','rebuild=1','test=0','practice=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.eyewindow = eyewindow;
-stimulus.cats.remaining = 0:19;
+stimulus.cats.remaining = setdiff(0:20,1);
 stimulus.rebuild = rebuild;
+stimulus.practice = practice;
 
 clear plots noeye eyewindow load
 
@@ -43,9 +45,11 @@ if ~isempty(mglGetSID) && isdir(sprintf('~/data/spatobj/%s',mglGetSID))
         fname = files(end).name;
         s = load(sprintf('~/data/spatobj/%s/%s',mglGetSID,fname));
         % copy staircases and run numbers
-        stimulus.cats = s.stimulus.cats;
+        if ~s.stimulus.practice
+            stimulus.cats = s.stimulus.cats;
+            disp(sprintf('(spatobj) Data file: %s loaded.',fname));
+        end
         clear s;
-        disp(sprintf('(spatobj) Data file: %s loaded.',fname));
     else
         warning('(spatobj) Unable to load previous data files. If this is *not* the first run there is something wrong.');
     end
@@ -53,6 +57,11 @@ end
 
 disp(sprintf('(spatobj) %i categories remaining (total trials %i)',length(stimulus.cats.remaining),length(stimulus.cats.remaining)*80));
 
+%% Check practic emode
+if stimulus.practice
+    disp(sprintf('(spatobj) PRACTICE MODE\n(spatobj)Loading only tree category'));
+    stimulus.cats.remaining = 1;
+end
 
 %% Load iamges
 
@@ -63,7 +72,7 @@ if stimulus.rebuild
     
     % meta data columns
     %   1        2               3
-    % idx  target categ  distractors_only
+    % idx  target loc        target cat
     [metaHeader, metaData] = csvreadh('~/data/spatobj/stimuli_meta_ints.csv');
     metaData = metaData(1:size(metaData,1)-1,:);
     metaData(:,1) = metaData(:,1)+1; % add 1 for matlab indexing
@@ -80,13 +89,13 @@ if stimulus.rebuild
     %   1        2
     % idx    category
     exData(:,1) = 1:size(exData,1);
-    temp = repmat(0:19,5,1);
+    temp = repmat(0:20,5,1);
     exData(:,2) = temp(:);
 end
 
 %% Rename some categories
-orig = {'bakery','garden spider','long-horned beetle','analog clock'};
-new = {'baked goods','spider','beetle','clock'};
+orig = {'bakery','garden spider','long-horned beetle','analog clock','coffee','Ferris wheel'};
+new = {'baked goods','spider','beetle','clock','coffee beans','ferris wheel'};
 
 for oi = 1:length(orig)
     idx = cellfun(@(x) strcmp(x,orig{oi}),stimulus.cats.categories);
@@ -134,7 +143,7 @@ stimulus.live.last.done = false;
 stimulus.arrayWidth = round(9*myscreen.screenWidth/myscreen.imageWidth); % in pixels
 disp(sprintf('Images will be resized to %1.2f pixels to match 9 degrees',stimulus.arrayWidth));
 
-if ~isempty(resizedData) && ~isempty(resizedExamples) && size(resizedData,2)==stimulus.arrayWidth
+if ~stimulus.rebuild && ~isempty(resizedData) && ~isempty(resizedExamples) && size(resizedData,2)==stimulus.arrayWidth
     disp('Resized images are being loaded -- if this is the first run for this subject, [esc] and clear all');
     data = resizedData;
     examples = resizedExamples;
@@ -221,6 +230,7 @@ taskPhase.random = 1;
 taskPhase.parameter.imageNumber = 1:20;
 taskPhase.parameter.targetPresent = [0 1];
 taskPhase.parameter.targetCategory = nan;
+taskPhase.parameter.targetPosition = nan;
 taskPhase.parameter.focal = [0 1];
 taskPhase.randVars.calculated.duration = nan; % we will randomize duration from 50 ms to 150 ms;
 taskPhase.randVars.calculated.dead = nan;
@@ -370,8 +380,9 @@ stimulus.live.framesRemaining = task.thistrial.duration;
 
 % build the stimulus image for this trial
 
+disp('WARNING: STOP HERE TO TEST THAT IMAGES ARE ACTUALLY GETTING LOADED CORRECTLY, ALSO STILL NEED TO ADD THE FOCAL CUE DIRECTION USING TASK.THISTRIAL.TARGETPOSITION');
 % first get images of this target category
-cData = sel(stimulus.live.metaData,3,task.thistrial.targetCategory);
+cData = stimulus.live.metaData(stimulus.live.metaData(:,3)==task.thistrial.targetCategory,:);
 if task.thistrial.targetPresent
     cData = cData(cData(:,2)>=0,:);
 else
@@ -390,6 +401,7 @@ end
 
 cData = cData(task.thistrial.imageNumber,:);
 
+task.thistrial.targetPosition = cData(2); % this will be -1 when target is absent
 task.thistrial.imgCat0 = cData(4);
 task.thistrial.imgCat1 = cData(5);
 task.thistrial.imgCat2 = cData(6);
@@ -449,7 +461,16 @@ mglFixationCross(0.5,0.5,stimulus.live.fixColor);
 % if this is the cue stimulus, color white in the directions to be attended
 if task.thistrial.thisseg==stimulus.seg.cue
     if task.thistrial.focal
-        mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
+        switch task.thistrial.targetPosition
+%             case 0
+%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
+%             case 1
+%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
+%             case 2
+%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
+%             case 3
+%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
+        end
     else
         mglLines2(-0.25,-0.25,0.25,0.25,1,stimulus.colors.white);
         mglLines2(-0.25,0.25,0.25,-0.25,1,stimulus.colors.white);
