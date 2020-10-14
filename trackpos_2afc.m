@@ -23,14 +23,14 @@ else
     myscreen.subjectID  = mglGetSID;
     myscreen.saveData = 1;
 end
-
-myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
-myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
+% 
+% myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
+% myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 myscreen.hideCursor = 1;
 myscreen = initScreen(myscreen);
 
 % Experimenter parameters
-grabframe       = 1; 
+grabframe       = 0; 
 
 %%
 % Go straight to task.
@@ -39,9 +39,9 @@ grabframe       = 1;
 % S3: stimulus 2 period (0.5s)
 % S4: repsonse period (2s)
 % S5: random period of fixation (1~3s)
-task{1}{1}.segmin = [0.5 0.5 0.5 1.5 1];
-task{1}{1}.segmax = [0.5 0.5 0.5 1.5 2];
-task{1}{1}.numTrials = 150;
+task{1}{1}.segmin = [0.5 1 0.5 1.5 1];
+task{1}{1}.segmax = [0.5 1 0.5 1.5 2];
+task{1}{1}.numTrials = 100;
 task{1}{1}.getResponse = [0 0 0 1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
 
@@ -50,11 +50,11 @@ task{1}{1}.runfixedint  = 0; % run staircase
 task{1}{1}.blankrun     = 1;
 
 % stimulus and background
-task{1}{1}.parameter.backLum    = 32; %32;  % background luminance; units: fraction of full luminance 
+task{1}{1}.parameter.backLum    = 156; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 0; % noise luminance, if there is one.
 task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
 teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
-task{1}{1}.parameter.stimLum    = teststimLum(2); % choose medium condition.
+task{1}{1}.parameter.stimLum    = teststimLum(2); % choose lowlum condition.
 teststimDur   = [0.3 0.2 0.1];
 
 %task parameters
@@ -98,7 +98,7 @@ stimulus = [];
 if task{1}{1}.runfixedint == 0
     stimulus.stairUp        = 1;
     stimulus.stairDown      = 2;
-    stimulus.stairStepSize  = 0.05;
+    stimulus.stairStepSize  = 0.01;
     stimulus.stairUseLevitt = 0;
     stimulus.stairUsePest   = 1;    % use PEST
     stimulus.stairRep       = 50;   % repeat staircase every [stairRep] trials

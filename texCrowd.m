@@ -17,12 +17,13 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'periph=1','plots=0','noeye=1', 'analyze=0', 'training=0'}, 'verbose=1');
+getArgs(varargin,{'periph=1','plots=0','noeye=1', 'analyze=0', 'training=0', 'crowders_present=1'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.training = training;
 stimulus.analyze = analyze;
 stimulus.periph = periph;
+stimulus.crowders_present = crowders_present;
 clear noeye plots training analyze
 
 if stimulus.analyze
@@ -117,12 +118,12 @@ stimulus.poolSizes = {'1x1', '2x2', '3x3', '4x4'};
 stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
 % Trial parameters
-task{1}.parameter.crowders_present = [0, 1];
+task{1}.parameter.crowders_present = [stimulus.crowders_present];
 task{1}.parameter.distractor_layer = 1:length(stimulus.layerNames);
 task{1}.parameter.distractor_poolsize = 1:length(stimulus.poolSizes);
 
 % Make numTrials some multiple of number of TrialTypes 
-task{1}.numTrials = 180;
+task{1}.numTrials = 240;
 task{1}.random = 1;
 
 %%% Task Variables
@@ -131,8 +132,13 @@ task{1}.randVars.uniform.imgFam = 1:length(stimulus.imNames);
 task{1}.randVars.uniform.targetPosition = 1:3; % Track target position
 
 % Crowder parameters
-task{1}.randVars.uniform.crowder_imgfam = 1:length(stimulus.imNames);
-task{1}.randVars.uniform.crowder_layer = 1:length(stimulus.layerNames);
+if stimulus.crowders_present == 1
+    task{1}.randVars.uniform.crowder_imgfam = 1:length(stimulus.imNames);
+    task{1}.randVars.uniform.crowder_layer = 1:length(stimulus.layerNames);
+else % if stimulus.crowders_present==2, assign imgfam and layer to same as target at startTrial.
+    task{1}.randVars.calculated.crowder_imgfam = NaN;
+    task{1}.randVars.calculated.crowder_layer = NaN;
+end
 task{1}.randVars.uniform.crowder_poolsize = 1:length(stimulus.poolSizes);
 
 if stimulus.training
@@ -250,6 +256,10 @@ stimulus.live.targetImg = stimulus.live.stims.(imName);
 oddball_text = 'original';
 
 %% Load both crowder images for this trial
+if task.thistrial.crowders_present == 2
+    task.thistrial.crowder_imgfam = task.thistrial.imgFam;
+    task.thistrial.crowder_layer = task.thistrial.distractor_layer;
+end
 crowder_imgfam = stimulus.imNames{task.thistrial.crowder_imgfam};
 crowder_layer = stimulus.layerNames{task.thistrial.crowder_layer};
 crowder_poolsize = stimulus.poolSizes{task.thistrial.crowder_poolsize};
