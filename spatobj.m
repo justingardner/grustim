@@ -24,14 +24,16 @@ eyewindow=0;
 rebuild = 0;
 test =0;
 practice = 0;
+pause = 0;
 
-getArgs(varargin,{'plots=0','noeye=0','eyewindow=2','rebuild=1','test=0','practice=0'});
+getArgs(varargin,{'plots=0','noeye=0','eyewindow=2','rebuild=1','test=0','practice=0','pause=0'});
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.eyewindow = eyewindow;
 stimulus.cats.remaining = setdiff(0:20,1);
 stimulus.rebuild = rebuild;
 stimulus.practice = practice;
+stimulus.pause = pause;
 
 clear plots noeye eyewindow load
 
@@ -185,8 +187,8 @@ end
 %% Setup Examples Phase
 
 exPhase = struct;
-exPhase.segmin = [inf inf inf inf inf inf];
-exPhase.segmax = [inf inf inf inf inf inf];
+exPhase.segmin = [inf inf inf inf inf inf inf];
+exPhase.segmax = [inf inf inf inf inf inf inf];
 exPhase.getResponse = ones(size(exPhase.segmin));
 
 exPhase.waitForBacktick = 0;
@@ -344,6 +346,8 @@ mglClearScreen();
 if task.thistrial.thisseg == 1
     mglTextDraw('Search for: ',[0 1]);
     mglTextDraw(stimulus.cats.categories{task.thistrial.targetCategory+1},[0 -1]);
+elseif task.thistrial.thisseg == 7  
+    mglTextDraw('Ready?',[0 0]);
 else
     mglBltTexture(stimulus.live.exemplar,[0 0]);
 end
@@ -372,7 +376,11 @@ if task.trialnum == 1
 end
 
 % set the duration of this trial
-task.thistrial.duration = randsample([1 2 4 8 16 32],1);
+if stimulus.pause
+    task.thistrial.duration = inf;
+else
+    task.thistrial.duration = randsample([1 2 4 8 16 32],1);
+    end1111111
 stimulus.live.framesRemaining = task.thistrial.duration;
 
 % stim segment is inf, so we have to jumpSegment when the frames are
@@ -400,7 +408,21 @@ end
 
 cData = cData(task.thistrial.imageNumber,:);
 
-task.thistrial.targetPosition = cData(2); % this will be -1 when target is absent
+if task.thistrial.focal
+    if task.thistrial.targetPresent
+        task.thistrial.targetPosition = cData(2); % this will be -1 when target is absent
+    else
+        % on focal trials with the target not present we have a problem
+        % targetPosition is -1, but we still want to show a cue
+        if cData(2)~=-1
+            warning('serious error in data');
+            keyboard
+        end
+        task.thistrial.targetPosition = floor(mod(cData(1),20)/5);
+    end
+else
+    task.thistrial.targetPosition = cData(2);
+end
 task.thistrial.imgCat0 = cData(4);
 task.thistrial.imgCat1 = cData(5);
 task.thistrial.imgCat2 = cData(6);
