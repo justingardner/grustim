@@ -306,14 +306,14 @@ stimulus = rmfield(stimulus,'live');
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-if stimulus.plots
-    disp('(spatobj) Displaying plots');
-    dispInfo(stimulus);
-end
+% if stimulus.practice
+%     disp('(spatobj) Displaying plots');
+%     dispInfo(stimulus);
+% end
 
 %%%%%%%%%%%%%%%%%%%%%%%%% EXPERIMENT OVER: HELPER FUNCTIONS FOLLOW %%%%%%%%
 
-function dispInfo()
+% function dispInfo(stimulus)
 %%
 
 function [task, myscreen] = exampleSegmentCallback(task,myscreen)
@@ -380,7 +380,7 @@ if stimulus.pause
     task.thistrial.duration = inf;
 else
     task.thistrial.duration = randsample([1 2 4 8 16 32],1);
-    end1111111
+end
 stimulus.live.framesRemaining = task.thistrial.duration;
 
 % stim segment is inf, so we have to jumpSegment when the frames are
