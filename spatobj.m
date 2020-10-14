@@ -380,7 +380,6 @@ stimulus.live.framesRemaining = task.thistrial.duration;
 
 % build the stimulus image for this trial
 
-disp('WARNING: STOP HERE TO TEST THAT IMAGES ARE ACTUALLY GETTING LOADED CORRECTLY, ALSO STILL NEED TO ADD THE FOCAL CUE DIRECTION USING TASK.THISTRIAL.TARGETPOSITION');
 % first get images of this target category
 cData = stimulus.live.metaData(stimulus.live.metaData(:,3)==task.thistrial.targetCategory,:);
 if task.thistrial.targetPresent
@@ -462,14 +461,14 @@ mglFixationCross(0.5,0.5,stimulus.live.fixColor);
 if task.thistrial.thisseg==stimulus.seg.cue
     if task.thistrial.focal
         switch task.thistrial.targetPosition
-%             case 0
-%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
-%             case 1
-%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
-%             case 2
-%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
-%             case 3
-%                 mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
+            case 0
+                mglLines2(0,0,-0.25,0.25,1,stimulus.colors.white);
+            case 1
+                mglLines2(0,0,0.25,0.25,1,stimulus.colors.white);
+            case 2
+                mglLines2(0,0,-0.25,-0.25,1,stimulus.colors.white);
+            case 3
+                mglLines2(0,0,0.25,-0.25,1,stimulus.colors.white);
         end
     else
         mglLines2(-0.25,-0.25,0.25,0.25,1,stimulus.colors.white);
