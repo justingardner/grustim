@@ -1,6 +1,6 @@
 % estimation.m
 %
-%      usage: myscreen = estimation()
+%      usage: estimation()
 %         by: josh wilson
 %       date: August 2020
 %    purpose: Estimate the position of a probe stimulus between 2 cues on a
@@ -12,6 +12,7 @@
 %            estimation('visual=1');
 %            estimation('auditory=1');
 %            estimation('bimodal=1');
+%            to run a training condition with feedback, set 'tt=1'
 %
 %            set to run a test of the gamma settings - this is important
 %            because new versions of the operating system do not seem
@@ -39,7 +40,7 @@
 %            which sets the overall luminance contrast that is used for the 
 %            stimulus. Setting stimulusContrast to 1 uses the full range of luminance
 %            values available. Setting to, say, 0.5 would use only half the range
-%            of luminance available (for stimulus and noise)
+%            of luminance available (for stimulus and noise
 
 function myscreen = estimation(varargin)
  
@@ -49,7 +50,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=[1 4]','visual=0','auditory=0','bimodal=0','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=[2]','visual=1','auditory=0','bimodal=0','tt=1','dispPlots=0','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','doEyecalib=0','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
 
  % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -164,11 +165,12 @@ stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
 stimulus.feedback.segnum = 8;
 mglTextSet('Helvetica',32,[0 0.5 1 1],0,0,0,0,0,0,0);
   
-  
+task{1}{1}.tt = tt
 % trial: Fixation + left cue (.015s/.0015s) + ISI (.5s) + probe stimulus (.015) + ISI + right cue (.015s/.0015s) + Resp + ITI
 task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 10];
 task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 10];
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1];
+if task{1}{1}.tt; task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 5 5]; task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI stimulus.stimDur stimulus.ISI 5 5]; task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0]; end;
 if stimulus.bimodal
   task{1}{1}.numBlocks = 10;
 elseif stimulus.visual || stimulus.auditory
@@ -185,7 +187,7 @@ task{1}{1}.parameter.posDiff = [-20:.8:20];
 task{1}{1}.parameter.rightCue = max(task{1}{1}.parameter.posDiff);
 task{1}{1}.parameter.numberOffsets = length(task{1}{1}.parameter.posDiff)
 if stimulus.task == 3
-  task{1}{1}.parameter.displacement = [0]; % audio-visual discrepancy in bimodal trials 
+  task{1}{1}.parameter.displacement = [0 2.4]; % audio-visual discrepancy in bimodal trials 
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
 task{1}{1}.parameter.width = stimulus.width;
@@ -231,7 +233,7 @@ if doTestStimSize
     % draw gaussian
     mglBltTexture(stimulus.tex(iWidth),[0 0]);
     % draw fixation cross
-    mglFixationCross(1,1,stimulus.colors.white,[ 0 0]);
+    %mglFixationCross(1,1,stimulus.colors.white,[ 0 0]);
     % draw circle around gaussian width
     x0 = stimulus.width(iWidth) * cos(d2r(0:359));
     y0 = stimulus.width(iWidth) * sin(d2r(0:359));
@@ -356,7 +358,6 @@ if task.thistrial.thisseg == 1
   %set cue locations
   task.thistrial.xposV(1) = -20;
   task.thistrial.xposV(3) = 20;
-  task.thistrial.xposV(2) = [task.thistrial.posDiff];
   task.thistrial.xposA(1) = -20;
   task.thistrial.xposA(3) = 20;
   %visual  stimulus position
@@ -414,9 +415,10 @@ if task.thistrial.thisseg == 8
   if exist('task.thistrial.reactionTime', 'var')
     task.thistrial.rt = task.thistrial.reactionTime;
   end
-  stimulus.trialnum = stimulus.trialnum+1;
   
 end
+
+stimulus.trialnum = stimulus.trialnum+1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
@@ -455,9 +457,8 @@ if stimulus.task ~= 2
 	disp(sprintf('!!! (estimation) Stimulus is being displayed on a different noisy background then what is currently being presented. You should adjust the backgroundFreq until this no longer happens'));
       end
       
-    elseif task.thistrial.thisseg == 8
+    elseif task.thistrial.thisseg == 8 || task.thistrial.thisseg == 9
         mglBltTexture(stimulus.backTexture(stimulus.background.frameOrder(stimulus.background.frameNum)),[0 0]);
-        
     else
       % display background
       % see if we need to update frame number
@@ -496,8 +497,17 @@ if task.thistrial.thisseg == stimulus.confidence.segnum
     task.randVars.calculated.est = [task.randVars.calculated.est, task.thistrial.confidence];
   end
 end
+if task.thistrial.thisseg == 9
+drawCorrect(task.thistrial.posDiff, stimulus)
+k=2;
+end
 
-mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
+%if task.thistrial.thisseg == stimulus.confidence.segnum+1;
+%correctEstimate = sprintf('%.0f',task.thistrial.confidence*100);
+%mglTextDraw(correctEstimate,[0 0]);
+%end
+
+%mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 
 % %draw fixation cross
 % if task.thistrial.thisseg == 5 || task.thistrial.thisseg == 6
@@ -1224,6 +1234,7 @@ function drawConfidence(confidenceLevel, stimulus)
 guessValue = sprintf('%.0f',confidenceLevel*100);
 mglTextDraw(guessValue,[0 0]);
 
+
 %%%%%%%%%%%%%%%%%%%%%%% 
 %    setConfidence    %
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -1258,6 +1269,8 @@ else
   confidenceDone = 0;
 end
 
-
+function drawCorrect(task, stimulus)
+cg = sprintf('%.0f',(task+20)*2.5);
+mglTextDraw(cg,[0 0]);
 
 
