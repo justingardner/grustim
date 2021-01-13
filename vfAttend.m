@@ -3,34 +3,12 @@
 %      usage: vfAttned
 %         by: justin gardner & josh wilson
 %       date: 10/2020
-%    purpose: Template for using the gamma lookup table to get better luminance resolution.
-%             You still have 8 bits of color values that you can display at any given time,
-%             but you can set the gamma table so that if the maximum contrast stimulus you
-%             want to show is 0.5 for instance, that you will get as fine as possible
-%             steps of luminance values. This is useful if you want to do contrast discrimination
-%             experiments in which you wish to show very small differences in contrast (especially
-%             at low pedestal contrast).
-%
-%             This is done by pre-computing a set of gratings of all possible contrasts given
-%             8 bits of color (minus any reserved colors). 
-
-%
-%             Then you set the gamma table to the maximum contrast you want to display on the contrast
-%             at a given time (say 0.5) 
-%
-%             setGammaTableForMaxContrast(0.5);
-% 
-%             Then you extract the correct grating by getting what grating index correspondes to your deisred
-%             contrast (say you wanted to show a grating of 0.35);
-%
-%             gratingIndex = getContrastIndex(0.35);
-%
-%             want to display)
-%
-%             mglBltTexture(stimulus.tex(contrastIndex),[0 0 5]);
+%    purpose: Contrast discrimination task with attentional component.
+%    Seperate staircases for each quadrant and each attentional cue
+%    (8 total - 4 quadrants; distributed and side cues).
 %
 %
-function myscreen = vfAttend(varargin)
+function myscreen = vfAttend(varargin);
 
 % check arguments
 if ~any(nargin == [0 1])
@@ -65,43 +43,44 @@ stimulus.grating.sdy = stimulus.grating.width/7;
 
 %staircase
 stimulus.useStaircase = 1;
-stimulus.initialThreshold = 3;
+stimulus.initialThreshold = 7;
 stimulus.initialStepsize = 1;
 stimulus.minThreshold = 1;
 stimulus.maxThreshold = 5;
-stimulus.minStepsize = 0.25;
+stimulus.minStepsize = 0.05;
 stimulus.maxStepsize = .75;
 stimulus.restartStaircase = 1
 
-stimulus = initStair(stimulus)
+stimulus = initStair(stimulus);
 
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up task and initialize parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-task{1}{1}.seglen = [2 2 1 2 1 3];
-task{1}{1}.getResponse = [0 0 0 0 0 1]
+task{1}{1}.seglen = [1 1 .5 .5 .75 1.5];
+task{1}{1}.getResponse = [0 0 0 0 0 1];
 task{1}{1}.parameter.quadrant = [1:4];
 task{1}{1}.parameter.contrast = [.5]; %base contrast
-task{1}{1}.randVars.uniform.jitterA = [-.1:.01:0]  %contrast jitter for each 4 quadrants
-task{1}{1}.randVars.uniform.jitterB = [-.1:.01:0]
-task{1}{1}.randVars.uniform.jitterC = [-.1:.01:0]
-task{1}{1}.randVars.uniform.jitterD = [-.1:.01:0]
+task{1}{1}.randVars.uniform.jitterA = [-.1:.01:0];  %contrast jitter for each 4 quadrants
+task{1}{1}.randVars.uniform.jitterB = [-.1:.01:0];
+task{1}{1}.randVars.uniform.jitterC = [-.1:.01:0];
+task{1}{1}.randVars.uniform.jitterD = [-.1:.01:0];
 task{1}{1}.random = 1;
-task{1}{1}.location.x = 11 %localize stimuli, masks, and attention/response cues
-task{1}{1}.location.y = 8
-task{1}{1}.locjit = 2
-task{1}{1}.randVars.whichDiff = [0 1] %% which stimuli in the quadrant will be the comparison (0 top, 1 bottom)
-task{1}{1}.parameter.attend = [1 2] %% how many segments the subject attends to = 2 segments = 1 side
-task{1}{1}.parameter.contDiff = [3] %% base contrast is divided by this value
+task{1}{1}.location.x = 11; %localize stimuli, masks, and attention/response cues
+task{1}{1}.location.y = 8;
+task{1}{1}.randVars.whichDiff = [0 1]; %% which stimuli in the quadrant will be the comparison (0 top, 1 bottom)
+task{1}{1}.parameter.attend = [1 2]; %% how many segments the subject attends to = 2 segments = 1 side
+task{1}{1}.parameter.contDiff = [2]; %% base contrast is divided by this value
 
-task{1}{1}.parameter.calculated.att = nan
+task{1}{1}.parameter.calculated.att = nan;
 task{1}{1}.randVars.calculated.resp = nan;
-task{1}{1}.randVars.calculated.correct = nan;
+task{1}{1}.randVars.calculated.correct = nan
+task{1}{1}.randVars.calculated.staircor = {nan;nan;nan;nan;nan;nan;nan;nan}
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.bottom = nan;
 task{1}{1}.parameter.calculated.quad = nan;
+task{1}{1}.parameter.calculated.stairDiff = nan;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks and stimulus
@@ -113,6 +92,23 @@ for phaseNum = 1:length(task{1})
   [task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
 end
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% find rough starting threshold value
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+quickThreshold=1;
+if quickThreshold
+    doThreshold(task,stimulus)
+end
+    k=2
+ 
+    
+    
+    
+    
+    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -182,8 +178,7 @@ jitter(7:8) = task.thistrial.jitterD;
 
 
 % choose proper staircase and get comparison contrast
-stairNum = pickStair(task)
-stimulus.stairNum = stairNum
+stairNum = pickStair(task); stimulus.stairNum = stairNum;
 [testValue, stimulus.stair(stairNum)] = doStaircase('testValue', stimulus.stair(stairNum));
 task.thistrial.stairDiff = testValue;
 
@@ -194,10 +189,9 @@ for index = 1:8;
         contrastIndex(index) = getContrastIndex(task.thistrial.contrast+jitter(index));
     end;
 end
-lj = task.locjit; % offset cues to make spiral
 
 % blt texture in 8 locations - quadrants numbered clockwise from top right
-% update ^ that's wrong lol figure out specific numbers later
+% update ^ that's wrong; figure out specific numbers later
 mglBltTexture(stimulus.tex(contrastIndex(1)),[task.location.x task.location.y-stimulus.grating.height/2 stimulus.grating.height]);
 mglBltTexture(stimulus.tex(contrastIndex(2)),[task.location.x task.location.y+stimulus.grating.height/2 stimulus.grating.height]);
 mglBltTexture(stimulus.tex(contrastIndex(3)),[task.location.x -task.location.y-stimulus.grating.height/2 stimulus.grating.height]);
@@ -207,9 +201,6 @@ mglBltTexture(stimulus.tex(contrastIndex(6)),[-task.location.x -task.location.y+
 mglBltTexture(stimulus.tex(contrastIndex(7)),[-task.location.x task.location.y-stimulus.grating.height/2 stimulus.grating.height]);
 mglBltTexture(stimulus.tex(contrastIndex(8)),[-task.location.x task.location.y+stimulus.grating.height/2 stimulus.grating.height]);
 
-if task.trialnum == 9
-    k=2
-end
 
 % and mask with the gaussian
 mglBltTexture(stimulus.mask,[task.location.x task.location.y-stimulus.grating.height/2]);
@@ -239,23 +230,21 @@ end
 if task.thistrial.attend == 2
 if task.thistrial.quadrant == 1 || task.thistrial.quadrant == 2; x = 1; y = 1; a = 1; b = -1; elseif task.thistrial.quadrant == 3 || task.thistrial.quadrant == 4; x = -1; y=1; a = -1; b = -1; end;
 mglFillOval(a, b, [.5 .5],  [0 0 0]);
+mglFillOval(-a, -b, [.5 .5],  [0 0 0]);
+mglFillOval(-x, -y, [.5 .5],  [0 0 0]);
 end
 
 mglFillOval(x, y, [.5 .5],  [0 0 0]);
     
 end
 
-% put up the fixation cross with reserved color 5
+% fixation cross and cue boxes
 mglFixationCross(2,2,[0 0 0]);
 x0 = task.location.x-stimulus.grating.width/2; y0 = task.location.y-stimulus.grating.height; x1 = task.location.x+stimulus.grating.width/2; y1 = task.location.y+stimulus.grating.height;
-
-
-lj = 1.2*task.locjit; %spirality offset
 mglLines2(x0, y0, x0, y1, 2, [0 0 0]);mglLines2(x0, y0, x1, y0, 2, [0 0 0]);mglLines2(x1, y0, x1, y1, 2, [0 0 0]);mglLines2(x0, y1, x1, y1, 2, [0 0 0]);
 mglLines2(-x0, y0, -x0, y1, 2, [0 0 0]);mglLines2(-x0, y0, -x1, y0, 2, [0 0 0]);mglLines2(-x1, y0, -x1, y1, 2, [0 0 0]);mglLines2(-x0, y1, -x1, y1, 2, [0 0 0]);
 mglLines2(x0, -y0, x0, -y1, 2, [0 0 0]);mglLines2(x0, -y0, x1, -y0, 2, [0 0 0]);mglLines2(x1, -y0, x1, -y1, 2, [0 0 0]);mglLines2(x0, -y1, x1, -y1, 2, [0 0 0]);
 mglLines2(-x0, -y0, -x0, -y1, 2, [0 0 0]);mglLines2(-x0, -y0, -x1, -y0, 2, [0 0 0]);mglLines2(-x1, -y0, -x1, -y1, 2, [0 0 0]);mglLines2(-x0, -y1, -x1, -y1, 2, [0 0 0]);
-keyboard
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    responseCallback    %
@@ -280,13 +269,16 @@ if ~task.thistrial.gotResponse
         task.thistrial.correct = 1;
     else task.thistrial.correct = 0; end;
     
-    
 end
-task.randVars.calculated.resp = [task.randVars.calculated.resp task.thistrial.whichButton]
+
+
+task.randVars.calculated.resp = [task.randVars.calculated.resp task.thistrial.whichButton];
 task.randVars.calculated.bottom = [task.randVars.calculated.bottom task.thistrial.whichDiff];
-task.randVars.calculated.correct = [task.randVars.calculated.correct task.thistrial.correct]
+task.randVars.calculated.correct = [task.randVars.calculated.correct task.thistrial.correct];
+task.randVars.calculated.staircor{stimulus.stairNum} = [task.randVars.calculated.staircor{stimulus.stairNum} task.thistrial.correct];
 task.parameter.calculated.quad = [task.parameter.calculated.quad task.thistrial.quadrant] ;
-task.parameter.calculated.att = [task.parameter.calculated.att task.thistrial.attend]
+task.parameter.calculated.att = [task.parameter.calculated.att task.thistrial.attend];
+task.parameter.calculated.stairDiff = [task.parameter.calculated.stairDiff task.thistrial.stairDiff];
 
 disp(sprintf('contrast %f',task.thistrial.stairDiff));
 stimulus.stair(stimulus.stairNum) = doStaircase('update', stimulus.stair(stimulus.stairNum), task.thistrial.correct);
@@ -471,3 +463,47 @@ elseif task.thistrial.quadrant == 3 && task.thistrial.attend == 2; stairNum = 6;
 elseif task.thistrial.quadrant == 4 && task.thistrial.attend == 1; stairNum = 7;
 elseif task.thistrial.quadrant == 4 && task.thistrial.attend == 2; stairNum = 8;end;
 
+
+
+function doThreshold(task,stimulus)
+setGammaTableForMaxContrast(1);
+comparison = [4 1 6 2 9 7 4]; %will cycle through in order; 1 is no difference
+if length(comparison) ~= 8; sprintf('!!! comparison array should be 8 values !!!'), keyboard; end
+    for index = 1:8;
+        contrastIndex(index) = getContrastIndex(task{1}{1}.parameter.contrast/index);
+    end
+    mglClearScreen(stimulus.colors.grayColor); mglFlush;
+    keyboard
+    %stimuli here
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]); mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(2)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(4)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(8)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
+    pause(.5)
+    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
+    keyboard
