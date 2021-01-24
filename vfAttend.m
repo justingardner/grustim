@@ -1,11 +1,16 @@
-% cpoolrule
 %
-%      usage: vfAttned
+%      usage: vfAttend
 %         by: justin gardner & josh wilson
 %       date: 10/2020
 %    purpose: Contrast discrimination task with attentional component.
 %    Seperate staircases for each quadrant and each attentional cue
 %    (8 total - 4 quadrants; distributed and side cues).
+%
+%    
+%
+%
+%
+%
 %
 %
 function myscreen = vfAttend(varargin);
@@ -16,6 +21,12 @@ if ~any(nargin == [0 1])
   return
 end
 
+% get arguments
+getArgs(varargin,{'quickThreshold=1','testXvals=[8 1 5 -4 -6 -8 2 7]','testYvals=[11 5 -6 -9 5 -6 10 7]','gradientThresh=0','randThresh=1'},'verbose=1');
+
+% set up screen
+screenParams = mglGetScreenParams;
+stimulus.displayDistance = screenParams{1}.displayDistance*.01;
 myscreen = initScreen;
 
 % init the stimulus
@@ -92,23 +103,13 @@ for phaseNum = 1:length(task{1})
   [task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
 end
 
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % find rough starting threshold value
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-quickThreshold=1;
 if quickThreshold
-    doThreshold(task,stimulus)
+    doThreshold(task,stimulus,randThresh,testXvals,testYvals)
 end
-    k=2
- 
-    
-    
-    
-    
-    
+       
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -465,45 +466,46 @@ elseif task.thistrial.quadrant == 4 && task.thistrial.attend == 2; stairNum = 8;
 
 
 
-function doThreshold(task,stimulus)
+
+function doThreshold(task,stimulus,randThresh,testXvals,testYvals)
 setGammaTableForMaxContrast(1);
-comparison = [4 1 6 2 9 7 4]; %will cycle through in order; 1 is no difference
+comparison = [4 1 6 2 8 7 4 1]; %will cycle through in order; 1 is no difference
 if length(comparison) ~= 8; sprintf('!!! comparison array should be 8 values !!!'), keyboard; end
-    for index = 1:8;
-        contrastIndex(index) = getContrastIndex(task{1}{1}.parameter.contrast/index);
-    end
+    
+%initiate gaussians for comparison
+for index = 1:8;
+contrastIndex(index) = getContrastIndex(task{1}{1}.parameter.contrast/(index));
+end  
+
+    %%%% random presentation %%%%
+    if randThresh == 1
     mglClearScreen(stimulus.colors.grayColor); mglFlush;
     keyboard
     %stimuli here
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]); mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(2)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(4)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(8)),[8 11-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[8 11+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[8 11+stimulus.grating.height/2]); mglFlush
-    pause(.5)
-    mglClearScreen(stimulus.colors.grayColor); mglFlush; %clear
-    keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(1) testYvals(1)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(1) testYvals(1)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[testXvals(1) testYvals(1)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(1) testYvals(1)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(2))),[testXvals(2) testYvals(2)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(2) testYvals(2)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(2) testYvals(2)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(2) testYvals(2)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(3) testYvals(3)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(3) testYvals(3)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[testXvals(3) testYvals(3)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(3) testYvals(3)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush; keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(4))),[testXvals(4) testYvals(4)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(4) testYvals(4)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(4) testYvals(4)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(4) testYvals(4)+stimulus.grating.height/2]); mglFlush;pause(.5); mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(5) testYvals(5)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(5) testYvals(5)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[testXvals(5) testYvals(5)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(5) testYvals(5)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(6) testYvals(6)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(6) testYvals(6)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[testXvals(6) testYvals(6)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(6) testYvals(6)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(7) testYvals(7)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(7) testYvals(7)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[testXvals(7) testYvals(7)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(7) testYvals(7)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(8))),[testXvals(8) testYvals(8)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(8) testYvals(8)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(8) testYvals(8)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(8) testYvals(8)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+    end
+    
+    %%%% gradient presentation %%%%%
+    if gradientThresh==1
+    gradientX=[-18:(36/7):18] %x and y coordinates of the the gradient comparisons
+    gradientY = -10
+    mglClearScreen(stimulus.colors.grayColor);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(1) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[gradientX(1) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(1) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(1) gradientY+stimulus.grating.height/2]);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(2) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(2))),[gradientX(2) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(2) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(2) gradientY+stimulus.grating.height/2]);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(3) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[gradientX(3) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(3) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(3) gradientY+stimulus.grating.height/2]);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(4) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(4))),[gradientX(4) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(4) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(4) gradientY+stimulus.grating.height/2]);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(5) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[gradientX(5) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(5) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(5) gradientY+stimulus.grating.height/2]);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(6) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[gradientX(6) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(6) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(6) gradientY+stimulus.grating.height/2]);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(7) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[gradientX(7) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(7) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(7) gradientY+stimulus.grating.height/2]);
+    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(8) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(8))),[gradientX(8) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(8) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(8) gradientY+stimulus.grating.height/2]);
+    mglFlush 
+    keyboard    
+    end
+    
