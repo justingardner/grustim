@@ -2,27 +2,23 @@
 %      usage: vfAttend
 %         by: justin gardner & josh wilson
 %       date: 10/2020
-%    purpose: Contrast discrimination task with attentional component.
-%    Seperate staircases for each quadrant and each attentional cue
-%    (8 total - 4 quadrants; distributed and side cues).
-%
-%    
-%
-%
-%
-%
-%
-%
+%   purpose: Contrast discrimination task with spatial attentional component.
+%   Seperate staircases for each quadrant and each attentional cue
+%	(8 total - 4 quadrants; distributed and side cues).
+
+
+
+
 function myscreen = vfAttend(varargin);
 
 % check arguments
 if ~any(nargin == [0 1])
-  help taskTemplateContrast10bit
-  return
+help taskTemplateContrast10bit
+return
 end
 
 % get arguments
-getArgs(varargin,{'quickThreshold=1','testXvals=[8 1 5 -4 -6 -8 2 7]','testYvals=[11 5 -6 -9 5 -6 10 7]','gradientThresh=0','randThresh=1'},'verbose=1');
+getArgs(varargin,{'quickThreshold=0','testXvals=[8 1 5 -4 -6 -8 2 7]','testYvals=[11 5 -6 -9 5 -6 10 7]','gradientThresh=0','randThresh=1','Eye=1','eyewindow=5'},'verbose=1');
 
 % set up screen
 screenParams = mglGetScreenParams;
@@ -40,6 +36,11 @@ myscreen = initStimulus('stimulus',myscreen);
 % second color, in this case white, you would do
 % mglClearScreen(stimulus.colors.reservedColor(2));
 stimulus.colors.reservedColors = [0 0 0; 1 1 1; 0 .65 0; 1 0 0];
+
+% eye tracking
+stimulus.eye = Eye
+stimulus.eyewindow = eyewindow
+stimulus.eyeFrames = myscreen.framesPerSecond * 0.300; % eye movements occur when for 300 ms someone moves out of the fixation region
 
 % grating parameters
 stimulus.grating.radius = 2.25;
@@ -69,7 +70,9 @@ stimulus = initStair(stimulus);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set up task and initialize parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-task{1}{1}.seglen = [1 1 .5 .5 .75 1.5];
+
+task{1}{1}.seglen = [1 1 .5 .5 .75 1.5]; %% empty, cue, empty, stimulus, empty, response
+if stimulus.eye == 1; task{1}{1}.seglen = [1 1 inf .5 .75 1.5]; end; %% wait for fixation to begin eye tracking trials
 task{1}{1}.getResponse = [0 0 0 0 0 1];
 task{1}{1}.parameter.quadrant = [1:4];
 task{1}{1}.parameter.contrast = [.5]; %base contrast
@@ -84,6 +87,7 @@ task{1}{1}.randVars.whichDiff = [0 1]; %% which stimuli in the quadrant will be 
 task{1}{1}.parameter.attend = [1 2]; %% how many segments the subject attends to = 2 segments = 1 side
 task{1}{1}.parameter.contDiff = [2]; %% base contrast is divided by this value
 
+% empty arrays to store stuff for analysis
 task{1}{1}.parameter.calculated.att = nan;
 task{1}{1}.randVars.calculated.resp = nan;
 task{1}{1}.randVars.calculated.correct = nan
@@ -92,6 +96,7 @@ task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.randVars.calculated.bottom = nan;
 task{1}{1}.parameter.calculated.quad = nan;
 task{1}{1}.parameter.calculated.stairDiff = nan;
+taskPhase.randVars.calculated.dead = nan;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initialze tasks and stimulus
@@ -100,20 +105,22 @@ stimulus = initGratings(stimulus,myscreen,task);
 
 % initialze tasks
 for phaseNum = 1:length(task{1})
-  [task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
+[task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback,@responseCallback);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % find rough starting threshold value
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if quickThreshold
-    doThreshold(task,stimulus,randThresh,testXvals,testYvals)
+doThreshold(task,stimulus,randThresh,testXvals,testYvals)
 end
-       
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if stimulus.eye
 myscreen = eyeCalibDisp(myscreen);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the tasks
@@ -123,10 +130,10 @@ tnum = 1;
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
-  % update the task
-  [task{1} myscreen phaseNum] = updateTask(task{1},myscreen,phaseNum);
-  % flip screen
-  myscreen = tickScreen(myscreen,task);
+% update the task
+[task{1} myscreen phaseNum] = updateTask(task{1},myscreen,phaseNum);
+% flip screen
+myscreen = tickScreen(myscreen,task);
 end
 
 % if we got here, we are at the end of the experiment
@@ -156,6 +163,9 @@ disp(sprintf('(taskTemplateContrast10bit:startSegmentCallback) Displaying contra
 if task.thistrial.thisseg ==1
 setGammaTableForMaxContrast(1);
 end
+stimulus.live.fixCount = 0;
+stimulus.live.eyeCount = 0;
+task.thistrial.dead = false;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -166,11 +176,23 @@ global stimulus;
 
 % clear screen to gray
 mglClearScreen(stimulus.colors.grayColor);
+if task.thistrial.dead && mglGetSecs(stimulus.live.deadTime)>1
+task = jumpSegment(task,3);
+end
+% skip screen updates if you are already dead
+if task.thistrial.dead
+if task.thistrial.dead
+mglTextSet([],32,stimulus.colors.red);
+mglTextDraw('Eye Movement Detected',[0 0]);
+end
+return
+end
+
 
 %% display gratings %%
-if task.thistrial.thisseg == 4 
-    
-    
+if task.thistrial.thisseg == 4
+
+
 % get the contrast index
 jitter(1:2) = task.thistrial.jitterA; %make indexable jitter string (same quadrants have same jitter)
 jitter(3:4) = task.thistrial.jitterB;
@@ -184,11 +206,11 @@ stairNum = pickStair(task); stimulus.stairNum = stairNum;
 task.thistrial.stairDiff = testValue;
 
 for index = 1:8;
-    if (2*task.thistrial.quadrant-task.thistrial.whichDiff) == index;
-        contrastIndex(index) = getContrastIndex((task.thistrial.contrast+jitter(index))/task.thistrial.stairDiff);
-    else;
-        contrastIndex(index) = getContrastIndex(task.thistrial.contrast+jitter(index));
-    end;
+if (2*task.thistrial.quadrant-task.thistrial.whichDiff) == index;
+contrastIndex(index) = getContrastIndex((task.thistrial.contrast+jitter(index))/task.thistrial.stairDiff);
+else;
+contrastIndex(index) = getContrastIndex(task.thistrial.contrast+jitter(index));
+end;
 end
 
 % blt texture in 8 locations - quadrants numbered clockwise from top right
@@ -223,8 +245,8 @@ end
 
 
 if task.thistrial.thisseg == 2 %%  cue attention segment
-    
-if task.thistrial.attend == 1    
+
+if task.thistrial.attend == 1
 if task.thistrial.quadrant == 1; x = 1; y=1;elseif task.thistrial.quadrant == 2; x = 1; y=-1; elseif task.thistrial.quadrant == 3; x = -1; y=-1; elseif task.thistrial.quadrant == 4; x = -1; y=1; end;
 end
 
@@ -236,7 +258,7 @@ mglFillOval(-x, -y, [.5 .5],  [0 0 0]);
 end
 
 mglFillOval(x, y, [.5 .5],  [0 0 0]);
-    
+
 end
 
 % fixation cross and cue boxes
@@ -247,6 +269,42 @@ mglLines2(-x0, y0, -x0, y1, 2, [0 0 0]);mglLines2(-x0, y0, -x1, y0, 2, [0 0 0]);
 mglLines2(x0, -y0, x0, -y1, 2, [0 0 0]);mglLines2(x0, -y0, x1, -y0, 2, [0 0 0]);mglLines2(x1, -y0, x1, -y1, 2, [0 0 0]);mglLines2(x0, -y1, x1, -y1, 2, [0 0 0]);
 mglLines2(-x0, -y0, -x0, -y1, 2, [0 0 0]);mglLines2(-x0, -y0, -x1, -y0, 2, [0 0 0]);mglLines2(-x1, -y0, -x1, -y1, 2, [0 0 0]);mglLines2(-x0, -y1, -x1, -y1, 2, [0 0 0]);
 
+
+% do eye position tracking, but only during some segments
+if (stimulus.eye) && (stimulus.eyewindow>0) && task.thistrial.thisseg==3
+% check eye pos
+[pos,~] = mglEyelinkGetCurrentEyePos;
+
+% compute distance
+dist = hypot(pos(1),pos(2));
+
+if task.thistrial.thisseg==3
+if stimulus.live.fixCount > stimulus.eyeFrames
+task = jumpSegment(task);
+elseif ~any(isnan(pos))
+if dist < stimulus.eyewindow
+stimulus.live.fixCount = stimulus.live.fixCount + 1;
+else
+stimulus.live.fixCount = 0;
+end
+end
+else
+% Eye movement detection code
+if (stimulus.eye) && (stimulus.eyewindow>0) && ~task.thistrial.dead
+if ~any(isnan(pos))
+if dist > stimulus.eyewindow && stimulus.live.eyeCount > stimulus.eyeFrames
+disp('Eye movement detected!!!!');
+stimulus.live.deadTime = mglGetSecs;
+task.thistrial.dead = 1;
+return
+elseif dist > stimulus.eyewindow
+stimulus.live.eyeCount = stimulus.live.eyeCount + 1;
+end
+end
+end
+end
+end
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    responseCallback    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -254,22 +312,22 @@ function [task myscreen] = responseCallback(task,myscreen)
 global stimulus
 % here, we just check whether this is the first time we got a response
 if ~task.thistrial.gotResponse
-    if task.thistrial.whichDiff == 0 && task.thistrial.whichButton == 1
-        task.thistrial.correct == 1
-    elseif task.thistrial.whichDiff == 0 && task.thistrial.whichButton == 2
-        task.thistrial.correct == 0
-    elseif task.thistrial.whichDiff == 1 && task.thistrial.whichButton == 1
-        task.thistrial.correct == 1
-    elseif task.thistrial.whichDiff == 1 && task.thistrial.whichButton == 2
-        task.thistrial.correct == 0
-    end
-        
-    task.thistrial.rt = task.thistrial.reactionTime;
+if task.thistrial.whichDiff == 0 && task.thistrial.whichButton == 1
+task.thistrial.correct == 1
+elseif task.thistrial.whichDiff == 0 && task.thistrial.whichButton == 2
+task.thistrial.correct == 0
+elseif task.thistrial.whichDiff == 1 && task.thistrial.whichButton == 1
+task.thistrial.correct == 1
+elseif task.thistrial.whichDiff == 1 && task.thistrial.whichButton == 2
+task.thistrial.correct == 0
+end
 
-    if (task.thistrial.whichDiff == 0 && task.thistrial.whichButton == 1) || (task.thistrial.whichDiff == 1 && task.thistrial.whichButton == 2) %% press 1 for top, 2 for bottom
-        task.thistrial.correct = 1;
-    else task.thistrial.correct = 0; end;
-    
+task.thistrial.rt = task.thistrial.reactionTime;
+
+if (task.thistrial.whichDiff == 0 && task.thistrial.whichButton == 1) || (task.thistrial.whichDiff == 1 && task.thistrial.whichButton == 2) %% press 1 for top, 2 for bottom
+task.thistrial.correct = 1;
+else task.thistrial.correct = 0; end;
+
 end
 
 
@@ -303,12 +361,12 @@ maxIndex = 255;
 
 % get gamma table
 if ~isfield(myscreen,'gammaTable')
-  stimulus.linearizedGammaTable = mglGetGammaTable;
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
-  disp(sprintf('(taskTemplateContrast10bit:initGratings) No gamma table found in myscreen. Contrast'));
-  disp(sprintf('         displays like this should be run with a valid calibration made by moncalib'));
-  disp(sprintf('         for this monitor.'));
-  disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+stimulus.linearizedGammaTable = mglGetGammaTable;
+disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
+disp(sprintf('(taskTemplateContrast10bit:initGratings) No gamma table found in myscreen. Contrast'));
+disp(sprintf('         displays like this should be run with a valid calibration made by moncalib'));
+disp(sprintf('         for this monitor.'));
+disp(sprintf('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'));
 end
 stimulus.linearizedGammaTable = myscreen.initScreenGammaTable;
 
@@ -318,11 +376,11 @@ disppercent(-inf,'Creating grating textures');
 %  number of reserved colors
 stimulus.colors.nReservedColors = size(stimulus.colors.reservedColors,1);
 
-% number of colors possible for gratings, make sure that we 
+% number of colors possible for gratings, make sure that we
 % have an odd number
 stimulus.colors.nGratingColors = maxIndex+1-stimulus.colors.nReservedColors;
 if iseven(stimulus.colors.nGratingColors)
-  stimulus.colors.nGratingColors = stimulus.colors.nGratingColors-1;
+stimulus.colors.nGratingColors = stimulus.colors.nGratingColors-1;
 end
 % min, mid and max index of gratings colors (index values are 0 based)
 stimulus.colors.minGratingIndex = maxIndex+1-stimulus.colors.nGratingColors;
@@ -336,17 +394,17 @@ stimulus.colors.grayColor = stimulus.colors.midGratingIndex/maxIndex;
 
 % set the reserved colors - this gives a convenient value between 0 and 1 to use the reserved colors with
 for i = 1:stimulus.colors.nReservedColors
-  stimulus.colors.reservedColor(i) = (i-1)/maxIndex;
+stimulus.colors.reservedColor(i) = (i-1)/maxIndex;
 end
 
 % make the window through with the gratings will be displayed
 gaussianWin = mglMakeGaussian(stimulus.grating.width,stimulus.grating.height,stimulus.grating.sdx,stimulus.grating.sdy);
 if strcmp(stimulus.grating.windowType,'gabor')
-  % a gaussian window
-  win = maxIndex-maxIndex*gaussianWin;
+% a gaussian window
+win = maxIndex-maxIndex*gaussianWin;
 else
-  % a simple window
-  win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
+% a simple window
+win = maxIndex-maxIndex*(gaussianWin>exp(-1/2));
 end
 mask = ones(size(win,1),size(win,2),4)*stimulus.colors.midGratingIndex;
 mask(:,:,4) = win;
@@ -356,12 +414,12 @@ stimulus.mask = mglCreateTexture(mask);
 % range of indexes available to us. The 1st texture is gray the nth texture is full
 % contrast for the current gamma setting
 for iContrast = 0:stimulus.colors.nDisplayContrasts
-  disppercent(iContrast/stimulus.colors.nDisplayContrasts);
-  if myscreen.userHitEsc,mglClose;keyboard,end
-  % make the grating
-  thisGrating = round(iContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,0)+stimulus.colors.midGratingIndex);
-  % create the texture
-  stimulus.tex(iContrast+1) = mglCreateTexture(thisGrating);
+disppercent(iContrast/stimulus.colors.nDisplayContrasts);
+if myscreen.userHitEsc,mglClose;keyboard,end
+% make the grating
+thisGrating = round(iContrast*mglMakeGrating(stimulus.grating.width,nan,stimulus.grating.sf,0,0)+stimulus.colors.midGratingIndex);
+% create the texture
+stimulus.tex(iContrast+1) = mglCreateTexture(thisGrating);
 end
 disppercent(inf);
 
@@ -382,14 +440,14 @@ contrastIndex = min(round(stimulus.colors.nDisplayContrasts*desiredContrast/stim
 
 % display the desired and actual contrast values if verbose is set
 if verbose
-  actualContrast = stimulus.currentMaxContrast*(contrastIndex/stimulus.colors.nDisplayContrasts);
-  disp(sprintf('(getContrastIndex) Desired contrast: %0.4f Actual contrast: %0.4f Difference: %0.4f',desiredContrast,actualContrast,desiredContrast-actualContrast));
+actualContrast = stimulus.currentMaxContrast*(contrastIndex/stimulus.colors.nDisplayContrasts);
+disp(sprintf('(getContrastIndex) Desired contrast: %0.4f Actual contrast: %0.4f Difference: %0.4f',desiredContrast,actualContrast,desiredContrast-actualContrast));
 end
 
 % out of range check
 if round(stimulus.colors.nDisplayContrasts*desiredContrast/stimulus.currentMaxContrast)>stimulus.colors.nDisplayContrasts
- disp(sprintf('(getContrastIndex) Desired contrast (%0.9f) out of range max contrast : %0.9f',desiredContrast,stimulus.currentMaxContrast));
- keyboard
+disp(sprintf('(getContrastIndex) Desired contrast (%0.9f) out of range max contrast : %0.9f',desiredContrast,stimulus.currentMaxContrast));
+keyboard
 end
 
 % 1 based indexes (0th index is gray, nDisplayContrasts+1 is full contrast)
@@ -415,22 +473,22 @@ gammaTable(1:size(stimulus.colors.reservedColors,1),1:size(stimulus.colors.reser
 
 % set the gamma table
 if maxContrast > 0
-  % create the rest of the gamma table
-  cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
-  luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nGratingColors-1)):cmax;
+% create the rest of the gamma table
+cmax = 0.5+maxContrast/2;cmin = 0.5-maxContrast/2;
+luminanceVals = cmin:((cmax-cmin)/(stimulus.colors.nGratingColors-1)):cmax;
 
-  % now get the linearized range
-  redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
-  greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
-  blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
-  
-  % add these values to the table
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
+% now get the linearized range
+redLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,luminanceVals,'linear');
+greenLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,luminanceVals,'linear');
+blueLinearized = interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,luminanceVals,'linear');
+
+% add these values to the table
+gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,:)=[redLinearized;greenLinearized;blueLinearized]';
 else
-  % if we are asked for 0 contrast then simply set all the values to gray
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,1)=interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,0.5,'linear');
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,2)=interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,0.5,'linear');
-  gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,3)=interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,0.5,'linear');
+% if we are asked for 0 contrast then simply set all the values to gray
+gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,1)=interp1(0:1/255:1,stimulus.linearizedGammaTable.redTable,0.5,'linear');
+gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,2)=interp1(0:1/255:1,stimulus.linearizedGammaTable.greenTable,0.5,'linear');
+gammaTable((stimulus.colors.minGratingIndex:stimulus.colors.maxGratingIndex)+1,3)=interp1(0:1/255:1,stimulus.linearizedGammaTable.blueTable,0.5,'linear');
 end
 
 % set the gamma table
@@ -471,41 +529,40 @@ function doThreshold(task,stimulus,randThresh,testXvals,testYvals)
 setGammaTableForMaxContrast(1);
 comparison = [4 1 6 2 8 7 4 1]; %will cycle through in order; 1 is no difference
 if length(comparison) ~= 8; sprintf('!!! comparison array should be 8 values !!!'), keyboard; end
-    
+
 %initiate gaussians for comparison
 for index = 1:8;
 contrastIndex(index) = getContrastIndex(task{1}{1}.parameter.contrast/(index));
-end  
+end
 
-    %%%% random presentation %%%%
-    if randThresh == 1
-    mglClearScreen(stimulus.colors.grayColor); mglFlush;
-    keyboard
-    %stimuli here
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(1) testYvals(1)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(1) testYvals(1)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[testXvals(1) testYvals(1)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(1) testYvals(1)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(2))),[testXvals(2) testYvals(2)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(2) testYvals(2)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(2) testYvals(2)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(2) testYvals(2)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(3) testYvals(3)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(3) testYvals(3)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[testXvals(3) testYvals(3)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(3) testYvals(3)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush; keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(4))),[testXvals(4) testYvals(4)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(4) testYvals(4)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(4) testYvals(4)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(4) testYvals(4)+stimulus.grating.height/2]); mglFlush;pause(.5); mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(5) testYvals(5)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(5) testYvals(5)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[testXvals(5) testYvals(5)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(5) testYvals(5)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(6) testYvals(6)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(6) testYvals(6)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[testXvals(6) testYvals(6)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(6) testYvals(6)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(7) testYvals(7)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(7) testYvals(7)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[testXvals(7) testYvals(7)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(7) testYvals(7)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
-    mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(8))),[testXvals(8) testYvals(8)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(8) testYvals(8)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(8) testYvals(8)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(8) testYvals(8)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
-    end
-    
-    %%%% gradient presentation %%%%%
-    if gradientThresh==1
-    gradientX=[-18:(36/7):18] %x and y coordinates of the the gradient comparisons
-    gradientY = -10
-    mglClearScreen(stimulus.colors.grayColor);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(1) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[gradientX(1) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(1) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(1) gradientY+stimulus.grating.height/2]);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(2) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(2))),[gradientX(2) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(2) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(2) gradientY+stimulus.grating.height/2]);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(3) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[gradientX(3) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(3) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(3) gradientY+stimulus.grating.height/2]);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(4) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(4))),[gradientX(4) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(4) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(4) gradientY+stimulus.grating.height/2]);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(5) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[gradientX(5) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(5) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(5) gradientY+stimulus.grating.height/2]);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(6) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[gradientX(6) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(6) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(6) gradientY+stimulus.grating.height/2]);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(7) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[gradientX(7) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(7) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(7) gradientY+stimulus.grating.height/2]);
-    mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(8) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(8))),[gradientX(8) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(8) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(8) gradientY+stimulus.grating.height/2]);
-    mglFlush 
-    keyboard    
-    end
-    
+%%%% random presentation %%%%
+if randThresh == 1
+mglClearScreen(stimulus.colors.grayColor); mglFlush;
+keyboard
+%stimuli here
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(1) testYvals(1)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(1) testYvals(1)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[testXvals(1) testYvals(1)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(1) testYvals(1)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(2))),[testXvals(2) testYvals(2)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(2) testYvals(2)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(2) testYvals(2)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(2) testYvals(2)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(3) testYvals(3)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(3) testYvals(3)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[testXvals(3) testYvals(3)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(3) testYvals(3)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush; keyboard
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(4))),[testXvals(4) testYvals(4)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(4) testYvals(4)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(4) testYvals(4)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(4) testYvals(4)+stimulus.grating.height/2]); mglFlush;pause(.5); mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(5) testYvals(5)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(5) testYvals(5)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[testXvals(5) testYvals(5)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(5) testYvals(5)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(6) testYvals(6)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(6) testYvals(6)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[testXvals(6) testYvals(6)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(6) testYvals(6)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(7) testYvals(7)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(7) testYvals(7)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[testXvals(7) testYvals(7)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(7) testYvals(7)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+mglClearScreen(stimulus.colors.grayColor); mglBltTexture(stimulus.tex(contrastIndex(comparison(8))),[testXvals(8) testYvals(8)-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(8) testYvals(8)-stimulus.grating.height/2]);mglBltTexture(stimulus.tex(contrastIndex(1)),[testXvals(8) testYvals(8)+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[testXvals(8) testYvals(8)+stimulus.grating.height/2]); mglFlush;pause(.5);mglClearScreen(stimulus.colors.grayColor); mglFlush;keyboard
+end
+
+%%%% gradient presentation %%%%%
+if gradientThresh==1
+gradientX=[-18:(36/7):18] %x and y coordinates of the the gradient comparisons
+gradientY = -10
+mglClearScreen(stimulus.colors.grayColor);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(1) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(1))),[gradientX(1) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(1) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(1) gradientY+stimulus.grating.height/2]);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(2) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(2))),[gradientX(2) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(2) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(2) gradientY+stimulus.grating.height/2]);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(3) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(3))),[gradientX(3) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(3) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(3) gradientY+stimulus.grating.height/2]);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(4) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(4))),[gradientX(4) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(4) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(4) gradientY+stimulus.grating.height/2]);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(5) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(5))),[gradientX(5) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(5) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(5) gradientY+stimulus.grating.height/2]);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(6) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(6))),[gradientX(6) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(6) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(6) gradientY+stimulus.grating.height/2]);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(7) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(7))),[gradientX(7) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(7) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(7) gradientY+stimulus.grating.height/2]);
+mglBltTexture(stimulus.tex(contrastIndex(1)),[gradientX(8) gradientY-stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.tex(contrastIndex(comparison(8))),[gradientX(8) gradientY+stimulus.grating.height/2 stimulus.grating.height]);mglBltTexture(stimulus.mask,[gradientX(8) gradientY-stimulus.grating.height/2]); mglBltTexture(stimulus.mask,[gradientX(8) gradientY+stimulus.grating.height/2]);
+mglFlush
+keyboard
+end
