@@ -7,10 +7,10 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: cue combination with 2 parameterizable dot stimuli
 %
-% NOTE: parameters you (might) want to change for this task are coherence, direction, density, speed.
+% NOTE: parameters you (might) want to change for this task are coherence, direction, speed.
 % There are 2 patches so that you can have multiple motion components; they are individually parameterizable 
 
-function myscreen = twoPatchDiscrep(varargin)
+function myscreen = dotDiscrep(varargin)
 
 % check arguments
 getArgs(varargin,'stimulusType=dots');
@@ -23,24 +23,22 @@ task{1}.waitForBacktick = 1;
 global stimulus
 
 % task parameters
-task{1}.segmin = [3 2 10 2];
-task{1}.segmax = [3 2 10 2];
+task{1}.segmin = [3 1 6 1];
+task{1}.segmax = [3 1 6 1];
 task{1}.getResponse = [0 0 1 0];
 task{1}.numTrials = 100;
 task{1}.randVars.calculated.confidence = nan;
-stimulus = initConfidence(stimulus,0,0,3,8,2,[1 1 1],[0.3 0.3 0.3]);
-stimulus.feedback.segnum = 3;
 % stimulus values are constant throughout experiment
 stimulus.leftEcc = 0;
 stimulus.rightEcc = 0;
 stimulus.width = 10;
 stimulus.speed = 5;
 stimulus.contrast = .8;
-stimulus.density = 2
+stimulus.density = 2.5
 % parameters are called *every* trial
-task{1}.parameter.coherenceL = [.6 .8 1];
-task{1}.parameter.coherenceR = [.6 .8 1];
-task{1}.parameter.dirOffset = [100]; % 'right' dots are shifted clockwise this # of degrees from "dirI"
+task{1}.parameter.coherenceL = [1];
+task{1}.parameter.coherenceR = [1];
+task{1}.parameter.dirOffset = [60]; % 'right' dots are shifted clockwise this # of degrees from "dirI"
 task{1}.parameter.speedOffset = [0];
 
 % initialize responses
@@ -52,11 +50,12 @@ task{1}.response.rightSpeed = [];
 task{1}.response.speedOffset = [];
 task{1}.response.leftCoherence = [];
 task{1}.response.rightCoherence = [];
+tasl{1}.response.estimate = [];
 
 
 % initialize the task
 for phaseNum = 1:length(task)
-    [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
+    [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback);
 end
 
 % init the stimulus
@@ -82,13 +81,12 @@ myscreen = endTask(myscreen,task);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
-
 if task.thistrial.thisseg == 1
         
     % set the coherence
     stimulus.dotsLeft = stimulus.dotsLeft.setCoherence(stimulus.dotsLeft,task.thistrial.coherenceL);
     stimulus.dotsRight = stimulus.dotsRight.setCoherence(stimulus.dotsRight,task.thistrial.coherenceR);
-    
+  
     % set the motion direction of left and right patches 
     dirI = randi(360);
     stimulus.dirL(task.trialnum) = dirI;
@@ -102,22 +100,11 @@ if task.thistrial.thisseg == 1
     stimulus.speedR(task.trialnum) = stimulus.speed+task.thistrial.speedOffset;
     stimulus.dotsLeft = stimulus.dotsLeft.setSpeed(stimulus.dotsLeft,stimulus.speedL(task.trialnum));
     stimulus.dotsRight = stimulus.dotsRight.setSpeed(stimulus.dotsRight,stimulus.speedR(task.trialnum));
-    
-    % save trial parameters in a convenient place for analysis (personal preference)
-    task.response.leftDir(task.trialnum) = stimulus.dirL(task.trialnum);
-    task.response.rightDir(task.trialnum) = stimulus.dirR(task.trialnum);
-    task.response.dirOffset(task.trialnum) = task.thistrial.dirOffset
-    task.response.leftSpeed(task.trialnum) = stimulus.speedL(task.trialnum);
-    task.response.rightSpeed(task.trialnum) = stimulus.speedR(task.trialnum);
-    task.response.speedOffset(task.trialnum) = task.thistrial.speedOffset
-    task.response.leftCoherence(task.trialnum) = task.thistrial.coherenceL;
-    task.response.rightCoherence(task.trialnum) = task.thistrial.coherenceR;
-    
-    
+
     % set the fixation color
     stimulus.fixColor = stimulus.stimulatingFixColor;
     
-elseif task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
+elseif (task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4)
 
     stimulus.dotsLeft = stimulus.dotsLeft.setCoherence(stimulus.dotsLeft,0);
     stimulus.dotsRight = stimulus.dotsRight.setCoherence(stimulus.dotsRight,0);
@@ -128,7 +115,8 @@ elseif task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
 
 elseif task.thistrial.thisseg == 3
   % set starting confidence
-  task.thistrial.confidence = 0.5;
+  task.thistrial.confidence = 0;
+  task.thistrial.gotResponse = 0;
   scrollEvents = mglListener('getAllScrollEvents');
   mglListener('getAllMouseEvents');
 
@@ -170,6 +158,17 @@ if task.thistrial.thisseg == 3
   % set the confidence
   [task.thistrial.confidence confidenceDone] = setConfidence(task.thistrial.confidence, stimulus);
   if confidenceDone
+    task.thistrial.gotResponse = 1
+    % save trial parameters in a convenient place for analysis (personal preference) IF we get response
+    task.response.leftDir(task.trialnum) = stimulus.dirL(task.trialnum);
+    task.response.rightDir(task.trialnum) = stimulus.dirR(task.trialnum);
+    task.response.dirOffset(task.trialnum) = task.thistrial.dirOffset
+    task.response.leftSpeed(task.trialnum) = stimulus.speedL(task.trialnum);
+    task.response.rightSpeed(task.trialnum) = stimulus.speedR(task.trialnum);
+    task.response.speedOffset(task.trialnum) = task.thistrial.speedOffset
+    task.response.leftCoherence(task.trialnum) = task.thistrial.coherenceL;
+    task.response.rightCoherence(task.trialnum) = task.thistrial.coherenceR;
+    task.response.estimate(task.trialnum) = task.thistrial.confidence;
     task = jumpSegment(task);
     disp(sprintf('(estimation) Estimate: %0.2f',task.thistrial.confidence))
   end
@@ -182,8 +181,7 @@ mglFixationCross(1,1,stimulus.fixColor);
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 %    responseCallback    %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
-function [task myscreen] = responseCallback(task,myscreen)
-
+function [task myscreen] = getResponseCallback(task,myscreen)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -196,11 +194,11 @@ contrast = strcat('contrast=',num2str(stimulus.contrast));
 speed = strcat('speed=',num2str(stimulus.speed));
 leftEcc = strcat('xCenter=',num2str(stimulus.leftEcc));
 rightEcc = strcat('xCenter=',num2str(stimulus.rightEcc));
-dotDensity = strcat('density=',num2str(stimulus.density));
+dotDense = strcat('density=',num2str(stimulus.density));
 
 % init the dot patches
-stimulus.dotsLeft = dotsInit2Patch('framesPerSecond',myscreen.framesPerSecond,width,contrast,speed,leftEcc,dotDensity);
-stimulus.dotsRight = dotsInit2Patch('framesPerSecond',myscreen.framesPerSecond,width,contrast,speed,rightEcc,dotDensity);
+stimulus.dotsLeft = dotsInit2Patch('framesPerSecond',myscreen.framesPerSecond,width,contrast,speed,leftEcc,dotDense);
+stimulus.dotsRight = dotsInit2Patch('framesPerSecond',myscreen.framesPerSecond,width,contrast,speed,rightEcc,dotDense);
 
 % set background color
 stimulus.backgroundColor = 0.5;
@@ -213,88 +211,17 @@ stimulus.incorrectFixColor = [1 0 0];
 stimulus.neutralFixColor = [0 0 1];
 
 
-
-
-
-
-
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%
-%    initConfidence    %
+%       estimate       %
 %%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = initConfidence(stimulus,centerX,centerY,width,height,lineSize,lineColor,fillColor)
-
-% set the segment in which the confidence judgement happens
-stimulus.confidence.segnum = 8;
-  
-% set the dimensions of the confidence display
-stimulus.confidence.width = width;
-stimulus.confidence.height = height;
-stimulus.confidence.centerX = centerX;
-stimulus.confidence.centerY = centerY;
-
-% set line size and color
-stimulus.confidence.outlineSize = lineSize;
-stimulus.confidence.outlineColor = lineColor;
-stimulus.confidence.fillColor = fillColor;
-
-% now compute the x and y of the outline
-xL = stimulus.confidence.centerX-stimulus.confidence.width/2;
-xR = stimulus.confidence.centerX+stimulus.confidence.width/2;
-yB = stimulus.confidence.centerY-stimulus.confidence.height/2;
-yT = stimulus.confidence.centerY+stimulus.confidence.height/2;
-
-% dimensions of rectangle
-stimulus.confidence.X0 = [xL xR xR xL];
-stimulus.confidence.X1 = [xR xR xL xL];
-stimulus.confidence.Y0 = [yB yB yT yT];
-stimulus.confidence.Y1 = [yB yT yT yB];
-
-% dimensions of fill
-stimulus.confidence.fillX = [xL xR xR xL];
-stimulus.confidence.fillY = [yB yB yT yT];
-
-% values that need to be changed to reflect confidence level
-stimulus.confidence.fillTop = [0 0 1 1];
-
-% turn off scrolling
-mglListener('eatscroll');
-% read all pending scroll events
-scrollEvents = mglListener('getAllScrollEvents');
-
-%%%%%%%%%%%%%%%%%%%%%%%%
-%    drawConfidence    %
-%%%%%%%%%%%%%%%%%%%%%%%%
-function drawConfidence(confidenceLevel, stimulus)
-
-% draw confidence level as a filled bar.
-
-% draw filled inside, compute top coordinate
-%fillY = stimulus.confidence.fillY;
-%fillY(find(stimulus.confidence.fillTop)) = stimulus.confidence.centerY+(-0.5+confidenceLevel)*stimulus.confidence.height;
-% now draw as a filled polygon
-%mglPolygon(stimulus.confidence.fillX,fillY,stimulus.confidence.fillColor);
-
-% draw outline
-%mglLines2(stimulus.confidence.X0,stimulus.confidence.Y0,stimulus.confidence.X1,stimulus.confidence.Y1,stimulus.confidence.outlineSize,stimulus.confidence.outlineColor);
-
-guessValue = sprintf('%.0f',confidenceLevel);
-%mglTextDraw(guessValue,[0 0]);
-mglLines2(0,0,7*cos(deg2rad(confidenceLevel)),7*sin(deg2rad(confidenceLevel)),3,[0 0 0])
-
-
-%%%%%%%%%%%%%%%%%%%%%%% 
-%    setConfidence    %
-%%%%%%%%%%%%%%%%%%%%%%%
 function [confidence confidenceDone] = setConfidence(confidence, stimulus)
 
 % get scroll
 scrollEvents = mglListener('getAllScrollEvents');
 if ~isempty(scrollEvents)
   % get the sum of the vertical and horizontal scrolls
-  verticalScroll = -sum(scrollEvents.scrollVertical);
-  horizontalScroll = sum(scrollEvents.scrollHorizontal);
+  verticalScroll = sum(scrollEvents.scrollVertical);
+  horizontalScroll = -sum(scrollEvents.scrollHorizontal);
   % set confidence
   confidence = confidence+verticalScroll;
 else
@@ -304,9 +231,9 @@ end
 % check bounds
 if confidence > 360,confidence = 0;end
 if confidence < 0,confidence = 360;end
-  
+
 % draw the confidence
-drawConfidence(confidence,stimulus);
+drawConfidence(confidence);
 
 % if mouse button down (or horizontal scroll is non-zero) then we are done setting confidence
 mouse = mglGetMouse;
@@ -318,9 +245,10 @@ else
   confidenceDone = 0;
 end
 
-function drawCorrect(task, stimulus)
-cg = sprintf('%.0f',(task+20)*2.5);
-mglTextDraw(cg,[0 0]);
+function drawConfidence(confidenceLevel)
+guessValue = sprintf('%.0f',confidenceLevel*100);
+%mglTextDraw(guessValue,[0 0]);
+mglLines2(0,0,7*cos(deg2rad(confidenceLevel)),7*sin(deg2rad(confidenceLevel)),3,[0 0 0])
 
 
 
