@@ -2,16 +2,15 @@
 %        $Id: $
 %      usage: trackpos_2afc
 %         by: Josh Ryu
-%       date: 10/27/2019
+%       date: 3/24/2021
 %    purpose: 2 alternative forced choice task for position of two blobs
 %
 
-% Uses staircase procedures. 
-% S1: stimulus period (0.5s)
-% S2: fixation period (0.5s)
-% S3: stimulus 2 period (0.5s)
-% S4: repsonse period (1.5s)
-% S5: random period of fixation (1s)
+% S1: random period of fixation (~0.5s)
+% S2: stimulus period (0.5s)
+% S3: background period (0.5s)
+% S4: stimulus2 period (0.5s)
+% S5: repsonse period + feedback (1s + arbitrary)
 
 function myscreen = trackpos_2afc(varargin)
 
@@ -24,63 +23,67 @@ else
     myscreen.saveData = 1;
 end
 
-myscreen.displayName = 'debug'; myscreen.screenNumber = 1; 
-myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
-myscreen.hideCursor = 1;
+myscreen.displayName = 'joshipad2'; myscreen.screenNumber = 1; 
 myscreen = initScreen(myscreen);
 
 % Experimenter parameters
-grabframe       = 1; 
+grabframe       = false; 
+staircase       = false; 
+ 
 
-%%
+%% task parameters
 % Go straight to task.
-% S1: stimulus period (0.5s)
-% S3: fixation period (0.5s)
-% S3: stimulus 2 period (0.5s)
-% S4: repsonse period (2s)
-% S5: random period of fixation (1~3s)
-task{1}{1}.segmin = [0.5 0.5 0.5 1.5 1];
-task{1}{1}.segmax = [0.5 0.5 0.5 1.5 2];
-task{1}{1}.numTrials = 150;
-task{1}{1}.getResponse = [0 0 0 1 0]; %segment to get response.
-task{1}{1}.waitForBacktick = 1; %wait for backtick before starting each trial 
+% S1: random period of fixation (~0.5s)
+% S2: stimulus period (0.5s)
+% S3: background period (0.5s)
+% S4: stimulus2 period (0.5s)
+% S5: repsonse period + feedback (1s + arbitrary)
+
+task{1}{1}.segmin           = [0.2 nan 0.5 nan 1];
+task{1}{1}.segmax           = [0.5 nan 0.5 nan 1];
+task{1}{1}.numTrials        = 40*5*5; % per luminance level
+task{1}{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
+task{1}{1}.synchToVol       = [0 0 0 0 1]; % segmet to wait for backtick
+task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
 
 % Run fixed intervals (1) or staircase (0)
-task{1}{1}.runfixedint  = 0; % run staircase
-task{1}{1}.blankrun     = 1;
-
-% stimulus and background
-task{1}{1}.parameter.backLum    = 32; %32;  % background luminance; units: fraction of full luminance 
-task{1}{1}.parameter.noiseLum   = 0; % noise luminance, if there is one.
-task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
-teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
-task{1}{1}.parameter.stimLum    = teststimLum(2); % choose medium condition.
-teststimDur   = [0.3 0.2 0.1];
-
-%task parameters
-task{1}{1}.randVars.calculated.posDiff      = nan;
-task{1}{1}.randVars.calculated.firstcorr    = nan; %store values calculated during the task. 
-task{1}{1}.randVars.calculated.firstpos     = nan;
-task{1}{1}.randVars.calculated.secondpos    = nan;
-task{1}{1}.randVars.calculated.subjcorrect  = nan; %store values calculated during the task. 
-% task{1}{1}.randVars.calculated.lumCurr      = nan; %??? does it not save the parameters of interest automatically? 
-
-%% task blocks. change stimulus duration.
-for durIdx = 1:length(teststimDur)
-    phaseN = durIdx;
-    stimDur = teststimDur(durIdx);
-    % adaptation condition, at full luminance
-    task{1}{phaseN}             = task{1}{1};  
-    task{1}{phaseN}.segmin      = [stimDur 0.5 stimDur 1.5 1];
-    task{1}{phaseN}.segmax      = [stimDur 0.5 stimDur 1.5 2];    
+if staircase
+    task{1}{1}.runfixedint  = 0; % staircase
+else
+    task{1}{1}.runfixedint  = 1; % fixed interval
 end
 
-% add a blank run with 10 trials
-if task{1}{1}.blankrun == 1
-    phaseN = length(teststimDur)+1;
-    task{1}{phaseN} = task{1}{1};
-    task{1}{phaseN}.numTrials = 10;
-    task{1} = task{1}([phaseN, 1:phaseN-1]);
+% stimulus and background
+task{1}{1}.parameter.backLum    = 30; %32;  % background luminance; units: fraction of full luminance 
+task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
+task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
+teststimLum                     = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
+teststimDur                     = [5/60 10/60 15/60 20/60 25/60]; %frames/hz
+
+stimulus.phaseScramble = 1;
+stimulus.backprecompute = 1;
+
+task{1}{1}.parameter.pos        = [0]; % position of first stimulus; %task parameters (2*stimulus.stimStd)*(2*rand(1)-1); 
+task{1}{1}.parameter.firstleft  = [0, 1]; % 1 if the first is to the left of second.
+task{1}{1}.parameter.posDiff    = [0.025, 0.05, 0.075, 0.1, 0.15]; % forst fixed values
+
+task{1}{1}.randVars.calculated.subjcorrect  = nan; 
+task{1}{1}.randVars.calculated.bgpermute    = []; % nframes x 1 for the background
+task{1}{1}.randVars.calculated.stimON       = []; % nframes x 1 for the stimulus
+
+%% task blocks. 
+for phaseN = 1:length(teststimLum)
+    task{1}{phaseN}                     = task{1}{1}; 
+    
+    % stimulus luminance
+    task{1}{phaseN}.parameter.stimLum   = teststimLum(phaseN);
+    
+    % change stimulus duration
+    for trialN = 1:task{1}{1}.numTrials
+        fixdur      = rand*(task{1}{1}.segmax(1) - task{1}{1}.segmin(1)) + task{1}{1}.segmin(1);
+        stimdur     = teststimDur(randi(3));
+        task{1}{phaseN}.seglenPrecompute.seglen{trialN} = [fixdur stimdur 0.5 stimdur 1];
+    end
 end
 
 % initializing task...
@@ -95,7 +98,8 @@ end
 global stimulus;
 stimulus = [];
 
-if task{1}{1}.runfixedint == 0
+% for staircase
+if staircase
     stimulus.stairUp        = 1;
     stimulus.stairDown      = 2;
     stimulus.stairStepSize  = 0.05;
@@ -107,8 +111,39 @@ if task{1}{1}.runfixedint == 0
 else % run fixed intervals (set the values here) 
 end
 
+stimulus.phasescrambleOn = 1;
+
 stimulus = myInitStimulus(stimulus,myscreen,task);
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
+
+
+if stimulus.phasescrambleOn == 1;
+    disp('Loading phase scrambled background noise...')
+
+    tic
+    if stimulus.backprecompute == 1;
+        savefile            = '/Users/JRyu/Dropbox/CCNL/JoshRyu/trackpos_2afc/noise_1.mat'; % just use noise 1 and permute
+        if ~exist(savefile,'file')
+            error('need background file')
+        end
+        
+        load(savefile, 'backgroundnoise_rgb');
+
+        if isfield(stimulus,'backnoise')
+            for idx = 1:length(stimulus.backnoise)
+                mglDeleteTexture(stimulus.backnoise{idx});
+            end
+        end
+
+        % create texture and then load them later
+        for idx = 1:size(backgroundnoise_rgb,4)
+            stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));
+        end
+
+        clearvars('backgroundnoise_rgb')
+    end
+    toc
+end
 
 %% run the task
 stimulus.grabframe = grabframe; %save frames into matrices for outputting task image
@@ -117,7 +152,7 @@ if stimulus.grabframe, global frame; frame = {};, end
 mglDisplayCursor(0); %hide cursor
 mglClearScreen(task{1}{1}.parameter.backLum/255);
 mglTextDraw('task (trackpos_2afc) starting... ', [0 0.5])
-mglTextDraw('Press 1 if the first stimulus is to the left of the second stimulus',[0 -0.5]);
+mglTextDraw('Press 1 if the first stimulus is to the left of the second stimulus; and 2 otherwise',[0 -0.5]);
 mglFlush
 
 phaseNum = 1;
@@ -146,7 +181,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     
     task.thistrial.framecount = 0;
     
-    if task.runfixedint == 0
+    if task.runfixedint == 0 % run staircase
         if task.trialnum == 1 %does the task 
             stimulus.stairN = 0;
         end
@@ -162,6 +197,11 @@ function [task myscreen] = initTrialCallback(task, myscreen)
         
     end
     
+    if stimulus.phasescrambleOn == 1 && stimulus.backprecompute == 1;
+        nframes = sum(task.thistrial.seglen)*60; % check this.
+        task.thistrial.gbpermute = randi(nframes,nframes,1);
+    end
+        
     if stimulus.grabframe
         global frame
         %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackpos_2afc_32back_500ms.mat', 'frame','-v7.3')
@@ -201,52 +241,46 @@ end
 
 %% Start segment
 function [task myscreen] = startSegmentCallback(task, myscreen)
-% S1: stimulus period (0.5s)
-% S2: repsonse period (2s)
-% S3: random period of fixation (1~3s)
-global stimulus 
 
-%change stimulus accordingly
-%find stimulus position for left and right
-if task.thistrial.thisseg == 1
-    % after the noise bc we want to recreate the texture with the seed.
-    stimulus = myInitStimulus(stimulus,myscreen,task); %centerX,Y, diameter called by getArgs.
-        
-    %stimulus initial position. uniform distribution somewhere middle of screen
-    x_img = (2*stimulus.stimStd)*(2*rand(1)-1); 
-    
-    task.thistrial.firstpos     = x_img;
-    task.thistrial.firstcorr    = (rand(1)<0.5);   %1 if correct side is on the left. 0 if left. 
-    task.thistrial.posDiff      = (2*task.thistrial.firstcorr-1)*stimulus.threshold;
-    task.thistrial.secondpos    = x_img + task.thistrial.posDiff; %x_img is higher (more right) in the second if left is the correct one. 
-        
-elseif task.thistrial.thisseg == 4
+global stimulus
+
+if task.thistrial.thisseg == 5 %response feedback
     stimulus.fixColor = stimulus.fixColors.response;
-else
-   % no fixation (it becomes a cue)
-end    
+end
 
 end
 
 %% screen update
 function [task myscreen] = screenUpdateCallback(task, myscreen)
+% S1: random period of fixation (~0.5s)
+% S2: stimulus period (0.5s)
+% S3: background period (0.5s)
+% S4: stimulus2 period (0.5s)
+% S5: repsonse period + feedback (1s + arbitrary)
+
 global stimulus % call stimulus
 
 mglClearScreen(stimulus.backLum/255);
 
 task.thistrial.framecount = task.thistrial.framecount + 1;
 
-% draw blob
-if task.thistrial.thisseg == 1   
-    
-    mglBltTexture(stimulus.gaussian,[task.thistrial.firstpos 0]);
-
-elseif task.thistrial.thisseg == 3
-    mglBltTexture(stimulus.gaussian,[task.thistrial.secondpos 0]);
-elseif task.thistrial.thisseg == 2
-    % no fixation.
-elseif task.thistrial.thisseg == 4 %response feedback
+% draw blob or fixation
+if task.thistrial.thisseg == 2 % first stimulus
+    pos = task.thistrial.pos;
+    mglBltTexture(stimulus.gaussian,[pos 0]);
+elseif task.thistrial.thisseg == 4 % second stimulus
+    pos = task.thistrial.pos + (2*task.thistrial.firstleft-1)*task.thistrial.posDiff;
+    mglBltTexture(stimulus.gaussian,[pos 0]);
+elseif task.thistrial.thisseg == 5 %response feedback
     mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+end
+
+if any([1,2,3,4] == task.thistrial.thisseg) % inkect noise
+    if stimulus.phasescrambleOn == 1 
+        idx = task.thistrial.gbpermute(task.thistrial.framecount);
+        mglBltTexture(stimulus.backnoise{idx},...
+            [0 0 myscreen.imageWidth myscreen.imageHeight])
+    end
 end
 
 if stimulus.grabframe
@@ -262,29 +296,31 @@ global stimulus
 
 % record responses. correct/incorrect
 if any(task.thistrial.whichButton == [1 2])
-    respIs1 = (task.thistrial.whichButton == 1); %1 if the subject chose left
-    correct = (task.thistrial.firstcorr == respIs1); % correct if first is correct and response is 1.
+    respIs1 = (task.thistrial.whichButton == 1);    % 1 if the subject chose left
+    correct = (task.thistrial.firstleft == respIs1); % correct if first is left and response is 1.
     task.thistrial.subjcorrect = correct;
     
-    if task.runfixedint == 0
+    if task.runfixedint == 0 
         stimulus.stairN = stimulus.stairN+1; %count how many times 
     end
 else
-    stimIs1 = task.thistrial.firstcorr; respIs1 = nan; correct = nan;
+    stimIs1 = task.thistrial.firstleft; 
+    respIs1 = nan; correct = nan;
 end
 
 % change color of fixation for feedback.  
 if isnan(correct)
-    stimulus.fixColor = [1 1 1];
+    stimulus.fixColor = stimulus.fixColors.response;
 elseif correct
-    stimulus.fixColor = [0 1 0];
+    stimulus.fixColor = stimulus.fixColors.correct;
 else
-    stimulus.fixColor = [1 0 0];
+    stimulus.fixColor = stimulus.fixColors.incorrect;
 end
 
 % Output response to the screen. 
 if task.thistrial.whichButton == 1, respSide = 'seg1';
 elseif task.thistrial.whichButton == 2, respSide = 'seg2'; end
+
 if correct == 0, corrString = 'incorrect';
 elseif correct == 1, corrString = 'correct';
 else, corrString = 'no response'; end
@@ -299,8 +335,8 @@ if task.runfixedint == 0
     % beginning of segment
 end
 
-disp(['Position difference: ' num2str(task.thistrial.posDiff) '; ' ...
-    'Position: ' num2str(task.thistrial.firstpos) ' (seg1) vs ' num2str(task.thistrial.secondpos) ' (seg2); ' ...
+posdiff = (2*task.thistrial.firstleft-1)*task.thistrial.posDiff;
+disp(['Position difference: ' num2str(posdiff) '; ' ...
     'Response: ' respSide '; ' corrString])
 
 end
@@ -310,13 +346,14 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     % set standard deviation of stimulus
     
     % stimulus size
-    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 2;,end %unit: imageX, in deg. 
+    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 0.4;,end %unit: imageX, in deg. 
     stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
     
-    % stimulus speed
-    if ~isfield(stimulus,'stepStd'), stimulus.stepStd = 3/myscreen.framesPerSecond;,end %unit: cm/s to deg/frame
-    % this might change based on effective sampling rate.
-    
+    %stimulus initial position. uniform distribution across the screen
+    x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
+    y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
+    stimulus.position = [x_img, y_img];
+        
     % stimulus luminance
     if ~isfield(stimulus,'stimLum'), stimulus.stimLum = 122;,end %unit: luminance
             
@@ -338,6 +375,7 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     
     % fixation cross
     stimulus.fixColors.response = [1 1 1];
-
+    stimulus.fixColors.correct  = [0 1 0];
+    stimulus.fixColors.incorrect = [1 0 0];
 end
 
