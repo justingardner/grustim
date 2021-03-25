@@ -24,7 +24,7 @@ myscreen                = initScreen(myscreen);
 global stimulus; stimulus = struct;
 
 % Experimenter parameters
-noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 showmouse       = 0; 
 grabframe       = 0; 
 whitenoiseOn    = 0; % 1: white noise; 2: 
@@ -59,12 +59,14 @@ task{1}{1}.parameter.stimLum = 255 - task{1}{1}.parameter.backLum;  % stimulus l
 
 % calculated parameters
 task{1}{1}.randVars.calculated.randomSeed = nan;
+task{1}{1}.randVars.calculated.backsetidx = nan;
+task{1}{1}.randVars.calculated.perm     = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond) + 20,1);
 task{1}{1}.randVars.calculated.initStim = [nan nan];
-task{1}{1}.randVars.calculated.trackStim = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
-task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
-task{1}{1}.randVars.calculated.trackEye  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond),2);
-task{1}{1}.randVars.calculated.trackTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond));
-task{1}{1}.randVars.calculated.trackEyeTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond)); % for referencing edf file
+task{1}{1}.randVars.calculated.trackStim = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond) + 20,2);
+task{1}{1}.randVars.calculated.trackResp = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond) + 20,2);
+task{1}{1}.randVars.calculated.trackEye  = nan(ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond) + 20,2);
+task{1}{1}.randVars.calculated.trackTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond) + 20);
+task{1}{1}.randVars.calculated.trackEyeTime = nan(1,ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond) + 20); % for referencing edf file
 
 %% Set up tasks 
 
@@ -113,9 +115,8 @@ end
 %}
 
 % change stimulus speed and luminance; cross conditions.
-teststimSteps = [1.5]; %[0.75,1.5,2.25]; %[5,15,25];
+teststimSteps = [0.75]; %[0.75,1.5,2.25]; %[5,15,25];
 teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
-
 
 for stepIdx = 1:length(teststimSteps)
     idx = (stepIdx-1)*(length(teststimLum)+1) +1;
@@ -124,9 +125,9 @@ for stepIdx = 1:length(teststimSteps)
     task{1}{idx}.parameter.stimStep             = teststimSteps(stepIdx);
     task{1}{idx}.parameter.phasescrambleOn      = 0;
     task{1}{idx}.parameter.noiseLum             = 0;    
-    task{1}{idx}.segmin         = [5 3]; %fixation time constrained by the texture loading
-    task{1}{idx}.segmax         = [5 3]; 
-    task{1}{idx}.numTrials      = 1;
+    task{1}{idx}.segmin         = [30 3]; %fixation time constrained by the texture loading
+    task{1}{idx}.segmax         = [30 3]; 
+    task{1}{idx}.numTrials      = 3;
     
     for lumIdx = 1:length(teststimLum)
         % adaptation task
@@ -137,9 +138,9 @@ for stepIdx = 1:length(teststimSteps)
         task{1}{idx}.parameter.stimStep         = teststimSteps(stepIdx);
         task{1}{idx}.parameter.stimLum          = teststimLum(lumIdx);
         task{1}{idx}.parameter.phasescrambleOn  = 1;
-        task{1}{idx}.segmin     = [5 3]; %fixation time constrained a bit by the texture loading
-        task{1}{idx}.segmax     = [5 3]; 
-        task{1}{idx}.numTrials  = 1;
+        task{1}{idx}.segmin     = [30 3]; %fixation time constrained a bit by the texture loading
+        task{1}{idx}.segmax     = [30 3]; 
+        task{1}{idx}.numTrials  = 10;
         task{1}{idx}.parameter.noiseLum           = 32;
     end
 end
@@ -250,17 +251,21 @@ function [task myscreen] = initTrialCallback(task, myscreen)
             end
             backsetidx          = randi(50); %1; %randi(63); % choose a random background set
             load(savefile,['backgroundnoise_rgb' num2str(backsetidx)]);
+            
+            task.thistrial.backsetidx = backsetidx;
+            n = nframes/downsample_timeRes + 20; % add some frames
           
             if isfield(stimulus,'backnoise')
-                for idx = 1:nframes/downsample_timeRes +1 
+                for idx = 1:n
                     mglDeleteTexture(stimulus.backnoise{idx});
                 end
             end
 
             % permute time to add more randomness
-            perm = randperm(size(eval(['backgroundnoise_rgb' num2str(backsetidx)]),4)); 
+            perm = randi(size(eval(['backgroundnoise_rgb' num2str(backsetidx)]),4), n);
             
-            for idx = 1:nframes/downsample_timeRes + 1
+            task.thistrial.perm = perm;
+            for idx = 1:n
                 stimulus.backnoise{idx} = mglCreateTexture(eval(['backgroundnoise_rgb' num2str(backsetidx) '(:,:,:,perm(idx))'])); %0.02s
             end
             
@@ -282,7 +287,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
                 end
             end
 
-            for idx = 1:nframes/downsample_timeRes + 1
+            for idx = 1:nframes/downsample_timeRes
                 back                        = stimulus.gaussianFFT; %0.02s
                 back.phase                  = rand(size(back.mag))*2*pi; % scramble phase % 0.02s
                 backgroundnoise             = round(reconstructFromHalfFourier(back));   %0.04s
@@ -307,12 +312,12 @@ function [task myscreen] = initTrialCallback(task, myscreen)
         backgroundnoise_rgb             = uint8(backgroundnoise_rgb); 
         
         if isfield(stimulus,'backnoise')
-            for idx = 1:nframes/downsample_timeRes + 1
+            for idx = 1:nframes/downsample_timeRes
                 mglDeleteTexture(stimulus.backnoise{idx});
                 stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));    
             end
         else
-            for idx = 1:nframes/downsample_timeRes + 1
+            for idx = 1:nframes/downsample_timeRes
                 stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));    
             end
         end
@@ -391,7 +396,7 @@ if (task.thistrial.thisseg== 1)
     
     % stimulus.timedebug(2,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.00012s 
     
-    if stimulus.phasescrambleOn == 1 && mod(task.thistrial.framecount, stimulus.downsample_timeRes) == 1
+    if stimulus.phasescrambleOn == 1 && mod(task.thistrial.framecount, stimulus.downsample_timeRes) == 0
         mglBltTexture(stimulus.backnoise{ceil(task.thistrial.framecount/stimulus.downsample_timeRes)},...
             [0 0 myscreen.imageWidth myscreen.imageHeight])
     end

@@ -91,7 +91,7 @@ for phaseN = 1:length(teststimLum)
     % change stimulus duration
     for trialN = 1:task{1}{1}.numTrials
         fixdur      = rand*(task{1}{1}.segmax(1) - task{1}{1}.segmin(1)) + task{1}{1}.segmin(1);
-        stimdur     = teststimDur{phaseN} (randi(length(teststimDur{phaseN})));
+        stimdur     = teststimDur{phaseN}(randi(length(teststimDur{phaseN})));
         task{1}{phaseN}.seglenPrecompute.seglen{trialN} = [fixdur stimdur 0.5 stimdur 1];
     end
 end
