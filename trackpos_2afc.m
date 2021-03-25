@@ -23,7 +23,8 @@ else
     myscreen.saveData = 1;
 end
 
-myscreen.displayName = 'joshipad2'; myscreen.screenNumber = 1; 
+% myscreen.displayName = 'joshipad2'; myscreen.screenNumber = 1; 
+myscreen.saveData       = 1; % save stimfile to data directory
 myscreen = initScreen(myscreen);
 
 % Experimenter parameters
@@ -41,8 +42,8 @@ staircase       = false;
 
 task{1}{1}.segmin           = [0.2 nan 0.5 nan 1];
 task{1}{1}.segmax           = [0.5 nan 0.5 nan 1];
-task{1}{1}.numTrials        = 40*5*5; % per luminance level
-task{1}{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
+task{1}{1}.numTrials        = 5; %40*5*5; %40*5*5; %40*5*5; % per luminance level
+task{1}{1}.getResponse      = [0 0 0 0 1]; %segment to get response.
 task{1}{1}.synchToVol       = [0 0 0 0 1]; % segmet to wait for backtick
 task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
 
@@ -54,22 +55,31 @@ else
 end
 
 % stimulus and background
-task{1}{1}.parameter.backLum    = 30; %32;  % background luminance; units: fraction of full luminance 
+task{1}{1}.parameter.backLum    = 96; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
 task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
 teststimLum                     = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
-teststimDur                     = [5/60 10/60 15/60 20/60 25/60]; %frames/hz
+%teststimLum                     = [teststimLum(3)];
+teststimDur{1}                 = [1/60 2/60 4/60 7/60 10/60]; 
+teststimDur{2}                 = [1/60 2/60 4/60 7/60 10/60]; %frames/hz
+teststimDur{3}                 = [1/60 2/60 4/60 7/60 10/60]; %frames/hz
 
 stimulus.phaseScramble = 1;
 stimulus.backprecompute = 1;
 
 task{1}{1}.parameter.pos        = [0]; % position of first stimulus; %task parameters (2*stimulus.stimStd)*(2*rand(1)-1); 
-task{1}{1}.parameter.firstleft  = [0, 1]; % 1 if the first is to the left of second.
+task{1}{1}.parameter.firstright  = [0, 1]; % 1 if the first is to the right of second.
 task{1}{1}.parameter.posDiff    = [0.025, 0.05, 0.075, 0.1, 0.15]; % forst fixed values
 
 task{1}{1}.randVars.calculated.subjcorrect  = nan; 
-task{1}{1}.randVars.calculated.bgpermute    = []; % nframes x 1 for the background
-task{1}{1}.randVars.calculated.stimON       = []; % nframes x 1 for the stimulus
+
+maxframes = ceil((max([teststimDur{:}])+task{1}{1}.segmax(1)+ task{1}{1}.segmax(3))...
+    *myscreen.framesPerSecond)+10; % with some additional overflow
+task{1}{1}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
+task{1}{1}.randVars.calculated.stimON       = nan(1,maxframes); % nframes x 1 for the stimulus
+
+task{1}{1}.randVars.calculated.trackTime = nan(1,maxframes);
+
 
 %% task blocks. 
 for phaseN = 1:length(teststimLum)
@@ -81,7 +91,7 @@ for phaseN = 1:length(teststimLum)
     % change stimulus duration
     for trialN = 1:task{1}{1}.numTrials
         fixdur      = rand*(task{1}{1}.segmax(1) - task{1}{1}.segmin(1)) + task{1}{1}.segmin(1);
-        stimdur     = teststimDur(randi(3));
+        stimdur     = teststimDur{phaseN} (randi(length(teststimDur{phaseN})));
         task{1}{phaseN}.seglenPrecompute.seglen{trialN} = [fixdur stimdur 0.5 stimdur 1];
     end
 end
@@ -112,22 +122,25 @@ else % run fixed intervals (set the values here)
 end
 
 stimulus.phasescrambleOn = 1;
+stimulus.backprecompute = 1;
 
 stimulus = myInitStimulus(stimulus,myscreen,task);
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
-
 
 if stimulus.phasescrambleOn == 1;
     disp('Loading phase scrambled background noise...')
 
     tic
     if stimulus.backprecompute == 1;
-        savefile            = '/Users/JRyu/Dropbox/CCNL/JoshRyu/trackpos_2afc/noise_1.mat'; % just use noise 1 and permute
+        savefile            = '/Users/joshua/data/trackpos/trackpos.mat';
+        % savefile            = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
         if ~exist(savefile,'file')
             error('need background file')
         end
         
-        load(savefile, 'backgroundnoise_rgb');
+        backsetidx          = 1; %1; %randi(63); % choose a random background set
+        load(savefile,['backgroundnoise_rgb' num2str(backsetidx)]);
+        backgroundnoise_rgb = eval(['backgroundnoise_rgb' num2str(backsetidx)]);
 
         if isfield(stimulus,'backnoise')
             for idx = 1:length(stimulus.backnoise)
@@ -136,6 +149,7 @@ if stimulus.phasescrambleOn == 1;
         end
 
         % create texture and then load them later
+        %b = 255*ones(4,size(backgroundnoise_rgb,2),size(backgroundnoise_rgb,1),'uint8');
         for idx = 1:size(backgroundnoise_rgb,4)
             stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));
         end
@@ -148,6 +162,7 @@ end
 %% run the task
 stimulus.grabframe = grabframe; %save frames into matrices for outputting task image
 if stimulus.grabframe, global frame; frame = {};, end
+stimulus.t0 = mglGetSecs; % 
 
 mglDisplayCursor(0); %hide cursor
 mglClearScreen(task{1}{1}.parameter.backLum/255);
@@ -197,9 +212,11 @@ function [task myscreen] = initTrialCallback(task, myscreen)
         
     end
     
+    stimulus = myInitStimulus(stimulus,myscreen,task); %centerX,Y, diameter called by getArgs.
+    
     if stimulus.phasescrambleOn == 1 && stimulus.backprecompute == 1;
-        nframes = sum(task.thistrial.seglen)*60; % check this.
-        task.thistrial.gbpermute = randi(nframes,nframes,1);
+        nframes = ceil(sum(task.thistrial.seglen(1:end-1))*myscreen.framesPerSecond)+10; % with some additional overflow
+        task.thistrial.bgpermute(1:nframes) = randi(nframes,nframes,1);
     end
         
     if stimulus.grabframe
@@ -263,24 +280,32 @@ global stimulus % call stimulus
 mglClearScreen(stimulus.backLum/255);
 
 task.thistrial.framecount = task.thistrial.framecount + 1;
+task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus
 
 % draw blob or fixation
 if task.thistrial.thisseg == 2 % first stimulus
+    task.thistrial.stimON(task.thistrial.framecount) = 1;
     pos = task.thistrial.pos;
     mglBltTexture(stimulus.gaussian,[pos 0]);
 elseif task.thistrial.thisseg == 4 % second stimulus
-    pos = task.thistrial.pos + (2*task.thistrial.firstleft-1)*task.thistrial.posDiff;
+    task.thistrial.stimON(task.thistrial.framecount) = 1;
+    pos = task.thistrial.pos - (2*task.thistrial.firstright-1)*task.thistrial.posDiff;
     mglBltTexture(stimulus.gaussian,[pos 0]);
 elseif task.thistrial.thisseg == 5 %response feedback
-    mglGluAnnulus(0,0,0.5,0.75,stimulus.fixColor,60,1);
+    % no fixation cross until response.
+    if any(stimulus.fixColor ~= stimulus.fixColors.response)
+        mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
+    end
 end
 
-if any([1,2,3,4] == task.thistrial.thisseg) % inkect noise
+if any([1,2,3,4] == task.thistrial.thisseg) % inject noise
     if stimulus.phasescrambleOn == 1 
-        idx = task.thistrial.gbpermute(task.thistrial.framecount);
+        idx = task.thistrial.bgpermute(task.thistrial.framecount);
         mglBltTexture(stimulus.backnoise{idx},...
             [0 0 myscreen.imageWidth myscreen.imageHeight])
     end
+    
+    task.thistrial.trackTime(task.thistrial.framecount) = mglGetSecs(stimulus.t0);
 end
 
 if stimulus.grabframe
@@ -296,15 +321,15 @@ global stimulus
 
 % record responses. correct/incorrect
 if any(task.thistrial.whichButton == [1 2])
-    respIs1 = (task.thistrial.whichButton == 1);    % 1 if the subject chose left
-    correct = (task.thistrial.firstleft == respIs1); % correct if first is left and response is 1.
+    respIs1 = (task.thistrial.whichButton == 1);    
+    correct = (task.thistrial.firstright == respIs1); % correct if first is right and response is 1.
     task.thistrial.subjcorrect = correct;
     
     if task.runfixedint == 0 
         stimulus.stairN = stimulus.stairN+1; %count how many times 
     end
 else
-    stimIs1 = task.thistrial.firstleft; 
+    stimIs1 = task.thistrial.firstright; 
     respIs1 = nan; correct = nan;
 end
 
@@ -313,9 +338,12 @@ if isnan(correct)
     stimulus.fixColor = stimulus.fixColors.response;
 elseif correct
     stimulus.fixColor = stimulus.fixColors.correct;
-else
+else % incorrect
     stimulus.fixColor = stimulus.fixColors.incorrect;
 end
+
+% change fixation color (doesn't this go back to the screenupate function?
+mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1); 
 
 % Output response to the screen. 
 if task.thistrial.whichButton == 1, respSide = 'seg1';
@@ -335,7 +363,7 @@ if task.runfixedint == 0
     % beginning of segment
 end
 
-posdiff = (2*task.thistrial.firstleft-1)*task.thistrial.posDiff;
+posdiff = -1 * (2*task.thistrial.firstright-1)*task.thistrial.posDiff;
 disp(['Position difference: ' num2str(posdiff) '; ' ...
     'Response: ' respSide '; ' corrString])
 

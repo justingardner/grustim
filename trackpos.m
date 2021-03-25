@@ -24,7 +24,7 @@ myscreen                = initScreen(myscreen);
 global stimulus; stimulus = struct;
 
 % Experimenter parameters
-noeye           = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 showmouse       = 0; 
 grabframe       = 0; 
 whitenoiseOn    = 0; % 1: white noise; 2: 
@@ -37,14 +37,14 @@ backprecompute  = 1;
 % S2: Fixation (3s)
 task{1}{1}.segmin = [30 3]; % fixation for shorter bc of the segment start takes time.
 task{1}{1}.segmax = [30 3]; 
-task{1}{1}.numTrials = 2;
+task{1}{1}.numTrials = 5; % changed later depending on the condition
 task{1}{1}.getResponse = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick = 0; %wait for backtick before starting each trial 
 
 % task parameters for adaptation conditions
 if whitenoiseOn == 1 || phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
-    task{1}{1}.parameter.backLum            = 30; %160;%90;  % background luminance; units: luminance 
+    task{1}{1}.parameter.backLum            = 96; %160;%90;  % background luminance; units: luminance 
     task{1}{1}.parameter.noiseLum           = 32;
 else 
     task{1}{1}.parameter.backLum = 32;  % background luminance; units: fraction of full luminance 
@@ -113,34 +113,34 @@ end
 %}
 
 % change stimulus speed and luminance; cross conditions.
-teststimSteps = [0.75,1.5,2.25]; %[5,15,25];
+teststimSteps = [1.5]; %[0.75,1.5,2.25]; %[5,15,25];
 teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 
+
 for stepIdx = 1:length(teststimSteps)
-    idx = (stepIdx-1)*4 +1;
+    idx = (stepIdx-1)*(length(teststimLum)+1) +1;
     % adaptation condition, at full luminance
     task{1}{idx}                                = task{1}{1};  
     task{1}{idx}.parameter.stimStep             = teststimSteps(stepIdx);
     task{1}{idx}.parameter.phasescrambleOn      = 0;
     task{1}{idx}.parameter.noiseLum             = 0;    
-    task{1}{idx}.segmin         = [30 3]; %fixation time constrained by the texture loading
-    task{1}{idx}.segmax         = [30 3]; 
+    task{1}{idx}.segmin         = [5 3]; %fixation time constrained by the texture loading
+    task{1}{idx}.segmax         = [5 3]; 
     task{1}{idx}.numTrials      = 1;
     
     for lumIdx = 1:length(teststimLum)
         % adaptation task
-        idx = (stepIdx-1)*4 + lumIdx+1; %cycle through the luminances first.
+        idx = (stepIdx-1)*(length(teststimLum)+1) + lumIdx+1; %cycle through the luminances first.
         
         task{1}{idx}            = task{1}{1};  
         
         task{1}{idx}.parameter.stimStep         = teststimSteps(stepIdx);
         task{1}{idx}.parameter.stimLum          = teststimLum(lumIdx);
         task{1}{idx}.parameter.phasescrambleOn  = 1;
-        task{1}{idx}.segmin     = [30 3]; %fixation time constrained a bit by the texture loading
-        task{1}{idx}.segmax     = [30 3]; 
-        task{1}{idx}.numTrials  = 10;
+        task{1}{idx}.segmin     = [5 3]; %fixation time constrained a bit by the texture loading
+        task{1}{idx}.segmax     = [5 3]; 
+        task{1}{idx}.numTrials  = 1;
         task{1}{idx}.parameter.noiseLum           = 32;
-
     end
 end
 
@@ -235,20 +235,20 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     
     %% noise
     % background noise
-    downsample_timeRes  = 2; stimulus.downsample_timeRes = downsample_timeRes;
+    downsample_timeRes  = 1; stimulus.downsample_timeRes = downsample_timeRes;
     downsample_spatRes  = 10;
         
     nframes             = myscreen.framesPerSecond*task.segmax(1);%/downsample_timeRes; 
 
-    if stimulus.phasescrambleOn == 1;
+    if stimulus.phasescrambleOn == 1 && stimulus.noiseLum > 1
         disp('Loading phase scrambled background noise')
         tic
         if stimulus.backprecompute == 1;
-            savefile            = '/Users/gru/proj/grustim/trackpos.mat';
+            savefile            = '/Users/joshua/data/trackpos/trackpos.mat';
             if ~exist(savefile,'file')
                 savefile            = '/Users/jryu/proj/grustim/trackpos.mat';
             end
-            backsetidx          = randi(100); %1; %randi(63); % choose a random background set
+            backsetidx          = randi(50); %1; %randi(63); % choose a random background set
             load(savefile,['backgroundnoise_rgb' num2str(backsetidx)]);
           
             if isfield(stimulus,'backnoise')
@@ -258,7 +258,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
             end
 
             % permute time to add more randomness
-            perm = randperm(120*30); 
+            perm = randperm(size(eval(['backgroundnoise_rgb' num2str(backsetidx)]),4)); 
             
             for idx = 1:nframes/downsample_timeRes + 1
                 stimulus.backnoise{idx} = mglCreateTexture(eval(['backgroundnoise_rgb' num2str(backsetidx) '(:,:,:,perm(idx))'])); %0.02s
@@ -382,7 +382,6 @@ global stimulus % call stimulus. Takes ~0.000013 s.
 mglClearScreen(stimulus.backLum/255);
 
 if (task.thistrial.thisseg== 1)
-    
     task.thistrial.framecount = task.thistrial.framecount + 1;
     
     % stimulus.timedebug(10,task.thistrial.framecount) = mglGetSecs(stimulus.t0); % takes ~ 6.264918 e-5 s
@@ -402,10 +401,8 @@ if (task.thistrial.thisseg== 1)
 
     % **&display mouse position
     mInfo = mglGetMouse(myscreen.screenNumber);
-
     mimg_x = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-
     mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
     % stimulus.timedebug(4,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~9.2678e-5 s
 
@@ -554,14 +551,14 @@ end
 function precomputBackground(myscreen,stimulus)
 % generate a lot of noise
 % takes about 12 minutes to generate on the stimulus test computer. 
-savefile = '/Users/gru/proj/grustim/trackpos.mat';
+savefile = '/Users/joshua/data/trackpos/trackpos.mat';
 
 %% noise
 % background noise
 downsample_timeRes  = 1;
 downsample_spatRes  = 10;
 
-ntrials             = 100; %7*9; %7 trials * 9 conditions
+ntrials             = 50; %7*9; %7 trials * 9 conditions
 nframes             = myscreen.framesPerSecond*30; % 30s; %/downsample_timeRes; 
 
 for idx = 1:ntrials
@@ -584,7 +581,8 @@ for idx = 1:ntrials
         end % otherwise just overwrite.
         backgroundnoise_rgb(4,:,:,idx2)  = backgroundnoise'/max(max(backgroundnoise))*stimulus.noiseLum;  % normalize contrast %0.025s
     end
-    eval(['backgroundnoise_rgb' num2str(idx) '= uint8(backgroundnoise_rgb);']); %0.02s
+    % backgroundnoise_rgb = uint8(backgroundnoise_rgb);
+    eval(['backgroundnoise_rgb' num2str(idx) '=uint8(backgroundnoise_rgb);']); %0.02s 
     toc
 end
 clearvars('backgroundnoise_rgb')
