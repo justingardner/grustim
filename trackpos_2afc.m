@@ -42,7 +42,7 @@ staircase       = false;
 
 task{1}{1}.segmin           = [0.2 nan 0.5 nan 1];
 task{1}{1}.segmax           = [0.5 nan 0.5 nan 1];
-task{1}{1}.numTrials        = 5; %40*5*5; %40*5*5; %40*5*5; % per luminance level
+task{1}{1}.numTrials        = 40*5*5; %40*5*5; %40*5*5; %40*5*5; % per luminance level
 task{1}{1}.getResponse      = [0 0 0 0 1]; %segment to get response.
 task{1}{1}.synchToVol       = [0 0 0 0 1]; % segmet to wait for backtick
 task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
