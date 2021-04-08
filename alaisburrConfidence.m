@@ -200,10 +200,10 @@ task{1}{1}.parameter.centerWhich = [1 2]; % centered in which interval
 task{1}{1}.random = 1;
 stimulus.runType = lower(runType);
 if strcmp(stimulus.runType,'high')
-  task{1}{1}.parameter.posDiff = [-0.35 -4.6694 4.6694 0.35];
+  task{1}{1}.parameter.posDiff = [9, 5, 2, -5, -2, -9];
 %   task{1}{1}.parameter.posDiff = [-2 -1.5 -1 1 1.5 2] * threshold; 
 elseif strcmp(stimulus.runType,'low')
-    task{1}{1}.parameter.posDiff = [-11.8752 -4.6694 4.6694 11.8752];
+    task{1}{1}.parameter.posDiff = [15, 11, 9, -9, -11, -15];
 %   task{1}{1}.parameter.posDiff = [-1 -0.5 -0.25 0.25 0.5 1] * threshold; 
 elseif strcmp(stimulus.runType,'full')
   task{1}{1}.parameter.posDiff = [-15 -11 -8 -6 -4 -2 2 4 6 8 11 15];
