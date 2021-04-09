@@ -140,8 +140,8 @@ task{1}{1}.waitForBacktick = 1;
 % end
 
 
-task{1}{1}.segmin = [1.0, 0.6, 0.2, 0.6, 0.2, 1.4];
-task{1}{1}.segmax = [1.0, 0.6, 0.2, 0.6, 0.2, 1.4];
+task{1}{1}.segmin = [1.0, 0.6, 0.2, 0.6, 0.2, 1.4, 2.0];
+task{1}{1}.segmax = [1.0, 0.6, 0.2, 0.6, 0.2, 1.4, 2.0];
 
 stimulus.seg = {};
 stimulus.seg.cue = 1;
@@ -150,11 +150,12 @@ stimulus.seg.isi1 = 3;
 stimulus.seg.stim2 = 4;
 stimulus.seg.isi2 = 5;
 stimulus.seg.resp = 6;
+stimulus.seg.ITI = 7;
 
 % Trial parameters
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
-task{1}{1}.getResponse(end) = 1;
+task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
 task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
@@ -270,7 +271,9 @@ end
 % end
 % stimulus.live.trialStim = 
 cueSide = {'Right', 'Left'};
-disp(sprintf('--- Trial %i - Cue Side: %s, LeftSame: %i, RightSame: %i ---', task.trialnum, cueSide{task.thistrial.cueSide}, task.thistrial.leftSame, task.thistrial.rightSame));
+sameDiff = {'Different', 'Same'};
+disp(sprintf('--- Trial %i - Cue Side: %s; Left: %s %s, Right: %s %s ---', task.trialnum, cueSide{task.thistrial.cueSide},...
+                                   leftImgClass, sameDiff{task.thistrial.leftSame+1}, rightImgClass, sameDiff{1+task.thistrial.rightSame}));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -290,14 +293,17 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
 mglClearScreen(0.5);
-upCue(task);
+if (task.thistrial.thisseg ~= stimulus.seg.ITI)
+    upCue(task);
+end
+
 % Draw the stimuli at the correct flicker rate.
 if task.thistrial.thisseg == stimulus.seg.stim1
-	mglBltTexture(stimulus.live.leftStims{1}, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-    mglBltTexture(stimulus.live.rightStims{1}, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+  	mglBltTexture(stimulus.live.leftStims{1}, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(stimulus.live.rightStims{1}, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
 elseif task.thistrial.thisseg == stimulus.seg.stim2
-	mglBltTexture(stimulus.live.leftStims{2}, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-    mglBltTexture(stimulus.live.rightStims{2}, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+  	mglBltTexture(stimulus.live.leftStims{2}, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(stimulus.live.rightStims{2}, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
 end
 
 if task.thistrial.thisseg == stimulus.seg.resp && ~isnan(task.thistrial.correct)
@@ -346,6 +352,7 @@ if validResponse
   if stimulus.live.gotResponse==0
     task.thistrial.detected = 1;
     task.thistrial.response = task.thistrial.whichButton;
+    disp(sprintf('Response: %i', task.thistrial.response));
     if task.thistrial.cueSide == 1
     	task.thistrial.correct = task.thistrial.response == (task.thistrial.rightSame+1);
     else
