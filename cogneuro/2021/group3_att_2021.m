@@ -133,13 +133,16 @@ task{1}{1}.segmin = [1 2];
 task{1}{1}.segmax = [1 2];
 
 % When scanning we synchronize the stimulus to the scanner
-task{1}{1}.synchToVol = [0 0 0 0 0];
+task{1}{1}.synchToVol = zeros(task{1}{1}.segmin);
 if stimulus.scan
     task{1}{1}.synchToVol(end) = 1;
+    task{1}{1}.segmin(end) = max(0, task{1}{1}.segmin(end) - 0.100);
+    task{1}{1}.segmax(end) = max(0, task{1}{1}.segmax(end) - 0.200);
+
 end
 
 % Get responses on the resp segment (4)
-task{1}{1}.getResponse = [0 0 0 1 0];
+task{1}{1}.getResponse = [0 1];
 
 % Parameters that control the direction of each oriented grating
 stimulus.nGratings = 8;
@@ -153,12 +156,9 @@ end
 % This will randomize trials
 task{1}{1}.random = 1;
 % Outside the scanner fix the trial count
-task{1}{1}.numTrials = 50;
+task{1}{1}.numTrials = 80;
 % Inside the scanner, inf length so that we can stop the stimulus after the
 % scanner stops running.
-if stimulus.scan
-    task{1}{1}.numTrials = inf;
-end
 
 %% Tracking
 % these are variables that we want to track for later analysis.
@@ -251,13 +251,14 @@ task.thistrial.trialNum = stimulus.curTrial;
 % Store the "correct" direction to attend (could be useful for analysis)
 task.thistrial.attend = 1+mod(task.trialnum, stimulus.nGratings); % Go through each grating one by one.
 task.thistrial.dir = task.thistrial.(sprintf('dir%i', task.thistrial.attend));
+task.thistrial.cuedChange = task.thistrial.(sprintf('change%i', task.thistrial.attend));
 
 % Get the amount of rotation for this trial from the staircase
 [rot, stimulus] = getDeltaPed(stimulus);
 % Store this info and tell the operator
 task.thistrial.rot = rot;
 aT = {'left','right'}; aR = {'right','','left'};
-disp(sprintf('(cogneuro_att) Attending: %i, Respond: %s, Rot: %2.2f deg',task.thistrial.attend,aR{task.thistrial.dir+2},rot));
+disp(sprintf('(cogneuro_att) Attending: %i; Did cued change: %i',task.thistrial.attend, task.thistrial.cuedChange));
 
 % Now make our gratings (we could save these ahead of time and rotate, but
 gauss = mglMakeGaussian(5,5,1,1);
@@ -273,6 +274,12 @@ for i = 1:stimulus.nGratings
     g =  (stimulus.colors.nUnreserved-stimulus.colors.nReserved)* g +stimulus.colors.nReserved + 1;
   end
   stimulus.live.(sprintf('tex%i_2',i)) = mglCreateTexture(g);
+end
+
+if task.thistrial.cuedChange == 1
+    task.thistrial.correct = 0;
+else
+    task.thistrial.correct = 1;
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%
@@ -380,18 +387,15 @@ if any(task.thistrial.whichButton == stimulus.responseKeys)
     % check that we haven't already responded
     if task.thistrial.gotResponse < 2
         % determine which button is correct
-        if task.thistrial.dir==-1
-            cButt = 2;
+        if task.thistrial.cuedChange == 1
+            task.thistrial.correct = 1;
         else
-            cButt = 1;
+            task.thistrial.correct = 0;
         end
-        % check if subject was correct
-        corr = task.thistrial.whichButton == cButt;
-        % store this info
-        task.thistrial.correct = corr;
+        corr = task.thistrial.correct;
         stimulus.staircase = doStaircase('update',stimulus.staircase,corr);
         stimulus.live.fixColor = fixColors{corr+1};
-        disp(sprintf('(cogneuro_att) Response %s: %s',responseText{corr+1},responsePos{find(stimulus.responseKeys==task.thistrial.whichButton)}));
+        disp(sprintf('(cogneuro_att) Response %s',responseText{corr+1}));
     else
         disp(sprintf('(cogneuro_att) Subject responded multiple times: %i',task.thistrial.gotResponse+1));
     end
