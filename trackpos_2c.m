@@ -3,17 +3,15 @@
 %      usage: trackpos_2afc
 %         by: Josh Ryu
 %       date: 04/13/2021
-%    purpose: 2 alternative forced choice task for position of two blobs
+%    purpose: 2 choice task for position of one blob against fixation.
 %
 % staircase not implemented yet
 
-% S1: random period of fixation (~0.5s)
+% S1: random period of fixation (random ~0.5s)
 % S2: stimulus period (stimdur s)
-% S3: background period (0.5s)
-% S4: stimulus2 period (stimdur s)
-% S5: repsonse period + feedback (1s + arbitrary)
+% S3: repsonse period + feedback (1s + arbitrary)
 
-function myscreen = trackpos_2afc(varargin)
+function myscreen = trackpos_2c(varargin)
 
 %% set up screen and experiment
 % set input arguments
@@ -28,56 +26,56 @@ myscreen.saveData       = 1; % save stimfile to data directory
 myscreen = initScreen(myscreen);
 
 % Experimenter parameters
-noeye           = false;
-eyemousedebug   = false;
-grabframe       = false; 
-staircase       = false; 
+exp                 = struct();
+exp.noeye           = false;
+exp.eyemousedebug   = false;
+exp.grabframe       = false; 
+exp.staircase       = false; 
 
 %% task parameters
-% Go straight to task.
 % S1: random period of fixation (~0.5s)
-% S2: stimulus period (0.5s)
-% S3: background period (0.5s)
-% S4: stimulus2 period (0.5s)
-% S5: repsonse period + feedback (1s + arbitrary)
-
-task{1}{1}.segmin           = [0.2 nan 0.5 nan 1];
-task{1}{1}.segmax           = [0.5 nan 0.5 nan 1]; 
-task{1}{1}.numTrials        = 30*2*4*4*4; %ntrials x l/r x stimDur x stimLum x posDiff
-taskdur = 3 * task{1}{1}.numTrials/60/60 % approximate duration in hours
-task{1}{1}.getResponse      = [0 0 0 0 1]; %segment to get response.
-task{1}{1}.synchToVol       = [0 0 0 0 1]; % segmet to wait for backtick
-task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
-
-% Run fixed intervals (1) or staircase (0)
-if staircase
-    task{1}{1}.runfixedint  = 0; % staircase
-else
-    task{1}{1}.runfixedint  = 1; % fixed interval
-end
+% S2: stimulus period (stimdur s)
+% S3: repsonse period + feedback (1s + arbitrary)
 
 % stimulus and background
 task{1}{1}.parameter.backLum    = 96; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
 task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
 % teststimLum                     = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
-teststimLum                     = task{1}{1}.parameter.noiseLum*[0.5, 1, 2, 3]; %SNR
+teststimLum                     = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
 teststimDur                     = [2/60 5/60 10/60 15/60]; %frames/hz
+posDiff                         = [0.05, 0.1, 0.15, 0.2];
 
+task{1}{1}.parameter.stimright  = [0, 1]; % 1 if stimulus is to the right of fixation
+task{1}{1}.parameter.posDiff    = posDiff; % forst fixed values
+task{1}{1}.parameter.stimLum 	= teststimLum;
+
+task{1}{1}.segmin           = [0.2 nan 1];
+task{1}{1}.segmax           = [0.5 nan 1]; 
+%ntrials x l/r x stimDur x stimLum x posDiff
+task{1}{1}.numTrials        = 30*2*length(teststimDur) * length(teststimLum)*length(posDiff); 
+taskdur = 2 * task{1}{1}.numTrials/60/60; % approximate duration in hours
+disp(['Task duration = ' num2str(taskdur) ' hours']);
+
+task{1}{1}.getResponse      = [0 0 1]; %segment to get response.
+task{1}{1}.synchToVol       = [0 0 1]; % segmet to wait for backtick
+task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
+
+% Run fixed intervals (1) or staircase (0)
+if exp.staircase
+    task{1}{1}.runfixedint  = 0; % staircase
+else
+    task{1}{1}.runfixedint  = 1; % fixed interval
+end
 stimulus.phaseScramble          = 1;
 stimulus.backprecompute         = 1;
 
-% task{1}{1}.parameter.pos        = [0]; % position of first stimulus; %task parameters (2*stimulus.stimStd)*(2*rand(1)-1); 
-task{1}{1}.parameter.firstright = [0, 1]; % 1 if the first is to the right of second.
-task{1}{1}.parameter.posDiff    = [0.05, 0.1, 0.15, 0.2]; % forst fixed values
-task{1}{1}.parameter.stimLum 	= teststimLum;
-
+% calculated variables
 task{1}{1}.randVars.calculated.subjcorrect  = nan; 
 
-maxframes = ceil((2*max(teststimDur)+task{1}{1}.segmax(1)+ task{1}{1}.segmax(3))...
+maxframes = ceil((task{1}{1}.segmax(1)+max(teststimDur))...
     *myscreen.framesPerSecond)+10; % with some additional overflow
 
-task{1}{1}.randVars.calculated.pos          = nan;
 task{1}{1}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
 task{1}{1}.randVars.calculated.stimON       = nan(1,maxframes); % nframes x 1 for the stimulus
 
@@ -91,7 +89,7 @@ task{1}{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencin
 for trialN = 1:task{1}{1}.numTrials
     fixdur      = rand*(task{1}{1}.segmax(1) - task{1}{1}.segmin(1)) + task{1}{1}.segmin(1);
     stimdur     = teststimDur(randi(length(teststimDur)));
-    task{1}{1}.seglenPrecompute.seglen{trialN} = [fixdur stimdur 0.5 stimdur 1];
+    task{1}{1}.seglenPrecompute.seglen{trialN} = [fixdur stimdur 1];
 end
 
 % initializing task...
@@ -106,8 +104,10 @@ end
 global stimulus;
 stimulus = [];
 
+stimulus.exp = exp;
+
 % for staircase
-if staircase
+if stimulus.exp.staircase
     stimulus.stairUp        = 1;
     stimulus.stairDown      = 2;
     stimulus.stairStepSize  = 0.01;
@@ -119,7 +119,7 @@ if staircase
 else % run fixed intervals (set the values here) 
 end
 
-stimulus.teststimDur = teststimDur;
+stimulus.teststimDur        = teststimDur;
 
 stimulus.phasescrambleOn = 1;
 stimulus.backprecompute = 1;
@@ -156,11 +156,8 @@ if stimulus.phasescrambleOn == 1;
     toc
 end
 
-stimulus.noeye              = noeye;
-stimulus.eyemousedebug      = eyemousedebug;
-
 %% Eye calibration
-if ~stimulus.noeye
+if ~stimulus.exp.noeye
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
     
@@ -169,8 +166,7 @@ if ~stimulus.noeye
 end
 
 %% run the task
-stimulus.grabframe = grabframe; %save frames into matrices for outputting task image
-if stimulus.grabframe, global frame; frame = {};, end
+if stimulus.exp.grabframe, global frame; frame = {};, end
 stimulus.t0 = mglGetSecs; % 
 
 mglDisplayCursor(0); %hide cursor
@@ -189,7 +185,7 @@ myscreen = endTask(myscreen,task);
 mglClose 
 endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
-if stimulus.grabframe
+if stimulus.exp.grabframe
     save('/Users/jryu/data/trackpos_2afc/taskSetup/frame.mat', 'frame')
     % save('/Users/jryu/data/trackpos_2afc/taskSetup/frame.mat', 'frame')
     % save('/Users/joshryu/Dropbox/GardnerLab/data/trackpos_2afc/taskSetup/frame.mat', 'frame')
@@ -228,10 +224,10 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     
     if stimulus.phasescrambleOn == 1 && stimulus.backprecompute == 1;
         nframes = ceil(sum(task.thistrial.seglen(1:end-1))*myscreen.framesPerSecond)+10; % with some additional overflow
-        task.thistrial.bgpermute(1:nframes) = randi(nframes,nframes,1);
+        task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
         
-    if stimulus.grabframe
+    if stimulus.exp.grabframe
         global frame
         %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackpos_2afc_32back_500ms.mat', 'frame','-v7.3')
         frame = {};
@@ -272,7 +268,7 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
-if task.thistrial.thisseg == 5 %response feedback
+if task.thistrial.thisseg == 3 %response feedback
     stimulus.fixColor = stimulus.fixColors.response;
 end
 
@@ -281,10 +277,8 @@ end
 %% screen update
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 % S1: random period of fixation (~0.5s)
-% S2: stimulus period (0.5s)
-% S3: background period (0.5s)
-% S4: stimulus2 period (0.5s)
-% S5: repsonse period + feedback (1s + arbitrary)
+% S2: stimulus period (stimdur s)
+% S3: repsonse period + feedback (1s + arbitrary)
 
 global stimulus % call stimulus
 
@@ -293,24 +287,23 @@ mglClearScreen(stimulus.backLum/255);
 task.thistrial.framecount = task.thistrial.framecount + 1;
 task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus
 
-% draw blob or fixation
-if task.thistrial.thisseg == 2 % first stimulus
+% add fixation
+mglGluDisk(0, 0, 0.1, [1 0 0]) % small red dot (cursor)
+
+% draw blob or response feedback
+if task.thistrial.thisseg == 2 % stimulus
     task.thistrial.stimON(task.thistrial.framecount) = 1;
-    pos = task.thistrial.pos;
+    pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
     mglBltTexture(stimulus.gaussian,[pos 0]);
-elseif task.thistrial.thisseg == 4 % second stimulus
-    task.thistrial.stimON(task.thistrial.framecount) = 1;
-    pos = task.thistrial.pos - (2*task.thistrial.firstright-1)*task.thistrial.posDiff;
-    mglBltTexture(stimulus.gaussian,[pos 0]);
-elseif task.thistrial.thisseg == 5 %response feedback
+elseif task.thistrial.thisseg == 3 %response feedback
     % no fixation cross until response.
     if any(stimulus.fixColor ~= stimulus.fixColors.response)
         mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
     end
 end
 
-% inject noise and track time
-if any([1,2,3,4] == task.thistrial.thisseg) 
+% inject noise, track time
+if any([1,2] == task.thistrial.thisseg) 
     if stimulus.phasescrambleOn == 1 
         idx = task.thistrial.bgpermute(task.thistrial.framecount);
         mglBltTexture(stimulus.backnoise{idx},...
@@ -321,9 +314,9 @@ if any([1,2,3,4] == task.thistrial.thisseg)
 end
 
 % track eye
-if (~stimulus.noeye) && any(task.thistrial.thisseg==[1,2,3,4]) 
+if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1,2]) 
     % mouse version for testing with no eyetracker
-    if stimulus.eyemousedebug
+    if stimulus.exp.eyemousedebug
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
@@ -337,7 +330,7 @@ if (~stimulus.noeye) && any(task.thistrial.thisseg==[1,2,3,4])
     task.thistrial.trackEyeTime(task.thistrial.framecount)  = postime;
 end
 
-if stimulus.grabframe
+if stimulus.exp.grabframe
     global frame; frame{task.thistrial.framecount} = mglFrameGrab;
 end
 
@@ -350,15 +343,15 @@ global stimulus
 
 % record responses. correct/incorrect
 if any(task.thistrial.whichButton == [1 2])
-    respIs1 = (task.thistrial.whichButton == 1);    
-    correct = (task.thistrial.firstright == respIs1); % correct if first is right and response is 1.
+    respIsRight = (task.thistrial.whichButton == 2);
+    correct = (task.thistrial.stimright == respIsRight); % correct if first is right and response is 2.
     task.thistrial.subjcorrect = correct;
     
     if task.runfixedint == 0 
         stimulus.stairN = stimulus.stairN+1; %count how many times 
     end
 else
-    stimIs1 = task.thistrial.firstright; 
+    stimIs1 = task.thistrial.stimright; 
     respIs1 = nan; correct = nan;
 end
 
@@ -371,12 +364,12 @@ else % incorrect
     stimulus.fixColor = stimulus.fixColors.incorrect;
 end
 
-% change fixation color (doesn't this go back to the screenupate function?
+% change fixation color (doesn't this go back to the screenupate function?)
 mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1); 
 
 % Output response to the screen. 
-if task.thistrial.whichButton == 1, respSide = 'seg1';
-elseif task.thistrial.whichButton == 2, respSide = 'seg2'; end
+if task.thistrial.whichButton == 1, respSide = 'left';
+elseif task.thistrial.whichButton == 2, respSide = 'right'; end
 
 if correct == 0, corrString = 'incorrect';
 elseif correct == 1, corrString = 'correct';
@@ -392,7 +385,7 @@ if task.runfixedint == 0
     % beginning of segment
 end
 
-posdiff = -1 * (2*task.thistrial.firstright-1)*task.thistrial.posDiff;
+posdiff = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
 disp(['Position difference: ' num2str(posdiff) '; ' ...
     'Response: ' respSide '; ' corrString])
 
