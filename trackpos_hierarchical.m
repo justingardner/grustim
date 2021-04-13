@@ -29,11 +29,11 @@ experimenter.grabframe       = 0; % grab frame
 experimenter.fixateCenter    = 1;
 experimenter.phasescrambleOn = 1; % consider different noise? (i.e. pink noise? https://www.mathworks.com/help/audio/ref/pinknoise.html)
 
-experimenter.precompute_path = '~/proj/grustim/trackpos_hierarchical/pilot0/'; %required if using precompute
+experimenter.precompute_path = '/Users/JRyu/Dropbox/CCNL/JoshRyu/trackpos_hierarchical/pilot0/'; %required if using precompute
 % 1: load precomputed stimulus (background and stim)
 % 2: load precomputed background and stimulus position only (during background trials)
 experimenter.precompute          = 2; % 1 or 2
-experimenter.precompute_gen      = 1; %1; % generate and save stimulus
+experimenter.precompute_gen      = 0; %1; % generate and save stimulus
 experimenter.downsample_spatRes  = 5; % downsample spatially
 if ~exist(experimenter.precompute_path), mkdir(experimenter.precompute_path);,end
 
@@ -46,16 +46,17 @@ design_block = struct();
 design_block.time_stim = 30;
 design_block.time_fix = 3;
 design_block.nTrials_train  = 1; % learning period
-design_block.nTrials_track  = 32; % testing period; with noise
+design_block.nTrials_track  = 1; % testing period; with noise
 
 design_block.backLum        = 96;
 design_block.noiseLum       = 32;
-design_block.stimLum        = [32, 96]; %randomize luminance of target
-design_block.distLum        = [32, 96]; %randomize luminance of distractors
+design_block.stimLum        = [25]; %randomize luminance of target
+design_block.distLum        = [96]; %randomize luminance of distractors
     
 % Experimental Design
 % predefined packages
 selected_packages = {'singleblob', 'balancedTree', 'singleblob', 'independent5'};
+% selected_packages = {'balancedTree','independent5'};
 design = load_packages(myscreen, selected_packages);
 
 %% get variables
@@ -198,7 +199,7 @@ function task = configureExperiment(task, myscreen, design, design_block)
         
         task{1}{phaseNum+1}.randVars.uniform.stimLum       = design_block.stimLum;
         if strcmp(design(condNum).name,'singleblob') 
-            task{1}{phaseNum+1}.numTrials                  = 16;
+            task{1}{phaseNum+1}.numTrials                  = 1;
         else % add distractor luminance
             task{1}{phaseNum+1}.numTrials                  = design_block.nTrials_track;
             task{1}{phaseNum+1}.randVars.uniform.distLum   = design_block.distLum;
