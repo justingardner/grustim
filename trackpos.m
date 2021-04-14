@@ -478,7 +478,8 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     % set standard deviation of stimulus
     
     % stimulus size
-    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 0.4;,end %unit: imageX, in deg. 
+    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 1;,end %unit: imageX, in deg. 
+    %GardnerLab: stimstd = 2; CSNL stimStd = 0.4.. (why...?)
     stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
     
     %stimulus initial position. uniform distribution across the screen

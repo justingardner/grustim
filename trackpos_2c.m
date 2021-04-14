@@ -6,10 +6,12 @@
 %    purpose: 2 choice task for position of one blob against fixation.
 %
 % staircase not implemented yet
+% consider: adding another noise period after the stimulus
 
 % S1: random period of fixation (random ~0.5s)
 % S2: stimulus period (stimdur s)
 % S3: repsonse period + feedback (1s + arbitrary)
+
 
 function myscreen = trackpos_2c(varargin)
 
@@ -31,6 +33,7 @@ exp.noeye           = false;
 exp.eyemousedebug   = false;
 exp.grabframe       = false; 
 exp.staircase       = false; 
+exp.debug           = false;
 
 %% task parameters
 % S1: random period of fixation (~0.5s)
@@ -38,7 +41,7 @@ exp.staircase       = false;
 % S3: repsonse period + feedback (1s + arbitrary)
 
 % stimulus and background
-task{1}{1}.parameter.backLum    = 96; %32;  % background luminance; units: fraction of full luminance 
+task{1}{1}.parameter.backLum    = 90; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
 task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
 % teststimLum                     = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
@@ -50,10 +53,10 @@ task{1}{1}.parameter.stimright  = [0, 1]; % 1 if stimulus is to the right of fix
 task{1}{1}.parameter.posDiff    = posDiff; % forst fixed values
 task{1}{1}.parameter.stimLum 	= teststimLum;
 
-task{1}{1}.segmin           = [0.2 nan 1];
-task{1}{1}.segmax           = [0.5 nan 1]; 
+task{1}{1}.segmin           = [0.4 nan 1];
+task{1}{1}.segmax           = [0.8 nan 1]; 
 %ntrials x l/r x stimDur x stimLum x posDiff
-task{1}{1}.numTrials        = 30*2*length(teststimDur) * length(teststimLum)*length(posDiff); 
+task{1}{1}.numTrials        = 22*2*length(teststimDur) * length(teststimLum)*length(posDiff); 
 taskdur = 2 * task{1}{1}.numTrials/60/60; % approximate duration in hours
 disp(['Task duration = ' num2str(taskdur) ' hours']);
 
@@ -147,7 +150,12 @@ if stimulus.phasescrambleOn == 1;
         end
 
         % create all background textures and then load them later
-        for idx = 1:size(backgroundnoise_rgb,4) %too big?? memory?
+        if stimulus.exp.debug 
+            nnn = 200;
+        else
+            nnn = size(backgroundnoise_rgb,4);
+        end
+        for idx = 1:nnn %too big?? memory?
             stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));
         end
 
@@ -157,7 +165,7 @@ if stimulus.phasescrambleOn == 1;
 end
 
 %% Eye calibration
-if ~stimulus.exp.noeye
+if ~stimulus.exp.noeye && ~ stimulus.exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
     
@@ -195,6 +203,11 @@ end
 %% Initialize trials; set staircuse
 function [task myscreen] = initTrialCallback(task, myscreen)
     global stimulus
+    
+    % print trial number every 5%. 
+    if mod(task.trialnum,ceil(task.numTrials/20)) == 1
+        disp(['Trial = ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
+    end
     
     stimulus.stimLum    = task.thistrial.stimLum;
     stimulus.backLum    = task.thistrial.backLum;
@@ -396,7 +409,8 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
     % set standard deviation of stimulus
     
     % stimulus size
-    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 0.4;,end %unit: imageX, in deg. 
+    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 1;,end %unit: imageX, in deg. 
+    %GardnerLab: stimstd = 1; CSNL stimStd = 0.4.. (why...?)
     stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
     
     %stimulus initial position. uniform distribution across the screen
