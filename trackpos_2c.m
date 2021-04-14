@@ -46,7 +46,7 @@ task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
 % teststimLum                     = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 teststimLum                     = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
 teststimDur                     = [2/60 5/60 10/60 15/60]; %frames/hz
-posDiff                         = [0.05, 0.1, 0.15, 0.2];
+posDiff                         = [0.05, 0.1, 0.15, 0.2]; % degs
 
 task{1}{1}.parameter.stimright  = [0, 1]; % 1 if stimulus is to the right of fixation
 task{1}{1}.parameter.posDiff    = posDiff; % forst fixed values
@@ -55,7 +55,7 @@ task{1}{1}.parameter.stimLum 	= teststimLum;
 task{1}{1}.segmin           = [0.4 nan 1];
 task{1}{1}.segmax           = [0.8 nan 1]; 
 %ntrials x l/r x stimDur x stimLum x posDiff
-task{1}{1}.numTrials        = 22*2*length(teststimDur) * length(teststimLum)*length(posDiff); 
+task{1}{1}.numTrials        = 30*2*length(teststimDur) * length(teststimLum)*length(posDiff); 
 taskdur = 2 * task{1}{1}.numTrials/60/60; % approximate duration in hours
 disp(['Task duration = ' num2str(taskdur) ' hours']);
 
