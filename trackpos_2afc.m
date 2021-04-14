@@ -57,6 +57,7 @@ else
 end
 
 % stimulus and background
+task{1}{1}.random               = 1;
 task{1}{1}.parameter.backLum    = 96; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
 task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)

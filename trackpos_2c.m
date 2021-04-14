@@ -41,6 +41,7 @@ exp.debug           = false;
 % S3: repsonse period + feedback (1s + arbitrary)
 
 % stimulus and background
+task{1}{1}.random               = 1;
 task{1}{1}.parameter.backLum    = 90; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
 % teststimLum                     = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);

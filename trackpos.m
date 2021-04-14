@@ -43,6 +43,7 @@ task{1}{1}.getResponse      = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick  = 0; %wait for backtick before starting each trial 
 
 % task parameters for adaptation conditions
+task{1}{1}.random               = 1;
 if whitenoiseOn == 1 || phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
     task{1}{1}.parameter.backLum            = 90; %160;%90;  % background luminance; units: luminance 
