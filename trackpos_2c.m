@@ -43,7 +43,6 @@ exp.debug           = false;
 % stimulus and background
 task{1}{1}.parameter.backLum    = 90; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
-task{1}{1}.parameter.stimLum    = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
 % teststimLum                     = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 teststimLum                     = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
 teststimDur                     = [2/60 5/60 10/60 15/60]; %frames/hz
