@@ -41,6 +41,7 @@ task{1}{1}.segmax           = [30 3];
 task{1}{1}.numTrials        = 5; % changed later depending on the condition
 task{1}{1}.getResponse      = [1 0]; %segment to get response.
 task{1}{1}.waitForBacktick  = 0; %wait for backtick before starting each trial 
+task{1}{1}.random           = 1;
 
 % task parameters for adaptation conditions
 task{1}{1}.random               = 1;
@@ -118,12 +119,13 @@ teststimLum   = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
 % teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 
 for stepIdx = 1:length(teststimSteps)
-    idx = (stepIdx-1)*(length(teststimLum)+1) +1;
+    idx = (stepIdx-1)*(2) + 1;
     % adaptation condition, at full luminance
     task{1}{idx}                                = task{1}{1};  
     task{1}{idx}.parameter.stimStep             = teststimSteps(stepIdx);
     task{1}{idx}.parameter.phasescrambleOn      = 0;
-    task{1}{idx}.parameter.noiseLum             = 0;    
+    task{1}{idx}.parameter.noiseLum             = 0;  
+    task{1}{idx}.parameter.stimLum              = 32;
     task{1}{idx}.segmin         = [30 3]; %fixation time constrained by the texture loading
     task{1}{idx}.segmax         = [30 3]; 
     task{1}{idx}.numTrials      = 5;
@@ -160,6 +162,9 @@ stimulus.showmouse          = showmouse;
 stimulus.fixateCenter       = fixateCenter;
 stimulus.backprecompute     = backprecompute;
 stimulus.eyemousedebug      = eyemousedebug;
+stimulus.phasescrambleOn    = phasescrambleOn;
+stimulus.downsample_timeRes = 1;
+stimulus.exp.debug = 0;
 
 if stimulus.phasescrambleOn == 1;
     disp('Loading phase scrambled background noise...')
