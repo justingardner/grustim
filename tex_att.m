@@ -1,11 +1,11 @@
-function [ myscreen ] = tex_fMRI( varargin )
+function [ myscreen ] = tex_att( varargin )
 %
 % ATTENTION TEXTURES
-%  Experiment to map neural responses to various textures
+%  Same-different task with focal vs distributed attentional cue.
 %
-%  Usage: tex_fMRI(varargin)
+%  Usage: tex_att(varargin)
 %  Authors: Akshay Jagadeesh
-%  Date: 11/05/2018
+%  Date: 04/01/2021
 %
 
 global stimulus
@@ -16,20 +16,14 @@ stimulus = struct;
 
 % add arguments later
 scan = 1;
-getArgs(varargin,{'scan=0', 'sType=1', 'testing=0'}, 'verbose=1');
+getArgs(varargin,{'scan=0', 'testing=0'}, 'verbose=1');
 stimulus.scan = scan;
-stimulus.type = sType;
 stimulus.debug = testing;
-clear scan testing sType;
+clear scan testing
 
 %% Stimulus parameters 
 %% Open Old Stimfile
 stimulus.counter = 1;
-
-trialTypes = {'FAST_no-baseline', 'SLOW_no-baseline', 'SLOW_baseline'};
-disp(sprintf('-------------------------'));
-disp(sprintf('(tex_fMRI) Run Type %i: %s',stimulus.type, trialTypes{stimulus.type}));
-disp(sprintf('-------------------------'))
 
 %% Setup Screen
 if stimulus.scan
@@ -61,24 +55,15 @@ stimulus.live.cueColor = stimulus.colors.black;
 
 stimulus.curTrial(1) = 0;
 
-%% Define stimulus timing
-stimRate = 4.5; % hertz
-blockLen = 9; % seconds
-stimulus.smpLen = 1.0 / stimRate; % seconds
-nSegs = stimRate * blockLen;
-
-% define the amount of time the stimulus should be on and off.
-stimulus.tStimOn = 0.800;
-stimulus.tStimOff = 0.200;
-
 % Task important variables
-stimulus.imageNames = {'lawn', 'moss', 'dirt'};
+stimulus.imageNames = {'lawn', 'moss', 'dirt', 'leaves', 'rocks', 'bark'};
 stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
 stimulus.nTexFams = length(stimulus.imageNames);
-stimulus.imSize = 12;
-stimulus.stimXPos = 9;
+stimulus.imSize = 8;
+stimulus.stimXPos = 6;
+stimulus.stimYPos = 6;
 stimulus.num_samples = 1;
 
 %% Select the condition for this run
@@ -98,8 +83,15 @@ for i = 1:stimulus.nTexFams
   for li = 1:length(stimulus.layerNames)
     layerI = stimulus.layerNames{li};
     for j = 1:stimulus.num_samples
-       sd = imread(sprintf('%s/%s%s_%s_smp%i.png', stimulus.stimDir, stimulus.poolSize, layerI, imName, j));
-       stimulus.images.synths.(sprintf('%s_%s_%i', imName, layerI, j)) = genTexFromIm(sd, mask);
+      if isfile( sprintf('%s/%s%s_%s_smp%i.png', stimulus.stimDir, stimulus.poolSize, layerI, imName, j))
+        sd = imread(sprintf('%s/%s%s_%s_smp%i.png', stimulus.stimDir, stimulus.poolSize, layerI, imName, j));
+      elseif isfile(sprintf('%s/%s%s_%s_smp%i.jpg', stimulus.stimDir, stimulus.poolSize, layerI, imName, j))
+        sd = imread(sprintf('%s/%s%s_%s_smp%i.jpg', stimulus.stimDir, stimulus.poolSize, layerI, imName, j));
+      else
+        disp(sprintf('%s%s_%s_smp%i not found', stimulus.poolsize, layerI, imName, j));
+        keyboard
+      end
+      stimulus.images.synths.(sprintf('%s_%s_%i', imName, layerI, j)) = genTexFromIm(sd, mask);
     end
  
     % Load noise samples.
@@ -116,41 +108,15 @@ clear sd
 %%%%%%%%%%%%% TASK %%%%%%%%%%%%%%%%%
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-% if stimulus.type==1
-%   % Type 1: FAST event related
-%   task{1}{1}.segmin = [4.0]; % 4 sec trials
-%   task{1}{1}.segmax = [4.0];
-  
-%   if stimulus.debug==1
-%     task{1}{1}.segmin = [.10]; % 4 sec trials
-%     task{1}{1}.segmax = [.10];
-%   end
-  
-%   stimulus.blank = 1;
-% else
-%   % Type 2 and 3: Slow with long ISI
-%   task{1}{1}.segmin = [4.0 4.0]; % 7.5 sec trials
-%   task{1}{1}.segmax = [4.0 4.0]; % 7.5 sec trials
-%   if stimulus.type==2 % type 2: blank ISI
-%     stimulus.blank = 1;
-%   else
-%     % type 3: ISI with baseline/background images.
-%     stimulus.blank = 0;
-%   end
-% end
 
-
-task{1}{1}.segmin = [1.0, 0.6, 0.2, 0.6, 0.2, 1.4, 2.0];
-task{1}{1}.segmax = [1.0, 0.6, 0.2, 0.6, 0.2, 1.4, 2.0];
+task{1}{1}.segmin = [1.0, 0.6, 1.4, 2.0];
+task{1}{1}.segmax = [1.0, 0.6, 1.4, 2.0];
 
 stimulus.seg = {};
 stimulus.seg.cue = 1;
 stimulus.seg.stim1 = 2;
-stimulus.seg.isi1 = 3;
-stimulus.seg.stim2 = 4;
-stimulus.seg.isi2 = 5;
-stimulus.seg.resp = 6;
-stimulus.seg.ITI = 7;
+stimulus.seg.resp = 3;
+stimulus.seg.ITI = 4;
 
 % Trial parameters
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
@@ -299,11 +265,10 @@ end
 
 % Draw the stimuli at the correct flicker rate.
 if task.thistrial.thisseg == stimulus.seg.stim1
-  	mglBltTexture(stimulus.live.leftStims{1}, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-    mglBltTexture(stimulus.live.rightStims{1}, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-elseif task.thistrial.thisseg == stimulus.seg.stim2
-  	mglBltTexture(stimulus.live.leftStims{2}, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-    mglBltTexture(stimulus.live.rightStims{2}, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+  	mglBltTexture(stimulus.live.leftStims{1}, [-stimulus.stimXPos, -stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(stimulus.live.rightStims{1}, [stimulus.stimXPos, -stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
+  	mglBltTexture(stimulus.live.leftStims{2}, [-stimulus.stimXPos, stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(stimulus.live.rightStims{2}, [stimulus.stimXPos, stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
 end
 
 if task.thistrial.thisseg == stimulus.seg.resp && ~isnan(task.thistrial.correct)
@@ -353,10 +318,11 @@ if validResponse
     task.thistrial.detected = 1;
     task.thistrial.response = task.thistrial.whichButton;
     disp(sprintf('Response: %i', task.thistrial.response));
+    % Button 1 = Same; Button 2 = different
     if task.thistrial.cueSide == 1
-    	task.thistrial.correct = task.thistrial.response == (task.thistrial.rightSame+1);
+    	task.thistrial.correct = mod(task.thistrial.response,2) == task.thistrial.rightSame;
     else
-    	task.thistrial.correct = task.thistrial.response == (task.thistrial.leftSame+1);
+    	task.thistrial.correct = mod(task.thistrial.response,2) == (task.thistrial.leftSame+1);
     end
     if task.thistrial.correct
     	disp('Correct!')
@@ -422,11 +388,11 @@ function [trials] = totalTrials()
 %%
 % Counts trials + estimates the threshold based on the last 500 trials
 % get the files list
-files = dir(fullfile(sprintf('~/data/tex_fMRI/%s/18*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/tex_att/%s/18*stim*.mat',mglGetSID)));
 trials = 0;
 
 for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/tex_fMRI/%s/%s',mglGetSID,files(fi).name)));
+    load(fullfile(sprintf('~/data/tex_att/%s/%s',mglGetSID,files(fi).name)));
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
     trials = trials + e.nTrials;
