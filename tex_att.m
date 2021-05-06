@@ -1,11 +1,11 @@
-function [ myscreen ] = texTest( varargin )
+function [ myscreen ] = tex_att( varargin )
 %
-% EVENT-RELATED TEXTURES
-%  Experiment to map neural responses to various textures
+% ATTENTION TEXTURES
+%  Same-different task with focal vs distributed attentional cue.
 %
-%  Usage: texTest(varargin)
+%  Usage: tex_att(varargin)
 %  Authors: Akshay Jagadeesh
-%  Date: 11/05/2018
+%  Date: 04/01/2021
 %
 
 global stimulus
@@ -15,34 +15,15 @@ stimulus = struct;
 %% Initialize Variables
 
 % add arguments later
-scan = 0;
-run = 0;
-getArgs(varargin,{'scan=1', 'sType=1'}, 'verbose=1');
+scan = 1;
+getArgs(varargin,{'scan=0', 'testing=0'}, 'verbose=1');
 stimulus.scan = scan;
-stimulus.type = sType;
-clear scan run type;
+stimulus.debug = testing;
+clear scan testing
 
 %% Stimulus parameters 
 %% Open Old Stimfile
 stimulus.counter = 1;
-
-if ~isempty(mglGetSID) && isdir(sprintf('~/data/texTest/%s',mglGetSID))
-  % Directory exists, check for a stimfile
-  files = dir(sprintf('~/data/texTest/%s/1*mat',mglGetSID));
-
-  if length(files) >= 1
-    fname = files(end).name;
-    
-    s = load(sprintf('~/data/texTest/%s/%s',mglGetSID,fname));
-    stimulus.counter = s.stimulus.counter + 1;
-    clear s;
-    disp(sprintf('(texTest) Data file: %s loaded.',fname));
-  end
-end
-trialTypes = {'FAST_no-baseline', 'SLOW_no-baseline', 'SLOW_baseline'};
-disp(sprintf('-------------------------'));
-disp(sprintf('(texTest) Run Type %i: %s',stimulus.type, trialTypes{stimulus.type}));
-disp(sprintf('-------------------------'))
 
 %% Setup Screen
 if stimulus.scan
@@ -74,92 +55,75 @@ stimulus.live.cueColor = stimulus.colors.black;
 
 stimulus.curTrial(1) = 0;
 
-%% Define stimulus timing
-stimRate = 4.5; % hertz
-blockLen = 9; % seconds
-stimulus.smpLen = 1.0 / stimRate; % seconds
-nSegs = stimRate * blockLen;
-
-% define the amount of time the stimulus should be on and off.
-stimulus.tStimOn = 0.800;
-stimulus.tStimOff = 0.200;
-
 % Task important variables
-stimulus.imNames = {'bark', 'rocks', 'spikes'}; %, 'im13', 'glass', 'bricks', 'branch'};
-  
+stimulus.imageNames = {'lawn', 'moss', 'dirt', 'leaves', 'rocks', 'bark'};
 stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
-stimulus.nTexFams = length(stimulus.imNames);
-stimulus.imSize = 12;
-stimulus.stimXPos = 7;
-stimulus.nTexSmps = 1;
-stimulus.nNoiseSmps = 1;
-stimulus.nBkgdSmps = 25;
-stimulus.nSmpsPerSeg = nSegs;
+stimulus.nTexFams = length(stimulus.imageNames);
+stimulus.imSize = 8;
+stimulus.stimXPos = 6;
+stimulus.stimYPos = 6;
+stimulus.num_samples = 1;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/TextureSynthesis/stimuli/texER/tex2';
-stimulus.noiseDir = '~/proj/TextureSynthesis/stimuli/texER/noise2';
-stimulus.bkgdDir = '~/proj/TextureSynthesis/stimuli/texER/bkgd';
+stimulus.stimDir = '~/proj/texture_stimuli/color/textures';
+stimulus.origDir = '~/proj/texture_stimuli/color/originals';
 
 %% Preload images
 mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
-stimulus.live.tex = struct();
-stimulus.live.noise = struct();
+stimulus.images.synths = struct();
+stimulus.images.origs = struct();
 disppercent(-inf, 'Preloading images');
 
 % load texture and noise samples
 for i = 1:stimulus.nTexFams
-  imName = stimulus.imNames{i};
+  imName = stimulus.imageNames{i};
   for li = 1:length(stimulus.layerNames)
     layerI = stimulus.layerNames{li};
-    for j = 1:stimulus.nTexSmps
-      sd = rgb2gray(imread(sprintf('%s/%s%s_%s_smp%i.png', stimulus.stimDir, stimulus.poolSize, layerI, imName, j)));
-      stimulus.live.tex.(sprintf('%s_%s_smp%i', layerI, imName, j)) = genTexFromIm(sd, mask);
+    for j = 1:stimulus.num_samples
+      if isfile( sprintf('%s/%s%s_%s_smp%i.png', stimulus.stimDir, stimulus.poolSize, layerI, imName, j))
+        sd = imread(sprintf('%s/%s%s_%s_smp%i.png', stimulus.stimDir, stimulus.poolSize, layerI, imName, j));
+      elseif isfile(sprintf('%s/%s%s_%s_smp%i.jpg', stimulus.stimDir, stimulus.poolSize, layerI, imName, j))
+        sd = imread(sprintf('%s/%s%s_%s_smp%i.jpg', stimulus.stimDir, stimulus.poolSize, layerI, imName, j));
+      else
+        disp(sprintf('%s%s_%s_smp%i not found', stimulus.poolsize, layerI, imName, j));
+        keyboard
+      end
+      stimulus.images.synths.(sprintf('%s_%s_%i', imName, layerI, j)) = genTexFromIm(sd, mask);
     end
-    for k = 1:stimulus.nNoiseSmps
-      nd = rgb2gray(imread(sprintf('%s/noise_%s%s_%s_smp%i.png', stimulus.noiseDir, stimulus.poolSize, layerI, imName, k)));
-      stimulus.live.noise.(sprintf('%s_%s_smp%i', layerI, imName, k)) = genTexFromIm(nd, mask);
-    end
+ 
+    % Load noise samples.
+    orig = imread(sprintf('%s/%s.jpg', stimulus.origDir, imName));
+    stimulus.images.origs.(imName) = genTexFromIm(orig, mask);
   end
+  
   disppercent(i / stimulus.nTexFams);
 end
 
-% load background samples
-for i = 1:stimulus.nBkgdSmps
-  nd = rgb2gray(imread(sprintf('%s/bkgd_smp%i.png', stimulus.bkgdDir, i)));
-  stimulus.live.bkgd.(sprintf('smp%i', i)) = genTexFromIm(nd, mask);
-end
-
 disppercent(inf);
-clear sd nd
+clear sd
 
 %%%%%%%%%%%%% TASK %%%%%%%%%%%%%%%%%
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-if stimulus.type==1 % Type 1: FAST event related
-  task{1}{1}.segmin = [4.0 0.00]; % 3.75 sec trials
-  task{1}{1}.segmax = [4.0 0.00];
-  stimulus.blank = 1;
-else % Type 2 and 3: Slow with long ISI
-  task{1}{1}.segmin = [4.0 4.0]; % 7.5 sec trials
-  task{1}{1}.segmax = [4.0 4.0]; % 7.5 sec trials
-  if stimulus.type==2 % type 2: blank ISI
-    stimulus.blank = 1;
-  else % type 3: ISI with baseline/background images.
-    stimulus.blank = 0;
-  end
-end
+
+task{1}{1}.segmin = [1.0, 0.6, 1.4, 2.0];
+task{1}{1}.segmax = [1.0, 0.6, 1.4, 2.0];
+
 stimulus.seg = {};
-stimulus.seg.stim = 1;
-stimulus.seg.ITI = 2;
+stimulus.seg.cue = 1;
+stimulus.seg.stim1 = 2;
+stimulus.seg.resp = 3;
+stimulus.seg.ITI = 4;
 
 % Trial parameters
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
-task{1}{1}.numTrials = 70;
+task{1}{1}.getResponse(stimulus.seg.resp) = 1;
+
+task{1}{1}.numTrials = 60;
 task{1}{1}.random = 1;
 
 if stimulus.scan
@@ -169,16 +133,17 @@ if stimulus.scan
   task{1}{1}.segmax(end) = max(0, task{1}{1}.segmax(end) - 0.200);
 end
 
-% Specify task parameters
-task{1}{1}.parameter.layer = 1:length(stimulus.layerNames);
-task{1}{1}.parameter.texFam = 1:length(stimulus.imNames);
-%task{1}{1}.parameter.sampleIdx = 1:(stimulus.nTexSmps + stimulus.nNoiseSmps); % 1-2 are textures, 3 is noise.
-% Make textures twice as likely as noise.
-task{1}{1}.parameter.sampleIdx = [repmat(1:stimulus.nTexSmps, 1,2), (stimulus.nTexSmps+1):(stimulus.nTexSmps+stimulus.nNoiseSmps)];
+% Initialize task parameters
 
-% Task variables to be calculated later
-task{1}{1}.randVars.calculated.noiseOrTex = {NaN};
-task{1}{1}.randVars.calculated.tSegStart = {NaN};
+% Assign layer, texture family, and sample index in random blocks.
+task{1}{1}.parameter.leftImgClass = 1:length(stimulus.imageNames);
+task{1}{1}.parameter.rightImgClass = 1:length(stimulus.imageNames);
+task{1}{1}.parameter.cueFocal = [0,1]; %0 = distributed, 1 = focal
+task{1}{1}.parameter.cueSide = [1 2];
+task{1}{1}.randVars.uniform.leftSame = [0,1];
+task{1}{1}.randVars.uniform.rightSame = [0,1];
+task{1}{1}.randVars.calculated.correct = NaN;
+task{1}{1}.randVars.calculated.response = NaN;
 
 for phaseNum = 1:length(task{1})
   [task{1}{phaseNum}, myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
@@ -186,7 +151,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set the third task to be the fixation staircase task
-[task{2} myscreen] = fixStairInitTask(myscreen);
+% [task{2} myscreen] = fixStairInitTask(myscreen);
 
 %% EYE CALIB
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -210,7 +175,7 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
   [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,1);
 
   % update fixation task
-  [task{2}, myscreen, phaseNum] = updateTask(task{2},myscreen,1);
+  % [task{2}, myscreen, phaseNum] = updateTask(task{2},myscreen,1);
   % flip screen
   myscreen = tickScreen(myscreen,task);
 end
@@ -238,22 +203,43 @@ global stimulus
 stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
-% Choose the 45 stimuli in this block by randomly sampling with replacement.
-task.thistrial.tSegStart = [];
 
 % At the start of each trial, choose which image to display.
-if task.thistrial.sampleIdx > stimulus.nTexSmps % 1-4 are textures, 5-7 is noise
-  task.thistrial.noiseOrTex = 'noise';
-  sampleIdx = task.thistrial.sampleIdx - stimulus.nTexSmps;
-else
-  task.thistrial.noiseOrTex = 'tex';
-  sampleIdx = task.thistrial.sampleIdx;
-end
-trialTexFam = stimulus.imNames{task.thistrial.texFam};
-trialLayer = stimulus.layerNames{task.thistrial.layer};
-stimulus.live.trialStim = stimulus.live.(task.thistrial.noiseOrTex).(sprintf('%s_%s_smp%i', trialLayer, trialTexFam, sampleIdx));
+% 1. Randomly select a texture family
+leftImgClass = stimulus.imageNames{task.thistrial.leftImgClass};
+rightImgClass = stimulus.imageNames{task.thistrial.rightImgClass};
 
-disp(sprintf('Trial %i - TexFam: %s, %s %s s%i', task.trialnum, trialTexFam, trialLayer, task.thistrial.noiseOrTex, sampleIdx));
+sampleIdx=1;
+
+% Load the stimulus for this trial.
+if task.thistrial.leftSame == 0
+	stimulus.live.leftStims = {stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass)), stimulus.images.origs.(leftImgClass)};
+else
+	if rand() > 0.5
+		stimulus.live.leftStims = {stimulus.images.origs.(leftImgClass), stimulus.images.origs.(leftImgClass)};
+	else
+		stimulus.live.leftStims = {stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass)), stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass))};
+	end
+end
+if task.thistrial.rightSame == 0
+	stimulus.live.rightStims = {stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass)), stimulus.images.origs.(rightImgClass)};
+else
+	if rand() > 0.5
+		stimulus.live.rightStims = {stimulus.images.origs.(rightImgClass), stimulus.images.origs.(rightImgClass)};
+	else
+		stimulus.live.rightStims = {stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass)), stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass))};
+	end
+end
+
+% if task.thistrial.rightSame == 1
+% 	stimulus.live.rightStim1 = stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass));
+% 	stimulus.live.rightStim2 = stimulus.images.synths.(sprintf())
+% end
+% stimulus.live.trialStim = 
+cueSide = {'Right', 'Left'};
+sameDiff = {'Different', 'Same'};
+disp(sprintf('--- Trial %i - Cue Side: %s; Left: %s %s, Right: %s %s ---', task.trialnum, cueSide{task.thistrial.cueSide},...
+                                   leftImgClass, sameDiff{task.thistrial.leftSame+1}, rightImgClass, sameDiff{1+task.thistrial.rightSame}));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -265,18 +251,6 @@ global stimulus
 % Save segment start time;
 task.thistrial.tSegStart(task.thistrial.thisseg) = mglGetSecs;
 
-%for i = 1:2
-%  mglClearScreen;
-%
-%  if task.thistrial.thisseg == stimulus.seg.stim
-%    mglBltTexture(stimulus.live.trialStim, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-%    mglBltTexture(stimulus.live.trialStim, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-%  end
-%
-%  mglFlush;
-%end
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -284,29 +258,48 @@ task.thistrial.tSegStart(task.thistrial.thisseg) = mglGetSecs;
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 %%
 global stimulus
-
-% Select which stimulus to display as a function of time since seg start
-timeSinceSegStart = mglGetSecs(task.thistrial.tSegStart(task.thistrial.thisseg));
-
-% Flash stimuli on and off.
-cycleLen = stimulus.tStimOn + stimulus.tStimOff;
-stimOn = mod(timeSinceSegStart, cycleLen) < stimulus.tStimOn;
-
-stimIdx = ceil(timeSinceSegStart / stimulus.smpLen);
-stimIdx = ceil(timeSinceSegStart / cycleLen);
-
-if task.thistrial.thisseg== stimulus.seg.stim
-  if stimOn %mod(stimIdx,2) == 1
-    mglBltTexture(stimulus.live.trialStim, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-    mglBltTexture(stimulus.live.trialStim, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-  end
-elseif task.thistrial.thisseg==stimulus.seg.ITI
-  if stimOn && ~stimulus.blank %% mod(stimIdx,2) == 1
-    thisBkgd = stimulus.live.bkgd.(sprintf('smp%i', min(25,stimIdx)));
-    mglBltTexture(thisBkgd, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-    mglBltTexture(thisBkgd, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-  end 
+mglClearScreen(0.5);
+if (task.thistrial.thisseg ~= stimulus.seg.ITI)
+    upCue(task);
 end
+
+% Draw the stimuli at the correct flicker rate.
+if task.thistrial.thisseg == stimulus.seg.stim1
+  	mglBltTexture(stimulus.live.leftStims{1}, [-stimulus.stimXPos, -stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(stimulus.live.rightStims{1}, [stimulus.stimXPos, -stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
+  	mglBltTexture(stimulus.live.leftStims{2}, [-stimulus.stimXPos, stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(stimulus.live.rightStims{2}, [stimulus.stimXPos, stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
+end
+
+if task.thistrial.thisseg == stimulus.seg.resp && ~isnan(task.thistrial.correct)
+	if task.thistrial.correct == 1
+		upFix(stimulus, stimulus.colors.green);
+	elseif task.thistrial.correct == 0 
+		upFix(stimulus, stimulus.colors.red);
+	end
+else
+	upFix(stimulus);
+end
+
+%%%%
+function upCue(task)
+
+global stimulus
+
+if task.thistrial.thisseg ~= stimulus.seg.resp && task.thistrial.cueFocal == 0
+	drawArrow(0);
+	drawArrow(pi);
+elseif task.thistrial.cueSide == 1
+	drawArrow(0);
+else
+	drawArrow(pi);
+end
+
+%%%
+function drawArrow(theta)
+x=[1,.75,2,.75];
+y=[0,.5,0,-.5];
+mglPolygon(cos(theta)*x - sin(theta)*y, sin(theta)*x + cos(theta)*y, [0,0,0])
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -317,20 +310,31 @@ function [task, myscreen] = getResponseCallback(task, myscreen)
 
 global stimulus
 
-if task.thistrial.dead, return; end
 
 validResponse = any(task.thistrial.whichButton == stimulus.responseKeys);
 
 if validResponse
   if stimulus.live.gotResponse==0
     task.thistrial.detected = 1;
-    task.thistrial.response = task.thistrial.whichButton - 10;
+    task.thistrial.response = task.thistrial.whichButton;
+    disp(sprintf('Response: %i', task.thistrial.response));
+    % Button 1 = Same; Button 2 = different
+    if task.thistrial.cueSide == 1
+    	task.thistrial.correct = mod(task.thistrial.response,2) == task.thistrial.rightSame;
+    else
+    	task.thistrial.correct = mod(task.thistrial.response,2) == (task.thistrial.leftSame+1);
+    end
+    if task.thistrial.correct
+    	disp('Correct!')
+    else
+    	disp('Incorrect')
+    end
     stimulus.live.fix = 0;
   else
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
   end
   stimulus.live.gotResponse=stimulus.live.gotResponse+1;
-  task = jumpSegment(task);
+  %task = jumpSegment(task);
 else
   disp(sprintf('Invalid response key. Subject pressed %d', task.thistrial.whichButton));
   task.thistrial.response = -1;
@@ -384,11 +388,11 @@ function [trials] = totalTrials()
 %%
 % Counts trials + estimates the threshold based on the last 500 trials
 % get the files list
-files = dir(fullfile(sprintf('~/data/texTest/%s/18*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/tex_att/%s/18*stim*.mat',mglGetSID)));
 trials = 0;
 
 for fi = 1:length(files)
-    load(fullfile(sprintf('~/data/texTest/%s/%s',mglGetSID,files(fi).name)));
+    load(fullfile(sprintf('~/data/tex_att/%s/%s',mglGetSID,files(fi).name)));
     e = getTaskParameters(myscreen,task);
     e = e{1}; % why?!
     trials = trials + e.nTrials;
