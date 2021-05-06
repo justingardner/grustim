@@ -13,6 +13,8 @@
 % S3: repsonse period + feedback (arbitrary)
 % S4: feedback (1s)
 
+% fixed position difference or samples from continuous distributions?
+
 function myscreen = trackpos_est(varargin)
 
 %% set up screen and experiment
@@ -29,8 +31,9 @@ myscreen = initScreen(myscreen);
 
 % Experimenter parameters
 exp                 = struct();
-exp.noeye           = false;
+exp.noeye           = true;
 exp.eyemousedebug   = false;
+exp.showmouse       = false;
 exp.grabframe       = false; 
 exp.debug           = false;
 exp.phasescrambleOn = true;
@@ -51,9 +54,12 @@ task{1}{1}.random               = 1;
 task{1}{1}.parameter.backLum    = 90; %32;  % background luminance; units: fraction of full luminance 
 task{1}{1}.parameter.noiseLum   = 32; % noise luminance, if there is one.
 
-teststimLum                     = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
-teststimDur                     = [2/60 5/60 10/60 15/60]; %frames/hz
-posDiff                         = linspace(0,0.3,11); % in degs; minimum and maximum offset from fixation
+teststimLum                     = task{1}{1}.parameter.noiseLum*[1]; %SNR
+teststimDur                     = [2/60 5/60 10/60 15/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+posDiff                         = linspace(0,0.5,11); % in degs; minimum and maximum offset from fixation
+% test trials in various ranges of min/max pos
+% minPos
+% maxPos
 
 task{1}{1}.parameter.stimright  = [0, 1]; % 1 if stimulus is to the right of fixation
 task{1}{1}.parameter.posDiff    = posDiff; % forst fixed values
@@ -75,7 +81,8 @@ task{1}{1}.numTrials        = 10*2*length(teststimDur) * length(teststimLum)*len
 taskdur = (nansum(task{1}{1}.segmax(isfinite(task{1}{1}.segmax))) + 1 + max(teststimDur)) * ...
     task{1}{1}.numTrials/60/60; % approximate duration in hours
 disp(['Approx task duration = ' num2str(taskdur) ' hours']);
-task{1}{1}.waitForBacktick  = 0; %wait for backtick before starting each trial 
+
+task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
 
 % calculated variables
 maxframes = ceil((task{1}{1}.segmax(1)+max(teststimDur))...
@@ -170,8 +177,10 @@ stimulus.t0 = mglGetSecs; %
 mglDisplayCursor(0); %hide cursor
 mglClearScreen(task{1}{1}.parameter.backLum/255);
 mglTextDraw('task (trackpos_est) starting... ', [0 0.5])
-mglTextDraw('Press 1 if the second stimulus is to the left of the first stimulus; and 2 otherwise',[0 -0.5]);
+mglTextDraw('After the stimulus is presented, point the cursor to the center of the stimulus. Press 1 when you are done',[0 -0.5]);
 mglFlush
+
+if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -208,7 +217,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     stimulus = myInitStimulus(stimulus,myscreen,task); %centerX,Y, diameter called by getArgs.
     
     if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1;
-        nframes = ceil(sum(task.thistrial.seglen(1:end-1))*myscreen.framesPerSecond)+10; % with some additional overflow
+        nframes = ceil(sum(task.thistrial.seglen(1:2))*myscreen.framesPerSecond)+10; % with some additional overflow
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
         
@@ -225,6 +234,14 @@ end
 function [task myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
+
+% center the mouse
+if task.thistrial.thisseg == 3
+    x_img = 0;  y_img = 0;
+    x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
+    y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
+    mglSetMousePosition(x_screen,y_screen, myscreen.screenNumber);
+end
 
 end
 
@@ -247,8 +264,8 @@ if stimulus.exp.colorfix
     % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
     mglGluDisk(0,0,0.1,rand(1,3),60,1);
 else
-    % red fixation dot
-    mglGluDisk(0, 0, 0.1, [1 0 0],60,1); 
+    % blue fixation dot
+    mglGluDisk(0, 0, 0.1, [0 0 1],60,1); 
 end
 
 % inject noise, track time
@@ -328,7 +345,7 @@ if task.thistrial.whichButton == 1
         '; Error: ' num2str(degx - stim_pos)]);
     
     % go to next segment
-    task = jumpsegment(task);
+    task = jumpSegment(task);
 end
 
 end

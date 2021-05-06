@@ -27,16 +27,16 @@ global stimulus; stimulus = struct;
 
 % Experimenter parameters
 %todo:  check these throughout the code!!
-exp.noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
-exp.showmouse       = 0; 
-exp.grabframe       = 0; 
-exp.whitenoiseOn    = 0; % 1: white noise; 2: 
-exp.fixateCenter    = 1;
-exp.phasescrambleOn = 1;
-exp.backprecompute  = 1;
-exp.eyemousedebug   = 0; % debug eyetracker with mouse
-exp.debug           = 0; % debug code
-exp.downsample_timeRes = 1;
+exp.noeye               = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+exp.showmouse           = 0; 
+exp.grabframe           = 0; 
+exp.whitenoiseOn        = 0; % 1: white noise; 2: 
+exp.fixateCenter        = 1;
+exp.phasescrambleOn     = 1;
+exp.backprecompute      = 1;
+exp.eyemousedebug       = 0; % debug eyetracker with mouse
+exp.debug               = 0; % debug code
+exp.downsample_timeRes  = 1;
 
 
 % Task design (might be changed later, so check this)
