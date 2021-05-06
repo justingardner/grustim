@@ -36,7 +36,8 @@ exp.debug           = false;
 exp.phasescrambleOn = true;
 exp.backprecompute  = true;
 exp.feedback        = true; 
-exp.horizontalonly  = true;
+exp.estim_horiz     = true; % do hoiztonal estimation
+exp.estim_verti     = false; % do vertical estimation
 exp.colorfix        = false;
 
 %% task parameters
@@ -225,10 +226,6 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
-if task.thistrial.thisseg == 3 %response feedback
-    stimulus.fixColor = stimulus.fixColors.response;
-end
-
 end
 
 %% screen update
@@ -246,14 +243,16 @@ task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus
 
 % add fixation
 if stimulus.exp.colorfix
-    mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
+    % changing fixation colors
+    % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
     mglGluDisk(0,0,0.1,rand(1,3),60,1);
 else
-    mglGluDisk(0, 0, 0.1, [1 0 0])
+    % red fixation dot
+    mglGluDisk(0, 0, 0.1, [1 0 0],60,1); 
 end
 
 % inject noise, track time
-if any([1,2] == task.thistrial.thisseg) 
+if any(task.thistrial.thisseg == [1,2]) 
     if stimulus.exp.phasescrambleOn == 1 
         idx = task.thistrial.bgpermute(task.thistrial.framecount);
         mglBltTexture(stimulus.backnoise{idx},...
@@ -264,23 +263,23 @@ if any([1,2] == task.thistrial.thisseg)
 end
 
 % draw blob or response feedback
+stim_pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
 if task.thistrial.thisseg == 2 % stimulus
     task.thistrial.stimON(task.thistrial.framecount) = 1;
-    pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-    mglBltTexture(stimulus.gaussian,[pos 0]);
-elseif task.thistrial.thisseg == 3 %response; show cursor
+    mglBltTexture(stimulus.gaussian,[stim_pos 0]);
+elseif task.thistrial.thisseg == 3 %response period; 
+    % show cursor
     mInfo = mglGetMouse(myscreen.screenNumber);
     degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
     
-    if stimulus.exp.horizontalonly
-        mglGluDisk(degx, 0, 0.1, [1 0 0])
-    else
-        mglGluDisk(degx, degy, 0.1, [1 0 0])
-    end
-elseif task.thistrial.thisseg == 4 %feedback
-    % no fixation cross until response.
-    mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
+    if ~stimulus.exp.estim_horiz, degx = 0; end
+    if ~stimulus.exp.estim_verti, degy = 0; end
+    mglGluDisk(degx, degy, 0.1, [1 0 0]);
+    
+    task.thistrial.stimON(task.thistrial.framecount) = 1; %count stimulus
+elseif task.thistrial.thisseg == 4 % feedback period
+    mglGluDisk(stim_pos, 0, 0.1, [1 0 0]) ;    % draw center of blob
 end
 
 % track eye
@@ -311,59 +310,26 @@ function [task myscreen] = responseCallback(task, myscreen)
 
 global stimulus
 
+% if the button 1 is pressed, record position
 if task.thistrial.whichButton == 1
     % record position of the mouse
     mInfo = mglGetMouse(myscreen.screenNumber);
     degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
     degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
     
-    if stimulus.exp.horizontalonly
-    task.thistrial.pos_estim = [degxzZ, degy];
-end
-
-% record responses. correct/incorrect
-if any(task.thistrial.whichButton == [1 2])
-    respIsRight = (task.thistrial.whichButton == 2);
-    correct = (task.thistrial.stimright == respIsRight); % correct if first is right and response is 2.
-    task.thistrial.subjcorrect = correct;
+    if ~stimulus.exp.estim_horiz, degx = 0; end
+    if ~stimulus.exp.estim_verti, degy = 0; end
+    task.thistrial.pos_estim = [degx, degy]; % save position estimates
     
-    if task.runfixedint == 0 
-        stimulus.stairN = stimulus.stairN+1; %count how many times 
-    end
-else
-    stimIs1 = task.thistrial.stimright; 
-    respIs1 = nan; correct = nan;
+    stim_pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
+
+    disp(['Stimulus Hor. Pos.: ' num2str(stim_pos) '; ' ...
+        'Response: ' num2str(degx)  ...
+        '; Error: ' num2str(degx - stim_pos)]);
+    
+    % go to next segment
+    task = jumpsegment(task);
 end
-
-% change color of fixation for feedback.  
-if isnan(correct)
-    stimulus.fixColor = stimulus.fixColors.response;
-elseif correct
-    stimulus.fixColor = stimulus.fixColors.correct;
-else % incorrect
-    stimulus.fixColor = stimulus.fixColors.incorrect;
-end
-
-% change fixation color (doesn't this go back to the screenupate function?)
-mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1); 
-
-% Output response to the screen. 
-if task.thistrial.whichButton == 1, respSide = 'left';
-elseif task.thistrial.whichButton == 2, respSide = 'right'; end
-
-if correct == 0, corrString = 'incorrect';
-elseif correct == 1, corrString = 'correct';
-else, corrString = 'no response'; end
-
-posdiff = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-disp(['Position difference: ' num2str(posdiff) '; ' ...
-    'Response: ' respSide '; ' corrString])
-
-
-% change fixation color
-stimulus.fixColor
-
-% go to next segment
 
 end
 
