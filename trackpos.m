@@ -1,8 +1,10 @@
 %        $Id: $
 %      usage: trackpos
 %         by: Josh Ryu
-%       date: 04/13/2021
+%       date: 05/05/2021
 %    purpose: 
+
+% todo: make noiseLum more flexible
 
 function myscreen = trackpos(varargin)
  
@@ -40,11 +42,12 @@ exp.downsample_timeRes = 1;
 % Task design (might be changed later, so check this)
 % S1: Stimulus (30s) 
 % S2: Fixation (3s)
-task{1}{1}.segmin           = [30 3]; % fixation for shorter bc of the segment start takes time.
-task{1}{1}.segmax           = [30 3]; 
+task{1}{1}.segmin           = [30 0.1]; % fixation for shorter bc of the segment start takes time.
+task{1}{1}.segmax           = [30 0.1]; 
 task{1}{1}.numTrials        = 5; % changed later depending on the condition
-task{1}{1}.getResponse      = [1 0]; %segment to get response.
-task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
+task{1}{1}.getResponse      = [0 0]; %segment to get response.
+task{1}{1}.synchToVol       = [0 1]; %segmet to wait for backtick
+task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting task
 task{1}{1}.random           = 1;
 
 % task parameters for adaptation conditions
@@ -74,7 +77,7 @@ task{1}{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencin
 %% Set up tasks 
 
 % change stimulus speed and luminance; cross conditions.
-teststimSteps = [1.5]; %[5,15,25];
+teststimSteps = [1]; %[0.75, 1.5, 2.25];
 teststimLum   = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
 % teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 
@@ -300,7 +303,7 @@ if (task.thistrial.thisseg== 1)
     
     % stimulus.timedebug(2,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.00012s 
     % inject noise
-    if stimulus.exp.phasescrambleOn == 1 && mod(task.thistrial.framecount, stimulus.exp.downsample_timeRes) == 0
+    if task.thistrial.phasescrambleOn == 1 && mod(task.thistrial.framecount, stimulus.exp.downsample_timeRes) == 0
         idx = task.thistrial.bgpermute(task.thistrial.framecount);
         mglBltTexture(stimulus.backnoise{idx},...
             [0 0 myscreen.imageWidth myscreen.imageHeight])
