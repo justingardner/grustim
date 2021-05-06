@@ -24,14 +24,18 @@ myscreen                = initScreen(myscreen);
 global stimulus; stimulus = struct;
 
 % Experimenter parameters
-noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
-showmouse       = 0; 
-grabframe       = 0; 
-whitenoiseOn    = 0; % 1: white noise; 2: 
-fixateCenter    = 1;
-phasescrambleOn = 1;
-backprecompute  = 1;
-eyemousedebug   = 0;
+%todo:  check these throughout the code!!
+exp.noeye           = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+exp.showmouse       = 0; 
+exp.grabframe       = 0; 
+exp.whitenoiseOn    = 0; % 1: white noise; 2: 
+exp.fixateCenter    = 1;
+exp.phasescrambleOn = 1;
+exp.backprecompute  = 1;
+exp.eyemousedebug   = 0; % debug eyetracker with mouse
+exp.debug           = 0; % debug code
+exp.downsample_timeRes = 1;
+
 
 % Task design (might be changed later, so check this)
 % S1: Stimulus (30s) 
@@ -40,12 +44,12 @@ task{1}{1}.segmin           = [30 3]; % fixation for shorter bc of the segment s
 task{1}{1}.segmax           = [30 3]; 
 task{1}{1}.numTrials        = 5; % changed later depending on the condition
 task{1}{1}.getResponse      = [1 0]; %segment to get response.
-task{1}{1}.waitForBacktick  = 0; %wait for backtick before starting each trial 
+task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting each trial 
 task{1}{1}.random           = 1;
 
 % task parameters for adaptation conditions
 task{1}{1}.random               = 1;
-if whitenoiseOn == 1 || phasescrambleOn == 1
+if exp.whitenoiseOn == 1 || exp.phasescrambleOn == 1
     task{1}{1}.parameter.phasescrambleOn    = 1;
     task{1}{1}.parameter.backLum            = 90; %160;%90;  % background luminance; units: luminance 
     task{1}{1}.parameter.noiseLum           = 32;
@@ -69,52 +73,8 @@ task{1}{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencin
 
 %% Set up tasks 
 
-%motor gain estimation
-%{
-% The pilot test has three main parts:
-% 1. motor gain estimation through testing different stimulus speed at full
-luminance
-% 2. adaptation trials so that the subjects learn priors
-% 3. test different uncertainty values.
-
-phaseN = 1; 
-task{1}{phaseN} = task{1}{1};
-task{1}{phaseN}.parameter.backLum = 255*0.25;  % background luminance; units: luminance 
-task{1}{phaseN}.parameter.stimLum = 255 - task{1}{phaseN}.parameter.backLum;  % stimulus luminance (out of 255)
-task{1}{phaseN}.numTrials = 20;
-task{1}{phaseN}.parameter = rmfield(task{1}{phaseN}.parameter,'stimStep');
-task{1}{phaseN}.randVars.uniform.stimStep = [2,6,8,12,16];
-% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
-
-% changing stimulus luminance
-phaseN = 1; %code phase 2 first cuz its vanilla.
-task{1}{phaseN} = task{1}{1};
-% [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
-
-teststimLum = [40,30,25,20,15,10]; % main task 
-mainphaseN = 2; %starting phase number for the main task 
-for phaseN = mainphaseN:(mainphaseN-1+length(teststimLum)) %adaptation trials
-    task{1}{phaseN} = task{1}{mainphaseN-1};
-    task{1}{phaseN}.parameter.stimLum = teststimLum(phaseN-mainphaseN+1);
-    % [task{1}{phaseN} myscreen] = addTraces(task{1}{phaseN},myscreen,'trackStimX','trackStimY','trackRespX','trackRespY');
-end
-
-% changing stimulus speed
-teststimSteps = [5,10,15,20,25];
-teststimLum   = 20;
-
-for idx = 1:length(teststimSteps)
-    % adaptation task
-    task{1}{2*idx-1} = task{1}{1};  
-    task{1}{2*idx-1}.parameter.stimStep = teststimSteps(idx);
-
-    task{1}{2*idx}   = task{1}{2*idx-1};
-    task{1}{2*idx}.parameter.stimLum    = teststimLum;
-end
-%}
-
 % change stimulus speed and luminance; cross conditions.
-teststimSteps = [0.75,1.5,2.25]; %[5,15,25];
+teststimSteps = [1.5]; %[5,15,25];
 teststimLum   = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
 % teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 
@@ -156,21 +116,13 @@ end
 disp(' Initializing Stimulus....') 
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
-stimulus.whitenoiseOn       = whitenoiseOn;
-stimulus.noeye              = noeye;
-stimulus.showmouse          = showmouse;
-stimulus.fixateCenter       = fixateCenter;
-stimulus.backprecompute     = backprecompute;
-stimulus.eyemousedebug      = eyemousedebug;
-stimulus.phasescrambleOn    = phasescrambleOn;
-stimulus.downsample_timeRes = 1;
-stimulus.exp.debug = 0;
+stimulus.exp = exp;
 
-if stimulus.phasescrambleOn == 1;
+if stimulus.exp.phasescrambleOn == 1;
     disp('Loading phase scrambled background noise...')
 
     tic
-    if stimulus.backprecompute == 1;
+    if stimulus.exp.backprecompute == 1;
         savefile = '/Users/gru/data/trackpos/trackpos.mat';
         % savefile            = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
         if ~exist(savefile,'file')
@@ -200,14 +152,13 @@ if stimulus.phasescrambleOn == 1;
     toc
 end
 
-stimulus.grabframe = grabframe; %save frames into matrices
-if stimulus.grabframe
+if stimulus.exp.grabframe
     global frame
     frame = {};
 end
 
 %% Eye calibration
-if ~stimulus.noeye
+if ~exp.noeye
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
     
@@ -224,7 +175,7 @@ mglTextDraw('task (trackpos) starting... ', [0 0.5])
 mglTextDraw('Track the brightest point of the screen with the red mouse cursor',[0 -0.5]);
 mglFlush
 
-if ~stimulus.showmouse, mglDisplayCursor(0);, end %hide cursor
+if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
@@ -245,7 +196,7 @@ myscreen = endTask(myscreen,task);
 mglClose 
 endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
-if stimulus.grabframe
+if stimulus.exp.grabframe
     save('/Users/joshryu/Dropbox/GardnerLab/Stanford/Current/FYP/FYP talk/trackposTask.mat', 'frame')
 end
 
@@ -271,7 +222,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     rng(task.thistrial.randomSeed,'twister');
     
     %% noise
-    if stimulus.phasescrambleOn == 1 && stimulus.backprecompute == 1
+    if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1
         nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
@@ -293,7 +244,7 @@ if task.thistrial.thisseg == 1
     x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
     y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
     mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-    if ~stimulus.showmouse, mglDisplayCursor(0);, end %hide cursor
+    if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor
     
     task.thistrial.initStim = stimulus.position;% [stimx, stimy];
     
@@ -312,7 +263,7 @@ if task.thistrial.thisseg == 1
     %% frame counter.
     task.thistrial.framecount = 0;
     
-    if stimulus.grabframe
+    if stimulus.exp.grabframe
         global frame
         %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackposTask_nonoise_160back.mat', 'frame','-v7.3')
         %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackposTask_noise_160back.mat', 'frame','-v7.3')
@@ -348,13 +299,14 @@ if (task.thistrial.thisseg== 1)
     stimulus        = updateTarget(stimulus,myscreen,task); % update position.
     
     % stimulus.timedebug(2,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.00012s 
-    
-    if stimulus.phasescrambleOn == 1 && mod(task.thistrial.framecount, stimulus.downsample_timeRes) == 0
+    % inject noise
+    if stimulus.exp.phasescrambleOn == 1 && mod(task.thistrial.framecount, stimulus.exp.downsample_timeRes) == 0
         idx = task.thistrial.bgpermute(task.thistrial.framecount);
         mglBltTexture(stimulus.backnoise{idx},...
             [0 0 myscreen.imageWidth myscreen.imageHeight])
     end
     
+    % draw stimulus
     mglBltTexture(stimulus.gaussian,stimulus.position);
     
     % stimulus.timedebug(3,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.000495s
@@ -373,13 +325,13 @@ if (task.thistrial.thisseg== 1)
     
     % stimulus.timedebug(5,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~7.67331e-5 s
 
-    if stimulus.fixateCenter == 1
+    if stimulus.exp.fixateCenter == 1
         mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
         mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
     
 elseif (task.thistrial.thisseg == 2)
-    if stimulus.fixateCenter == 1 % stop the flashing
+    if stimulus.exp.fixateCenter == 1 % stop the flashing
         rng(task.thistrial.randomSeed,'twister');
         mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
@@ -397,9 +349,9 @@ end
 %% eye tracking
 % track for task
 % *** track for fixation???
-if (~stimulus.noeye) && any(task.thistrial.thisseg==[1])
+if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1])
     % mouse version for testing with no eyetracker
-    if stimulus.eyemousedebug
+    if stimulus.exp.eyemousedebug
         mInfo = mglGetMouse(myscreen.screenNumber);
         degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
@@ -415,7 +367,7 @@ end
 
 % stimulus.timedebug(8,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~2.86661e-5 s
 
-if stimulus.grabframe && (task.thistrial.thisseg== 1)
+if stimulus.exp.grabframe && (task.thistrial.thisseg== 1)
     global frame; frame{task.thistrial.framecount} = mglFrameGrab;
 end
 
@@ -490,7 +442,7 @@ function stimulus = updateTarget(stimulus,myscreen,task)
     end
     
     % if eye fixation is enforced
-    if stimulus.fixateCenter == 1
+    if stimulus.exp.fixateCenter == 1
         if norm(stimulus.position) < 1 % center of the circle is never in the middle
             stimulus.position(1) = stimulus.position(1) - 2*xstep;
             stimulus.position(2) = stimulus.position(2) - 2*ystep;
