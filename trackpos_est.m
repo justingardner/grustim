@@ -1,9 +1,9 @@
 %
 %        $Id: $
-%      usage: trackpos_2afc
+%      usage: trackpos_est
 %         by: Josh Ryu
-%       date: 04/13/2021
-%    purpose: 2 choice task for position of one blob against fixation.
+%       date: 05/06/2021
+%    purpose: estimate position of blob
 %
 % staircase not implemented yet
 % consider: adding another noise period after the stimulus
@@ -200,6 +200,9 @@ end
 %% Initialize trials; set staircuse
 function [task myscreen] = initTrialCallback(task, myscreen)
     global stimulus
+    
+    %hide cursor
+    if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
     
     % print trial number every 5%. 
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
