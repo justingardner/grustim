@@ -57,7 +57,8 @@ stimulus.live.cueColor = stimulus.colors.black;
 stimulus.curTrial(1) = 0;
 
 % Task important variables
-stimulus.imageNames = {'lawn', 'moss', 'dirt', 'leaves', 'rocks', 'bark'};
+%stimulus.imageNames = {'lawn', 'moss', 'dirt'};
+stimulus.imageNames = {'blossoms', 'bricks', 'cherries', 'fronds', 'fur', 'grass', 'noodles', 'worms'};
 stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
@@ -110,15 +111,16 @@ clear sd
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
-task{1}{1}.segmin = [inf, 1.0, 1.6, 2.4, 2.0];
-task{1}{1}.segmax = [inf, 1.0, 1.6, 2.4, 2.0];
+task{1}{1}.segmin = [inf, 1.0, 1.0, 2.2, 0.2, 0.1];
+task{1}{1}.segmax = [inf, 1.0, 1.0, 2.2, 0.2, 0.1];
 
 stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.cue = 2;
 stimulus.seg.stim1 = 3;
 stimulus.seg.resp = 4;
-stimulus.seg.ITI = 5;
+stimulus.seg.feedback = 5;
+stimulus.seg.ITI = 6;
 if stimulus.noeye==1
   task{1}{1}.segmin(1) = 0.2;
   task{1}{1}.segmin(1) = 0.2;
@@ -333,7 +335,7 @@ end
 
 
 mglClearScreen(0.5);
-if (task.thistrial.thisseg ~= stimulus.seg.ITI)
+if ~any(task.thistrial.thisseg == [stimulus.seg.feedback,stimulus.seg.ITI])
     upCue(task);
 end
 
@@ -345,10 +347,10 @@ if task.thistrial.thisseg == stimulus.seg.stim1
     mglBltTexture(stimulus.live.rightStims{2}, [stimulus.stimXPos, stimulus.stimYPos, stimulus.imSize, stimulus.imSize]);
 end
 
-if task.thistrial.thisseg == stimulus.seg.resp && ~isnan(task.thistrial.correct)
+if task.thistrial.thisseg == stimulus.seg.feedback
 	if task.thistrial.correct == 1
 		upFix(stimulus, stimulus.colors.green);
-	elseif task.thistrial.correct == 0 
+    else
 		upFix(stimulus, stimulus.colors.red);
 	end
 else
@@ -396,7 +398,7 @@ if validResponse
     if task.thistrial.cueSide == 1
     	task.thistrial.correct = mod(task.thistrial.response,2) == task.thistrial.rightSame;
     else
-    	task.thistrial.correct = mod(task.thistrial.response,2) == (task.thistrial.leftSame+1);
+    	task.thistrial.correct = mod(task.thistrial.response,2) == (task.thistrial.leftSame);
     end
     if task.thistrial.correct
     	disp('Correct!')
@@ -408,7 +410,7 @@ if validResponse
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
   end
   stimulus.live.gotResponse=stimulus.live.gotResponse+1;
-  %task = jumpSegment(task);
+  task = jumpSegment(task);
 else
   disp(sprintf('Invalid response key. Subject pressed %d', task.thistrial.whichButton));
   task.thistrial.response = -1;
