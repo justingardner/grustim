@@ -320,7 +320,7 @@ function [task, myscreen] = exampleSegmentCallback(task,myscreen)
 global stimulus
 
 % if this is seg #1 do nothing, any other segment we get the image
-if task.thistrial.thisseg > 1
+if task.thistrial.thisseg > 1 && task.thistrial.thisseg<7
     % build the current exemplar image
     imgIdx = task.thistrial.targetCategory * 5 + task.thistrial.thisseg-1;
     stimulus.live.exemplar = loadExemplar(imgIdx);
