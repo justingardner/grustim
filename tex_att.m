@@ -30,7 +30,8 @@ stimulus.counter = 1;
 if stimulus.scan
   myscreen = initScreen('fMRIprojFlex');
 else
-  myscreen = initScreen('VPixx2');
+  %myscreen = initScreen('VPixx2');
+  myscreen = initScreen('testscreen');
 end
 
 % set background to grey
@@ -57,8 +58,7 @@ stimulus.live.cueColor = stimulus.colors.black;
 stimulus.curTrial(1) = 0;
 
 % Task important variables
-%stimulus.imageNames = {'lawn', 'moss', 'dirt'};
-stimulus.imageNames = {'blossoms', 'bricks', 'cherries', 'fronds', 'fur', 'grass', 'noodles', 'worms'};
+stimulus.imageNames = {'lawn', 'worms', 'dirt', 'blossoms', 'bricks'};
 stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
@@ -123,7 +123,7 @@ stimulus.seg.feedback = 5;
 stimulus.seg.ITI = 6;
 if stimulus.noeye==1
   task{1}{1}.segmin(1) = 0.2;
-  task{1}{1}.segmin(1) = 0.2;
+  task{1}{1}.segmax(1) = 0.2;
 end
 
 % Trial parameters
@@ -152,6 +152,12 @@ task{1}{1}.randVars.uniform.leftSame = [0,1];
 task{1}{1}.randVars.uniform.rightSame = [0,1];
 task{1}{1}.randVars.calculated.correct = NaN;
 task{1}{1}.randVars.calculated.response = NaN;
+task{1}{1}.randVars.calculated.leftTop = {NaN};
+task{1}{1}.randVars.calculated.leftBottom = {NaN};
+task{1}{1}.randVars.calculated.rightTop = {NaN};
+task{1}{1}.randVars.calculated.rightBottom = {NaN};
+task{1}{1}.randVars.calculated.leftImgClassName = {NaN};
+task{1}{1}.randVars.calculated.rightImgClassName = {NaN};
 task{1}{1}.randVars.calculated.dead = 0;
 
 for phaseNum = 1:length(task{1})
@@ -218,39 +224,62 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 % 1. Randomly select a texture family
 leftImgClass = stimulus.imageNames{task.thistrial.leftImgClass};
 rightImgClass = stimulus.imageNames{task.thistrial.rightImgClass};
+task.thistrial.leftImgClassName = leftImgClass;
+task.thistrial.rightImgClassName = rightImgClass;
 
-sampleIdx=1;
-
-% Load the stimulus for this trial.
+% Select the stimulus for this trial
+% Left side
 if task.thistrial.leftSame == 0
-	stimulus.live.leftStims = {stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass)), stimulus.images.origs.(leftImgClass)};
+    if rand() > 0.5
+        stimulus.live.leftStims = {stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass)), stimulus.images.origs.(leftImgClass)};
+        task.thistrial.leftBottom = sprintf('%s_synth', leftImgClass);
+        task.thistrial.leftTop = sprintf('%s_orig', leftImgClass);
+    else
+        stimulus.live.leftStims = {stimulus.images.origs.(leftImgClass), stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass))};
+        task.thistrial.leftBottom = sprintf('%s_orig', leftImgClass);
+        task.thistrial.leftTop = sprintf('%s_synth', leftImgClass);
+    end
 else
 	if rand() > 0.5
 		stimulus.live.leftStims = {stimulus.images.origs.(leftImgClass), stimulus.images.origs.(leftImgClass)};
+        task.thistrial.leftBottom = sprintf('%s_orig', leftImgClass);
+        task.thistrial.leftTop = sprintf('%s_orig', leftImgClass);
 	else
 		stimulus.live.leftStims = {stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass)), stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass))};
+        task.thistrial.leftBottom = sprintf('%s_synth', leftImgClass);
+        task.thistrial.leftTop = sprintf('%s_synth', leftImgClass);
 	end
 end
+% Right side
 if task.thistrial.rightSame == 0
-	stimulus.live.rightStims = {stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass)), stimulus.images.origs.(rightImgClass)};
+    if rand() > 0.5
+        stimulus.live.rightStims = {stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass)), stimulus.images.origs.(rightImgClass)};
+        task.thistrial.rightBottom = sprintf('%s_synth', rightImgClass);
+        task.thistrial.rightTop = sprintf('%s_orig', rightImgClass);
+    else
+        stimulus.live.rightStims = {stimulus.images.origs.(rightImgClass), stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass))};
+        task.thistrial.rightBottom = sprintf('%s_orig', rightImgClass);
+        task.thistrial.rightTop = sprintf('%s_synth', rightImgClass);
+    end
 else
 	if rand() > 0.5
 		stimulus.live.rightStims = {stimulus.images.origs.(rightImgClass), stimulus.images.origs.(rightImgClass)};
+        task.thistrial.rightBottom = sprintf('%s_orig', rightImgClass);
+        task.thistrial.rightTop = sprintf('%s_orig', rightImgClass);
 	else
 		stimulus.live.rightStims = {stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass)), stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass))};
+        task.thistrial.rightBottom = sprintf('%s_synth', rightImgClass);
+        task.thistrial.rightTop = sprintf('%s_synth', rightImgClass);
 	end
 end
 
-% if task.thistrial.rightSame == 1
-% 	stimulus.live.rightStim1 = stimulus.images.synths.(sprintf('%s_pool4_1', leftImgClass));
-% 	stimulus.live.rightStim2 = stimulus.images.synths.(sprintf())
-% end
-% stimulus.live.trialStim = 
 stimulus.live.eyeCount = 0;
 cueSide = {'Right', 'Left'};
 sameDiff = {'Different', 'Same'};
 disp(sprintf('--- Trial %i - Cue Side: %s; Left: %s %s, Right: %s %s ---', task.trialnum, cueSide{task.thistrial.cueSide},...
                                    leftImgClass, sameDiff{task.thistrial.leftSame+1}, rightImgClass, sameDiff{1+task.thistrial.rightSame}));
+                               
+upFix(stimulus);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
