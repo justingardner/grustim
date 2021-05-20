@@ -85,6 +85,9 @@ if task.thistrial.thisseg == 1
     
 elseif task.thistrial.thisseg == 2
     % start the task.
+    if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
+
+    
     stimulus.stimLum    = task.thistrial.stimLum;
     stimulus.backLum    = task.thistrial.backLum;
     stimulus.noiseLum   = task.thistrial.noiseLum;

@@ -48,28 +48,29 @@ exp.colorfix        = false;
 
 %% task parameters
 % stimulus and background
-task{1}{1}.random               = 1; 
+task{1}{1}.random = 1; 
 
 params.backLum    = 90; %32;  % background luminance; units: fraction of full luminance 
 params.noiseLum   = 32; % noise luminance, if there is one.
 
 % main task parameters
-tasks2run                       = {'est', '2c'};
-teststimLum                     = [0.5, 1, 1.5] * params.noiseLum; %SNR
-teststimDur                     = [2/60 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-posDiff                         = linspace(0,0.5,11); % in degs; minimum and maximum offset from fixation
+tasks2run         = {'est', '2c'};
+teststimLum       = [0.5, 1, 1.5] * params.noiseLum; %SNR
+teststimDur       = [2/60 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+posDiff           = linspace(0,0.5,11); % in degs; minimum and maximum offset from fixation
+trialpercond      = 10;
+if exp.debug, trialpercond = 1; end
 
-% chaging parameters
 task{1}{1}.parameter.currtask   = tasks2run; % forst fixed values
 params.posDiff   = posDiff; % forst fixed values
 params.stimLum 	= teststimLum;
 params.stimDur 	= teststimDur; % teststimDur is also saved under stimulus
-params.numTrials = length(tasks2run) * 10*length(teststimDur) * ...
+params.numTrials = length(tasks2run) * trialpercond*length(teststimDur) * ...
     length(teststimLum)*2*length(posDiff);
 
 task{1}{1}.segmin           = [inf]; % for running other tasks
 task{1}{1}.segmax           = [inf]; % jumpsegment if the other task is finished
-task{1}{1}.synchToVol       = [1]; % wait for backtick before going onto next trial
+% task{1}{1}.synchToVol       = [1]; % wait for backtick before going onto next trial
 
 task{1}{1}.waitForBacktick  = 1;
 
@@ -94,8 +95,8 @@ if stimulus.exp.phasescrambleOn == 1;
 
     tic
     if stimulus.exp.backprecompute == 1;
-        % savefile = '/Users/gru/data/trackpos/trackpos.mat';
-        savefile = '/Users/jryu/data/trackpos/trackpos.mat'; 
+        savefile = '/Users/gru/data/trackpos/trackpos.mat';
+        %savefile = '/Users/jryu/data/trackpos/trackpos.mat'; 
         % savefile = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
         if ~exist(savefile,'file')
             error('need background file')

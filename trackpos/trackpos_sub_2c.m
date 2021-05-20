@@ -78,6 +78,8 @@ if task.thistrial.thisseg == 1
     stimulus.currtask = 'done';
     
 elseif task.thistrial.thisseg == 2
+    if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
+
     % start the task.
     stimulus.stimLum    = task.thistrial.stimLum;
     stimulus.backLum    = task.thistrial.backLum;
@@ -149,9 +151,7 @@ if task.thistrial.thisseg == 3 % stimulus
     
 elseif task.thistrial.thisseg == 5 %feedback period
     % no fixation cross until response.
-    if any(stimulus.fixColor ~= stimulus.fixColors.response)
-        mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
-    end
+    mglGluAnnulus(0,0,0.2,0.3,stimulus.currfixColor,60,1);
     
     % feedback about presented position
 %     stim_pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
