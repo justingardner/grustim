@@ -98,7 +98,7 @@ elseif task.thistrial.thisseg == 2
     stimulus = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
 
     if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1;
-        nframes = ceil(sum(task.thistrial.seglen(2:3))*myscreen.framesPerSecond)+10; % with some additional overflow
+        nframes = length(task.thistrial.bgpermute);
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
     

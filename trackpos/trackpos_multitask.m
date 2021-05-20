@@ -57,7 +57,7 @@ params.noiseLum   = 32; % noise luminance, if there is one.
 tasks2run         = {'est', '2c'};
 teststimLum       = [0.5, 1, 1.5] * params.noiseLum; %SNR
 teststimDur       = [2/60 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-posDiff           = linspace(0,0.5,11); % in degs; minimum and maximum offset from fixation
+posDiff           = linspace(0.05,0.5,10); % in degs; minimum and maximum offset from fixation
 trialpercond      = 10;
 if exp.debug, trialpercond = 1; end
 
