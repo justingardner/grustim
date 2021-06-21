@@ -5,8 +5,7 @@ getArgs(varargin);
 % initilaize the screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = initScreen(); mglClearScreen; task{1}.waitForBacktick = 1; 
-myscreen = initScreen;
-contrast = 0
+contrast = .2
 global Colors; global stimulus;
 Colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 Colors.nReservedColors = size(Colors.reservedColors,1);
@@ -25,16 +24,14 @@ mglClearScreen;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set task parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-task{1}.segmin = [2.5 1 0.5 1 inf]; task{1}.segmax = [2.5 1 0.5 1 inf]; task{1}.getResponse = [1 0 0 0 1]; 
+task{1}.segmin = [2.5 3 0.5 3 inf]; task{1}.segmax = [2.5 3 0.5 3 inf]; task{1}.getResponse = [1 0 0 0 1]; 
 task{1}.numTrials = 500; % number of trials you want it to run 
 task{1}.random=1; % each trial pulls random values from the parameters below 
-task{1}.parameter.size1 = [6 8] % size of 1st,2nd gabor patch.
-task{1}.parameter.size2 = [6 8]
-task{1}.parameter.orientation1 = [30 40 50 60] %orientation of the first and second gabor patch.
-task{1}.parameter.orientation2 = [45]
+task{1}.parameter.x = [-3 3]
+task{1}.parameter.y = [-3 3]
 % intialize response arrays %1
 task{1}.response.correct = []
-task{1}.response.orientationdiff = []
+
 % initialize the task
 for phaseNum = 1:length(task)
  [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback);
@@ -55,14 +52,8 @@ myscreen = endTask(myscreen,task);
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
-% Set the variables for drawing a picture in trials that have a pricture
-if task.thistrial.thisseg == 2
- %size = task.thistrial.size1
- orientation = task.thistrial.orientation1
-elseif task.thistrial.thisseg == 4
- %size = task.thistrial.size2
- orientation = task.thistrial.orientation2
-end
+% Set the variables for drawing a picture in trials that have a picture
+
 % Draw the picture in trials that have a picture
 if task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
  mglStencilCreateBegin(1);
@@ -72,11 +63,17 @@ if task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
  [noiseImage] = makestim(myscreen);
  
  %gabor
- grating = mglMakeGrating(10,10,1.5,45,0);
- gaussian = mglMakeGaussian(10,10,1,1);
- gabor = 255*(grating.*gaussian+1)/2;
+ x = -task.thistrial.x
+ y = -task.thistrial.y
+ pixX = 38.8567214157064*x;
+ pixY = 31.9291779098311*y;
+ gaussian = mglMakeGaussian(60,60,.1,.1); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
+ grating = mglMakeGrating(60,60,6,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
  
- tex = mglCreateTexture(noiseImage*255);
+ 
+ stimImage = grating.*gaussian   +    noiseImage.*(1-gaussian);
+ 
+ tex = mglCreateTexture(stimImage*255);
  mglBltTexture(tex,[0 0]);
 elseif task.thistrial.thisseg == 1 | task.thistrial.thisseg == 3
  mglFixationCross;
@@ -93,24 +90,16 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = getResponseCallback(task,myscreen)
 if task.thistrial.whichButton == 1 & task.thistrial.thisseg == 5
- if task.thistrial.orientation1 < task.thistrial.orientation2; task.response.correct = [task.response.correct 0];end
- if task.thistrial.orientation1 > task.thistrial.orientation2; task.response.correct = [task.response.correct 1];end
- task.response.orientationdiff = [task.response.orientationdiff abs(task.thistrial.orientation1-task.thistrial.orientation2)]
  task = jumpSegment(task);
 end
 mglClearScreen();
 if task.thistrial.whichButton == 2 & task.thistrial.thisseg == 5
- if task.thistrial.orientation1 < task.thistrial.orientation2; task.response.correct = [task.response.correct 1];end
- if task.thistrial.orientation1 > task.thistrial.orientation2; task.response.correct = [task.response.correct 0];end
- task.response.orientationdiff = [task.response.orientationdiff abs(task.thistrial.orientation1-task.thistrial.orientation2)]
  task = jumpSegment(task);
 end
 
 if task.thistrial.whichButton && task.thistrial.thisseg ==1
     task = jumpSegment(task)
 end
-
-
 
 
 
