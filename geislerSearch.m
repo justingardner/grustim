@@ -1,12 +1,15 @@
 function myscreen = zz(varargin)
 % check arguments
 getArgs(varargin);
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initilaize the screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = initScreen(); mglClearScreen; task{1}.waitForBacktick = 1; 
-contrast = .2
-global Colors; global stimulus;
+contrast = 0.25;
+% Code specific to generating noise
+global Colors; global stimulus; global randomLocations;
 Colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
 Colors.nReservedColors = size(Colors.reservedColors,1);
 maxIndex = 255;
@@ -20,71 +23,125 @@ contrastIndex = getContrastIndex(contrast,1);
 Colors.gaussRange = contrastIndex-1;
 mglClearScreen;
 
-% Code specific to generating noise
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set task parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-task{1}.segmin = [2.5 3 0.5 3 inf]; task{1}.segmax = [2.5 3 0.5 3 inf]; task{1}.getResponse = [1 0 0 0 1]; 
-task{1}.numTrials = 500; % number of trials you want it to run 
+task{1}.segmin = [2.5 5 0.5 3 inf]; task{1}.segmax = [2.5 5 0.5 3 inf]; task{1}.getResponse = [1 0 0 0 1]; 
+task{1}.numTrials = 6; % number of trials you want it to run 
 task{1}.random=1; % each trial pulls random values from the parameters below 
-task{1}.parameter.x = [-3 3]
-task{1}.parameter.y = [-3 3]
+task{1}.parameter.targetContrast = [0.5];
+task{1}.parameter.whichSegment = [1 2];
 % intialize response arrays %1
 task{1}.response.correct = []
+% initialize locations arrays and location variables
+locations = [0 0; 0 2; 0 4; 0 6; 0 8; 
+                  2 2; 4 4; 6 6; 8 8;
+                  2 0; 4 0; 6 0; 8 0;
+                  2 -2; 4 -4; 6 -6; 8 -8; 
+                  0 -2; 0 -4; 0 -6; 0 -8;
+                  -2 -2; -4 -4; -6 -6; -8 -8;
+                  -2 0; -4 0; -6 0; -8 0;
+                  -2 2; -4 4; -6 6; -8 8;];
+randomLocations = locations(randperm(size(locations, 1)), :);
 
 % initialize the task
 for phaseNum = 1:length(task)
- [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback);
+    [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback);
 end
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Main display loop
+% Main display loop (STANDARD)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 phaseNum = 1;
 while (phaseNum <= length(task)) && ~myscreen.userHitEsc
- % update the task
- [task myscreen phaseNum] = updateTask(task,myscreen,phaseNum);
- % flip screen
- myscreen = tickScreen(myscreen,task);
+    % update the task
+    [task myscreen phaseNum] = updateTask(task,myscreen,phaseNum);
+    % flip screen
+    myscreen = tickScreen(myscreen,task);
 end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
-% Set the variables for drawing a picture in trials that have a picture
-
-% Draw the picture in trials that have a picture
+global randomLocations;
+% Draw the picture in trials that have a pictures
 if task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
- mglStencilCreateBegin(1);
- mglFillOval(0,0,[15 15]);
- mglStencilCreateEnd;
- mglStencilSelect(1);
- [noiseImage] = makestim(myscreen);
- 
- %gabor
- x = -task.thistrial.x
- y = -task.thistrial.y
- pixX = 38.8567214157064*x;
- pixY = 31.9291779098311*y;
- gaussian = mglMakeGaussian(60,60,.1,.1); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
- grating = mglMakeGrating(60,60,6,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
- 
- 
- stimImage = grating.*gaussian   +    noiseImage.*(1-gaussian);
- 
- tex = mglCreateTexture(stimImage*255);
- mglBltTexture(tex,[0 0]);
+    
+    % (1) Making The Target 
+    % (1.1) The Stencil
+    mglStencilCreateBegin(1);
+    mglFillOval(0,0,[17 17]);
+    mglStencilCreateEnd;
+    mglStencilSelect(1);
+    % (1.2) The Gausian
+    % Determining the location of the target based on the session (trial number)
+    if task.trialnum > 0 & task.trialnum <= 2
+        locationVector = randomLocations(1,:);
+        x = locationVector(1)
+        y = locationVector(2)
+    end
+    if task.trialnum > 2 & task.trialnum <= 4
+        locationVector = randomLocations(2,:);
+        x = locationVector(1)
+        y = locationVector(2)
+    end
+    if task.trialnum > 4 & task.trialnum <= 6
+        locationVector = randomLocations(3,:);
+        x = locationVector(1);
+        y = locationVector(2);
+    end
+    pixX = 38.8567214157064*x;
+    pixY = 31.9291779098311*y;
+    gaussian = mglMakeGaussian(60,60,0.1,0.1); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
+    % (1.3) The Grating
+    grating = mglMakeGrating(60,60,4,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
+    % Setting the contrast of the graing (i.e. the target contrast)
+    targetContrast = task.thistrial.targetContrast;
+    grating = grating * targetContrast;
+    
+    % (2) Making The Background Noise
+    % (2.1) Generating 1/f noise
+    [noiseImage] = makestim(myscreen);
+    % (2.2) Subtract the mean to center around 0 and multiply by 2 to get [-1, 1] range
+    noiseImageMean = mean(noiseImage(:));
+    noiseImage = noiseImage - noiseImageMean;
+    noiseImage = 2 * noiseImage;
+    % (2.3) Setting the RMS contrast
+    sumOfSquares = sum(sum(noiseImage.^2));
+    n = numel(noiseImage);     
+    backgroundRmsContrast = 0.25;  
+    rmsAdjust = sqrt(sumOfSquares/(n*(backgroundRmsContrast)^2)); 
+    noiseImage = noiseImage / rmsAdjust;
+    
+    % (3) Making the Final image (Target embedded in background noise)
+    % (3.1) Multiplying grating with background noise so that it blends into The final Image 
+    %grating = grating.*noiseImage;   
+    % (3.2) Assembling the grating windowed by the gaussian (i.e. a gabor) and the background noise windowed by the opposite of the gaussian
+    stimImage = grating.*gaussian + noiseImage.*(1-gaussian);
+    % (3.3) Actually creating the image through mgl 
+    tex = mglCreateTexture(stimImage*255);
+    mglBltTexture(tex,[0 0]);
+    
 elseif task.thistrial.thisseg == 1 | task.thistrial.thisseg == 3
- mglFixationCross;
+    mglFixationCross;
 elseif task.thistrial.thisseg == 5
- mglClearScreen();
+    mglClearScreen();
 end
 myscreen.flushMode = 1;
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%resp%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame (STANDARD)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % responseCallback  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -102,7 +159,9 @@ if task.thistrial.whichButton && task.thistrial.thisseg ==1
 end
 
 
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Generating 1/f noise
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [noiseImage] = makestim(myscreen);
 global Colors
 width = 2;
@@ -119,7 +178,7 @@ oddHeight = 2*floor(myscreen.screenHeight/2)+1;
 
 % resize everything to odd
 %Background.gaussian = Background.gaussian(1:oddHeight,1:oddWidth);
-Background.gaussian = imread('pic01.png'); Background.gaussian = imresize(Background.gaussian,[oddHeight oddWidth]);
+Background.gaussian = imread('pic03.png'); Background.gaussian = imresize(Background.gaussian,[oddHeight oddWidth]);
 Background.x = Background.x(1:oddHeight,1:oddWidth);
 Background.y = Background.y(1:oddHeight,1:oddWidth);
   
@@ -160,13 +219,7 @@ stimulusImage = Background.gaussian;
 stimulus.stimTexture = mglCreateTexture(round(Colors.gaussRange*im + Colors.minGaussianIndex));
 
 
-
-
-
-
-%%%%%%%%%%%%%%%%%%%%%%
-%% getContrastIndex %%
-%%%%%%%%%%%%%%%%%%%%%%
+% getContrastIndex 
 function contrastIndex = getContrastIndex(desiredContrast,verbose)
 
 if nargin < 2,verbose = 0;end
@@ -193,9 +246,7 @@ end
 contrastIndex = contrastIndex+1;
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% setGammaTableForMaxContrast %%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% setGammaTableForMaxContrast 
 function setGammaTableForMaxContrast(maxContrast)
 
 global Colors; global stimulus;
