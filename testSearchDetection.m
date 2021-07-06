@@ -5,6 +5,7 @@
 % PROBLEM: how to randomize locations. Right now, if you put the locations
 % as a task parameter, mgl does not pick columns at a time. It picks a
 % random x and a random y
+% NOTE: last updated on Dubonnet July 6
 
 
 function myscreen = testSearch(varargin)
@@ -14,7 +15,7 @@ getArgs(varargin);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initilaize the screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen.saveData = 1; myscreen = initScreen(myscreen); mglClearScreen; task{1}.waitForBacktick = 1; 
+myscreen.saveData = 1; myscreen = initScreen(myscreen); mglClearScreen; task{1}.waitForBacktick = 1; doEye =1;
 contrast = 1;
 global Colors; global stimulus;
 mglClearScreen;
@@ -33,11 +34,8 @@ global randFilters;
 randFilters = filters(randperm(length(filters)));
 task{1}.filters = randFilters;
 % locations
-locations = [0 0 2 ;
-             5 8 2 ;];
-numCols = size(locations,2);
-colIdxes = randperm(numCols);
-task{1}.parameter.locations = locations(:,colIdxes);
+task{1}.parameter.locations = [0 0 2 ;
+                               5 8 2 ;];
 % intialize response arrays %
 task{1}.response.correct = [];
 task{1}.response.filter = [];
@@ -49,6 +47,12 @@ task{1}.locations.y = [];
 for phaseNum = 1:length(task)
     [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback);
 end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% run the eye calibration
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+if doEye == 1; myscreen = eyeCalibDisp(myscreen); end;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -144,7 +148,7 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = getResponseCallback(task,myscreen)
 
-if task.thistrial.thisseg == 2 &  task.thistrial.whichButton == 2
+if task.thistrial.thisseg == 2 & task.thistrial.whichButton == 2
     task = jumpSegment(task);
 end
 
@@ -170,7 +174,7 @@ oddHeight = 2*floor(myscreen.screenHeight/2)+1;
 
 % resize everything to odd
 % Background.gaussian = Background.gaussian(1:oddHeight,1:oddWidth);
-Background.gaussian = imread('pic01.png'); Background.gaussian = imresize(Background.gaussian,[oddHeight oddWidth]);
+Background.gaussian = imread('pic03.png'); Background.gaussian = imresize(Background.gaussian,[oddHeight oddWidth]);
 Background.x = Background.x(1:oddHeight,1:oddWidth);
 Background.y = Background.y(1:oddHeight,1:oddWidth);
 
