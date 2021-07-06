@@ -1,3 +1,9 @@
+% NOTES:
+% (1) Uses filter instead of Contrast
+% (2) Is functionated
+% (3) Saves the locations into a task variable, making it easy to access in the SearchAnalysis script
+
+
 function myscreen = testSearch(varargin)
 % check arguments
 getArgs(varargin);
@@ -15,20 +21,20 @@ mglClearScreen;
 % set task and stimulus parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 task{1}.seglen = [2.5 0.25 0.5 0.25 inf];
-task{1}.getResponse = [1 0 0 0 1]; 
+task{1}.getResponse = [0 0 0 0 1]; 
 task{1}.numTrials = 400; % number of trials you want it to run 
 task{1}.random=1; % each trial pulls random values from the parameters below 
 task{1}.parameter.filter = [0:.1:1];
 task{1}.parameter.whichSegment = [1 2];
 % intialize response arrays %
 task{1}.response.correct = [];
-task{1}.response.targetContrast = [];
-task{1}.response.location.x = [];
-task{1}.response.location.y = [];
+task{1}.response.filter = [];
+
 % initialize locations arrays and location variables
 locations = [0 5; 0 8;];
 global randomLocations;
 randomLocations = locations(randperm(size(locations, 1)), :); 
+task{1}.locations = randomLocations;
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -70,9 +76,6 @@ if task.thistrial.thisseg == 2
         % (3) Making the Target
         % (3.1) Return the x,y position of the target and the gaussian and grating used to make it
         [x y gaussian grating] = makeGrating(task,myscreen);
-        % (3.2) Save the x,y position in a trial variable
-        task.thistrial.x = -x;
-        task.thistrial.y = -y;
     
         % (4) Making the Final image (target embedded in background noise)
         % (4.1) Multiplying grating with background noise so that it blends into The final Image 
@@ -164,10 +167,7 @@ if task.thistrial.whichButton == 1 & task.thistrial.thisseg == 5
         task.response.correct = [task.response.correct 0];
     end
     % Adding the target contrast and locations to response object
-    task.response.targetContrast = [task.response.targetContrast task.thistrial.targetContrast];
-    task.response.location.x = [task.response.location.x task.thistrial.x];
-    task.response.location.y = [task.response.location.y task.thistrial.y];
-    
+    task.response.filter = [task.response.filter task.thistrial.filter];
     task = jumpSegment(task);
 end
 mglClearScreen();
@@ -180,9 +180,7 @@ if task.thistrial.whichButton == 2 & task.thistrial.thisseg == 5
         task.response.correct = [task.response.correct 1];
     end
     % Adding the target contrast and locations to response object
-    task.response.targetContrast = [task.response.targetContrast task.thistrial.targetContrast];
-    task.response.location.x = [task.response.location.x task.thistrial.x];
-    task.response.location.y = [task.response.location.y task.thistrial.y];
+    task.response.filter = [task.response.filter task.thistrial.filter];
     
     task = jumpSegment(task);
 end
