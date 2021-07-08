@@ -1,11 +1,9 @@
 % NOTES:
 % (1) Uses filter instead of Contrast
 % (2) Is functionated
-% (3) Saves the locations into a task variable, making it easy to access in the SearchAnalysis script
-% PROBLEM: how to randomize locations. Right now, if you put the locations
-% as a task parameter, mgl does not pick columns at a time. It picks a
-% random x and a random y
-% NOTE: last updated on Dubonnet July 6
+
+% PROBLEM: how to randomize locations. Right now, if you put the locations as a task parameter, mgl does not pick columns 
+% at a time. It picks a random x and a random y
 
 
 function myscreen = testSearch(varargin)
@@ -15,7 +13,8 @@ getArgs(varargin);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initilaize the screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen.saveData = 1; myscreen = initScreen(myscreen); mglClearScreen; task{1}.waitForBacktick = 1; doEye =1;
+myscreen.saveData = 1; myscreen = initScreen(myscreen); mglClearScreen; task{1}.waitForBacktick = 1; 
+eyeTrackerOn = 1;
 contrast = 1;
 global Colors; global stimulus;
 mglClearScreen;
@@ -26,7 +25,7 @@ mglClearScreen;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 task{1}.seglen = [2.5 inf];
 task{1}.getResponse = [0 1]; 
-task{1}.numTrials = 18; % 3 locations x 3 target contrasts x 20 trials for each location, target contrast
+task{1}.numTrials = 18; % 3 locations x 3 target contrasts x 2 trials for each location and target contrast
 task{1}.random=1; % each trial pulls random values from the parameters below 
 % filters
 filters = [0.2, 0.5, 0.9];
@@ -52,7 +51,9 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-if doEye == 1; myscreen = eyeCalibDisp(myscreen); end;
+if eyeTrackerOn == 1
+    myscreen = eyeCalibDisp(myscreen); 
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -105,8 +106,8 @@ if task.thistrial.thisseg == 2
     % (4.1) Multiplying grating with background noise so that it blends into The final Image 
     grating = grating.*stimBackground;
     
-    % (4.2) Assembling the grating windowed by the gaussian (i.e. a gabor) and the background noise windowed by the opposite of the gaussian
-    % Pick a contrast based on the block (i.e trial number)
+    % (4.2) Assembling the image and adding the filter
+    % Pick a filter value based on the block (i.e trial number)
     if task.trialnum > 0 & task.trialnum <= 6
         filter = randFilters(1)
         stimImage = (grating.*gaussian)*filter + stimBackground;

@@ -1,4 +1,4 @@
-function searchAnalysis
+function geislerDetectionAnalysis
 
 % default return argument
 fit = [];
@@ -21,7 +21,7 @@ e.auditoryStaircase = {};
 % cycle through all files
 for iFile = 1:length(stimfileNames)
   % display what is happening
-  dispHeader(sprintf('(searchAnalysis) Analyzing file (%i/%i): %s',iFile,length(stimfileNames),stimfileNames{iFile}));
+  dispHeader(sprintf('(geislerDetectionAnalysis) Analyzing file (%i/%i): %s',iFile,length(stimfileNames),stimfileNames{iFile}));
   
   % load and parse the stimfile
   d = loadStimfile(fullfile(e.path,stimfileNames{iFile}));
@@ -39,7 +39,7 @@ end
 
 % if no valid files found return
 if e.nFiles == 0
-  disp(sprintf('(searchAnalysis) No files found'));
+  disp(sprintf('(geislerDetectionAnalysis) No files found'));
   return
 end
 
@@ -64,7 +64,7 @@ for iCond = 1:length(d.nCond)
     trialNums = d.condTrialNums{iCond}; 
     % The filter values for the first 200 trials
     d.cond(iCond).filter = d.parameter.filter(trialNums);
-    % A uniqu set (no duplicates) of the filters used in the first 200 trials
+    % A unique set (no duplicates) of the filters used in the first 200 trials
     d.cond(iCond).uniquefilter = unique(d.cond(iCond).filter);
     % The responses for the first 200 trials
     correct = d.task{1}.response.correct(trialNums);
@@ -74,8 +74,7 @@ for iCond = 1:length(d.nCond)
         % find() will return the indeces of the the matrix that has the filter values for the first 200 trials for which the filter value
         % matches the filter value we are currently iterating on. Those indeces are also trial numbers
         whichTrials = find(d.cond(iCond).filter == d.cond(iCond).uniquefilter(iVal));
-        % The number of trials that had that filter value we are iterating on
-        % (should be equal for each filter if we randomized correctly)
+        % The number of trials that had the filter value we are iterating on (should be equal for each filter if we randomized correctly)
         nTrials = length(whichTrials);
         % correct(whichTrials) returns the values of the response array for the trials that had the filter value we are iterationg on
         % Summing them and dividing by the number of trials gives us the percent correct for that filter value
@@ -126,21 +125,21 @@ stimfileName = setext(stimfileName,'mat');
 
 % see if it exists
 if ~isfile(stimfileName)
-  disp(sprintf('(searchAnalysis:loadStimfile) Could not find stimfile: %s',stimfileName));
+  disp(sprintf('(geislerDetectionAnalysis:loadStimfile) Could not find stimfile: %s',stimfileName));
   return
 end
 
 % load the file
 s = load(stimfileName);
 if ~isfield(s,'myscreen') || ~isfield(s,'task')
-  disp(sprintf('(searchAnalysis:loadStimfile) No myscreen or task in stimfile: %s',stimfileName));
+  disp(sprintf('(geislerDetectionAnalysis:loadStimfile) No myscreen or task in stimfile: %s',stimfileName));
   return
 end
 
 % check task filename
 taskFilename = s.task{1}.taskFilename;
 if isempty(strfind(lower(taskFilename),'search')) & isempty(strfind(lower(taskFilename),'search'))
-  disp(sprintf('(searchAnalysis:loadStimfile) Incorrect task in stimfile: %s',taskFilename));
+  disp(sprintf('(geislerDetectionAnalysis:loadStimfile) Incorrect task in stimfile: %s',taskFilename));
   return
 end
 
@@ -149,7 +148,7 @@ d = getTaskParameters(s.myscreen,s.task);
 %d = d{1};
 
 % print what we found
-disp(sprintf('(searchAnalysis:loadStimfile) Found task: %s (%i trials) SID: %s Date: %s',taskFilename,d.nTrials,s.myscreen.SID,s.myscreen.starttime));
+disp(sprintf('(geislerDetectionAnalysis:loadStimfile) Found task: %s (%i trials) SID: %s Date: %s',taskFilename,d.nTrials,s.myscreen.SID,s.myscreen.starttime));
 
 % get the variables
 d.myscreen = s.myscreen;
@@ -191,7 +190,7 @@ else
     % get the path for this subject
     stimfilePath = fullfile('~/data/search',stimfileNames);
   else
-    disp(sprintf('(searchAnalysis) Could not find %s',stimfileNames));
+    disp(sprintf('(geislerDetectionAnalysis) Could not find %s',stimfileNames));
     stimfilePath = '';
     stimfileNames = '';
     return

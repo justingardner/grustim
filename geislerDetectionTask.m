@@ -1,9 +1,9 @@
 % NOTES:
 % (1) Uses filter instead of Contrast
 % (2) Is functionated
-% (3) Saves the locations into a task variable (task{1}.locations), making it easy to access in the geislerDetectionAnalysis
+% (3) Saves the locations into a task variable (task{1}.locations), making it easy to access in geislerDetectionAnalysis
 
-
+    
 function myscreen = testSearch(varargin)
 % check arguments
 getArgs(varargin);
@@ -25,12 +25,14 @@ task{1}.getResponse = [0 0 0 0 1];
 task{1}.numTrials = 400; 
 task{1}.random=1; % each trial pulls random values from the parameters below 
 task{1}.parameter.filter = [0:.1:1];
+% Determines which segent to embed the target in
+% For instance, if whichSegmemt = 1, then embed the target in the first segment
 task{1}.parameter.whichSegment = [1 2];
 % intialize response arrays 
 task{1}.response.correct = [];
 task{1}.response.filter = [];
 
-% initialize locations arrays and save it in a task variable
+% initialize locations array and save it in a task variable
 locations = [0 5; 0 8;];
 global randomLocations;
 randomLocations = locations(randperm(size(locations, 1)), :); 
@@ -65,8 +67,9 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 stimBackground = makeStimBackground(myscreen);
     
 if task.thistrial.thisseg == 2  
-    % if the first segment has the target, then embed it in the background noise
+    % if the temporally first segment (seg 2) has the target, then embed the target in the background noise
     if task.thistrial.whichSegment == 1
+        
         % (2) Making The Stencil
         mglStencilCreateBegin(1);
         mglFillOval(0,0,[17 17]);
@@ -74,13 +77,12 @@ if task.thistrial.thisseg == 2
         mglStencilSelect(1);
         
         % (3) Making the Target
-        % (3.1) Return the x,y position of the target and the gaussian and grating used to make it
         [gaussian grating] = makeGrating(task,myscreen);
     
         % (4) Making the Final image (target embedded in background noise)
-        % (4.1) Multiplying grating with background noise so that it blends into The final Image 
+        % (4.1) Multiplying grating with background noise so that it blends into the final Image 
         grating = grating.*stimBackground;   
-        % (4.2) Assembling the grating windowed by the gaussian (i.e. a gabor) and the background noise windowed by the opposite of the gaussian
+        % (4.2) Assembling the image and adding the filter
         stimImage = grating.*gaussian*task.thistrial.filter + stimBackground;
         % (4.3) Actually creating the image through mgl 
         tex = mglCreateTexture(stimImage*255);
@@ -88,11 +90,13 @@ if task.thistrial.thisseg == 2
     end
     % if it does not have the target, then just present background noise
     if task.thistrial.whichSegment == 2
+        
         % (1) Making The Stencil
         mglStencilCreateBegin(1);
         mglFillOval(0,0,[17 17]);
         mglStencilCreateEnd;
         mglStencilSelect(1);
+        
         % (2) Actually creating the image through mgl 
         tex = mglCreateTexture(stimBackground*255);
         mglBltTexture(tex,[0 0]);
@@ -100,7 +104,7 @@ if task.thistrial.thisseg == 2
 end
     
 if task.thistrial.thisseg == 4
-    % if the second segment (here segment 4) has the target, create and embed the targer
+    % if the temporally second segment (seg 4) has the target, then embed the target in the background noise
     if task.thistrial.whichSegment == 2
         
         % (2) Making The Stencil
@@ -121,13 +125,15 @@ if task.thistrial.thisseg == 4
         tex = mglCreateTexture(stimImage*255);
         mglBltTexture(tex,[0 0]);
     end 
-    % if it does not have the target, then just create a noise stimulus
+    % if it does not have the target, then just present background noise
     if task.thistrial.whichSegment == 1
+        
         % (1) Making The Stencil
         mglStencilCreateBegin(1);
         mglFillOval(0,0,[17 17]);
         mglStencilCreateEnd;
         mglStencilSelect(1);
+        
         % (2) Actually creating the image through mgl 
         tex = mglCreateTexture(stimBackground*255);
         mglBltTexture(tex,[0 0]);
@@ -155,14 +161,14 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 function [task myscreen] = getResponseCallback(task,myscreen)
 
 if task.thistrial.whichButton == 1 & task.thistrial.thisseg == 5
-    % if the button is 1 and the 1st segment that has the target, mark as correct
+    % if the button is 1 and the 1st segment had the target, mark as correct
     if task.thistrial.whichSegment == 1 
         task.response.correct = [task.response.correct 1];
     end
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 0];
     end
-    % Adding the target contrast and locations to response object
+    % Adding the filter to the reponse struct
     task.response.filter = [task.response.filter task.thistrial.filter];
     task = jumpSegment(task);
 end
@@ -175,7 +181,7 @@ if task.thistrial.whichButton == 2 & task.thistrial.thisseg == 5
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 1];
     end
-    % Adding the target contrast and locations to response object
+    % Adding the filter to the reponse struct
     task.response.filter = [task.response.filter task.thistrial.filter];
     
     task = jumpSegment(task);
