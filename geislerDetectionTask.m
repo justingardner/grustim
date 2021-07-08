@@ -1,7 +1,7 @@
 % NOTES:
 % (1) Uses filter instead of Contrast
 % (2) Is functionated
-% (3) Saves the locations into a task variable, making it easy to access in the SearchAnalysis script
+% (3) Saves the locations into a task variable (task{1}.locations), making it easy to access in the geislerDetectionAnalysis
 
 
 function myscreen = testSearch(varargin)
@@ -22,15 +22,15 @@ mglClearScreen;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 task{1}.seglen = [2.5 0.25 0.5 0.25 inf];
 task{1}.getResponse = [0 0 0 0 1]; 
-task{1}.numTrials = 400; % number of trials you want it to run 
+task{1}.numTrials = 400; 
 task{1}.random=1; % each trial pulls random values from the parameters below 
 task{1}.parameter.filter = [0:.1:1];
 task{1}.parameter.whichSegment = [1 2];
-% intialize response arrays %
+% intialize response arrays 
 task{1}.response.correct = [];
 task{1}.response.filter = [];
 
-% initialize locations arrays and location variables
+% initialize locations arrays and save it in a task variable
 locations = [0 5; 0 8;];
 global randomLocations;
 randomLocations = locations(randperm(size(locations, 1)), :); 
@@ -75,7 +75,7 @@ if task.thistrial.thisseg == 2
         
         % (3) Making the Target
         % (3.1) Return the x,y position of the target and the gaussian and grating used to make it
-        [x y gaussian grating] = makeGrating(task,myscreen);
+        [gaussian grating] = makeGrating(task,myscreen);
     
         % (4) Making the Final image (target embedded in background noise)
         % (4.1) Multiplying grating with background noise so that it blends into The final Image 
@@ -110,11 +110,7 @@ if task.thistrial.thisseg == 4
         mglStencilSelect(1);
         
         % (3) Making the Target
-        % (3.1) Return the x,y position of the target and the gaussian and grating used to make it
-        [x y gaussian grating] = makeGrating(task,myscreen);
-        % (3.2) Save the x,y position in a trial variable
-        task.thistrial.x = -x;
-        task.thistrial.y = -y;
+        [gaussian grating] = makeGrating(task,myscreen);
     
         % (4) Making the Final image (target embedded in background noise)
         % (4.1) Multiplying grating with background noise so that it blends into The final Image 
@@ -188,6 +184,46 @@ end
 if task.thistrial.whichButton && task.thistrial.thisseg == 1
     task = jumpSegment(task);
 end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Making background noise 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimBackground = makeStimBackground(myscreen)
+% (1) Generating 1/f noise
+noiseImage = makestim(myscreen);
+% (2) Setting the RMS contrast
+sumOfSquares = sum(sum(noiseImage.^2));
+n = numel(noiseImage);     
+backgroundRmsContrast = 0.39;  
+rmsAdjust = sqrt(sumOfSquares/(n*(backgroundRmsContrast)^2)); 
+stimBackground = noiseImage / rmsAdjust;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Making grating and gaussian for the target
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [gaussian grating] = makeGrating(task,myscreen)
+global randomLocations;
+
+% Determining the location of the target based on the session (trial number)
+if task.trialnum > 0 & task.trialnum <= 200
+    locationVector = randomLocations(1,:);
+    x = -locationVector(1);
+    y = -locationVector(2);
+end
+if task.trialnum > 200 & task.trialnum <= 400
+    locationVector = randomLocations(2,:);
+    x = -locationVector(1);
+    y = -locationVector(2);
+end
+pixX = 38.8567214157064*x;
+pixY = 31.9291779098311*y;
+gaussian = mglMakeGaussian(60,60,0.1,0.1); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
+grating = mglMakeGrating(60,60,2,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
+% Setting the target contrast (i.e. the contrast of the grating)
+targetContrast = 1;
+grating = grating * targetContrast;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -303,45 +339,6 @@ stimulus.gammaTable = gammaTable;
 % remember what the current maximum contrast is that we can display
 stimulus.currentMaxContrast = maxContrast;
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Making background noise 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimBackground = makeStimBackground(myscreen)
-% (1) Generating 1/f noise
-noiseImage = makestim(myscreen);
-% (2) Setting the RMS contrast
-sumOfSquares = sum(sum(noiseImage.^2));
-n = numel(noiseImage);     
-backgroundRmsContrast = 0.39;  
-rmsAdjust = sqrt(sumOfSquares/(n*(backgroundRmsContrast)^2)); 
-stimBackground = noiseImage / rmsAdjust;
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Making grating and gaussian for the target
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [x y gaussian grating] = makeGrating(task,myscreen)
-global randomLocations;
-
-% Determining the location of the target based on the session (trial number)
-if task.trialnum > 0 & task.trialnum <= 200
-    locationVector = randomLocations(1,:);
-    x = -locationVector(1);
-    y = -locationVector(2);
-end
-if task.trialnum > 200 & task.trialnum <= 400
-    locationVector = randomLocations(2,:);
-    x = -locationVector(1);
-    y = -locationVector(2);
-end
-pixX = 38.8567214157064*x;
-pixY = 31.9291779098311*y;
-gaussian = mglMakeGaussian(60,60,0.1,0.1); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
-grating = mglMakeGrating(60,60,2,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
-% Setting the target contrast (i.e. the contrast of the grating)
-targetContrast = 1;
-grating = grating * targetContrast;
 
 
 

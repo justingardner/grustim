@@ -156,6 +156,20 @@ mglClearScreen();
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Making background noise 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimBackground = makeStimBackground(myscreen)
+% (1) Generating 1/f noise
+noiseImage = makestim(myscreen);
+% (2) Setting the RMS contrast
+sumOfSquares = sum(sum(noiseImage.^2));
+n = numel(noiseImage);     
+backgroundRmsContrast = 0.39;  
+rmsAdjust = sqrt(sumOfSquares/(n*(backgroundRmsContrast)^2)); 
+stimBackground = noiseImage / rmsAdjust;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Generating 1/f noise 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function noiseImage = makestim(myscreen)
@@ -268,16 +282,3 @@ stimulus.gammaTable = gammaTable;
 % remember what the current maximum contrast is that we can display
 stimulus.currentMaxContrast = maxContrast;
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Making background noise 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimBackground = makeStimBackground(myscreen)
-% (1) Generating 1/f noise
-noiseImage = makestim(myscreen);
-% (2) Setting the RMS contrast
-sumOfSquares = sum(sum(noiseImage.^2));
-n = numel(noiseImage);     
-backgroundRmsContrast = 0.39;  
-rmsAdjust = sqrt(sumOfSquares/(n*(backgroundRmsContrast)^2)); 
-stimBackground = noiseImage / rmsAdjust;

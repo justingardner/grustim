@@ -1,3 +1,13 @@
+% NOTES:
+% (1) Uses Contrast (Instead of filter) and adjusts pixel range to [-1, 1]
+% (2) Is not functionated
+% (3) This does not run with a visually correct stimulus on any monitor but
+% can be used for reference for the following:
+    % 1. Code to use contrast instead of filter
+    % 2. Code to adjust pixel range to [-1,1]
+    % 3. Original global variables that Josh used for creating 1/f noise (here
+    % they are commented out)
+
 function myscreen = zz(varargin)
 % check arguments
 getArgs(varargin);
@@ -8,19 +18,21 @@ getArgs(varargin);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 myscreen = initScreen(); mglClearScreen; task{1}.waitForBacktick = 1; 
 contrast = 0.25;
-% Code specific to generating noise
-global Colors; global stimulus; global randomLocations;
-Colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
-Colors.nReservedColors = size(Colors.reservedColors,1);
-maxIndex = 255;
-Colors.nGaussianColors = maxIndex+1-Colors.nReservedColors;
-Colors.minGaussianIndex = maxIndex+1 - Colors.nGaussianColors;
-Colors.maxGaussianIndex = maxIndex;
-stimulus.linearizedGammaTable = mglGetGammaTable;
-Colors.nDisplayContrasts = floor(Colors.nGaussianColors-1);
-setGammaTableForMaxContrast(contrast);
-contrastIndex = getContrastIndex(contrast,1);
-Colors.gaussRange = contrastIndex-1;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Code specific to generating noise
+%global Colors; global stimulus; global randomLocations;`
+%Colors.reservedColors = [1 1 1; 0.3 0.3 0.3; 0 1 0;1 0 0; 0 1 1];
+%Colors.nReservedColors = size(Colors.reservedColors,1);
+%maxIndex = 255;
+%Colors.nGaussianColors = maxIndex+1-Colors.nReservedColors;
+%Colors.minGaussianIndex = maxIndex+1 - Colors.nGaussianColors;
+%Colors.maxGaussianIndex = maxIndex;
+%stimulus.linearizedGammaTable = mglGetGammaTable;
+%Colors.nDisplayContrasts = floor(Colors.nGaussianColors-1);
+%setGammaTableForMaxContrast(contrast);
+%contrastIndex = getContrastIndex(contrast,1);
+%Colors.gaussRange = contrastIndex-1;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 mglClearScreen;
 
 
@@ -28,13 +40,13 @@ mglClearScreen;
 % set task parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 task{1}.segmin = [2.5 5 0.5 3 inf]; task{1}.segmax = [2.5 5 0.5 3 inf]; task{1}.getResponse = [1 0 0 0 1]; 
-task{1}.numTrials = 6; % number of trials you want it to run 
+task{1}.numTrials = 6;
 task{1}.random=1; % each trial pulls random values from the parameters below 
 task{1}.parameter.targetContrast = [0.5];
 task{1}.parameter.whichSegment = [1 2];
-% intialize response arrays %1
+% intialize response arrays %
 task{1}.response.correct = []
-% initialize locations arrays and location variables
+% initialize locations arrays 
 locations = [0 0; 0 2; 0 4; 0 6; 0 8; 
                   2 2; 4 4; 6 6; 8 8;
                   2 0; 4 0; 6 0; 8 0;
@@ -70,7 +82,7 @@ myscreen = endTask(myscreen,task);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global randomLocations;
-% Draw the picture in trials that have a pictures
+% Draw the stimulus in segments that contain the stimulus
 if task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
     
     % (1) Making The Target 
@@ -121,8 +133,8 @@ if task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
     
     % (3) Making the Final image (Target embedded in background noise)
     % (3.1) Multiplying grating with background noise so that it blends into The final Image 
-    %grating = grating.*noiseImage;   
-    % (3.2) Assembling the grating windowed by the gaussian (i.e. a gabor) and the background noise windowed by the opposite of the gaussian
+    grating = grating.*noiseImage;   
+    % (3.2) Assembling the grating windowed by the gaussian (i.e. a gabor) and the background noise windowed by the reverse of the gaussian
     stimImage = grating.*gaussian + noiseImage.*(1-gaussian);
     % (3.3) Actually creating the image through mgl 
     tex = mglCreateTexture(stimImage*255);
@@ -210,14 +222,13 @@ Background.im(:,:) = Background.noiseMax * (im - minIm) / (maxIm-minIm);
 % make into texture // currently unused
 %BackTexture = mglCreateTexture(round(Colors.gaussRange*squeeze(Background.im(:,:)) + Colors.minGaussianIndex));
 
-% Images
+% Images`
 fullImage = squeeze(Background.im(:,:)) + Background.sigMax * exp(-((((Background.x-xPos).^2) + (Background.y+yPos).^2))/(2*(width^2)));
 noiseImage = Background.im(100:900,100:900);
 stimulusImage = Background.gaussian;
 
 % scale and set on texture // unnecessary right now
 stimulus.stimTexture = mglCreateTexture(round(Colors.gaussRange*im + Colors.minGaussianIndex));
-
 
 % getContrastIndex 
 function contrastIndex = getContrastIndex(desiredContrast,verbose)
@@ -244,7 +255,6 @@ end
 
 % 1 based indexes (0th index is gray, nDisplayContrasts+1 is full contrast)
 contrastIndex = contrastIndex+1;
-
 
 % setGammaTableForMaxContrast 
 function setGammaTableForMaxContrast(maxContrast)
