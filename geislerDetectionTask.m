@@ -118,7 +118,9 @@ if task.thistrial.thisseg == 4
     
         % (4) Making the Final image (target embedded in background noise)
         % (4.1) Multiplying grating with background noise so that it blends into The final Image 
-        grating = grating.*stimBackground;   
+        grating = grating.*stimBackground; 
+        % (4.2*)
+        % stimImage = grating.*gaussian + stimBackground.*(1-gaussian);
         % (4.2) Assembling the grating windowed by the gaussian (i.e. a gabor) and the background noise windowed by the opposite of the gaussian
         stimImage = grating.*gaussian*task.thistrial.filter + stimBackground;
         % (4.3) Actually creating the image through mgl 
@@ -198,7 +200,11 @@ end
 function stimBackground = makeStimBackground(myscreen)
 % (1) Generating 1/f noise
 noiseImage = makestim(myscreen);
-% (2) Setting the RMS contrast
+% (2*) Subtract the mean to center around 0 and multiply by 2 to get [-1, 1] range
+%noiseImageMean = mean(noiseImage(:));
+%noiseImage = noiseImage - noiseImageMean;
+%noiseImage = 2 * noiseImage;
+% (3) Setting the RMS contrast
 sumOfSquares = sum(sum(noiseImage.^2));
 n = numel(noiseImage);     
 backgroundRmsContrast = 0.39;  
