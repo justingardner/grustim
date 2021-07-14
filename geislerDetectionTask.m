@@ -1,5 +1,5 @@
 % NOTES:
-% (1) Uses filter instead of Contrast
+% (1) The contrast problem has been fixed
 % (2) Is functionated
 % (3) Saves the locations into a task variable (task{1}.locations), making it easy to access in geislerDetectionAnalysis
 
@@ -24,13 +24,13 @@ task{1}.seglen = [2.5 0.25 0.5 0.25 inf];
 task{1}.getResponse = [0 0 0 0 1]; 
 task{1}.numTrials = 400; 
 task{1}.random=1; % each trial pulls random values from the parameters below 
-task{1}.parameter.filter = [0:.1:1];
+task{1}.parameter.contrast = [0 0.2 0.4 0.6 0.8 1];
 % Determines which segent to embed the target in
 % For instance, if whichSegmemt = 1, then embed the target in the first segment
 task{1}.parameter.whichSegment = [1 2];
 % intialize response arrays 
 task{1}.response.correct = [];
-task{1}.response.filter = [];
+task{1}.response.contrast = [];
 
 % initialize locations array and save it in a task variable
 locations = [0 5; 0 8;];
@@ -80,12 +80,15 @@ if task.thistrial.thisseg == 2
         [gaussian grating] = makeGrating(task,myscreen);
     
         % (4) Making the Final image (target embedded in background noise)
-        % (4.1) Multiplying grating with background noise so that it blends into the final Image 
-        grating = grating.*stimBackground;   
-        % (4.2) Assembling the image and adding the filter
-        stimImage = grating.*gaussian*task.thistrial.filter + stimBackground;
+        % (4.1) Making the Gabor and adjusting its contrast
+        gabor = grating.*gaussian; 
+        gabor = gabor * task.thistrial.contrast;
+        % (4.2) Adding the Gabor to the background and clipping values outside [-1, 1] range
+        stimImage = gabor + stimBackground;
+        stimImage(stimImage > 1) = 1;
+        stimImage(stimImage < -1) = -1;
         % (4.3) Actually creating the image through mgl 
-        tex = mglCreateTexture(stimImage*255);
+        tex = mglCreateTexture(((stimImage+1)/2)*255);
         mglBltTexture(tex,[0 0]);
     end
     % if it does not have the target, then just present background noise
@@ -98,7 +101,7 @@ if task.thistrial.thisseg == 2
         mglStencilSelect(1);
         
         % (2) Actually creating the image through mgl 
-        tex = mglCreateTexture(stimBackground*255);
+        tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
     end
 end
@@ -117,27 +120,28 @@ if task.thistrial.thisseg == 4
         [gaussian grating] = makeGrating(task,myscreen);
     
         % (4) Making the Final image (target embedded in background noise)
-        % (4.1) Multiplying grating with background noise so that it blends into The final Image 
-        grating = grating.*stimBackground; 
-        % (4.2*)
-        % stimImage = grating.*gaussian + stimBackground.*(1-gaussian);
-        % (4.2) Assembling the grating windowed by the gaussian (i.e. a gabor) and the background noise windowed by the opposite of the gaussian
-        stimImage = grating.*gaussian*task.thistrial.filter + stimBackground;
+        % (4.1) Making the Gabor and adjusting its contrast
+        gabor = grating.*gaussian; 
+        gabor = gabor * task.thistrial.contrast;
+        % (4.2) Adding the Gabor to the background and clipping values outside [-1, 1] range
+        stimImage = gabor + stimBackground;
+        stimImage(stimImage > 1) = 1;
+        stimImage(stimImage < -1) = -1;
         % (4.3) Actually creating the image through mgl 
-        tex = mglCreateTexture(stimImage*255);
+        tex = mglCreateTexture(((stimImage+1)/2)*255);
         mglBltTexture(tex,[0 0]);
     end 
     % if it does not have the target, then just present background noise
     if task.thistrial.whichSegment == 1
         
-        % (1) Making The Stencil
+       % (1) Making The Stencil
         mglStencilCreateBegin(1);
         mglFillOval(0,0,[17 17]);
         mglStencilCreateEnd;
         mglStencilSelect(1);
         
         % (2) Actually creating the image through mgl 
-        tex = mglCreateTexture(stimBackground*255);
+        tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
     end
 end
@@ -170,8 +174,8 @@ if task.thistrial.whichButton == 1 & task.thistrial.thisseg == 5
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 0];
     end
-    % Adding the filter to the reponse struct
-    task.response.filter = [task.response.filter task.thistrial.filter];
+    % Adding the contrast to the reponse struct
+    task.response.contrast = [task.response.contrast task.thistrial.contrast];
     task = jumpSegment(task);
 end
 mglClearScreen();
@@ -183,8 +187,8 @@ if task.thistrial.whichButton == 2 & task.thistrial.thisseg == 5
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 1];
     end
-    % Adding the filter to the reponse struct
-    task.response.filter = [task.response.filter task.thistrial.filter];
+    % Adding the contrast to the reponse struct
+    task.response.contrast = [task.response.contrast task.thistrial.contrast];
     
     task = jumpSegment(task);
 end
@@ -200,14 +204,15 @@ end
 function stimBackground = makeStimBackground(myscreen)
 % (1) Generating 1/f noise
 noiseImage = makestim(myscreen);
-% (2*) Subtract the mean to center around 0 and multiply by 2 to get [-1, 1] range
-%noiseImageMean = mean(noiseImage(:));
-%noiseImage = noiseImage - noiseImageMean;
-%noiseImage = 2 * noiseImage;
-% (3) Setting the RMS contrast
-sumOfSquares = sum(sum(noiseImage.^2));
+% (2) Subtracting the mean to center around 
+noiseImageMean = mean(noiseImage(:));
+noiseImage = noiseImage - noiseImageMean;
+% (3) Adjusting the range to [-1,1] (Written by Justin)
+noiseImage = 2*noiseImage / (max(noiseImage(:))-min(noiseImage(:)));
+% (4) Setting the RMS contrast
+sumOfSquares = sum(noiseImage(:).^2);
 n = numel(noiseImage);     
-backgroundRmsContrast = 0.39;  
+backgroundRmsContrast = 0.25;  
 rmsAdjust = sqrt(sumOfSquares/(n*(backgroundRmsContrast)^2)); 
 stimBackground = noiseImage / rmsAdjust;
 
@@ -232,10 +237,7 @@ end
 pixX = 38.8567214157064*x;
 pixY = 31.9291779098311*y;
 gaussian = mglMakeGaussian(60,60,0.1,0.1); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
-grating = mglMakeGrating(60,60,2,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
-% Setting the target contrast (i.e. the contrast of the grating)
-targetContrast = 1;
-grating = grating * targetContrast;
+grating = mglMakeGrating(60,60,4,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -257,7 +259,7 @@ oddHeight = 2*floor(myscreen.screenHeight/2)+1;
 
 % resize everything to odd
 % Background.gaussian = Background.gaussian(1:oddHeight,1:oddWidth);
-Background.gaussian = imread('pic01.png'); Background.gaussian = imresize(Background.gaussian,[oddHeight oddWidth]);
+Background.gaussian = imread('pic03.png'); Background.gaussian = imresize(Background.gaussian,[oddHeight oddWidth]);
 Background.x = Background.x(1:oddHeight,1:oddWidth);
 Background.y = Background.y(1:oddHeight,1:oddWidth);
 

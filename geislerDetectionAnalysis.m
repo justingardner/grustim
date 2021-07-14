@@ -62,24 +62,24 @@ d.condTrialNums{2} = [201:400];
 for iCond = 1:length(d.nCond)
     % The number of trials in the first condition: [1, 2, ... , 200]
     trialNums = d.condTrialNums{iCond}; 
-    % The filter values for the first 200 trials
-    d.cond(iCond).filter = d.parameter.filter(trialNums);
-    % A unique set (no duplicates) of the filters used in the first 200 trials
-    d.cond(iCond).uniquefilter = unique(d.cond(iCond).filter);
+    % The contrast values for the first 200 trials
+    d.cond(iCond).contrast = d.parameter.contrast(trialNums);
+    % A unique set (no duplicates) of the contrasts used in the first 200 trials
+    d.cond(iCond).uniquecontrast = unique(d.cond(iCond).contrast);
     % The responses for the first 200 trials
     correct = d.task{1}.response.correct(trialNums);
     
-    % We are going to iterate through the unique filters
-    for iVal = 1:length(d.cond(iCond).uniquefilter)
-        % find() will return the indeces of the the matrix that has the filter values for the first 200 trials for which the filter value
-        % matches the filter value we are currently iterating on. Those indeces are also trial numbers
-        whichTrials = find(d.cond(iCond).filter == d.cond(iCond).uniquefilter(iVal));
-        % The number of trials that had the filter value we are iterating on (should be equal for each filter if we randomized correctly)
+    % We are going to iterate through the unique contrasts
+    for iVal = 1:length(d.cond(iCond).uniquecontrast)
+        % find() will return the indeces of the the matrix that has the contrast values for the first 200 trials for which the contrast value
+        % matches the contrast value we are currently iterating on. Those indeces are also trial numbers
+        whichTrials = find(d.cond(iCond).contrast == d.cond(iCond).uniquecontrast(iVal));
+        % The number of trials that had the contrast value we are iterating on (should be equal for each contrast if we randomized correctly)
         nTrials = length(whichTrials);
-        % correct(whichTrials) returns the values of the response array for the trials that had the filter value we are iterationg on
-        % Summing them and dividing by the number of trials gives us the percent correct for that filter value
+        % correct(whichTrials) returns the values of the response array for the trials that had the contrast value we are iterationg on
+        % Summing them and dividing by the number of trials gives us the percent correct for that contrast value
         d.cond(iCond).correctBinned(iVal) = sum(correct(whichTrials))/nTrials;
-        % This just saves the number of trials for that filter value into a variable
+        % This just saves the number of trials for that contrast value into a variable
         d.cond(iCond).nTrials(iVal) = nTrials;
     end
 end
@@ -94,7 +94,7 @@ for iCond = 1:length(d.nCond)
     % Scaling so that all values are between 0 and 1 (important for fitting the cumalitve gaussian)
     d.cond(iCond).correctBinned =  ( 2 * d.cond(iCond).correctBinned ) - 1;
     % fit a cumulative gaussian to data
-    d.fit(iCond) = fitCumulativeGaussian(d.cond(iCond).uniquefilter,d.cond(iCond).correctBinned);
+    d.fit(iCond) = fitCumulativeGaussian(d.cond(iCond).uniquecontrast,d.cond(iCond).correctBinned);
     % find the threshold contrast (target contrast at 82.02% performance)
     idx = find(d.fit(iCond).fitY > 0.8201 & d.fit(iCond).fitY < 0.8203);
     d.cond(iCond).thresholdContrast = d.fit(iCond).fitX(idx);
@@ -106,7 +106,7 @@ k=2
 
 % NOTES:             
 % To draw a scatter plot
-% scatter(d.cond(2).uniquefilter, d.cond(2).correctBinned)
+% scatter(d.cond(2).uniquecontrast, d.cond(2).correctBinned)
 
 % To fit a curve
 % plot(d.fit(2).fitX, d.fit(2).fitY)

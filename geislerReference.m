@@ -124,7 +124,7 @@ if task.thistrial.thisseg == 2 | task.thistrial.thisseg == 4
     noiseImageMean = mean(noiseImage(:));
     noiseImage = noiseImage - noiseImageMean;
     noiseImage = 2 * noiseImage;
-    % (2.3) Setting the RMS contrast
+    % (2.3) Setting the ? contrast
     sumOfSquares = sum(sum(noiseImage.^2));
     n = numel(noiseImage);     
     backgroundRmsContrast = 0.25;  
