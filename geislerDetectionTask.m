@@ -20,11 +20,11 @@ mglClearScreen;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set task and stimulus parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-task{1}.seglen = [2.5 0.25 0.5 0.25 inf];
+task{1}.seglen = [2.5 5 0.5 5 inf];
 task{1}.getResponse = [0 0 0 0 1]; 
 task{1}.numTrials = 400; 
 task{1}.random=1; % each trial pulls random values from the parameters below 
-task{1}.parameter.contrast = [0 0.2 0.4 0.6 0.8 1];
+task{1}.parameter.contrast = [0.2];
 % Determines which segent to embed the target in
 % For instance, if whichSegmemt = 1, then embed the target in the first segment
 task{1}.parameter.whichSegment = [1 2];
