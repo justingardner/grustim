@@ -70,7 +70,7 @@ if visual || visualTrain
     stimulus.task = 1;
 elseif auditory || auditoryTrain
     stimulus.task = 2;
-else
+elseif stimulus.bimodal
     stimulus.task = 3;
 end
 
@@ -89,8 +89,13 @@ stimulus.useStaircase = useStaircase;
 stimulus.restartStaircase = restartStaircase;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
+<<<<<<< Updated upstream
 stimulus.stimDur = 0.015; % 15ms
 stimulus.gaussainDur = 0.015; % 15ms
+=======
+stimulus.stimDur = .15; % 15ms
+stimulus.gaussainDur = .015; % 15ms
+>>>>>>> Stashed changes
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
@@ -443,9 +448,15 @@ if stimulus.task ~= 2
   % on a blank background if snr is inf
   if isinf(stimulus.SNR)
     if task.thistrial.thisseg == stimulus.interval(1)
+<<<<<<< Updated upstream
       mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 1]);
     elseif task.thistrial.thisseg == stimulus.interval(2)
       mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 1]);
+=======
+        mglBltTexture(stimulus.tex, [task.thistrial.xposV(1)+2 * randn(1), 1]);
+    elseif task.thistrial.thisseg == stimulus.interval(2)
+        mglBltTexture(stimulus.tex, [task.thistrial.xposV(2)+2 * randn(1), 1]);
+>>>>>>> Stashed changes
     end
   else
     % otherwise display on noise background

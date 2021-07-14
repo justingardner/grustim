@@ -35,7 +35,7 @@ stimulus.visualTrain = visualTrain;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
 stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
-stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
+stimulus.gaussian.duration = .15;% .025;%1/60; % one(or two) frame 
     if ~stimulus.tenbit
         stimulus.gaussian.contrast = .1;
     end
@@ -234,7 +234,7 @@ mglFixationCross(stimulus.fixWidth,1.5,stimulus.fixColor);
 if any(task.thistrial.thisseg == [3 5 7])
   switch char(task.thistrial.condition)
 	case 'vision'
-		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 0]);
+		mglBltTexture(stimulus.tex, [task.thistrial.xposV(floor(task.thistrial.thisseg/2))+2 * randn(1), 0]);
 	case 'auditory'
 		mglPlaySound(stimulus.sound(floor(task.thistrial.thisseg/2)));
 	otherwise
