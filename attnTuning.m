@@ -42,7 +42,7 @@ offset = [0, 3, 5, 7, 15, 30, 90];
 designMat(:,1) = [repmat(1, [14,1]); repmat(2, [14,1])];
 designMat(:,2) = [repmat(1,[7,1]); repmat(2,[7,1]); repmat(1,[7,1]); repmat(2,[7,1])];
 designMat(:,3) = [repmat(offset',[4,1])];
-designMat = Shuffle(designMat, 2);
+designMat = Shuffle(designMat);%, 2);
 nTrials = length(designMat);
 
 task{1}.randVars.attentionCond = designMat(:,1);
@@ -104,9 +104,9 @@ myscreen.screenWidth;
 display.dist = myscreen.displayDistance;
 display.width = myscreen.displaySize(1);
 display.resolution = myscreen.screenWidth;
-pix = angle2pix(display,1);
-stimulus.width = 400 / pix; % gabor
-stimulus.height = 600 / pix;
+% pix = angle2pix(display,1);
+% stimulus.width = 400 / pix; % gabor
+% stimulus.height = 6`2200 / pix;
 stimulus.sf = 1;
 stimulus.orientation1 = 90;
 stimulus.orientation2 = 60;
@@ -165,7 +165,7 @@ mglFillOval(stimulus.rightPos, 0, [stimulus.targetSize stimulus.targetSize]);
 mglStencilCreateEnd;
 mglClearScreen;
 
-stimulus.initialThreshold = 15;
+stimulus.initialThreshold = 10;
 stimulus.initialStepsize = 2.5;
 stimulus.minThreshold = 0;
 stimulus.maxThreshold = 30;
