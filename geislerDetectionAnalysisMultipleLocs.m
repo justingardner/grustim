@@ -1,3 +1,18 @@
+% WRITTEN BY: 
+% Josh Wilson (adapted by Yehia Elkersh)
+
+% DESCRIPTION: 
+% This scripts runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. It is expecting an array of the locations used
+% in the task (in the order that they were used) and turns each location into a "condition" (here called 'cond') and runs the analysis on each condition.
+
+% NOTES:
+% (1) As of July 15, 2021 this script is compatible with the geislerDetectionTaskMultipleLocs file. For instance, it can only analyze two locations, 
+% with 544 trials at each location. Since the aforementioned task file needs to undergo some major changes (such as being broken up into phases), 
+% this script will need to be adjusted accordingly.
+% (2) In order to have access to the data in the command line (e.g. to plot
+% the psychometric curve), you should stop the script at the line 'k = 2' because when the script ends, the data is no longer available
+
+
 function geislerDetectionAnalysis
 
 % default return argument
@@ -55,8 +70,8 @@ for i=1:length(d.nCond)
 end
 
 % Each condition (i.e location) ran for 200 trials
-d.condTrialNums{1} = [1:200];
-d.condTrialNums{2} = [201:400];
+d.condTrialNums{1} = [1:544];
+d.condTrialNums{2} = [545:1088];
 
 % Commented for the first iteration
 for iCond = 1:length(d.nCond)

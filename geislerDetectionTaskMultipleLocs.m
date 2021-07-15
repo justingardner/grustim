@@ -1,9 +1,29 @@
-% NOTES:
-% (1) The contrast problem has been fixed
-% (2) Is functionated
-% (3) Saves the locations into a task variable (task{1}.locations), making it easy to access in geislerDetectionAnalysis
-% (4) This version runs one location for 544 trials (17 different contrasts), but it has the basic set up to run two locations 
-% for that number of contrasts
+% WRITTEN BY:
+% (1) Yehia Elkersh (The task)
+% (2) Josh Wilson (generating 1/f noise)
+
+% DESCRIPTION: 
+% This script is set up to run the detection task in the Najemnik & Geisler 2005 Nature paper. 
+
+% THE TASK: This is a basic 2AFC task, where ach "block" refers to a set of trials where the target appears in one particular location, 
+% which should beindicated to the subject at the beginning of each block. Within each block (i.e. at each location) the target contrasts is varied randomly. 
+
+% FAULTS:
+% As of July 15, 2021, this scripts has a few faults
+% (1) It only runs on two locations, whereas N&G use 25, but that should be easy to fix. More importantly 
+% (2) Tt uses one set of target contrasts for all the locations, whereas N&G use use a different set of for each location. 
+% (3) The way the script "blocks" the trials is by using the trial number (e.g. for the first 200 trials, put the target in location x1, 
+% for the next 200 put it in location x2, etc.). This is not ideal because it does not guarantee that the target contrasts gets randomized properly over in each block. 
+% For instance, targetContrat might be 0.5 more often in location x1 than in location x2. 
+% (4) The script does not inform the subject where the location is going to be during the proceeding block.
+
+% SOLUTION: 
+% To fix the stated faults, one should split up the task into phases, such that phase{1} is text (or illustrations) telling the subject that the target
+% will be at location x1, phase{2} is running the block of trials at that location, phase(3) is informing the subject that the target will be at location x2, etc. 
+% This will also make it much relatively easy to have different contrasts for each location, and will ensure that the contrasts are properly randomized
+
+% NOTES: 
+% (1) This scripts saves the locations into a task variable (task{1}.locations) in order to make it easy to access in geislerDetectionAnalysisMultipleLocs
 
     
 function myscreen = testSearch(varargin)
@@ -35,7 +55,8 @@ task{1}.response.correct = [];
 task{1}.response.contrast = [];
 
 % initialize locations array and save it in a task variable
-locations = [0 4.5];
+locations = [0 0;
+             0 4.5;];
 global randomLocations;
 randomLocations = locations(randperm(size(locations, 1)), :); 
 task{1}.locations = randomLocations;
