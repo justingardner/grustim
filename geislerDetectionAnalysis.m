@@ -136,12 +136,13 @@ if ~isfield(s,'myscreen') || ~isfield(s,'task')
   return
 end
 
-% check task filename
+% Create task filename
 taskFilename = s.task{1}.taskFilename;
-if isempty(strfind(lower(taskFilename),'search')) & isempty(strfind(lower(taskFilename),'search'))
-  disp(sprintf('(geislerDetectionAnalysis:loadStimfile) Incorrect task in stimfile: %s',taskFilename));
-  return
-end
+% Check task filename (Commented out, so code now assumes you are using the correct file)
+%if isempty(strfind(lower(taskFilename),'search')) & isempty(strfind(lower(taskFilename),'search'))
+%   disp(sprintf('(geislerDetectionAnalysis:loadStimfile) Incorrect task in stimfile: %s',taskFilename));
+%   return
+%end
 
 % parse into parameters
 d = getTaskParameters(s.myscreen,s.task);

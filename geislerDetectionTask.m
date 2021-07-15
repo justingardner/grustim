@@ -2,6 +2,8 @@
 % (1) The contrast problem has been fixed
 % (2) Is functionated
 % (3) Saves the locations into a task variable (task{1}.locations), making it easy to access in geislerDetectionAnalysis
+% (4) This version runs one location for 544 trials (17 different contrasts), but it has the basic set up to run two locations 
+% for that number of contrasts
 
     
 function myscreen = testSearch(varargin)
@@ -11,20 +13,20 @@ getArgs(varargin);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % initilaize the screen
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-myscreen.saveData = 1; myscreen = initScreen(myscreen); mglClearScreen; task{1}.waitForBacktick = 1; 
+myscreen.saveData = 1; myscreen = initScreen(myscreen); mglClearScreen(0.5); task{1}.waitForBacktick = 1; 
 contrast = 1;
 global Colors; global stimulus;
-mglClearScreen;
+mglClearScreen(0.5);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set task and stimulus parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-task{1}.seglen = [2.5 5 0.5 5 inf];
-task{1}.getResponse = [0 0 0 0 1]; 
-task{1}.numTrials = 400; 
+task{1}.seglen = [2.5 0.25 0.5 0.25 inf 0.5];
+task{1}.getResponse = [0 0 0 0 1 0]; 
+task{1}.numTrials = 544; 
 task{1}.random=1; % each trial pulls random values from the parameters below 
-task{1}.parameter.contrast = [0.2];
+task{1}.parameter.contrast = [0 0.025 0.05 0.075 0.1 0.125 0.15 0.175 0.2 0.225 0.25 0.275 0.3 0.35 0.4 0.5 0.7];
 % Determines which segent to embed the target in
 % For instance, if whichSegmemt = 1, then embed the target in the first segment
 task{1}.parameter.whichSegment = [1 2];
@@ -33,10 +35,14 @@ task{1}.response.correct = [];
 task{1}.response.contrast = [];
 
 % initialize locations array and save it in a task variable
-locations = [0 5; 0 8;];
+locations = [0 4.5];
 global randomLocations;
 randomLocations = locations(randperm(size(locations, 1)), :); 
 task{1}.locations = randomLocations;
+
+% Used to change the color of the cross on the 5th segment (i.e give feedback)
+global correct;
+
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -62,6 +68,7 @@ myscreen = endTask(myscreen,task);
 % Start Segment Callback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
+global correct
 
 % (1) Making The Background Noise
 stimBackground = makeStimBackground(myscreen);
@@ -72,7 +79,7 @@ if task.thistrial.thisseg == 2
         
         % (2) Making The Stencil
         mglStencilCreateBegin(1);
-        mglFillOval(0,0,[17 17]);
+        mglFillOval(0,0,[15 15]);
         mglStencilCreateEnd;
         mglStencilSelect(1);
         
@@ -90,19 +97,26 @@ if task.thistrial.thisseg == 2
         % (4.3) Actually creating the image through mgl 
         tex = mglCreateTexture(((stimImage+1)/2)*255);
         mglBltTexture(tex,[0 0]);
+        
+        mglFixationCross(0.4, 1, [0 0 0]);
     end
     % if it does not have the target, then just present background noise
     if task.thistrial.whichSegment == 2
         
         % (1) Making The Stencil
         mglStencilCreateBegin(1);
-        mglFillOval(0,0,[17 17]);
+        mglFillOval(0,0,[15 15]);
         mglStencilCreateEnd;
         mglStencilSelect(1);
         
-        % (2) Actually creating the image through mgl 
+        % (2) Clipping values outside [-1, 1] range 
+        stimBackground(stimBackground > 1) = 1;
+        stimBackground(stimBackground < -1) = -1;
+        % (3) Actually creating the image through mgl
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
+        
+        mglFixationCross(0.4, 1, [0 0 0]);
     end
 end
     
@@ -112,7 +126,7 @@ if task.thistrial.thisseg == 4
         
         % (2) Making The Stencil
         mglStencilCreateBegin(1);
-        mglFillOval(0,0,[17 17]);
+        mglFillOval(0,0,[15 15]);
         mglStencilCreateEnd;
         mglStencilSelect(1);
         
@@ -130,27 +144,42 @@ if task.thistrial.thisseg == 4
         % (4.3) Actually creating the image through mgl 
         tex = mglCreateTexture(((stimImage+1)/2)*255);
         mglBltTexture(tex,[0 0]);
+        
+        mglFixationCross(0.4, 1, [0 0 0]);
     end 
     % if it does not have the target, then just present background noise
     if task.thistrial.whichSegment == 1
         
        % (1) Making The Stencil
         mglStencilCreateBegin(1);
-        mglFillOval(0,0,[17 17]);
+        mglFillOval(0,0,[15 15]);
         mglStencilCreateEnd;
         mglStencilSelect(1);
         
-        % (2) Actually creating the image through mgl 
+        % (2) Clipping values outside [-1, 1] range 
+        stimBackground(stimBackground > 1) = 1;
+        stimBackground(stimBackground < -1) = -1;
+        % (3) Actually creating the image through mgl
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
+        
+        mglFixationCross(0.4, 1, [0 0 0]);
     end
 end
 
-if task.thistrial.thisseg == 1 | task.thistrial.thisseg == 3
-    mglFixationCross;
+if task.thistrial.thisseg == 1 | task.thistrial.thisseg == 3 | task.thistrial.thisseg == 5 
+    mglClearScreen(0.5);
+    mglFixationCross(0.4, 1, [0 0 0]);
 end
-if task.thistrial.thisseg == 5
-    mglClearScreen();
+if task.thistrial.thisseg == 6
+    if correct == 1
+        mglFixationCross(0.4, 2, [0 255 0]);
+    end
+    if correct == 0
+        mglFixationCross(0.4, 2, [255 0 0]);
+    end
+    
+    
 end
 myscreen.flushMode = 1;
 
@@ -165,27 +194,32 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 % responseCallback  
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = getResponseCallback(task,myscreen)
+global correct;
 
 if task.thistrial.whichButton == 1 & task.thistrial.thisseg == 5
     % if the button is 1 and the 1st segment had the target, mark as correct
     if task.thistrial.whichSegment == 1 
         task.response.correct = [task.response.correct 1];
+        correct = 1;
     end
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 0];
+        correct = 0;
     end
     % Adding the contrast to the reponse struct
     task.response.contrast = [task.response.contrast task.thistrial.contrast];
     task = jumpSegment(task);
 end
-mglClearScreen();
+mglClearScreen(0.5);
 
 if task.thistrial.whichButton == 2 & task.thistrial.thisseg == 5
     if task.thistrial.whichSegment == 1 
         task.response.correct = [task.response.correct 0];
+        correct = 0;
     end
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 1];
+        correct = 1;
     end
     % Adding the contrast to the reponse struct
     task.response.contrast = [task.response.contrast task.thistrial.contrast];
@@ -224,20 +258,21 @@ function [gaussian grating] = makeGrating(task,myscreen)
 global randomLocations;
 
 % Determining the location of the target based on the session (trial number)
-if task.trialnum > 0 & task.trialnum <= 200
+% For now, we are only doing one location with 12 contrasts (544 trials)
+if task.trialnum > 0 & task.trialnum <= 544
     locationVector = randomLocations(1,:);
     x = -locationVector(1);
     y = -locationVector(2);
 end
-if task.trialnum > 200 & task.trialnum <= 400
+if task.trialnum > 544 & task.trialnum <= 1088
     locationVector = randomLocations(2,:);
     x = -locationVector(1);
     y = -locationVector(2);
 end
 pixX = 38.8567214157064*x;
 pixY = 31.9291779098311*y;
-gaussian = mglMakeGaussian(60,60,0.1,0.1); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
-grating = mglMakeGrating(60,60,4,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
+gaussian = mglMakeGaussian(60,60,0.16,0.16); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
+grating = mglMakeGrating(60,60,2.65413,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
