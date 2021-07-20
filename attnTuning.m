@@ -7,17 +7,21 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: example program to show how to use the task structure
 %
-function myscreen = attnTuning
+function myscreen = attnTuning(varargin)
 clear global stimulus
-% check arguments
-if ~any(nargin == [0])
-  help ci_experiment
-  return
-end
+
+% get arguments
+staircase = 0;
+getArgs(varargin,{'staircase=0'},'verbose=1');
 
 % initalize the screen
 myscreen.background = 0.5;
 myscreen = initScreen(myscreen);
+
+% init the stimulus
+global stimulus;
+myscreen = initStimulus('stimulus',myscreen);
+stimulus.staircase = staircase;
 
 % fix: set waitForBacktick if you want to synch with the scanner
 % by waiting for the backtick key to be pressed before starting the experiment
@@ -34,20 +38,32 @@ task{1}.seglen = [1.75 2 1.5 2 1.5 2 1.5];
 task{1}.getResponse = [0 0 1 0 1 0 1];
 % fix: enter the parameter of your choice
 % task{1}.parameter.myParameter = [0 30 90];
-% task{1}.random = 1;
+task{1}.random = 1;
+if ~stimulus.staircase
+    task{1}.parameter.offset = [0, 3, 5, 7, 15, 30, 90]; % reporter grating offsets
+end
 
 attentionCond = [1,2];
 flickerSide = [1,2]; % left or right
-offset = [0, 3, 5, 7, 15, 30, 90];
+offset = [0, 3, 5, 7, 15, 30, 90]; % reporter grating offsets
+targetOffset = [-7.5, -5, -2.5, 0, 2.5, 5, 7.5];
 designMat(:,1) = [repmat(1, [14,1]); repmat(2, [14,1])];
 designMat(:,2) = [repmat(1,[7,1]); repmat(2,[7,1]); repmat(1,[7,1]); repmat(2,[7,1])];
-designMat(:,3) = [repmat(offset',[4,1])];
+if stimulus.staircase
+    designMat(:,3) = [repmat(offset',[4,1])];
+else
+    designMat(:,3) = [repmat(targetOffset',[4,1])];
+end
 designMat = Shuffle(designMat);%, 2);
 nTrials = length(designMat);
 
 task{1}.randVars.attentionCond = designMat(:,1);
 task{1}.randVars.flickerSide = designMat(:,2);
-task{1}.randVars.offset = designMat(:,3);
+if stimulus.staircase
+    task{1}.randVars.offset = designMat(:,3);
+else
+    task{1}.randVars.targetOffset = designMat(:,3);
+end
 
 % task{1}.numBlocks = 1;
 task{1}.numTrials = nTrials;
@@ -92,15 +108,8 @@ for phaseNum = 1:length(task)
   [task{phaseNum} myscreen] = initTask(task{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
 end
 
-% init the stimulus
-clear stimulus;
-global stimulus;
-myscreen = initStimulus('stimulus',myscreen);
 
 % Setup parameters for stimulus
-myscreen.displayDistance;
-myscreen.displaySize(1);
-myscreen.screenWidth;
 display.dist = myscreen.displayDistance;
 display.width = myscreen.displaySize(1);
 display.resolution = myscreen.screenWidth;
@@ -165,6 +174,7 @@ mglFillOval(stimulus.rightPos, 0, [stimulus.targetSize stimulus.targetSize]);
 mglStencilCreateEnd;
 mglClearScreen;
 
+if stimulus.staircase
 stimulus.initialThreshold = 10;
 stimulus.initialStepsize = 2.5;
 stimulus.minThreshold = 0;
@@ -173,6 +183,7 @@ stimulus.minStepsize = 0.75;
 stimulus.maxStepsize = 5;
 
 stimulus = initStair(stimulus);
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -244,6 +255,7 @@ if task.thistrial.thisseg == 1
         stimulus.fixPos = stimulus.leftPos;
     end
     
+    if stimulus.staircase
     [testValue, stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp1}] = doStaircase('testValue', stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp1});
     
     if task.thistrial.targetOrientation1 == 1
@@ -260,10 +272,21 @@ if task.thistrial.thisseg == 1
     task.thistrial.targetOffset1 = testValue * sign_target;
     task.thistrial.nontargetOffset1 = testValue * sign_nontarget;
     
+    else
+        if task.thistrial.nontargetOrientation1 == 1
+            sign_nontarget = 1; % counter-clockwise
+        else
+            sign_nontarget = -1; % clockwise
+        end
+        task.thistrial.targetOffset1 = task.thistrial.targetOffset;
+        task.thistrial.nontargetOffset1 = task.thistrial.targetOffset * sign_nontarget;
+        
+    end
     stimulus.targetOffset = task.thistrial.targetOffset1;
     stimulus.nontargetOffset = task.thistrial.nontargetOffset1;
     
     stimulus = initTarget(stimulus,task,myscreen);
+    
 elseif task.thistrial.thisseg == 2
     stimulus.fixColor = stimulus.fixWhite;
     stimulus.tic = tic;
@@ -295,6 +318,7 @@ elseif task.thistrial.thisseg == 4
         stimulus.nontargetPos = stimulus.leftPos;
     end
     
+    if stimulus.staircase
     [testValue, stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp2}] = doStaircase('testValue', stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp2});
     
     if task.thistrial.targetOrientation2 == 1
@@ -310,6 +334,16 @@ elseif task.thistrial.thisseg == 4
     
     task.thistrial.targetOffset2 = testValue * sign_target;
     task.thistrial.nontargetOffset2 = testValue * sign_nontarget;
+    
+    else
+        if task.thistrial.nontargetOrientation2 == 1
+            sign_nontarget = 1; % counter-clockwise
+        else
+            sign_nontarget = -1; % clockwise
+        end
+        task.thistrial.targetOffset2 = task.thistrial.targetOffset;
+        task.thistrial.nontargetOffset2 = task.thistrial.targetOffset * sign_nontarget;
+    end
     
     stimulus.targetOffset = task.thistrial.targetOffset2;
     stimulus.nontargetOffset = task.thistrial.nontargetOffset2;
@@ -336,6 +370,7 @@ elseif task.thistrial.thisseg == 6
         stimulus.nontargetPos = stimulus.leftPos;
     end
     
+    if stimulus.staircase
     [testValue, stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp3}] = doStaircase('testValue', stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp3});
     
     if task.thistrial.targetOrientation3 == 1
@@ -351,7 +386,15 @@ elseif task.thistrial.thisseg == 6
     
     task.thistrial.targetOffset3 = testValue * sign_target;
     task.thistrial.nontargetOffset3 = testValue * sign_nontarget;
-    
+    else
+        if task.thistrial.nontargetOrientation3 == 1
+            sign_nontarget = 1; % counter-clockwise
+        else
+            sign_nontarget = -1; % clockwise
+        end
+        task.thistrial.targetOffset3 = task.thistrial.targetOffset;
+        task.thistrial.nontargetOffset3 = task.thistrial.targetOffset * sign_nontarget;
+    end
     stimulus.targetOffset = task.thistrial.targetOffset3;
     stimulus.nontargetOffset = task.thistrial.nontargetOffset3;
     
@@ -381,7 +424,7 @@ global stimulus
 % we are on.
 if task.thistrial.thisseg == 1
 
-mglClearScreen;
+% mglClearScreen;
 mglStencilSelect(1);
 if stimulus.counter1 <= 210
     mglBltTexture(stimulus.texSuperimposed1(stimulus.counter1), [stimulus.flickerPos 0]);
@@ -470,8 +513,10 @@ global stimulus
             task.thistrial.correct1 = 0;
             stimulus.fixColor = stimulus.fixIncorrect;
         end
+        if stimulus.staircase
         stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp1} = doStaircase('update', stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp1},...
             task.thistrial.correct1);
+        end
         
         task.thistrial.resp1 = task.thistrial.whichButton;
         task.thistrial.rt1 = task.thistrial.reactionTime;
@@ -489,8 +534,10 @@ global stimulus
             task.thistrial.correct2 = 0;
             stimulus.fixColor = stimulus.fixIncorrect;
         end
+        if stimulus.staircase
         stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp2} = doStaircase('update', stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp2},...
             task.thistrial.correct2);
+        end
         
         task.thistrial.resp2 = task.thistrial.whichButton;
         task.thistrial.rt2 = task.thistrial.reactionTime;
@@ -508,8 +555,10 @@ global stimulus
             task.thistrial.correct3 = 0;
             stimulus.fixColor = stimulus.fixIncorrect;
         end
+        if stimulus.staircase
         stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp3} = doStaircase('update', stimulus.stair{task.thistrial.attentionCond}{task.thistrial.flickerResp3},...
             task.thistrial.correct3);
+        end
         
         task.thistrial.resp3 = task.thistrial.whichButton;
         task.thistrial.rt3 = task.thistrial.reactionTime;
@@ -559,8 +608,8 @@ stimulus.grating1 = []; stimulus.grating2 = [];
 stimulus.grating1{1} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1,0);
 stimulus.grating1{2} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1,180);
 
-stimulus.grating2{1} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation2,0);
-stimulus.grating2{2} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation2,180);
+stimulus.grating2{1} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1-task.thistrial.offset,0);
+stimulus.grating2{2} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1-task.thistrial.offset,180);
 
 stimulus.grating1{1} = 255*(stimulus.grating1{1}+1)/2;
 stimulus.grating1{2} = 255*(stimulus.grating1{2}+1)/2;
