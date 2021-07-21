@@ -20,21 +20,21 @@ mglClearScreen(0.5);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % set task and stimulus parameters
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-task{1}.seglen = [2.5 0.25 0.5 0.25 inf 0.5];
+task{1}.seglen = [0.5 0.25 0.5 0.25 inf 0.5];
 task{1}.getResponse = [0 0 0 0 1 0]; 
-task{1}.numTrials = 544; 
+task{1}.numTrials = 175; 
 task{1}.random=1; % each trial pulls random values from the parameters below 
-task{1}.parameter.contrast = [1];
+task{1}.parameter.contrast = [0 0.035 0.070 0.120 0.165 0.2 0.225];
 % Determines which segent to embed the target in
 % For instance, if whichSegmemt = 1, then embed the target in the first segment
-task{1}.parameter.whichSegment = [1];
+task{1}.parameter.whichSegment = [1 2];
 % intialize response arrays 
 task{1}.response.correct = [];
 task{1}.response.contrast = [];
 
 % initialize locations array and save it in a task variable
 global location;
-location = [4.77 4.77];
+location = [2.25 0];
 task{1}.location = location;
 
 % Used to change the color of the cross on the 5th segment (i.e give feedback)
@@ -95,7 +95,7 @@ if task.thistrial.thisseg == 2
         tex = mglCreateTexture(((stimImage+1)/2)*255);
         mglBltTexture(tex,[0 0]);
         
-        mglFixationCross(0.4, 1.5, [0 0 0]);
+        mglFixationCross(0.4, 1, [0 0 0]);
     end
     % if it does not have the target, then just present background noise
     if task.thistrial.whichSegment == 2
@@ -113,7 +113,7 @@ if task.thistrial.thisseg == 2
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
         
-        mglFixationCross(0.4, 1.5, [0 0 0]);
+        mglFixationCross(0.4, 1, [0 0 0]);
     end
 end
     
@@ -142,7 +142,7 @@ if task.thistrial.thisseg == 4
         tex = mglCreateTexture(((stimImage+1)/2)*255);
         mglBltTexture(tex,[0 0]);
         
-        mglFixationCross(0.4, 1.5, [0 0 0]);
+        mglFixationCross(0.4, 1, [0 0 0]);
     end 
     % if it does not have the target, then just present background noise
     if task.thistrial.whichSegment == 1
@@ -160,13 +160,13 @@ if task.thistrial.thisseg == 4
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
         
-        mglFixationCross(0.4, 1.5, [0 0 0]);
+        mglFixationCross(0.4, 1, [0 0 0]);
     end
 end
 
 if task.thistrial.thisseg == 1 | task.thistrial.thisseg == 3 | task.thistrial.thisseg == 5 
     mglClearScreen(0.5);
-    mglFixationCross(0.4, 1.5, [0 0 0]);
+    mglFixationCross(0.4, 1, [0 0 0]);
 end
 if task.thistrial.thisseg == 6
     if correct == 1
@@ -254,18 +254,12 @@ stimBackground = noiseImage / rmsAdjust;
 function [gaussian grating] = makeGrating(task,myscreen)
 global location;
 
-% Determining the location of the target based on the session (trial number)
-% For now, we are only doing one location with 12 contrasts (544 trials)
-if task.trialnum > 0 & task.trialnum <= 544
-    x = -location(1);
-    y = -location(2);
-end
-if task.trialnum > 544 & task.trialnum <= 1088
-    x = -location(1);
-    y = -location(2);
-end
+% Determining the location of the target 
+x = -location(1);
+y = -location(2);
 pixX = 38.8567214157064*x;
 pixY = 31.9291779098311*y;
+% NOTE: the parameters are set s.t. the FWHM of the Gaussian is equal to 1/cpd of the grating
 gaussian = mglMakeGaussian(60,60,0.16,0.16); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
 grating = mglMakeGrating(60,60,2.65413,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
 

@@ -55,8 +55,8 @@ location = d.task{1}.location;
 d.location.x = location(1);
 d.location.y = location(2);
 
-% Each condition (i.e location) ran for 544 trials
-trialNums = [1:544];
+% Each condition (i.e location) ran for 175 trials 
+trialNums = [1:175];
 % The contrast values for the first 200 trials
 d.contrast = d.parameter.contrast(trialNums);
 % A unique set (no duplicates) of the contrasts used in the first 200 trials
@@ -94,27 +94,28 @@ idx = find(d.fit.fitY > 0.820 & d.fit.fitY < 0.823);
 d.thresholdContrast = d.fit.fitX(idx);
 
 
-% STOP HERE WHEN DEBUGGING
-k=2
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % NOTES:             
 % To draw a scatter plot
-scatter(d.cond(1).uniquecontrast, d.cond(1).correctBinned)
-
+scatter(d.uniquecontrast, d.correctBinned)
+hold on 
 % To fit a curve
-plot(d.fit(1).fitX, d.fit(1).fitY)
+plot(d.fit.fitX, d.fit.fitY)
+
+% STOP HERE WHEN DEBUGGING
+k=1
 
 % Error
 errors = [];
 n = 32;
-for i=1:length(d.cond(1).correctBinned)
-    p = d.cond(1).correctBinned(i);
+for i=1:length(d.correctBinned)
+    p = d.correctBinned(i);
     error = sqrt( (p*(1-p)) / n );
     errors = [errors error];
 end
 
-errorbar(d.cond(1).uniquecontrast, d.cond(1).correctBinned, errors);
+errorbar(d.uniquecontrast, d.correctBinned, errors);
 
 
 
