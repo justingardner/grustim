@@ -7,13 +7,14 @@ normalizer = dot(gabor(:), gabor(:))
 
 templateResponses = [];
 
-for i=1:10
+for i=1:10000
     
     stimBackground = makeStimBackground(myscreen);
     
     templateResponse = dot(stimBackground(:), gabor(:));
    
     templateResponses = [templateResponses templateResponse];
+    
 end
 
 normalizedTemplateResponses = templateResponses / normalizer;

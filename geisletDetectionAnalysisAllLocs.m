@@ -108,7 +108,7 @@ for iFile = 1:e.nFiles
     % Graphing 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Graph the psychometric cruves fir the four different eccentricities along each location axis
-    eccen = num2str(sqrt( (dataMatrix(1, iFile))^2 + (dataMatrix(2, iFile))^2 ));
+    eccen = num2str(round(sqrt( (dataMatrix(1, iFile))^2 + (dataMatrix(2, iFile))^2 ), 2));
    
     plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY, 'DisplayName', eccen)
     
