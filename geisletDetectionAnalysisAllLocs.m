@@ -1,18 +1,3 @@
-% WRITTEN BY: 
-% Josh Wilson (adapted by Yehia Elkersh)
-
-% DESCRIPTION: 
-% This scripts runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. It is expecting a stimfile where the task was run
-% at multiple locations in the same experimet, and it also expects an array of the locations used in the experiment (in the order that they were used) 
-% and turns each location into a "condition" (here called 'cond') and runs the analysis on each condition.
-
-% NOTES:
-% (1) As of July 15, 2021 this script is compatible with the geislerDetectionTaskMultipleLocs file. For instance, it can only analyze two locations, 
-% with 544 trials at each location. Since the aforementioned task file needs to undergo some major changes (such as being broken up into phases), 
-% this script will need to be adjusted accordingly.
-% (2) In order to have access to the data in the command line (e.g. to plot
-% the psychometric curve), you should stop the script at the line 'k = 2' because when the script ends, the data is no longer available
-
 
 function geislerDetectionAnalysis
 
@@ -59,73 +44,146 @@ if e.nFiles == 0
   return
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% A condition(cond) refers to a particular (x,y) location
-d.nCond = [1:length(d.task{1}.locations)];
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Making dataMatrix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Make a matrix where the rows represent data points (x, y, mean, std, thresholdContrast) and the columns represent files
+dataMatrix = [];
 
-% creates a condition for each location
-for i=1:length(d.nCond)
-    d.cond(i).location = d.task{1}.locations(i,:);
-    d.cond(i).x = d.cond(i).location(1);
-    d.cond(i).y = d.cond(i).location(2);
-end
 
-% Each condition (i.e location) ran for 200 trials
-d.condTrialNums{1} = [1:544];
-d.condTrialNums{2} = [545:1088];
+% setting the location variable
+for iFile = 1:e.nFiles
+    location = e.d{iFile}.task{1}.location;
+    e.d{iFile}.location.x = location(1);
+    e.d{iFile}.location.y = location(2);
 
-% Commented for the first iteration
-for iCond = 1:length(d.nCond)
-    % The number of trials in the first condition: [1, 2, ... , 200]
-    trialNums = d.condTrialNums{iCond}; 
+    % Each condition (i.e location) ran for 175 trials 
+    trialNums = [1:175];
     % The contrast values for the first 200 trials
-    d.cond(iCond).contrast = d.parameter.contrast(trialNums);
+    e.d{iFile}.contrast = e.d{iFile}.parameter.contrast(trialNums);
     % A unique set (no duplicates) of the contrasts used in the first 200 trials
-    d.cond(iCond).uniquecontrast = unique(d.cond(iCond).contrast);
+    e.d{iFile}.uniquecontrast = unique(e.d{iFile}.contrast);
     % The responses for the first 200 trials
-    correct = d.task{1}.response.correct(trialNums);
+    correct = e.d{iFile}.task{1}.response.correct(trialNums);
     
     % We are going to iterate through the unique contrasts
-    for iVal = 1:length(d.cond(iCond).uniquecontrast)
+    for i = 1:length(e.d{iFile}.uniquecontrast)
         % find() will return the indeces of the the matrix that has the contrast values for the first 200 trials for which the contrast value
         % matches the contrast value we are currently iterating on. Those indeces are also trial numbers
-        whichTrials = find(d.cond(iCond).contrast == d.cond(iCond).uniquecontrast(iVal));
+        whichTrials = find(e.d{iFile}.contrast == e.d{iFile}.uniquecontrast(i));
         % The number of trials that had the contrast value we are iterating on (should be equal for each contrast if we randomized correctly)
         nTrials = length(whichTrials);
         % correct(whichTrials) returns the values of the response array for the trials that had the contrast value we are iterationg on
         % Summing them and dividing by the number of trials gives us the percent correct for that contrast value
-        d.cond(iCond).correctBinned(iVal) = sum(correct(whichTrials))/nTrials;
+        e.d{iFile}.correctBinned(i) = sum(correct(whichTrials))/nTrials;
         % This just saves the number of trials for that contrast value into a variable
-        d.cond(iCond).nTrials(iVal) = nTrials;
+        e.d{iFile}.nTrials(i) = nTrials;
     end
-end
 
-for iCond = 1:length(d.nCond)
     % Setiing all performance values below 0.5 to 0.5 becuase they are theoretically at chance performance
-    for i = 1: length(d.cond(iCond).correctBinned)
-        if d.cond(iCond).correctBinned(i) < 0.5
-            d.cond(iCond).correctBinned(i) = 0.5;
+    for i = 1: length(e.d{iFile}.correctBinned)
+        if e.d{iFile}.correctBinned(i) < 0.5
+            e.d{iFile}.correctBinned(i) = 0.5;
         end
     end
     % Scaling so that all values are between 0 and 1 (important for fitting the cumalitve gaussian)
-    d.cond(iCond).correctBinned =  ( 2 * d.cond(iCond).correctBinned ) - 1;
-    % fit a cumulative gaussian to data
-    d.fit(iCond) = fitCumulativeGaussian(d.cond(iCond).uniquecontrast,d.cond(iCond).correctBinned);
-    % find the threshold contrast (target contrast at 82.02% performance)
-    idx = find(d.fit(iCond).fitY > 0.8201 & d.fit(iCond).fitY < 0.8203);
-    d.cond(iCond).thresholdContrast = d.fit(iCond).fitX(idx);
+    e.d{iFile}.correctBinned =  ( 2 * e.d{iFile}.correctBinned ) - 1;
+    % Fit a cumulative gaussian to data
+    e.d{iFile}.fit = fitCumulativeGaussian(e.d{iFile}.uniquecontrast,e.d{iFile}.correctBinned);
+    % Find the threshold contrast (target contrast at 82% performance)
+    % For the cummalitve gaussian (the function we used to fit the data), the y-values are the intergrals of a Normal(mu, sigma) distribution from -inf to the x-values
+    mu = e.d{iFile}.fit.mean;
+    sigma = e.d{iFile}.fit.std;
+    thresholdContrast = norminv(0.82,mu,sigma);
+    e.d{iFile}.thresholdContrast = thresholdContrast;
+
+    % Fill out dataMatrix
+    dataMatrix(1, iFile) = e.d{iFile}.location.x;
+    dataMatrix(2, iFile) = e.d{iFile}.location.y;
+    dataMatrix(3, iFile) = e.d{iFile}.fit.mean;
+    dataMatrix(4, iFile) = e.d{iFile}.fit.std;
+    dataMatrix(5, iFile) = e.d{iFile}.thresholdContrast;
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Graphing 
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Graph the psychometric cruves fir the four different eccentricities along each location axis
+    eccen = num2str(sqrt( (dataMatrix(1, iFile))^2 + (dataMatrix(2, iFile))^2 ));
+   
+    plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY, 'DisplayName', eccen)
+    
+    hold on
+    title('Axis 0')
+    
+    %{
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Graph 25 psychometric curves            
+    % To draw a scatter plot
+    figure(iFile)
+    scatter(e.d{iFile}.uniquecontrast, e.d{iFile}.correctBinned)
+    hold on 
+
+    % To fit a curve with titles
+    plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY)
+    titleStr = sprintf('X location: %.3d. Y Location: %.3d // mean = %.3d, std = %.3d',e.d{iFile}.location.x,e.d{iFile}.location.y,e.d{iFile}.fit.mean,e.d{iFile}.fit.std)
+    title(titleStr)
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %}
+end
+legend show;
+legend('Location', 'southeast')
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Calculating Statistics on dataMatrix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Setting data points to their indeces in the dataMatrix so code is more legible
+X = 1;
+Y = 2;
+Mean = 3;
+Std = 4;
+threshCon = 5;
+    
+
+threshCons0 = []; stds0 = [];
+threshCons225 = []; stds225 = [];
+threshCons45 = []; stds45 = [];
+threshCons675 = []; stds675 = [];
+
+% Seperate by eccentricity (eccen)
+for iCol=1:e.nFiles
+    
+    eccen = sqrt( (dataMatrix(X, iCol))^2 + (dataMatrix(Y, iCol))^2 );
+    
+    if  eccen == 0
+        threshCons0 = [threshCons0 dataMatrix(threshCon, iCol)];
+        stds0 = [stds0 dataMatrix(Std, iCol)];
+    end
+    
+    if eccen > 1 & eccen < 3
+        threshCons225 = [threshCons225 dataMatrix(threshCon, iCol)];
+        stds225 = [stds225 dataMatrix(Std, iCol)];
+    end
+    
+    if eccen > 4 & eccen < 5
+        threshCons45 = [threshCons45 dataMatrix(threshCon, iCol)];
+        stds45 = [stds45 dataMatrix(Std, iCol)];
+    end
+    
+    if eccen > 6
+        threshCons675 = [threshCons675 dataMatrix(threshCon, iCol)];
+        stds675 = [stds675 dataMatrix(Std, iCol)];
+    end
 end
 
+AvgthreshCon0 = sum(threshCons0) / length(threshCons0)
+AvgthreshCon225 = sum(threshCons225) / length(threshCons225)
+AvgthreshCon45 = sum(threshCons45) / length(threshCons45)
+AvgthreshCon675 = sum(threshCons675) / length(threshCons675)
+
+    
 % STOP HERE WHEN DEBUGGING
 k=2
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% NOTES:             
-% To draw a scatter plot
-% scatter(d.cond(2).uniquecontrast, d.cond(2).correctBinned)
-
-% To fit a curve
-% plot(d.fit(2).fitX, d.fit(2).fitY)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -219,3 +277,4 @@ end
 
 % make sure we are returning a cell array
 stimfileNames = cellArray(stimfileNames);
+

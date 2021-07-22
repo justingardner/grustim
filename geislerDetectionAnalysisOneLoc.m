@@ -1,7 +1,8 @@
 % DESCRIPTION: 
 % This script runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. read geislerDetectionAnalysisMultipleLocs for
-% a full description. 
-% This script is designed to only analyze data for one location and thus is compatible with geislerDetectionTaskOneLoc only
+% a full description.
+% This script is designed to only analyze data for one location and thus is compatible with geislerDetectionTaskOneLoc only (i.e. it expects a
+% stimfile where the task was run at one location in the entire experiment 
 
 function geislerDetectionAnalysis
 
