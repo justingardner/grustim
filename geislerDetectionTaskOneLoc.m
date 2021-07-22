@@ -24,7 +24,7 @@ task{1}.seglen = [0.5 0.25 0.5 0.25 inf 0.5];
 task{1}.getResponse = [0 0 0 0 1 0]; 
 task{1}.numTrials = 175; 
 task{1}.random=1; % each trial pulls random values from the parameters below 
-task{1}.parameter.contrast = [0 0.035 0.070 0.120 0.165 0.2 0.225];
+task{1}.parameter.contrast = [0.1 0.125, 0.165, 0.2, 0.235, 0.270, 0.3];
 % Determines which segent to embed the target in
 % For instance, if whichSegmemt = 1, then embed the target in the first segment
 task{1}.parameter.whichSegment = [1 2];
@@ -34,7 +34,7 @@ task{1}.response.contrast = [];
 
 % initialize locations array and save it in a task variable
 global location;
-location = [2.25 0];
+location = [-3.18 -3.18];
 task{1}.location = location;
 
 % Used to change the color of the cross on the 5th segment (i.e give feedback)
