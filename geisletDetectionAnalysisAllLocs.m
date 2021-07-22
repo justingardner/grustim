@@ -50,7 +50,6 @@ end
 % Make a matrix where the rows represent data points (x, y, mean, std, thresholdContrast) and the columns represent files
 dataMatrix = [];
 
-
 % setting the location variable
 for iFile = 1:e.nFiles
     location = e.d{iFile}.task{1}.location;
@@ -104,6 +103,7 @@ for iFile = 1:e.nFiles
     dataMatrix(4, iFile) = e.d{iFile}.fit.std;
     dataMatrix(5, iFile) = e.d{iFile}.thresholdContrast;
     
+    
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Graphing 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -113,7 +113,8 @@ for iFile = 1:e.nFiles
     plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY, 'DisplayName', eccen)
     
     hold on
-    title('Axis 0')
+    title('Axis 270')
+    
     
     %{
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,13 +131,13 @@ for iFile = 1:e.nFiles
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %}
 end
-legend show;
-legend('Location', 'southeast')
+
+%legend show;
+%legend('Location', 'southeast')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Calculating Statistics on dataMatrix
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 % Setting data points to their indeces in the dataMatrix so code is more legible
 X = 1;
 Y = 2;
@@ -144,11 +145,10 @@ Mean = 3;
 Std = 4;
 threshCon = 5;
     
-
-threshCons0 = []; stds0 = [];
-threshCons225 = []; stds225 = [];
-threshCons45 = []; stds45 = [];
-threshCons675 = []; stds675 = [];
+threshCons0 = []; stds0 = []; means0 = [];
+threshCons225 = []; stds225 = []; means225 = [];
+threshCons45 = []; stds45 = []; means45 = [];
+threshCons675 = []; stds675 = []; means675 = [];
 
 % Seperate by eccentricity (eccen)
 for iCol=1:e.nFiles
@@ -158,30 +158,58 @@ for iCol=1:e.nFiles
     if  eccen == 0
         threshCons0 = [threshCons0 dataMatrix(threshCon, iCol)];
         stds0 = [stds0 dataMatrix(Std, iCol)];
+        means0 = [means0 dataMatrix(Mean, iCol)];
     end
     
     if eccen > 1 & eccen < 3
         threshCons225 = [threshCons225 dataMatrix(threshCon, iCol)];
         stds225 = [stds225 dataMatrix(Std, iCol)];
+        means225 = [means225 dataMatrix(Mean, iCol)];
     end
     
     if eccen > 4 & eccen < 5
         threshCons45 = [threshCons45 dataMatrix(threshCon, iCol)];
         stds45 = [stds45 dataMatrix(Std, iCol)];
+        means45 = [means45 dataMatrix(Mean, iCol)];
     end
     
     if eccen > 6
         threshCons675 = [threshCons675 dataMatrix(threshCon, iCol)];
         stds675 = [stds675 dataMatrix(Std, iCol)];
+        means675 = [means675 dataMatrix(Mean, iCol)];
     end
 end
 
-AvgthreshCon0 = sum(threshCons0) / length(threshCons0)
-AvgthreshCon225 = sum(threshCons225) / length(threshCons225)
-AvgthreshCon45 = sum(threshCons45) / length(threshCons45)
-AvgthreshCon675 = sum(threshCons675) / length(threshCons675)
+AvgthreshCon0 = sum(threshCons0) / length(threshCons0);
+AvgthreshCon225 = sum(threshCons225) / length(threshCons225);
+AvgthreshCon45 = sum(threshCons45) / length(threshCons45);
+AvgthreshCon675 = sum(threshCons675) / length(threshCons675);
 
+Avgstd0 = sum(stds0) / length(stds0);
+Avgstd225 = sum(stds225) / length(stds225);
+Avgstd45 = sum(stds45) / length(stds45);
+Avgstd675 = sum(stds675) / length(stds675);
+
+Avgmean0 = sum(means0) / length(means0)
+Avgmean225 = sum(means225) / length(means225)
+Avgmean45 = sum(means45) / length(means45)
+Avgmean675 = sum(means675) / length(means675)
+
+x = 0:0.01:0.3;
+
+plot(normcdf(x, Avgmean0, Avgstd0), 'DisplayName', '0')
+hold on
+plot(normcdf(x, Avgmean225, Avgstd225),'DisplayName', '2.25')
+hold on
+plot(normcdf(x, Avgmean45, Avgstd45),'DisplayName', '4.5')
+hold on
+plot(normcdf(x, Avgmean675, Avgstd675),'DisplayName', '6.75')
+hold on
     
+legend show ;
+legend('Location', 'southeast');
+title('Avg Psychometric Curve per Eccentricity')
+
 % STOP HERE WHEN DEBUGGING
 k=2
 
