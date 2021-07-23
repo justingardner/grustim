@@ -1,9 +1,21 @@
+% WRITTEN BY:
+% (1) Yehia Elkersh (The calculation and other functions)
+% (2) Josh Wilson (generating 1/f noise)
+
+% DESCRIPTION: 
+% This script's sole purpose is to calulate the parameter 'alpha' which is described in the Najemnik & Gesiler JOV paper on page 6. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Calculating Alpha
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function alpha = calculateAlpha()
 myscreen = initScreen;
 
 [gaussian grating] = makeGrating(myscreen);
 gabor = grating.*gaussian;
-normalizer = dot(gabor(:), gabor(:))
+% Using the template response of the gabor with itself as a normalizer. That way a perfect match template response would yield a value of 1. 
+normalizer = dot(gabor(:), gabor(:));
 
 templateResponses = [];
 

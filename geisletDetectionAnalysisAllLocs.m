@@ -1,3 +1,9 @@
+% DESCRIPTION: 
+% This script runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. Read geislerDetectionAnalysisMultipleLocs for
+% a full description.
+% This script is designed to analyze data for all 25 locations. You should 'cd' into a directory that has 25 stimfiles, where each stimfile has data
+% from running the task with one location only (i.e. from running the task file geislerDetectionTaskOneLoc)
+
 
 function geislerDetectionAnalysis
 
@@ -47,11 +53,14 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Making dataMatrix
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Make a matrix where the rows represent data points (x, y, mean, std, thresholdContrast) and the columns represent files
+% Make a matrix where the rows represent data points (x, y, mean, std, thresholdContrast) and the columns represent different files
 dataMatrix = [];
 
-% setting the location variable
+% Here, we are looping over all the files (iFile is a file number), which
+% is equivalent to loopong over all locations because each file contained
+% one location
 for iFile = 1:e.nFiles
+    % extracting the location from the file
     location = e.d{iFile}.task{1}.location;
     e.d{iFile}.location.x = location(1);
     e.d{iFile}.location.y = location(2);
@@ -96,7 +105,7 @@ for iFile = 1:e.nFiles
     thresholdContrast = norminv(0.82,mu,sigma);
     e.d{iFile}.thresholdContrast = thresholdContrast;
 
-    % Fill out dataMatrix
+    % Filling out dataMatrix
     dataMatrix(1, iFile) = e.d{iFile}.location.x;
     dataMatrix(2, iFile) = e.d{iFile}.location.y;
     dataMatrix(3, iFile) = e.d{iFile}.fit.mean;
@@ -107,18 +116,20 @@ for iFile = 1:e.nFiles
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     % Graphing 
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Graph the psychometric cruves fir the four different eccentricities along each location axis
+    %{
+    % (1.1)
+    % Graph the psychometric cruves for the four different eccentricities along each location axis
     eccen = num2str(round(sqrt( (dataMatrix(1, iFile))^2 + (dataMatrix(2, iFile))^2 ), 2));
    
     plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY, 'DisplayName', eccen)
-    
     hold on
-    title('Axis 270')
-    
+    title('Axis 0')
+    %}
     
     %{
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Graph 25 psychometric curves            
+    % (2)
+    % Graph 25 psychometric curves (one for each location) in 25 separate figures           
     % To draw a scatter plot
     figure(iFile)
     scatter(e.d{iFile}.uniquecontrast, e.d{iFile}.correctBinned)
@@ -132,25 +143,27 @@ for iFile = 1:e.nFiles
     %}
 end
 
+%(1.2)
 %legend show;
 %legend('Location', 'southeast')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Calculating Statistics on dataMatrix
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Setting data points to their indeces in the dataMatrix so code is more legible
+% Setting data points to their indeces in the dataMatrix (just makes code more legible)
 X = 1;
 Y = 2;
 Mean = 3;
 Std = 4;
 threshCon = 5;
-    
+
+% initialize arrays that will hold data points for each eccentricity (regardless of location)
 threshCons0 = []; stds0 = []; means0 = [];
 threshCons225 = []; stds225 = []; means225 = [];
 threshCons45 = []; stds45 = []; means45 = [];
 threshCons675 = []; stds675 = []; means675 = [];
 
-% Seperate by eccentricity (eccen)
+% iterate through dataMatrix and pull out data points based on eccentricity
 for iCol=1:e.nFiles
     
     eccen = sqrt( (dataMatrix(X, iCol))^2 + (dataMatrix(Y, iCol))^2 );
@@ -180,16 +193,18 @@ for iCol=1:e.nFiles
     end
 end
 
+% Find averages for each eccentricity
+% Average thresholdContrast
 AvgthreshCon0 = sum(threshCons0) / length(threshCons0);
 AvgthreshCon225 = sum(threshCons225) / length(threshCons225);
 AvgthreshCon45 = sum(threshCons45) / length(threshCons45);
 AvgthreshCon675 = sum(threshCons675) / length(threshCons675);
-
+% Average standard deviations of the cumalitive gaussian fits
 Avgstd0 = sum(stds0) / length(stds0);
 Avgstd225 = sum(stds225) / length(stds225);
 Avgstd45 = sum(stds45) / length(stds45);
 Avgstd675 = sum(stds675) / length(stds675);
-
+% Average means of the cumalitive gaussian fits
 Avgmean0 = sum(means0) / length(means0)
 Avgmean225 = sum(means225) / length(means225)
 Avgmean45 = sum(means45) / length(means45)
