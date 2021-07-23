@@ -34,7 +34,7 @@ task{1}.response.contrast = [];
 
 % initialize locations array and save it in a task variable
 global location;
-location = [-3.18 -3.18];
+location = [3.18 -3.18];
 task{1}.location = location;
 
 % Used to change the color of the cross on the 5th segment (i.e give feedback)
