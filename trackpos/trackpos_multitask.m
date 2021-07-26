@@ -55,10 +55,10 @@ params.noiseLum   = 32; % noise luminance, if there is one.
 
 % main task parameters
 tasks2run         = {'est', '2c'};
-teststimLum       = [0.5, 1, 1.5] * params.noiseLum; %SNR
-teststimDur       = [2/60 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-posDiff           = linspace(0.05,0.5,10); % in degs; minimum and maximum offset from fixation
-trialpercond      = 10;
+teststimLum       = [1, 1.5] * params.noiseLum; %SNR
+teststimDur       = [2/60, 5/60, 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+posDiff           = logspace(log(0.05)/log(10),log(0.5)/log(10),8); % in degs; minimum and maximum offset from fixation
+trialpercond      = 12;
 if exp.debug, trialpercond = 1; end
 
 task{1}{1}.parameter.currtask   = tasks2run; % forst fixed values
@@ -90,11 +90,11 @@ stimulus.teststimDur        = teststimDur; % not saved in the task.
 stimulus = trackposInitStimulus(stimulus,myscreen);
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 
-if stimulus.exp.phasescrambleOn == 1;
+if stimulus.exp.phasescrambleOn == 1
     disp('Loading phase scrambled background noise...')
 
     tic
-    if stimulus.exp.backprecompute == 1;
+    if stimulus.exp.backprecompute == 1
         savefile = '/Users/gru/data/trackpos/trackpos.mat';
         %savefile = '/Users/jryu/data/trackpos/trackpos.mat'; 
         % savefile = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
@@ -158,8 +158,10 @@ mglDisplayCursor(0); %hide cursor
 % mglClearScreen(task{1}{1}.parameter.backLum/255);
 mglTextDraw('task (trackpos_multitask) starting... ', [0 1])
 mglTextDraw('After the stimulus is presented, you will be asked to perform one of the two tasks, depending on the fixation color',[0 0]);
-mglTextDraw('Estimation task (red fixation): move the mouse to the center of stimulus. Press 3 when done.',[0 -1]);
-mglTextDraw('2AFC task (blue fixation): press 1 if the stimulus is to the right of fixation. 2 otherwise',[0 -2]);
+mglTextDraw('Estimation task (red fixation): move the mouse to the center of stimulus. Press 3 when done.',[0 -1],...
+    'fontColor', [1 0 0]);
+mglTextDraw('2AFC task (blue fixation): press 1 if the stimulus is to the right of fixation. 2 otherwise',[0 -2],...
+    'fontColor', [0 0 1]);
 mglTextDraw('press backtick to go to next trial',[0 -3]);
 mglFlush
 
