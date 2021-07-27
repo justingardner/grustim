@@ -256,6 +256,11 @@ function [task myscreen] = initTrialCallback(task, myscreen)
         nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
+    
+    if mod(task.trialnum,ceil(task.numTrials/20)) == 1
+        disp(['(trackpos) '  num2str(task.trialnum/task.numTrials) ...
+            '% finished: Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
+    end
 end
 
 %% Start segment

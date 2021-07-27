@@ -35,10 +35,10 @@ myscreen = initScreen(myscreen);
 
 % Experimenter parameters
 exp                 = struct();
+exp.debug           = false;
 exp.noeye           = false;
 exp.eyemousedebug   = false;
 exp.showmouse       = false;
-exp.debug           = true;
 exp.phasescrambleOn = true;
 exp.backprecompute  = true;
 exp.feedback        = true; 
@@ -187,7 +187,7 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     
     % print trial number every 5%. 
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
-        disp(['(trackpose_multitask) '  num2str(task.trialnum/task.numTrials) ...
+        disp(['(trackpos_multitask) '  num2str(task.trialnum/task.numTrials) ...
             '% finished: Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
     end
 end
