@@ -46,9 +46,10 @@ end
 attentionCond = [1,2];
 flickerSide = [1,2]; % left or right
 offset = [0, 3, 5, 7, 15, 30, 90]; % reporter grating offsets
-targetOffset = [-7.5, -5, -2.5, 0, 2.5, 5, 7.5];
-designMat(:,1) = [repmat(1, [14,1]); repmat(2, [14,1])];
-designMat(:,2) = [repmat(1,[7,1]); repmat(2,[7,1]); repmat(1,[7,1]); repmat(2,[7,1])];
+targetOffset = [-5, -2.5, -1, -0.5, 0.5, 1, 2.5, 5];
+nTargetOffsets = length(targetOffset);
+designMat(:,1) = [repmat(1, [nTargetOffsets*2,1]); repmat(2, [nTargetOffsets*2,1])];
+designMat(:,2) = [repmat(1,[nTargetOffsets,1]); repmat(2,[nTargetOffsets,1]); repmat(1,[nTargetOffsets,1]); repmat(2,[nTargetOffsets,1])];
 if stimulus.staircase
     designMat(:,3) = [repmat(offset',[4,1])];
 else
@@ -122,8 +123,8 @@ stimulus.orientation2 = 60;
 stimulus.orientation3 = 90;
 stimulus.orientation4 = 0;
 
-stimulus.leftPos = -6;
-stimulus.rightPos = 6;
+stimulus.leftPos = -7.5;
+stimulus.rightPos = 7.5;
 
 stimulus.annulusInner = 2.5;
 stimulus.annulusOuter = 5;
