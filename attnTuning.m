@@ -202,6 +202,10 @@ while (phaseNum <= length(task)) && ~myscreen.userHitEsc
   myscreen = tickScreen(myscreen,task);
 end
 
+stimulus.grating1 = []; stimulus.grating2 = []; stimulus.grating3 = []; stimulus.grating4 = [];
+stimulus.gratingSuperimposed1 = []; stimulus.gratingSuperimposed2 = []; 
+stimulus.texSuperimposed1 = []; stimulus.texSuperimposed2 = []; stimulus.texTarget = []; stimulus.texTargetOffset=[]; stimulus.texNontargetOffset=[];
+
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
@@ -629,7 +633,7 @@ stimulus.grating2{2} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOut
 stimulus.grating2{1} = 255*(stimulus.grating2{1}+1)/2;
 stimulus.grating2{2} = 255*(stimulus.grating2{2}+1)/2;
 
-stimulus.gratingSuperimposed1 = []; stimulus.gratingSuperimposed2 = [];
+stimulus.gratingSuperimposed1 = []; 
 for i = 1:stimulus.flickerFrames
     stimulus.gratingSuperimposed1{i} = (stimulus.grating1{stimulus.stimArray1(i)} + stimulus.grating2{stimulus.stimArray2(i)}) / 2;
     stimulus.texSuperimposed1(i) = mglCreateTexture(stimulus.gratingSuperimposed1{i});
