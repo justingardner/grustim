@@ -161,7 +161,7 @@ stimulus.fixIncorrect = [1 0 0];
 % fix: you will change the funciton myInitStimulus
 % to initialize the stimulus for your experiment.
 % stimulus = myInitStimulus(stimulus,myscreen);
-% stimulus = initGabor(stimulus,task,myscreen);
+stimulus = initGrating(stimulus,myscreen);
 
 mglStencilCreateBegin(1);
 mglFillOval(stimulus.leftPos,0, [stimulus.annulusOuter stimulus.annulusOuter]);
@@ -212,7 +212,6 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus;
 if task.thistrial.thisseg == 1
-    disp(sprintf('Trial: %i ',task.trialnum));
 
     stimulus.fixColor = stimulus.fixWhite;
     stimulus.counter1 = 1;
@@ -287,6 +286,8 @@ if task.thistrial.thisseg == 1
     stimulus.nontargetOffset = task.thistrial.nontargetOffset1;
     
     stimulus = initTarget(stimulus,task,myscreen);
+    
+    disp(sprintf('Trial %i: target %0.2f reporter %0.2f ',task.trialnum, task.thistrial.targetOffset, task.thistrial.offset));
     
 elseif task.thistrial.thisseg == 2
     stimulus.fixColor = stimulus.fixWhite;
@@ -597,33 +598,13 @@ stimulusArray = repmat(cycle, [1, rep]);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function stimulus = myInitStimulus(stimulus,myscreen)
-
-% fix: add stuff to initalize your stimulus
-function stimulus = initFlicker(stimulus,task,myscreen)
-
-% compute the grating
-% reporter annuli
-% mglMakeGrating(width,height,sf,angle,phase,<xDeg2pix>,<yDeg2pix>)
+function stimulus = initGrating(stimulus,myscreen)
 stimulus.grating1 = []; stimulus.grating2 = [];
 stimulus.grating1{1} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1,0);
 stimulus.grating1{2} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1,180);
 
-stimulus.grating2{1} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1-task.thistrial.offset,0);
-stimulus.grating2{2} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1-task.thistrial.offset,180);
-
 stimulus.grating1{1} = 255*(stimulus.grating1{1}+1)/2;
 stimulus.grating1{2} = 255*(stimulus.grating1{2}+1)/2;
-stimulus.grating2{1} = 255*(stimulus.grating2{1}+1)/2;
-stimulus.grating2{2} = 255*(stimulus.grating2{2}+1)/2;
-
-stimulus.gratingSuperimposed1 = []; stimulus.gratingSuperimposed2 = [];
-for i = 1:stimulus.flickerFrames
-    stimulus.gratingSuperimposed1{i} = (stimulus.grating1{stimulus.stimArray1(i)} + stimulus.grating2{stimulus.stimArray2(i)}) / 2;
-    stimulus.texSuperimposed1(i) = mglCreateTexture(stimulus.gratingSuperimposed1{i});
-end
-
-% stimulus.gratingSuperimposed1 = (stimulus.grating1 + stimulus.grating2) /2;
 
 stimulus.grating3 = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation3,0);
 stimulus.grating4 = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation4,0);
@@ -634,6 +615,27 @@ stimulus.gratingSuperimposed2 = (stimulus.grating3 + stimulus.grating4) /2;
 
 % stimulus.texSuperimposed(1) = mglCreateTexture(stimulus.gratingSuperimposed1);
 stimulus.texSuperimposed2 = mglCreateTexture(stimulus.gratingSuperimposed2);
+
+% fix: add stuff to initalize your stimulus
+function stimulus = initFlicker(stimulus,task,myscreen)
+
+% compute the grating
+% reporter annuli
+% mglMakeGrating(width,height,sf,angle,phase,<xDeg2pix>,<yDeg2pix>)
+
+stimulus.grating2{1} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1-task.thistrial.offset,0);
+stimulus.grating2{2} = mglMakeGrating(stimulus.annulusOuter, stimulus.annulusOuter, stimulus.sf, stimulus.orientation1-task.thistrial.offset,180);
+
+stimulus.grating2{1} = 255*(stimulus.grating2{1}+1)/2;
+stimulus.grating2{2} = 255*(stimulus.grating2{2}+1)/2;
+
+stimulus.gratingSuperimposed1 = []; stimulus.gratingSuperimposed2 = [];
+for i = 1:stimulus.flickerFrames
+    stimulus.gratingSuperimposed1{i} = (stimulus.grating1{stimulus.stimArray1(i)} + stimulus.grating2{stimulus.stimArray2(i)}) / 2;
+    stimulus.texSuperimposed1(i) = mglCreateTexture(stimulus.gratingSuperimposed1{i});
+end
+
+% stimulus.gratingSuperimposed1 = (stimulus.grating1 + stimulus.grating2) /2;
 
 function stimulus = initTarget(stimulus,task,myscreen)
 
