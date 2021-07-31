@@ -35,10 +35,10 @@ myscreen = initScreen(myscreen);
 
 % Experimenter parameters
 exp                 = struct();
-exp.noeye           = true;
+exp.debug           = false;
+exp.noeye           = false;
 exp.eyemousedebug   = false;
 exp.showmouse       = false;
-exp.debug           = true;
 exp.phasescrambleOn = true;
 exp.backprecompute  = true;
 exp.feedback        = true; 
@@ -55,11 +55,11 @@ params.noiseLum   = 32; % noise luminance, if there is one.
 
 % main task parameters
 tasks2run         = {'est', '2c'};
-teststimLum       = [0.5, 1, 1.5] * params.noiseLum; %SNR
-teststimDur       = [2/60 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-posDiff           = linspace(0.05,0.5,10); % in degs; minimum and maximum offset from fixation
-trialpercond      = 10;
-if exp.debug, trialpercond = 1; end
+teststimLum       = [1, 1.5] * params.noiseLum; %SNR
+teststimDur       = [2/60, 5/60, 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+posDiff           = logspace(log(0.05)/log(10),log(0.5)/log(10),8); % in degs; minimum and maximum offset from fixation
+trialpercond      = 12;
+if exp.debug, trialpercond = 3; end
 
 task{1}{1}.parameter.currtask   = tasks2run; % forst fixed values
 params.posDiff   = posDiff; % forst fixed values
@@ -90,12 +90,12 @@ stimulus.teststimDur        = teststimDur; % not saved in the task.
 stimulus = trackposInitStimulus(stimulus,myscreen);
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 
-if stimulus.exp.phasescrambleOn == 1;
+if stimulus.exp.phasescrambleOn == 1
     disp('Loading phase scrambled background noise...')
 
     tic
-    if stimulus.exp.backprecompute == 1;
-        savefile = '/Users/gru/data/trackpos/trackpos.mat';
+    if stimulus.exp.backprecompute == 1
+        savefile = '/Users/gru/proj/grustim/trackpos/trackpos.mat';
         %savefile = '/Users/jryu/data/trackpos/trackpos.mat'; 
         % savefile = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
         if ~exist(savefile,'file')
@@ -187,7 +187,8 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     
     % print trial number every 5%. 
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
-        disp(['Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
+        disp(['(trackpos_multitask) '  num2str(task.trialnum/task.numTrials) ...
+            '% finished: Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
     end
 end
 

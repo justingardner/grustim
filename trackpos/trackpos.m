@@ -11,6 +11,7 @@ function myscreen = trackpos(varargin)
 
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 % set up screen
+myscreen = struct();
 if isempty(mglGetSID)
     myscreen.subjectID  = -1;
 else
@@ -27,6 +28,7 @@ global stimulus; stimulus = struct;
 
 % Experimenter parameters
 %todo:  check these throughout the code!!
+exp.debug               = 1; % debug code
 exp.noeye               = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showmouse           = 0; 
 exp.grabframe           = 0; 
@@ -35,7 +37,6 @@ exp.fixateCenter        = 1;
 exp.phasescrambleOn     = 1;
 exp.backprecompute      = 1;
 exp.eyemousedebug       = 0; % debug eyetracker with mouse
-exp.debug               = 0; % debug code
 exp.downsample_timeRes  = 1;
 
 
@@ -77,7 +78,7 @@ task{1}{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencin
 %% Set up tasks 
 
 % change stimulus speed and luminance; cross conditions.
-teststimSteps = [1]; %[0.75, 1.5, 2.25];
+teststimSteps = [0.7, 1, 1.3]; %[0.75, 1.5, 2.25];
 teststimLum   = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
 % teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 
@@ -89,9 +90,15 @@ for stepIdx = 1:length(teststimSteps)
     task{1}{idx}.parameter.phasescrambleOn      = 0;
     task{1}{idx}.parameter.noiseLum             = 0;  
     task{1}{idx}.parameter.stimLum              = 32;
-    task{1}{idx}.segmin         = [30 3]; %fixation time constrained by the texture loading
-    task{1}{idx}.segmax         = [30 3]; 
-    task{1}{idx}.numTrials      = 5;
+    if exp.debug
+        task{1}{idx}.segmin                         = [10 1]; %fixation time constrained by the texture loading
+        task{1}{idx}.segmax                         = [10 1]; 
+        task{1}{idx}.numTrials                      = 1;
+    else
+        task{1}{idx}.segmin                         = [30 1]; %fixation time constrained by the texture loading
+        task{1}{idx}.segmax                         = [30 1]; 
+        task{1}{idx}.numTrials                      = 5;
+    end
     
     % adaptation task
     idx = (stepIdx-1)*(2) + 2; %cycle through the luminances first.
@@ -101,10 +108,29 @@ for stepIdx = 1:length(teststimSteps)
     task{1}{idx}.parameter.noiseLum         = 32;
     task{1}{idx}.parameter.stimStep         = teststimSteps(stepIdx);
     task{1}{idx}.parameter.stimLum          = teststimLum;
-    task{1}{idx}.segmin                     = [30 3]; %fixation time constrained a bit by the texture loading
-    task{1}{idx}.segmax                     = [30 3]; 
-    task{1}{idx}.numTrials                  = 10 * length(teststimLum);
+    if exp.debug
+        task{1}{idx}.segmin                 = [10 1]; %fixation time constrained a bit by the texture loading
+        task{1}{idx}.segmax                 = [10 1]; 
+        task{1}{idx}.numTrials              = 1 * length(teststimLum);
+    else
+        task{1}{idx}.segmin                 = [30 1]; %fixation time constrained by the texture loading
+        task{1}{idx}.segmax                 = [30 1]; 
+        task{1}{idx}.numTrials              = 10 * length(teststimLum);
+    end
 end
+
+
+% count trials
+numTrials        = 0;
+for stepIdx = 1:length(teststimSteps)
+    idx1 = (stepIdx-1)*(2) + 1;
+    idx2 = (stepIdx-1)*(2) + 2;
+    numTrials = numTrials + task{1}{idx1}.numTrials + task{1}{idx2}.numTrials;
+end
+trialdur = 31;
+taskdur = (trialdur * numTrials)/60/60; % approximate duration in hours
+disp(['Approx task duration = ' num2str(taskdur) ' hours']);
+
 
 %% initialize
 % intiailize task
@@ -126,7 +152,7 @@ if stimulus.exp.phasescrambleOn == 1;
 
     tic
     if stimulus.exp.backprecompute == 1;
-        savefile = '/Users/gru/data/trackpos/trackpos.mat';
+        savefile = '/Users/gru/proj/grustim/trackpos/trackpos.mat';
         % savefile            = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
         if ~exist(savefile,'file')
             error('need background file')
@@ -161,7 +187,7 @@ if stimulus.exp.grabframe
 end
 
 %% Eye calibration
-if ~exp.noeye
+if ~exp.noeye && ~exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
     
@@ -173,9 +199,10 @@ end
 disp(' Running Task....'); stimulus.t0 = mglGetSecs; % 
 
 % let the experimentee know too...
-mglClearScreen(task{1}{1}.parameter.backLum/255);
+% mglClearScreen(task{1}{1}.parameter.backLum/255);
 mglTextDraw('task (trackpos) starting... ', [0 0.5])
 mglTextDraw('Track the brightest point of the screen with the red mouse cursor',[0 -0.5]);
+mglTextDraw('When you are ready, press backtick to go to next trial',[0 -1.5]);
 mglFlush
 
 if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
@@ -228,6 +255,11 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1
         nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
+    end
+    
+    if mod(task.trialnum,ceil(task.numTrials/20)) == 1
+        disp(['(trackpos) '  num2str(task.trialnum/task.numTrials) ...
+            '% finished: Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
     end
 end
 

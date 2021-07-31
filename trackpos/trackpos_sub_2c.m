@@ -213,7 +213,7 @@ else corrString = 'missed';
 end
 
 posdiff = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-disp(['Position difference: ' num2str(posdiff) '; ' ...
+disp(['(subtask_2c) Position difference: ' num2str(posdiff) '; ' ...
       'Response: ' respSide '; ' corrString])
 
 task = jumpSegment(task); % go to next segment
