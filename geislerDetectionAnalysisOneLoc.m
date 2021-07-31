@@ -1,11 +1,15 @@
+% WRITTEN BY: 
+% (1) Yehia Elkers
+% (2) Josh Wilson (loading stimfiles)
+
 % DESCRIPTION: 
-% This script runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. read geislerDetectionAnalysisMultipleLocs for
-% a full description.
-% This script is designed to only analyze data for one location and thus is compatible with geislerDetectionTaskOneLoc only (i.e. it expects a
-% stimfile where the task was run at one location in the entire experiment 
+% This script runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. For a full description of the 
+% analysis, read the header comments in geislerDetectionAnalysisMultipleLocs. 
+% This file differs in that it is designed to analyze data only for one location and therefore is compatible with geislerDetectionTaskOneLoc only 
+% (i.e. it expects a stimfile where the task was run at one location in the entire experiment) 
+
 
 function geislerDetectionAnalysis
-
 % default return argument
 fit = [];
 
@@ -13,7 +17,7 @@ fit = [];
 if nargin < 1, stimfileNames = [];end
 
 % parse arguments
-%getArgs(varargin);
+% getArgs(varargin);
 % get filenames and path
 [e.path stimfileNames] = getStimfileNames(stimfileNames);
 if isempty(e.path),return,end
@@ -50,27 +54,28 @@ if e.nFiles == 0
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% setting the location variable
+% Analysis   
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Setting the location variable
 location = d.task{1}.location;
 d.location.x = location(1);
 d.location.y = location(2);
 
-% Each condition (i.e location) ran for 175 trials 
+% The experiment ran for 175 trials
 trialNums = [1:175];
-% The contrast values for the first 200 trials
+% The contrast values for the 175 trials
 d.contrast = d.parameter.contrast(trialNums);
-% A unique set (no duplicates) of the contrasts used in the first 200 trials
+% A unique set (no duplicates) of the contrasts used in the 175 trials
 d.uniquecontrast = unique(d.contrast);
-% The responses for the first 200 trials
+% The responses for the 175 trials
 correct = d.task{1}.response.correct(trialNums);
     
 % We are going to iterate through the unique contrasts
 for i = 1:length(d.uniquecontrast)
-    % find() will return the indeces of the the matrix that has the contrast values for the first 200 trials for which the contrast value
-    % matches the contrast value we are currently iterating on. Those indeces are also trial numbers
+    % find() will return the indeces of the the matrix that has the contrast values for 175 trials for which the contrast value
+    % matches the contrast value we are currently iterating on. Those indeces are also trial numbers.
     whichTrials = find(d.contrast == d.uniquecontrast(i));
-    % The number of trials that had the contrast value we are iterating on (should be equal for each contrast if we randomized correctly)
+    % nTrials is the number of trials that had the contrast value we are iterating on (should be equal for each contrast if we randomized correctly)
     nTrials = length(whichTrials);
     % correct(whichTrials) returns the values of the response array for the trials that had the contrast value we are iterationg on
     % Summing them and dividing by the number of trials gives us the percent correct for that contrast value
@@ -94,31 +99,27 @@ d.fit = fitCumulativeGaussian(d.uniquecontrast,d.correctBinned);
 idx = find(d.fit.fitY > 0.820 & d.fit.fitY < 0.823);
 d.thresholdContrast = d.fit.fitX(idx);
 
-
+% STOP HERE WHEN DEBUGGING
+k=1
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % NOTES:             
 % To draw a scatter plot
-scatter(d.uniquecontrast, d.correctBinned)
-hold on 
+%scatter(d.uniquecontrast, d.correctBinned)
+%hold on 
 % To fit a curve
-plot(d.fit.fitX, d.fit.fitY)
+%plot(d.fit.fitX, d.fit.fitY)
 
-% STOP HERE WHEN DEBUGGING
-k=1
+% Calculating error and plotting error bars
+%errors = [];
+%n = 32;
+%for i=1:length(d.correctBinned)
+%    p = d.correctBinned(i);
+%    error = sqrt( (p*(1-p)) / n );
+%    errors = [errors error];
+%end
 
-% Error
-errors = [];
-n = 32;
-for i=1:length(d.correctBinned)
-    p = d.correctBinned(i);
-    error = sqrt( (p*(1-p)) / n );
-    errors = [errors error];
-end
-
-errorbar(d.uniquecontrast, d.correctBinned, errors);
-
-
+%errorbar(d.uniquecontrast, d.correctBinned, errors);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

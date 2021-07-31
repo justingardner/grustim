@@ -1,6 +1,10 @@
+% WRITTEN BY: 
+% (1) Yehia Elkersh
+% (2) Josh Wilson (loading stimfiles)
+
 % DESCRIPTION: 
-% This script runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. Read geislerDetectionAnalysisMultipleLocs for
-% a full description.
+% This script runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. For a full description of the 
+% analysis, read the header comments in geislerDetectionAnalysisMultipleLocs.
 % This script is designed to analyze data for all 25 locations. You should 'cd' into a directory that has 25 stimfiles, where each stimfile has data
 % from running the task with one location only (i.e. from running the task file geislerDetectionTaskOneLoc)
 
@@ -14,7 +18,7 @@ fit = [];
 if nargin < 1, stimfileNames = [];end
 
 % parse arguments
-%getArgs(varargin);
+% getArgs(varargin);
 % get filenames and path
 [e.path stimfileNames] = getStimfileNames(stimfileNames);
 if isempty(e.path),return,end
@@ -50,9 +54,9 @@ if e.nFiles == 0
   return
 end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Making dataMatrix
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Make a matrix where the rows represent data points (x, y, mean, std, thresholdContrast) and the columns represent different files
 dataMatrix = [];
 
@@ -100,12 +104,15 @@ for iFile = 1:e.nFiles
     e.d{iFile}.fit = fitCumulativeGaussian(e.d{iFile}.uniquecontrast,e.d{iFile}.correctBinned);
     % Find the threshold contrast (target contrast at 82% performance)
     % For the cummalitve gaussian (the function we used to fit the data), the y-values are the intergrals of a Normal(mu, sigma) distribution from -inf to the x-values
+    % Normin(x, mu, sigma) gives the integral from -inf to x, so it technically gives y-value of the function we used to fit the data (i.e. psychometric function)
+    % for a particular x-value
     mu = e.d{iFile}.fit.mean;
     sigma = e.d{iFile}.fit.std;
     thresholdContrast = norminv(0.82,mu,sigma);
     e.d{iFile}.thresholdContrast = thresholdContrast;
 
     % Filling out dataMatrix
+    % NOTE: each column corresponds to a file and each row corresponds to a data point (i.e. the first row is the x location from all the files)
     dataMatrix(1, iFile) = e.d{iFile}.location.x;
     dataMatrix(2, iFile) = e.d{iFile}.location.y;
     dataMatrix(3, iFile) = e.d{iFile}.fit.mean;
@@ -113,18 +120,9 @@ for iFile = 1:e.nFiles
     dataMatrix(5, iFile) = e.d{iFile}.thresholdContrast;
     
     
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Graphing 
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    %{
-    % (1.1)
-    % Graph the psychometric cruves for the four different eccentricities along each location axis
-    eccen = num2str(round(sqrt( (dataMatrix(1, iFile))^2 + (dataMatrix(2, iFile))^2 ), 2));
-   
-    plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY, 'DisplayName', eccen)
-    hold on
-    title('Axis 0')
-    %}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Graphing 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     %{
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -141,21 +139,331 @@ for iFile = 1:e.nFiles
     title(titleStr)
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     %}
+    
+    
+    %{
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % (2)
+    % Graph the psychometric cruves for the four different eccentricities along each location axis
+    
+    % Eccentricity is calculated in order to deterime coolor for the legend
+    eccen = round(sqrt( (dataMatrix(1, iFile))^2 + (dataMatrix(2, iFile))^2 ), 2);
+    if  eccen == 0
+        color = 'red';
+    elseif eccen > 1 & eccen < 3
+        color = 'green';
+    elseif eccen > 4 & eccen < 5
+        color = 'blue';
+    elseif eccen > 6
+        color = 'magenta';
+    end
+    % This is used for titling the Axis of each subplots
+    Titles = [0 45 90 135 180 225 270 315];
+    
+    x = e.d{iFile}.location.x;
+    y = e.d{iFile}.location.y;
+    
+    % if this file is the foveal position, plot its psychomteric curver and scatter plot in every subplot
+    if x == 0 & y == 0
+        for thisSubplot = 1:8
+            subplot(2,4,thisSubplot)  
+            scatter(e.d{iFile}.uniquecontrast, e.d{iFile}.correctBinned, color)
+            hold on 
+            plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY, color)
+            errors = [];
+            n = 25;
+            for i=1:length(e.d{iFile}.correctBinned)
+                p = e.d{iFile}.correctBinned(i);
+                error = sqrt( (p*(1-p)) / n );
+                errors = [errors error];
+            end
+            errorbar(e.d{iFile}.uniquecontrast, e.d{iFile}.correctBinned, errors, 'LineStyle', 'none', 'Color', color);
+            hold on
+        end
+        
+    % Divide the subplots based on the Axis from which each file was recorded
+    elseif x > 0 & y == 0 
+        thisSubplot = 1;
+    elseif x > 0 & y > 0
+        thisSubplot = 2;
+    elseif x == 0 & y > 0
+        thisSubplot = 3;
+    elseif x < 0 & y > 0
+        thisSubplot = 4;
+    elseif x < 0 & y == 0
+        thisSubplot = 5;
+    elseif x < 0 & y < 0
+        thisSubplot = 6;
+    elseif x == 0 & y < 0
+        thisSubplot = 7;
+    elseif x > 0 & y < 0
+        thisSubplot = 8;
+    end
+    
+    % Plot scatter and psycometric curve in respective subplots
+    subplot(2,4,thisSubplot)  
+    title(['Axis: ' num2str(Titles(thisSubplot))])
+    scatter(e.d{iFile}.uniquecontrast, e.d{iFile}.correctBinned, color)
+    hold on 
+    plot(e.d{iFile}.fit.fitX, e.d{iFile}.fit.fitY, color)
+    % Calculate error
+    errors = [];
+    n = 25;
+    for i=1:length(e.d{iFile}.correctBinned)
+        p = e.d{iFile}.correctBinned(i);
+        error = sqrt( (p*(1-p)) / n );
+        errors = [errors error];
+    end
+    errorbar(e.d{iFile}.uniquecontrast, e.d{iFile}.correctBinned, errors, 'LineStyle', 'none', 'Color', color);
+    hold on
+    
+    % Hack in order to have a legend for the graph based on the eccentricity of each curve
+    h = zeros(4, 1);
+    h(1) = plot(NaN,NaN,'red');
+    h(2) = plot(NaN,NaN,'blue');
+    h(3) = plot(NaN,NaN,'green');
+    h(4) = plot(NaN,NaN,'magenta');
+    legend(h, ['0' char(176)], ['2.25' char(176)], ['4.5' char(176)], ['6.75' char(176)], 'Location', 'southeast');
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %}
+
 end
 
-%(1.2)
-%legend show;
-%legend('Location', 'southeast')
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Calculating Statistics on dataMatrix
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Building the Model
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (1)
+% Creating a relationship between the locations (Xs and Ys) and psychometric functions. The goal is to be able to draw a psychometric
+% function for any location around the circle, which will be dones by interpolating between the 25 locations we recorded from
+
 % Setting data points to their indeces in the dataMatrix (just makes code more legible)
 X = 1;
 Y = 2;
 Mean = 3;
 Std = 4;
 threshCon = 5;
+% Intializing vectors that will be used for interpolarion
+Xs = [];
+Ys = [];
+Means = [];
+Stds = [];
+% Populating vectors that will be used for interpolarion
+for iCol=1:e.nFiles
+    Xs = [Xs dataMatrix(X, iCol)];
+    Ys = [Ys dataMatrix(Y, iCol)];
+    Means = [Means dataMatrix(Mean, iCol)];
+    Stds = [Stds dataMatrix(Std, iCol)];
+end
+% Convert row vectors to column vectors for the scatterInterpolant() function
+Xs = Xs';
+Ys = Ys';
+Means = Means';
+Stds = Stds';
+% Interpolating the function linearly
+Fmean = scatteredInterpolant(Xs, Ys, Means, 'linear');
+Fstd = scatteredInterpolant(Xs, Ys, Stds, 'linear');
+
+
+% (2)
+% Setting up fixed variables
+LOCATIONS = 4;
+c = 0.2;
+alpha = 0.0525;
+en = 0.25; 
+dPrimeE = sqrt( (c^2) / (alpha*en) );
+XmodelStd = 1 / dPrimeE;
+priori = 1/LOCATIONS;
+priorj = 1/LOCATIONS;
+
+MAP = 1;
+criterion = 0.7;
+
+saccades = [0 0;];
+fovea = [0 0];
+
+Xidx = 1;
+Yidx = 2; 
+DPrimeIidx = 3; 
+Presentidx = 4; 
+XModelidx = 5;
+Widx = 6;
+Gidx = 7;
+Postidx = 8;
+
+% Each location is a rown and each column is a data entry (i.e. the first row has all the information about location 1)
+visMatrix = [1.44 1.44 0 -0.5 normrnd(0,XmodelStd) 0 0 0;
+             1.43 1.43 0 -0.5 normrnd(0,XmodelStd) 0 0 0;
+             1.42 1.42 0 -0.5 normrnd(0,XmodelStd) 0 0 0;
+             3.18 -3.18 0 -0.5 normrnd(0,XmodelStd) 0 0 0;];
+
+% Adding 0.5 to the location where the target is present
+targetPresent = randi(LOCATIONS);
+visMatrix(targetPresent,Presentidx) = 0.5;
+
+T = [];
+
+for Tidx = 1:4
+    for Locidx = 1: LOCATIONS
+        relativeX = visMatrix(Locidx, Xidx) - fovea(1);
+        relativeY = visMatrix(Locidx, Yidx) - fovea(2);
+        mu = Fmean(relativeX, relativeY);
+        sigma = Fstd(relativeX, relativeY);
+        fc = normcdf(c,mu,sigma);
+        % This is the dPrime calculated from psychometric data
+        dPrimeF = sqrt(2) * norminv(fc);
+        beta = ( (c^2) - ((dPrimeF^2)*alpha*en) ) / ( dPrimeF^2 );
+        dPrimeI = sqrt( (c^2) / beta );
+        visMatrix(Locidx, DPrimeIidx) = dPrimeI;
+        Xmodel = visMatrix(Locidx, XModelidx);
+        N = normrnd(0,(1/dPrimeI));
+        Present = visMatrix(Locidx, Presentidx);
+        W = Xmodel + N + Present;
+        visMatrix(Locidx, Widx) = W;
+        
+        % (1) Calculating g
+        % (1.1) add the d's for that location across time
+        dPrimeIAgg{Locidx}{Tidx} = dPrimeI;
+        dPrimeISquareSum = 0;
+        for i=1:Tidx
+            dPrimeISquareSum = dPrimeISquareSum + (dPrimeIAgg{Locidx}{i})^2;
+        end
+        
+        g= ( dPrimeE * (dPrimeI)^2 ) / ( dPrimeE + dPrimeISquareSum );
+        visMatrix(Locidx, Gidx) = g;
+        T(:,:,Tidx) = visMatrix;
+        
+        posterior = calculatePosterior(Locidx, Tidx, T);
+        visMatrix(Locidx, Postidx) = posterior;
+        
+        T(:,:,Tidx) = visMatrix;
+    end
+    
+    [maxPost, rowLocidx] = max(visMatrix(:,Postidx));
+    nextX = visMatrix(rowLocidx, Xidx);
+    nextY = visMatrix(rowLocidx, Yidx);
+    saccade = [nextX nextY];
+    saccades(end+1, :) = saccade;
+    fovea = saccade;
+    
+    if maxPost > criterion
+        break
+    end
+end
+
+    
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Function to calculate the Posterior
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function posterior = calculatePosterior(Locidx, Tidx, T)
+   % i here stands for the location for which you are trying to find the posterior. It is reference by Locidx. 
+   % j is an andex for all other locations
+   % Tidx stands for time point or fixation. Let us say I am at the 3rd time point (Tidx = 3), then my priori is the prior for location i at time point 3.
+   % My giSum is the sum of the g's at location i across the 3 times points that have passed so far
+
+   % (1) Summation over time points for location 
+   gxWiSum = 0;
+   for tidx = 1:Tidx
+       tVisMatrix = T(:,:,tidx);
+       giT = tVisMatrix(Locidx, Gidx);
+       wiT = tVisMatrix(Locidx, Widx);
+       gxWi = giT*wiT;
+       gxWiSum = gxWiSum + gxWi;
+   end
+   numerator = priori * exp(gxWiSum);
+   
+   %(2) the sume of the priors of all locatiexp(ons at the time point given by Tidx
+   sumOverLocs = 0;
+   for jLoc = 1:LOCATIONS
+       Locidx = jLoc;
+       gxWjSum = 0;
+       for tidx = 1:Tidx
+            tVisMatrix = T(:,:,tidx);
+            gjT = tVisMatrix(Locidx, Gidx);
+            wjT = tVisMatrix(Locidx, Widx);
+            gxWj = gjT*wjT;
+            gxWjSum = gxWjSum + gxWj;
+       end
+       
+       oneLoc = priorj * exp(gxWjSum);
+       sumOverLocs = sumOverLocs + oneLoc;
+   end
+  
+   posterior = numerator / sumOverLocs;
+   
+end
+
+k=2
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Calculating Statistics on dataMatrix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%{
+% Setting data points to their indeces in the dataMatrix (just makes code more legible)
+X = 1;
+Y = 2;
+Mean = 3;
+Std = 4;
+threshCon = 5;
+%}
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (1)
+% Making a 3D graph for the linear interpolation of the means and stds of the 25 psychometric curves as a function of (x,y) (i.e location)
+
+Xs = [];
+Ys = [];
+Means = [];
+Stds = [];
+
+for iCol=1:e.nFiles
+    Xs = [Xs dataMatrix(X, iCol)];
+    Ys = [Ys dataMatrix(Y, iCol)];
+    Means = [Means dataMatrix(Mean, iCol)];
+    Stds = [Stds dataMatrix(Std, iCol)];
+end
+
+% Convert row vectors to column vectors for the scatterInterpolant() function
+Xs = Xs';
+Ys = Ys';
+Means = Means';
+Stds = Stds';
+
+% Interpolating the function linearly
+Fm = scatteredInterpolant(Xs, Ys, Means, 'linear');
+Fs = scatteredInterpolant(Xs, Ys, Stds, 'linear');
+
+% Creating a meshgrid for plotting
+[X, Y] = meshgrid(Xs, Ys);
+Vm = Fm(X,Y);
+Vs = Fs (X,Y);
+
+% Plotting
+figure(1)
+mesh(X,Y,Vm);
+hold on
+plot3(X, Y, Vm);
+title('Mean')
+xlabel('X'); ylabel('Y');
+
+figure(2)
+mesh(X,Y,Vs);
+hold on
+plot3(X, Y, Vs, 'o');
+title('Std')
+xlabel('X'); ylabel('Y');
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
+
+
+%{
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% (2)
+% Making graphs of the average thresholdContrast, std, and mean for each eccentricty 
 
 % initialize arrays that will hold data points for each eccentricity (regardless of location)
 threshCons0 = []; stds0 = []; means0 = [];
@@ -163,7 +471,7 @@ threshCons225 = []; stds225 = []; means225 = [];
 threshCons45 = []; stds45 = []; means45 = [];
 threshCons675 = []; stds675 = []; means675 = [];
 
-% iterate through dataMatrix and pull out data points based on eccentricity
+% iterate through dataMatrix and pull out the thresholdContrasts, stds, and means based on eccentricity
 for iCol=1:e.nFiles
     
     eccen = sqrt( (dataMatrix(X, iCol))^2 + (dataMatrix(Y, iCol))^2 );
@@ -193,25 +501,25 @@ for iCol=1:e.nFiles
     end
 end
 
-% Find averages for each eccentricity
-% Average thresholdContrast
+% Average thresholdContrast per eccentricity
 AvgthreshCon0 = sum(threshCons0) / length(threshCons0);
 AvgthreshCon225 = sum(threshCons225) / length(threshCons225);
 AvgthreshCon45 = sum(threshCons45) / length(threshCons45);
 AvgthreshCon675 = sum(threshCons675) / length(threshCons675);
-% Average standard deviations of the cumalitive gaussian fits
+% Average standard deviations of the cumalitive gaussian fits per eccentricity
 Avgstd0 = sum(stds0) / length(stds0);
 Avgstd225 = sum(stds225) / length(stds225);
 Avgstd45 = sum(stds45) / length(stds45);
 Avgstd675 = sum(stds675) / length(stds675);
-% Average means of the cumalitive gaussian fits
+% Average means of the cumalitive gaussian fits per eccentricity
 Avgmean0 = sum(means0) / length(means0)
 Avgmean225 = sum(means225) / length(means225)
 Avgmean45 = sum(means45) / length(means45)
 Avgmean675 = sum(means675) / length(means675)
 
+% Creating the X-axis ange for plotting (the range of contrasts)
 x = 0:0.01:0.3;
-
+% Use the function normcdft (what we used to fit the data) to plot the psychometric functions (using the parameters mu and sigma)
 plot(normcdf(x, Avgmean0, Avgstd0), 'DisplayName', '0')
 hold on
 plot(normcdf(x, Avgmean225, Avgstd225),'DisplayName', '2.25')
@@ -224,9 +532,10 @@ hold on
 legend show ;
 legend('Location', 'southeast');
 title('Avg Psychometric Curve per Eccentricity')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%}
 
-% STOP HERE WHEN DEBUGGING
-k=2
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -273,6 +582,7 @@ d.myscreen = s.myscreen;
 d.task = s.task;
 %d.stimulus = s.stimulus;
 
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %    getStimfileNames    
@@ -320,4 +630,7 @@ end
 
 % make sure we are returning a cell array
 stimfileNames = cellArray(stimfileNames);
+end
+
+end
 

@@ -1,9 +1,16 @@
 % WRITTEN BY:
-% (1) Yehia Elkersh (The calculation and other functions)
+% (1) Yehia Elkersh 
 % (2) Josh Wilson (generating 1/f noise)
 
 % DESCRIPTION: 
-% This script's sole purpose is to calulate the parameter 'alpha' which is described in the Najemnik & Gesiler JOV paper on page 6. 
+% This script's sole purpose is to calulate the parameter 'alpha' which is described in the Najemnik & Gesiler JOV paper on page 6.
+
+% BACKGROUND:
+% To get a measure for external noise, N&J took the dot product of the target with the background noise for "a large number of times" (here, we did 10,000 dot products) 
+% and then calculated the std of the numbers resulting from those dot products. 
+% The idea is that if the background had no noise (for instance, was perfectly grey, then you would get the same number every time you dotted
+% the targed with the background. When you have noise in the background, you get a slightly different dot product every time because the background is
+% slightly different every time. They simply chose the std of these differing results as a measure of external noise and called it alpha.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -11,22 +18,17 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function alpha = calculateAlpha()
 myscreen = initScreen;
-
+% The same functions used to generate the target and background in the experimental task are used here for consistency
 [gaussian grating] = makeGrating(myscreen);
 gabor = grating.*gaussian;
-% Using the template response of the gabor with itself as a normalizer. That way a perfect match template response would yield a value of 1. 
+% Using the template response (dot product) of the gabor with itself as a normalizer. That way a perfect match template response would yield a value of 1. 
 normalizer = dot(gabor(:), gabor(:));
 
 templateResponses = [];
-
 for i=1:10000
-    
     stimBackground = makeStimBackground(myscreen);
-    
     templateResponse = dot(stimBackground(:), gabor(:));
-   
     templateResponses = [templateResponses templateResponse];
-    
 end
 
 normalizedTemplateResponses = templateResponses / normalizer;

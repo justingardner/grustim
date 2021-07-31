@@ -1,5 +1,6 @@
 % WRITTEN BY: 
-% Josh Wilson (adapted by Yehia Elkersh)
+% (1) Yehia Elkersh
+% (2) Josh Wilson (loading stimfiles)
 
 % DESCRIPTION: 
 % This scripts runs the analysis for the detection task in the Najemnik & Gesiler 2005 Nature paper. It is expecting a stimfile where the task was run
@@ -10,12 +11,11 @@
 % (1) As of July 15, 2021 this script is compatible with the geislerDetectionTaskMultipleLocs file. For instance, it can only analyze two locations, 
 % with 544 trials at each location. Since the aforementioned task file needs to undergo some major changes (such as being broken up into phases), 
 % this script will need to be adjusted accordingly.
-% (2) In order to have access to the data in the command line (e.g. to plot
-% the psychometric curve), you should stop the script at the line 'k = 2' because when the script ends, the data is no longer available
+% (2) In order to have access to the data in the command line (e.g. to plot the psychometric curve), you should stop the script at the line 'k = 2' 
+% because when the script ends, the data is no longer available
 
 
 function geislerDetectionAnalysis
-
 % default return argument
 fit = [];
 
@@ -23,7 +23,7 @@ fit = [];
 if nargin < 1, stimfileNames = [];end
 
 % parse arguments
-%getArgs(varargin);
+% getArgs(varargin);
 % get filenames and path
 [e.path stimfileNames] = getStimfileNames(stimfileNames);
 if isempty(e.path),return,end
@@ -60,7 +60,10 @@ if e.nFiles == 0
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% A condition(cond) refers to a particular (x,y) location
+% Analysis   
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% A condition(cond) refers to a particular (x,y) location, so cond{1} will contain the data related to location 1 
+% (which is the first location in which the target was presented)
 d.nCond = [1:length(d.task{1}.locations)];
 
 % creates a condition for each location
@@ -70,27 +73,27 @@ for i=1:length(d.nCond)
     d.cond(i).y = d.cond(i).location(2);
 end
 
-% Each condition (i.e location) ran for 200 trials
+% Each condition (i.e location) ran for 544 trials
 d.condTrialNums{1} = [1:544];
 d.condTrialNums{2} = [545:1088];
 
 % Commented for the first iteration
 for iCond = 1:length(d.nCond)
-    % The number of trials in the first condition: [1, 2, ... , 200]
+    % Indeces for the trials in the first condition: [1, 2, ... , 544]
     trialNums = d.condTrialNums{iCond}; 
-    % The contrast values for the first 200 trials
+    % The contrast values for the first 544 trials
     d.cond(iCond).contrast = d.parameter.contrast(trialNums);
-    % A unique set (no duplicates) of the contrasts used in the first 200 trials
+    % A unique set (no duplicates) of the contrasts used in the first 544 trials
     d.cond(iCond).uniquecontrast = unique(d.cond(iCond).contrast);
-    % The responses for the first 200 trials
+    % The responses for the first 544 trials
     correct = d.task{1}.response.correct(trialNums);
     
     % We are going to iterate through the unique contrasts
     for iVal = 1:length(d.cond(iCond).uniquecontrast)
-        % find() will return the indeces of the the matrix that has the contrast values for the first 200 trials for which the contrast value
-        % matches the contrast value we are currently iterating on. Those indeces are also trial numbers
+        % find() will return the indeces of the the matrix that has the contrast values for the first 544 trials for which the contrast value
+        % matches the contrast value we are currently iterating on. Those indeces are also trial numbers.
         whichTrials = find(d.cond(iCond).contrast == d.cond(iCond).uniquecontrast(iVal));
-        % The number of trials that had the contrast value we are iterating on (should be equal for each contrast if we randomized correctly)
+        % nTrials is the number of trials that had the contrast value we are iterating on (should be equal for each contrast if we randomized correctly)
         nTrials = length(whichTrials);
         % correct(whichTrials) returns the values of the response array for the trials that had the contrast value we are iterationg on
         % Summing them and dividing by the number of trials gives us the percent correct for that contrast value
@@ -122,14 +125,14 @@ k=2
 
 % NOTES:             
 % To draw a scatter plot
-% scatter(d.cond(2).uniquecontrast, d.cond(2).correctBinned)
+% scatter(d.cond(1).uniquecontrast, d.cond(1).correctBinned)
 
 % To fit a curve
-% plot(d.fit(2).fitX, d.fit(2).fitY)
+% plot(d.fit(1).fitX, d.fit(1).fitY)
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    loadStimfile    
+% loadStimfile    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function d = loadStimfile(stimfileName)
 
@@ -174,7 +177,7 @@ d.task = s.task;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    getStimfileNames    
+% getStimfileNames    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [stimfilePath stimfileNames] = getStimfileNames(stimfileNames)
 
