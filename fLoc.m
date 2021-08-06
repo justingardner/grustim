@@ -62,13 +62,14 @@ stimulus.imSize = 10;
 
 %% Define stimulus timing
 % Task important variables
-stimulus.categories = {'characters', 'bodies', 'faces', 'places', 'objects'};
+stimulus.categories = {'characters', 'bodies', 'faces', 'places', 'objects', 'scrambled'};
 stimulus.subcategories = struct();
 stimulus.subcategories.characters = {'word', 'number'};
 stimulus.subcategories.bodies = {'body', 'limb'};
 stimulus.subcategories.faces = {'adult', 'child'};
 stimulus.subcategories.places = {'corridor', 'house'};
 stimulus.subcategories.objects = {'car', 'instrument'};
+stimulus.subcategories.scrambled = {'scrambled', 'scrambled'};
 
 stimulus.num_samples = 20;
 
@@ -189,6 +190,11 @@ if task.thistrial.category <= length(stimulus.categories)
     mglClearScreen(0.5);
     mglBltTexture(seg_image, [0, 0, stimulus.imSize, stimulus.imSize]);
     upFix(stimulus, stimulus.colors.black);
+    mglFlush;
+  end
+else
+  for i=1:2
+    mglClearScreen(0.5);
     mglFlush;
   end
 end
