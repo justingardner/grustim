@@ -47,7 +47,7 @@ stimulus.auditory = auditory;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%f%%%%%%%%%%%%%%%%%%%%%%
 % stimulus.gaussian.diameter = 14;
 % stimulus.gaussian.sd = stimulus.gaussian.diameter/7;
-stimulus.gaussian.duration = .015;% .025;%1/60; % one(or two) frame 
+stimulus.gaussian.duration = .15;%.015;% .025;%1/60; % one(or two) frame 
     if ~stimulus.tenbit
         stimulus.gaussian.contrast = .1;
     end
@@ -361,9 +361,9 @@ if any(task.thistrial.thisseg == [3 5 7])
   switch char(task.thistrial.condition)
 	case 'vision'
     if stimulus.high%task.thistrial.visRel == 1
-		  mglBltTexture(stimulus.tex.highRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+		  mglBltTexture(stimulus.tex.highRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)) + 2 * randn(1), 10]);
     else
-      mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)), 10]);
+      mglBltTexture(stimulus.tex.lowRel, [task.thistrial.xposV(floor(task.thistrial.thisseg/2)) + 2 * randn(1), 10]);
     end
     mglBltTexture(task.thistrial.thisNoiseTex,[0 0 70 70]);
     mglFillOval(0,stimulus.fixYpos,[stimulus.fixWidth,stimulus.fixWidth],stimulus.fixColor);

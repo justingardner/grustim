@@ -354,7 +354,7 @@ if task.runfixedint == 0
 end
 
 posdiff = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-disp(['Position difference: ' num2str(posdiff) '; ' ...
+disp(['(trackpos_2c) Position difference: ' num2str(posdiff) '; ' ...
     'Response: ' respSide '; ' corrString])
 
 end
