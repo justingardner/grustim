@@ -17,9 +17,10 @@ stimulus = struct;
 
 % add arguments later
 scan = 1;
-getArgs(varargin,{'scan=0', 'testing=0'}, 'verbose=1');
+getArgs(varargin,{'screenGrab=0', 'scan=0', 'testing=0'}, 'verbose=1');
 stimulus.scan = scan;
 stimulus.debug = testing;
+stimulus.screenGrab = screenGrab;
 clear scan testing;
 
 %% Stimulus parameters 
@@ -66,17 +67,16 @@ stimulus.curTrial(1) = 0;
 stimulus.intervals = [0, 25, 50, 75, 100];
 stimulus.imSize = 12;
 stimulus.stimXPos = 8;
-stimulus.num_samples = 4;
+stimulus.num_samples = 3;
 stimulus.feature_spaces = {'pool3-V1', 'pool4-IT'};
 stimulus.image_pairs = {'elephant1_face1', 'horse_cat', 'rocks_leaves'};
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/NeuralImageSynthesis/neurint/bw_new';
-stimulus.stimDir = '~/proj/neurint/outputs/bw';
+stimulus.stimDir = '~/proj/neurint/outputs/stimuli';
 
 %% Preload images
-mask = imread('~/proj/NeuralImageSynthesis/Flattop8.tif');
+mask = imread('~/proj/neurint/outputs/Flattop8.tif');
 stimulus.images= struct();
 disppercent(-inf, 'Preloading images');
 
@@ -255,7 +255,8 @@ if task.thistrial.thisseg == stimulus.seg.stim1
   mglBltTexture(stimulus.live.centerStim, [0,0, stimulus.imSize, stimulus.imSize]);
   if stimulus.live.screenGrab && stimulus.screenGrab
       frame=mglScreenGrab();
-      
+      imwrite(frame, sprintf('~/proj/neurint/task_screengrabs/trial%i_seg%i.png', task.trialnum, task.thistrial.thisseg))
+      stimulus.live.screenGrab = 0;
   end
 elseif task.thistrial.thisseg == stimulus.seg.stim2
   mglBltTexture(stimulus.live.leftStim, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
