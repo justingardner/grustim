@@ -17,12 +17,13 @@ stimulus = struct;
 % add arguments later
 plots = 0;
 noeye = 0;
-getArgs(varargin,{'periph=0','plots=0','noeye=1', 'analyze=0', 'training=0'}, 'verbose=1');
+getArgs(varargin,{'periph=0','plots=0','noeye=1', 'analyze=0', 'training=0', 'fixateCenter=0'}, 'verbose=1');
 stimulus.plots = plots;
 stimulus.noeye = noeye;
 stimulus.training = training;
 stimulus.analyze = analyze;
 stimulus.periph = periph;
+stimulus.fixateCenter = fixateCenter;
 clear noeye plots training analyze
 
 if stimulus.analyze
@@ -319,7 +320,7 @@ end
 % Eye movement detection code
 if ~stimulus.noeye && ~any(task.thistrial.thisseg==[stimulus.seg.fix]) 
   if ~any(isnan(pos))
-    if dist > 1.5 && stimulus.live.eyeCount > 20
+    if dist > 1.5 && stimulus.live.eyeCount > 20 && stimulus.fixateCenter == 1
       disp('Eye movement detected!!!!');
       task.thistrial.dead = 1;
       stimulus.live.eyeDead=1;
