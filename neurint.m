@@ -102,8 +102,8 @@ clear image
 %%%%%%%%%%%%% TASK %%%%%%%%%%%%%%%%%
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [0.2, 0.2, 0.2, 5.0, 0.2];
-task{1}{1}.segmax = [0.2, 0.2, 0.2, 5.0, 0.2];
+task{1}{1}.segmin = [0.2, 2.0, 0.2, 5.0, 0.2];
+task{1}{1}.segmax = [0.2, 2.0, 0.2, 5.0, 0.2];
 
 stimulus.seg = {};
 stimulus.seg.fix = 1;

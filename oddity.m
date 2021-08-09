@@ -144,6 +144,7 @@ stimulus.nSamples = 2; % preload 3 samples of each kind.
 stims = struct();
 disppercent(-inf, 'Preloading images');
 stim_dir = '~/proj/oddity/stimuli';
+stimulus.stimDir = stim_dir;
 x = dir([stim_dir '/*.png']);
 images = {x.name};
 for i = 1:length(images)
@@ -220,24 +221,23 @@ stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.t
 
 trial_index = task.thistrial.trial_index;
 trialinfo = stimulus.trial_info.(sprintf('trial%i', trial_index));
-task.thistrial.targetPosition= trialinfo.oddity_index;
+task.thistrial.targetPosition= trialinfo.oddity_index+1;
 
 % directories
-texDir = stimulus.stimDir;
+%texDir = stimulus.stimDir;
 
 %% Load all 3 images for this trial
 % Load all 3 images for this trial
-stimulus.live.d1 = stimulus.live.stims.(sprintf('%s_%s_%s_smp1', imName, std_poolsize, std_layer));
-stimulus.live.d2 = stimulus.live.stims.(sprintf('%s_%s_%s_smp2', imName, std_poolsize, std_layer));
-stimulus.live.targetImg = stimulus.live.stims.(sprintf('image%i', trialinfo.stimuli(trialinfo.oddity_index)));
-non_oddity_index = setdiff(1:3, trialinfo.oddity_index);
+stimulus.live.targetImg = stimulus.live.stims.(sprintf('image%i', trialinfo.stimuli(trialinfo.oddity_index+1)));
+non_oddity_index = setdiff(1:3, trialinfo.oddity_index+1);
 stimulus.live.d1 =  stimulus.live.stims.(sprintf('image%i', trialinfo.stimuli(non_oddity_index(1))));
 stimulus.live.d2 = stimulus.live.stims.(sprintf('image%i', trialinfo.stimuli(non_oddity_index(2))));
 
 stimulus.live.eyeCount = 0;
 
 % Disp trial parameters each trial
-%fprintf('Trial %d - %s: Oddball = %s, Standard = %s %s, TargetLoc: %i - ', task.trialnum, imName, oddball_text, std_poolsize, std_layer, task.thistrial.targetPosition);
+%
+fprintf('Trial %d - Index = %d', task.trialnum, trial_index);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
