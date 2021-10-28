@@ -1,4 +1,4 @@
-function [ myscreen ] = configural( varargin )
+    function [ myscreen ] = configural( varargin )
 % 
 %  2-AFC task using configural shape stimuli
 %
@@ -56,7 +56,7 @@ myscreen.background = 0.5;
 myscreen = initStimulus('stimulus',myscreen);
   
 % Set response keys
-stimulus.responseKeys = [11 14 12];
+stimulus.responseKeys = [15, 16];
 
 % set colors
 stimulus.colors.white = [1 1 1];
@@ -109,10 +109,10 @@ task{1}.parameter.sample_partstructure = stimulus.partstructures;
 task{1}.parameter.nonmatch_dimension = [1,2,3,4]; % which dimension does nonmatch vary in - 1:surface, 2:structure, 3:partlocation, 4:partstructure
 task{1}.randVars.uniform.sample_view = stimulus.views;
 task{1}.randVars.uniform.match_position = [1,2];
-task{1}.randVars.uniform.nonmatch_view = stimulus.views;
 
 % Trial variables, which will be calculated at the start of each trial.
 task{1}.randVars.calculated.match_view = NaN;
+task{1}.randVars.calculated.nonmatch_view = NaN;
 task{1}.randVars.calculated.nonmatch_position = NaN;
 task{1}.randVars.calculated.nonmatch_surface = NaN;
 task{1}.randVars.calculated.nonmatch_structure = NaN;
@@ -138,9 +138,9 @@ for bsi = 1:length(stimulus.base_seeds)
       for pli = stimulus.partlocations
         for psi = stimulus.partstructures
           for vi = stimulus.views
-            disp(sprintf('filename)
             filename = sprintf('%s/%s_%i%i%i%i_view%i.png', stim_dir, bs, sui, sti, pli, psi, vi);
-            stims.(sprintf('img%s_%i%i%i%i_v%i', bs, sui, sti, pli, psi, vi)) = genTexFromIm(imread(filename), stimulus.live.mask);
+            [image, map, alpha] = imread(filename);
+            stims.(sprintf('img%s_%i%i%i%i_v%i', bs, sui, sti, pli, psi, vi)) = genTexFromIm(cat(3, image, alpha), stimulus.live.mask);
           end
         end
       end
@@ -207,8 +207,8 @@ stimulus.live.gotResponse = 0;
 stimulus.curTrial(task.thistrial.thisphase) = stimulus.curTrial(task.thistrial.thisphase) + 1;
 
 task.thistrial.nonmatch_position = setdiff([1,2], task.thistrial.match_position);
-task.thistrial.match_view = randsample(setdiff(stimulus.views, task.thistrial.sample_view), 1); % choose a different view for the match image
-%task.thistrial.nonmatch_view = randsample(setdiff(stimulus.views, task.thistrial.sample_view, 1);
+task.thistrial.match_view = randsample(repmat(setdiff(stimulus.views, task.thistrial.sample_view), 1,2), 1); % choose a different view for the match image
+task.thistrial.nonmatch_view = randsample(repmat(setdiff(stimulus.views, [task.thistrial.match_view, task.thistrial.sample_view]), 1,2), 1);
 
 % Initialize the nonmatch properties to all be the same, then change one of them
 task.thistrial.nonmatch_surface = task.thistrial.sample_surface;
@@ -218,13 +218,13 @@ task.thistrial.nonmatch_partstructure = task.thistrial.sample_partstructure;
 
 switch task.thistrial.nonmatch_dimension
   case 1
-    task.thistrial.nonmatch_surface = randsample(setdiff(stimulus.surfaces, task.thistrial.sample_surface), 1);
+    task.thistrial.nonmatch_surface = randsample(repmat(setdiff(stimulus.surfaces, task.thistrial.sample_surface), 1,2), 1);
   case 2
-    task.thistrial.nonmatch_structure = randsample(setdiff(stimulus.structures, task.thistrial.sample_structure), 1);
+    task.thistrial.nonmatch_structure = randsample(repmat(setdiff(stimulus.structures, task.thistrial.sample_structure), 1, 2), 1);
   case 3
-    task.thistrial.nonmatch_partlocation = randsample(setdiff(stimulus.partlocations, task.thistrial.sample_partlocation), 1);
+    task.thistrial.nonmatch_partlocation = randsample(repmat(setdiff(stimulus.partlocations, task.thistrial.sample_partlocation), 1,2), 1);
   case 4
-    task.thistrial.nonmatch_partstructure = randsample(setdiff(stimulus.partstructures, task.thistrial.sample_partstructure), 1);
+    task.thistrial.nonmatch_partstructure = randsample(repmat(setdiff(stimulus.partstructures, task.thistrial.sample_partstructure), 1,2), 1);
 end
 
 %% Get all 3 images for this trial
@@ -267,14 +267,16 @@ for i = 1:2
   if task.thistrial.thisseg == stimulus.seg.stim1
     mglBltTexture(stimulus.live.sample_image, [0,0, imSz, imSz]);
   elseif task.thistrial.thisseg == stimulus.seg.stim2
-    mglBltTexture(stimulus.live.match_image, [stimulus.choice_locations(1,:) imSz imSz]);
-    mglBltTexture(stimulus.live.nonmatch_image, [stimulus.choice_locations(2,:) imSz, imSz]);
+    mglBltTexture(stimulus.live.match_image, [stimulus.choice_locations(task.thistrial.match_position,:) imSz imSz]);
+    mglBltTexture(stimulus.live.nonmatch_image, [stimulus.choice_locations(task.thistrial.nonmatch_position,:) imSz, imSz]);
     upFix(stimulus, stimulus.colors.black);
   elseif task.thistrial.thisseg == stimulus.seg.feedback
     if task.thistrial.response == task.thistrial.match_position
       task.thistrial.correct = 1;
+      if i==1, fprintf('Correct! \n'); end
     else
       task.thistrial.correct = 0;
+      if i==1, fprintf('Incorrect :( \n'); end
     end
   else
     upFix(stimulus, stimulus.colors.black);
@@ -331,7 +333,7 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
   if ~any(isnan(pos))
     wasCentered = stimulus.live.centered;
     stimulus.live.centered = dist<2.5;
-    if wasCentered && stimulus.live.centertered && stimulus.live.lastTrigger>0
+    if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
       stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
     end
     stimulus.live.lastTrigger = now;
@@ -406,6 +408,8 @@ end
 % If a mask is passed in, apply as an alpha mask.
 if ieNotDefined('mask')
   r(:,:,4) = 255;
+elseif size(r, 3)==4
+  
 else
   r(:,:,4) = mask(:,:,1);
 end
@@ -420,10 +424,10 @@ function data = analyzeData()
 %%
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/configural/%s/20*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/configural/%s/21*stim*.mat',mglGetSID)));
 
 count = 1; 
-data = struct('response', [], 'reaction_time', [], 'periphery',[], 'eccentricity', [], ...
+data = struct('response', [], 'reaction_time', [], ...
               'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
 for fi = 1:length(files)
   load(fullfile(sprintf('~/data/configural/%s/%s',mglGetSID,files(fi).name)));
@@ -450,9 +454,6 @@ for fi = 1:length(files)
     data.reaction_time = [data.reaction_time e.reactionTime];
     data.nTrials = data.nTrials + e.nTrials;
     
-    data.periphery = [data.periphery ones(1,e.nTrials)*stimulus.periph];
-    data.eccentricity = [data.eccentricity ones(1,e.nTrials)*stimulus.eccentricity];
-
     % Calculate number of valid trials by excluding eye movement trials and no-response trials.
     data.nValTrials = data.nValTrials + sum(~isnan(e.response));
     
@@ -465,3 +466,12 @@ data.imSize = stimulus.stimSize;
 
 disp(sprintf('SUBJECT %s: Found %i runs with a total of %i trials', mglGetSID, length(data.accByRuns), data.nTrials));
 
+for i = 1:4
+  x(i) = nanmean(data.correct(data.nonmatch_dimension==i));
+end
+figure; plot(1:4, x, '.k', 'MarkerSize', 30);
+set(gca, 'XTick', 1:4)
+set(gca, 'XTickLabel', stimulus.conditions);
+xlim([0, 5]);
+box off;
+keyboard
