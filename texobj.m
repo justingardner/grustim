@@ -135,7 +135,7 @@ if stimulus.scan
 end
 
 % Initialize task parameters
-task{1}{1}.parameter.imageClass = 1:length(stimulus.imageNames)
+task{1}{1}.parameter.imageClass = 1:length(stimulus.imageNames);
 task{1}{1}.parameter.stimType = [-1, 0, 0, 1, 1]; % -1 = blank, 0 = orig, 1:N = synths layers.
 task{1}{1}.parameter.stimXPos = stimulus.stimXPos;
 
