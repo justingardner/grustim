@@ -72,7 +72,7 @@ stimulus.pedestals.initThresh.angle = 10.0; % angle that the staircase will star
 % set stimulus contrast, scanner absolute luminance is lower so the
 % relative contrast needs to be higher to make up for this
 if stimulus.scan
-    stimulus.contrast = .04; % 4%
+    stimulus.contrast = .10; % 4%
 else
     stimulus.contrast = .15;
 end
@@ -137,7 +137,7 @@ task{1}{1}.synchToVol = zeros(task{1}{1}.segmin);
 if stimulus.scan
     task{1}{1}.synchToVol(end) = 1;
     task{1}{1}.segmin(end) = max(0, task{1}{1}.segmin(end) - 0.100);
-    task{1}{1}.segmax(end) = max(0, task{1}{1}.segmax(end) - 0.200);
+    task{1}{1}.segmax(end) = max(0, task{1}{1}.segmax(end) - 0.100);
 
 end
 

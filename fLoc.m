@@ -26,7 +26,7 @@ stimulus = struct;
 
 % add arguments later
 scan = 0;
-getArgs(varargin,{'scan=0', 'oban=1'}, 'verbose=1');
+getArgs(varargin,{'scan=1', 'oban=0'}, 'verbose=1');
 stimulus.scan = scan;
 stimulus.oban = oban;
 clear scan;
@@ -59,17 +59,18 @@ stimulus.live.cueColor = stimulus.colors.black;
 
 stimulus.curTrial(1) = 0;
 
-stimulus.imSize = 10;
+stimulus.imSize = 15;
 
 %% Define stimulus timing
 % Task important variables
-stimulus.categories = {'characters', 'bodies', 'faces', 'places', 'objects'};
+stimulus.categories = {'characters', 'bodies', 'faces', 'places', 'objects', 'scrambled'};
 stimulus.subcategories = struct();
 stimulus.subcategories.characters = {'word', 'number'};
 stimulus.subcategories.bodies = {'body', 'limb'};
 stimulus.subcategories.faces = {'adult', 'child'};
 stimulus.subcategories.places = {'corridor', 'house'};
 stimulus.subcategories.objects = {'car', 'instrument'};
+stimulus.subcategories.scrambled = {'scrambled', 'scrambled'};
 
 stimulus.num_samples = 20;
 
@@ -122,8 +123,8 @@ end
 % Select trials
 task{1}.parameter.category = 1:(length(stimulus.categories)+1); % 1: characters, 2: bodies, 3: faces, 4: places, 5: objects, 6: blank
 task{1}.parameter.subcategory = 1:2;
-task{1}.randVars.calculated.category_str = NaN;
-task{1}.randVars.calculated.subcategory_str = NaN;
+task{1}.randVars.calculated.category_str = {NaN};
+task{1}.randVars.calculated.subcategory_str = {NaN};
 task{1}.randVars.calculated.blank = NaN;
 
 %% Init task
@@ -171,8 +172,10 @@ if task.thistrial.category <= length(stimulus.categories)
   task.thistrial.category_str = stimulus.categories{task.thistrial.category};
   task.thistrial.subcategory_str = stimulus.subcategories.(task.thistrial.category_str){task.thistrial.subcategory};
   task.thistrial.blank = 0;
+  disp(sprintf('Trial %i: Category %s, Subcategory %s', task.trialnum, task.thistrial.category_str, task.thistrial.subcategory_str));
 else
   task.thistrial.blank = 1;
+  disp(sprintf('Trial %i: Blank', task.trialnum));
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -189,6 +192,12 @@ if task.thistrial.category <= length(stimulus.categories)
   for i = 1:2
     mglClearScreen(0.5);
     mglBltTexture(seg_image, [0, 0, stimulus.imSize, stimulus.imSize]);
+    upFix(stimulus, stimulus.colors.black);
+    mglFlush;
+  end
+else
+  for i = 1:2
+    mglClearScreen(0.5);
     upFix(stimulus, stimulus.colors.black);
     mglFlush;
   end

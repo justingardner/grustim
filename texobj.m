@@ -24,7 +24,7 @@ clear scan testing;
 %% Open Old Stimfile
 stimulus.counter = 1;
 %% Setup Screen
-if stimulus.scan
+if stimulus.scan || true
   myscreen = initScreen('fMRIprojFlex');
 else
   myscreen = initScreen('VPixx2');
@@ -66,13 +66,13 @@ stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
 stimulus.nTexFams = length(stimulus.imageNames);
-stimulus.imSize = 12;
-stimulus.stimXPos = 7;
+stimulus.imSize = 16;
+stimulus.stimXPos = 10;
 stimulus.num_samples = 2;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/texture_stimuli/color/textures';
+stimulus.stimDir = '~/proj/texture_stimuli/color/texobj';
 stimulus.origDir = '~/proj/texture_stimuli/color/originals';
 
 %% Preload images
@@ -88,12 +88,12 @@ for i = 1:stimulus.nTexFams
     layerI = stimulus.layerNames{li};
     for j = 1:stimulus.num_samples
        sd = imread(sprintf('%s/%s%s_%s_smp%i.png', stimulus.stimDir, stimulus.poolSize, layerI, imName, j));
-       stimulus.images.synths.(sprintf('%s_%s_%i', imName, layerI, j)) = genTexFromIm(sd, mask);
+       stimulus.images.synths.(sprintf('%s_%s_%i', imName, layerI, j)) = genTexFromIm(sd);
     end
  
     % Load noise samples.
     orig = imread(sprintf('%s/%s.png', stimulus.origDir, imName));
-    stimulus.images.origs.(imName) = genTexFromIm(orig, mask);
+    stimulus.images.origs.(imName) = genTexFromIm(orig);
   end
   
   disppercent(i / stimulus.nTexFams);
@@ -126,7 +126,7 @@ task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.numTrials = 90;
 task{1}{1}.random = 1;
-
+task{1}{1}.seglenPrecomputeSettings.framePeriod=1.0;
 if stimulus.scan
   task{1}{1}.synchToVol(end) = 1;
   % Shorten the last segment to account for synchtovol
@@ -135,7 +135,7 @@ if stimulus.scan
 end
 
 % Initialize task parameters
-task{1}{1}.parameter.imageClass = 1:length(stimulus.imageNames)
+task{1}{1}.parameter.imageClass = 1:length(stimulus.imageNames);
 task{1}{1}.parameter.stimType = [-1, 0, 0, 1, 1]; % -1 = blank, 0 = orig, 1:N = synths layers.
 task{1}{1}.parameter.stimXPos = stimulus.stimXPos;
 
@@ -144,14 +144,16 @@ task{1}{1}.randVars.calculated.layer = NaN;
 task{1}{1}.randVars.calculated.tSegStart = {NaN};
 task{1}{1}.randVars.calculated.sample = NaN;
 
-for i = 1:length(task{1})
-  [task{1}{i}, myscreen] = initTask(task{1}{i},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
-end
 
 %%% 
 % Create a second task on the left side.
 task{2}{1} = task{1}{1};
 task{2}{1}.parameter.stimXPos = -stimulus.stimXPos;
+
+
+for i = 1:length(task{1})
+  [task{1}{i}, myscreen] = initTask(task{1}{i},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
+end
 
 for i = 1:length(task{2})
   [task{2}{i}, myscreen] = initTask(task{2}{i},myscreen,@startSegmentCallback,@screenUpdateCallback,@getResponseCallback,@startTrialCallback,[],[]);
