@@ -12,42 +12,47 @@ global stimulus
 stimulus = struct;
 
 %% Initialize Variables
-getArgs(varargin,{'noeye=1', 'analyze=0', 'fixate=0', 'smallStim=0', 'fastStim=0'}, 'verbose=1');
+getArgs(varargin,{'scan=0', 'noeye=1', 'analyze=0', 'fixate=0', 'smallStim=0', 'fastStim=0'}, 'verbose=1');
 stimulus.noeye = noeye;
 stimulus.analyze = analyze;
 stimulus.fixate = fixate;
 stimulus.smallStim = smallStim;
 stimulus.fastStim = fastStim;
-clear noeye analyze fixate smallStim fastStim
+stimulus.scan = scan;
+clear scan noeye analyze fixate smallStim fastStim
+
+
+%% Stimulus parameters 
+if stimulus.fastStim == 1
+  stimulus.stimLen = 0.200;
+else
+  stimulus.stimLen = 3.0;
+end
+
+if stimulus.smallStim == 1
+  stimulus.stimSize = 2;
+else
+  stimulus.stimSize = 12;
+end
+stimulus.eccentricity = 4;
+stimulus.base_seeds = {'008'};
+stimulus.surfaces = [0,1,2];
+stimulus.largerotations = [0,1];
+stimulus.smallrotations = [0,1];
+stimulus.views = [0,1,2];
+stimulus.conditions = {'surface', 'largerotation', 'smallrotation'};
 
 if stimulus.analyze
   analyzeData();
   return
 end
 
-%% Stimulus parameters 
-if stimulus.fastStim == 1
-  stimulus.stimLen = 0.200;
-else
-  stimulus.stimLen = 2.0;
-end
-
-if stimulus.smallStim == 1
-  stimulus.stimSize = 2;
-else
-  stimulus.stimSize = 6;
-end
-stimulus.eccentricity = 4;
-stimulus.base_seeds = {'008'};
-stimulus.surfaces = [0,1,2];
-stimulus.structures = [0,1];
-stimulus.partlocations = [0,1];
-stimulus.partstructures = [0,1];
-stimulus.views = [0,1,2];
-stimulus.conditions = {'surface', 'structure', 'partstructure', 'partlocation'};
-
 %% Setup Screen
-myscreen = initScreen('VPixx2');
+if stimulus.scan
+  myscreen = initScreen('fMRIprojFlex');
+else
+  myscreen = initScreen('VPixx2');
+end
 
 % set background to grey
 myscreen.background = 0.5;
@@ -56,7 +61,7 @@ myscreen.background = 0.5;
 myscreen = initStimulus('stimulus',myscreen);
   
 % Set response keys
-stimulus.responseKeys = [11 14 12];
+stimulus.responseKeys = [1,2];
 
 % set colors
 stimulus.colors.white = [1 1 1];
@@ -92,6 +97,13 @@ task{1}.synchToVol = zeros(size(task{1}.segmin));
 task{1}.getResponse = zeros(size(task{1}.segmin));
 task{1}.getResponse(stimulus.seg.stim2)=1;
 
+if stimulus.scan
+  task{1}{1}.synchToVol(end) = 1;
+  % Shorten the last segment to account for synchtovol
+  task{1}{1}.segmin(end) = max(0, task{1}{1}.segmin(end) - 0.200);
+  task{1}{1}.segmax(end) = max(0, task{1}{1}.segmax(end) - 0.200);
+end
+
 %%% Stimulus Variables
 stimulus.live.mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
 
@@ -103,22 +115,20 @@ task{1}.random = 1;
 % Trial parameters, which will be preassigned to be block randomized.
 task{1}.parameter.base_seed = 1:length(stimulus.base_seeds);
 task{1}.parameter.sample_surface = stimulus.surfaces;
-task{1}.parameter.sample_structure = stimulus.structures;
-task{1}.parameter.sample_partlocation = stimulus.partlocations;
-task{1}.parameter.sample_partstructure = stimulus.partstructures;
-task{1}.parameter.same = [0,1]; % 1: same, 0: different
+task{1}.parameter.sample_largerotation = stimulus.largerotations;
+task{1}.parameter.sample_smallrotation = stimulus.smallrotations;
+task{1}.parameter.same = [0,1,1,1,1]; % 1: same, 0: different
 
 task{1}.randVars.uniform.sample_view = stimulus.views;
 
 % Trial variables, which will be calculated at the start of each trial.
 task{1}.randVars.calculated.sample2_view = NaN;
-task{1}.randVars.uniform.nonmatch_dimension = [1,2,3,4]; % which dimension does nonmatch vary in - 1:surface, 2:structure, 3:partlocation, 4:partstructure
+task{1}.randVars.uniform.nonmatch_dimension = [1,2,3,4]; % which dimension does nonmatch vary in - 1:surface, 2:largerotation, 3:smallrotation 
 
 task{1}.randVars.calculated.sample2_position = NaN;
 task{1}.randVars.calculated.sample2_surface = NaN;
-task{1}.randVars.calculated.sample2_structure = NaN;
-task{1}.randVars.calculated.sample2_partlocation = NaN;
-task{1}.randVars.calculated.sample2_partstructure = NaN;
+task{1}.randVars.calculated.sample2_largerotation = NaN;
+task{1}.randVars.calculated.sample2_smallrotation = NaN;
 
 % Task variables to keep track of the status of each trial
 task{1}.randVars.calculated.detected = 0; % did they see the grating
@@ -128,21 +138,19 @@ task{1}.randVars.calculated.correct = NaN;
 %% Preload images
 %if ~exist(presavedStimLoc) % on the first time, load each image, convert to mgl texture, and save it to a struct.
 stims = struct();
-disppercent(-inf, sprintf('Preloading %i images', length(stimulus.base_seeds)*length(stimulus.surfaces)*length(stimulus.structures)*length(stimulus.partlocations)*length(stimulus.partstructures)*length(stimulus.views)));
-stim_dir = '~/proj/oddity/pilot1_hybrid';
+disppercent(-inf, sprintf('Preloading %i images', length(stimulus.base_seeds)*length(stimulus.surfaces)*length(stimulus.largerotations)*length(stimulus.smallrotations)*length(stimulus.views)));
+stim_dir = '~/proj/configural/rotation_stimuli';
 stimulus.stimDir = stim_dir;
 for bsi = 1:length(stimulus.base_seeds)
   bs = stimulus.base_seeds{bsi};
   for sui = stimulus.surfaces
-    for sti = stimulus.structures
-      for pli = stimulus.partlocations
-        for psi = stimulus.partstructures
-          for vi = stimulus.views
-            filename = sprintf('%s/%s_%i%i%i%i_view%i.png', stim_dir, bs, sui, sti, pli, psi, vi);
-            [image, map, alpha] = imread(filename);
-            stims.(sprintf('img%s_%i%i%i%i_v%i', bs, sui, sti, pli, psi, vi)) = genTexFromIm(cat(3, image, alpha), stimulus.live.mask);
-          end
-        end
+    for lri = stimulus.largerotations
+      for sri = stimulus.smallrotations
+    		for vi = stimulus.views
+    		  filename = sprintf('%s/%s_%i%i%i_view%i.png', stim_dir, bs, sui, lri, sri, vi);
+    		  [image, map, alpha] = imread(filename);
+    		  stims.(sprintf('img%s_%i%i%i_v%i', bs, sui, lri, sri, vi)) = genTexFromIm(cat(3, image, alpha), stimulus.live.mask);
+    		end
       end
     end
   end
@@ -210,34 +218,32 @@ task.thistrial.sample2_view = randsample(repmat(setdiff(stimulus.views, task.thi
 
 % Initialize the nonmatch properties to all be the same, then change one of them
 task.thistrial.sample2_surface = task.thistrial.sample_surface;
-task.thistrial.sample2_structure = task.thistrial.sample_structure;
-task.thistrial.sample2_partlocation = task.thistrial.sample_partlocation;
-task.thistrial.sample2_partstructure = task.thistrial.sample_partstructure;
+task.thistrial.sample2_largerotation = task.thistrial.sample_largerotation;
+task.thistrial.sample2_smallrotation = task.thistrial.sample_smallrotation;
 
 if task.thistrial.same == 0
   switch task.thistrial.nonmatch_dimension
     case 1
       task.thistrial.sample2_surface = randsample(repmat(setdiff(stimulus.surfaces, task.thistrial.sample_surface), 1,2), 1);
     case 2
-      task.thistrial.sample2_structure = randsample(repmat(setdiff(stimulus.structures, task.thistrial.sample_structure), 1, 2), 1);
+      task.thistrial.sample2_largerotation = randsample(repmat(setdiff(stimulus.largerotations, task.thistrial.sample_largerotation), 1, 2), 1);
     case 3
-      task.thistrial.sample2_partlocation = randsample(repmat(setdiff(stimulus.partlocations, task.thistrial.sample_partlocation), 1,2), 1);
-    case 4
-      task.thistrial.sample2_partstructure = randsample(repmat(setdiff(stimulus.partstructures, task.thistrial.sample_partstructure), 1,2), 1);
+      task.thistrial.sample2_smallrotation = randsample(repmat(setdiff(stimulus.smallrotations, task.thistrial.sample_smallrotation), 1,2), 1);
   end
 end
 
 %% Get all 3 images for this trial
 base_seed = stimulus.base_seeds{task.thistrial.base_seed};
-stimulus.live.sample_image = stimulus.live.stims.(sprintf('img%s_%i%i%i%i_v%i',base_seed, task.thistrial.sample_surface, task.thistrial.sample_structure, task.thistrial.sample_partlocation, task.thistrial.sample_partstructure, task.thistrial.sample_view));
-stimulus.live.sample2_image = stimulus.live.stims.(sprintf('img%s_%i%i%i%i_v%i', base_seed, task.thistrial.sample2_surface, task.thistrial.sample2_structure, task.thistrial.sample2_partlocation, task.thistrial.sample2_partstructure, task.thistrial.sample2_view));
+stimulus.live.sample_image = stimulus.live.stims.(sprintf('img%s_%i%i%i_v%i',base_seed, task.thistrial.sample_surface, task.thistrial.sample_largerotation, task.thistrial.sample_smallrotation, task.thistrial.sample_view));
+stimulus.live.sample2_image = stimulus.live.stims.(sprintf('img%s_%i%i%i_v%i', base_seed, task.thistrial.sample2_surface, task.thistrial.sample2_largerotation, task.thistrial.sample2_smallrotation, task.thistrial.sample2_view));
 
 stimulus.live.eyeCount = 0;
 
 % Disp trial parameters each trial
 sd = {'Different', 'Same'};
-fprintf('Trial %d - %s: BaseSeed = %s. Sample = %i%i%i%i, Non-Match = %i%i%i%i', task.trialnum, sd{task.thistrial.same+1}, base_seed, stimulus.conditions{task.thistrial.nonmatch_dimension}, task.thistrial.sample_surface, task.thistrial.sample_structure,...
-                                                                                 task.thistrial.sample_partlocation, task.thistrial.sample_partstructure, task.thistrial.sample2_surface, task.thistrial.sample2_structure, task.thistrial.sample2_partlocation, task.thistrial.sample2_partstructure);
+fprintf('Trial %d - %s: BaseSeed = %s. Sample = %i%i%i, Sample2 = %i%i%i', task.trialnum, sd{task.thistrial.same+1}, base_seed,...
+                                                                           task.thistrial.sample_surface, task.thistrial.sample_largerotation, task.thistrial.sample_smallrotation,...
+                                                                           task.thistrial.sample2_surface, task.thistrial.sample2_largerotation, task.thistrial.sample2_smallrotation);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -410,7 +416,7 @@ end
 % If a mask is passed in, apply as an alpha mask.
 if ieNotDefined('mask')
   r(:,:,4) = 255;
-elseif size(r,3)==4)
+elseif size(r,3)==4
   % do nothing.
 else
   r(:,:,4) = mask(:,:,1);
@@ -426,13 +432,13 @@ function data = analyzeData()
 %%
 
 % get the files list
-files = dir(fullfile(sprintf('~/data/configural/%s/20*stim*.mat',mglGetSID)));
+files = dir(fullfile(sprintf('~/data/configural_sd/%s/21*stim*.mat',mglGetSID)));
 
 count = 1; 
-data = struct('response', [], 'reaction_time', [], 'periphery',[], 'eccentricity', [], ...
+data = struct('response', [], 'reaction_time', [], ...
               'nTrials', 0, 'nValTrials', 0, 'accByRuns', []);
 for fi = 1:length(files)
-  load(fullfile(sprintf('~/data/configural/%s/%s',mglGetSID,files(fi).name)));
+  load(fullfile(sprintf('~/data/configural_sd/%s/%s',mglGetSID,files(fi).name)));
   
   e = getTaskParameters(myscreen,task);
   if e.nTrials>1
@@ -456,9 +462,6 @@ for fi = 1:length(files)
     data.reaction_time = [data.reaction_time e.reactionTime];
     data.nTrials = data.nTrials + e.nTrials;
     
-    data.periphery = [data.periphery ones(1,e.nTrials)*stimulus.periph];
-    data.eccentricity = [data.eccentricity ones(1,e.nTrials)*stimulus.eccentricity];
-
     % Calculate number of valid trials by excluding eye movement trials and no-response trials.
     data.nValTrials = data.nValTrials + sum(~isnan(e.response));
     
@@ -470,4 +473,15 @@ end
 data.imSize = stimulus.stimSize;
 
 disp(sprintf('SUBJECT %s: Found %i runs with a total of %i trials', mglGetSID, length(data.accByRuns), data.nTrials));
+
+%c = data)
+for i = 1:4
+  x(i) = nanmean(data.correct(data.same == 0 & data.nonmatch_dimension==i));
+end
+figure; plot(1:4, x, '.k', 'MarkerSize', 30);
+set(gca, 'XTick', 1:4)
+set(gca, 'XTickLabel', stimulus.conditions);
+xlim([0, 5]);
+box off;
+keyboard
 

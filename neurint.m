@@ -17,10 +17,11 @@ stimulus = struct;
 
 % add arguments later
 scan = 1;
-getArgs(varargin,{'screenGrab=0', 'scan=0', 'testing=0'}, 'verbose=1');
+getArgs(varargin,{'screenGrab=0', 'scan=0', 'testing=0', 'stim_time=0.25'}, 'verbose=1');
 stimulus.scan = scan;
 stimulus.debug = testing;
 stimulus.screenGrab = screenGrab;
+stimulus.stim_time = stim_time;
 clear scan testing;
 
 %% Stimulus parameters 
@@ -73,7 +74,7 @@ stimulus.image_pairs = {'elephant1_face1', 'horse_cat', 'rocks_leaves'};
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/neurint/outputs/stimuli';
+stimulus.stimDir = '~/proj/neurint/outputs/highcontrast';
 
 %% Preload images
 mask = imread('~/proj/neurint/outputs/Flattop8.tif');
@@ -102,8 +103,8 @@ clear image
 %%%%%%%%%%%%% TASK %%%%%%%%%%%%%%%%%
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [0.2, 2.0, 0.2, 5.0, 0.2];
-task{1}{1}.segmax = [0.2, 2.0, 0.2, 5.0, 0.2];
+task{1}{1}.segmin = [0.2, stimulus.stim_time, 0.2, 5.0, 0.2];
+task{1}{1}.segmax = [0.2, stimulus.stim_time, 0.2, 5.0, 0.2];
 
 stimulus.seg = {};
 stimulus.seg.fix = 1;
@@ -135,6 +136,7 @@ task{1}{1}.parameter.img2Sample = 1:stimulus.num_samples;
 task{1}{1}.parameter.centerInterval = stimulus.intervals;
 task{1}{1}.parameter.image_pair = 1:length(stimulus.image_pairs);
 task{1}{1}.parameter.leftImg = [1 2]; % 1 = img1, 2=img2;
+task{1}{1}.parameter.stim_time = stimulus.stim_time;
 task{1}{1}.randVars.uniform.feature_space = 1:length(stimulus.feature_spaces);
 task{1}{1}.randVars.calculated.correct = NaN;
 task{1}{1}.randVars.calculated.response = NaN;
@@ -351,7 +353,7 @@ mglGluAnnulus(x,y, 0.75, 0.8, stimulus.live.cueColor, 64);
 
 function imout = maxContrast(im)
 
-imout = (im - min(im(:)))*(255/max(im(:)));
+imout = (im - min(im(:)))*(255/(max(im(:))-min(im(:))));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Turns image into a texture

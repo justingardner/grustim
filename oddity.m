@@ -338,7 +338,7 @@ if ~stimulus.noeye && stimulus.live.triggerWaiting
   if ~any(isnan(pos))
     wasCentered = stimulus.live.centered;
     stimulus.live.centered = dist<2.5;
-    if wasCentered && stimulus.live.centered && stimulus.live.lastTrigger>0
+    if wasCentered && stimulus.live.centertered && stimulus.live.lastTrigger>0
       stimulus.live.triggerTime = stimulus.live.triggerTime + now-stimulus.live.lastTrigger;
     end
     stimulus.live.lastTrigger = now;
