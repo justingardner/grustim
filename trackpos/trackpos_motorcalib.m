@@ -126,7 +126,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     disp(['(trackpos_motorcalib) running stimulus ', stimulus.currdesign.name])
     
     % log start time.
-    stimulus.trial_starttime    = tic; 
+    stimulus.trial_starttime = datetime('now'); 
     
     % set mouse position to the middle of the screen
     x_img = 0; y_img = 0;
@@ -194,23 +194,28 @@ if (task.thistrial.thisseg== 1)
     mglBltTexture(stimulus.gaussian,stimulus.position); % draw stimulus
 
     % **&display mouse position
-    if toc < task.thistrial.waitsecs
+    if (datetime('now')-stimulus.trial_starttime) < task.thistrial.waitsecs
         % set mouse to middle (green, can't move yet)
-        mglSetMousePosition(ceil( myscreen.screenWidth/2),floor(myscreen.screenHeight/2), myscreen.screenNumber);
+        mglSetMousePosition(ceil(myscreen.screenWidth/2),floor(myscreen.screenHeight/2), myscreen.screenNumber);
         mglGluDisk(0, 0, 0.1, [0 1 0])
+        
+        % ***record stimulus position and mouse position  
+        task.thistrial.trackResp(task.thistrial.framecount,:) = [nan, nan];
     else 
         % display mouse (red)
         mInfo = mglGetMouse(myscreen.screenNumber);
         mimg_x = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
         mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
+        
+        task.thistrial.trackResp(task.thistrial.framecount,:) = [mimg_x, mimg_y];
     end
 
     % ***record stimulus position and mouse position  
     task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.position;
-    task.thistrial.trackResp(task.thistrial.framecount,:) = [mimg_x, mimg_y];
     task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0);
-    
+
+
 end
 
 %% eye tracking
@@ -231,8 +236,6 @@ if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1])
     task.thistrial.trackEye(task.thistrial.framecount,:)  = pos;
     task.thistrial.trackEyeTime(task.thistrial.framecount) = postime;
 end
-
-% stimulus.timedebug(8,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~2.86661e-5 s
 
 if stimulus.exp.grabframe && (task.thistrial.thisseg== 1)
     global frame; frame{task.thistrial.framecount} = mglFrameGrab;
@@ -304,13 +307,13 @@ end
 function design = load_motor_calib_packages(myscreen, selected_packages)
 % selected_packages: cell of strings indicating which packages to use
 
-design(length(selected_packages)) = struct('name',[], 'start_pos', [], 'update', []);
+design(length(selected_packages)) = struct('name',[], 'n',[], 'start_pos', [], 'vel', [], 'update', []);
 
 %% possible predefined stimuli
 
 % still target
 
-if any(cellfun(@(a) strcmp(a, 'stillblob'),{'s','b'}))
+if any(cellfun(@(a) strcmp(a, 'stillblob'),selected_packages))
     stillblob = struct();
     stillblob.name = 'stillblob';
     
@@ -333,13 +336,13 @@ if any(cellfun(@(a) strcmp(a, 'stillblob'),{'s','b'}))
         start_pos = start_pos(randperm(stillblob.n),:);
     end    
     
-    
     stillblob.start_pos = start_pos;
+    stillblob.vel = zeros(stillblob.n,2);
     stillblob.update = @(pos,vel,sb, n, m, s)  update_stillblob(pos, vel, sb, n,m,s);
 end
 
 % linear target movement
-if any(cellfun(@(a) strcmp(a, 'linearblob'),{'s','b'}))
+if any(cellfun(@(a) strcmp(a, 'linearblob'),selected_packages))
     linearblob = struct();
     linearblob.name = 'linearblob';
     
@@ -441,7 +444,7 @@ function task = configureExperiment(task, myscreen, design)
     offset = 0; 
     ncond = length(design);
     
-    repeats_stims = 1;
+    repeat_stims = 1;
     
     % all blocks have an training period and a tracking period
     for condNum = 1:ncond
@@ -456,7 +459,7 @@ function task = configureExperiment(task, myscreen, design)
         task{1}{phaseNum}.waitForBacktick  = 1; %wait for backtick before starting task phase
         
         % parameters
-        task{1}{idx}.parameter.waitsecs    = 2;
+        task{1}{phaseNum}.parameter.waitsecs    = 2;
 
         % calculated parameters
         maxframes = ceil(task{1}{phaseNum}.segmax(1)*myscreen.framesPerSecond)+10; %
