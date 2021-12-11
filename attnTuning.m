@@ -154,8 +154,8 @@ stimulus.rightCueEnd = stimulus.rightCueStart + stimulus.cueSize;
 
 stimulus.fixColor = [1 1 1];
 stimulus.fixWhite = [1 1 1];
-stimulus.fixCorrect = [0 1 0];
-stimulus.fixIncorrect = [1 0 0];
+stimulus.fixCorrect = [1 1 0];
+stimulus.fixIncorrect = [1 1 0];
 
 
 % fix: you will change the funciton myInitStimulus

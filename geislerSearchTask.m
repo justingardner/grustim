@@ -1,9 +1,30 @@
-% NOTES:
-% (1) Uses filter instead of Contrast
-% (2) Is functionated
+% WRITTEN BY:
+% (1) Yehia Elkersh 
+% (2) Josh Wilson (generating 1/f noise)
 
-% PROBLEM: how to randomize locations. Right now, if you put the locations as a task parameter, mgl does not pick columns 
-% at a time. It picks a random x and a random y
+% DESCRIPTION: 
+% This script is set up to run the search task in the Najemnik & Geisler 2005 Nature paper. 
+
+% THE TASK: read the section titled "Human Visual Search" in the Najemnik & Geisler JOV paper p.5 for a detailed description
+
+% FAULTS:
+% (1) The way the target and the background noise are combined uses  "filters" instead of contrasts. Using "filters" was just something that Josh W. coded up quickly 
+% in order for the task to work while Justin was on vacation. To correct this, you should refer back to how the target was embedded in the background in geislerDetectionTaskOneLoc. 
+% There might be other small mistakes because the task code here was copied from a fairly old version of the detection task code, so in general , you should review this script 
+% and make the task code identical to geislerDetectionTaskOneLoc
+% (2) The locations where the target appears are not randomized correctly. Right now, if you have a matrix of locations as a task{1}.parameter, mgl does not pick columns 
+% at a time. It picks a random x and a random y. The intention was to have a matrix that looked like:
+%     locations = [x1 x2 x3;
+%                  y1 y2 y3]
+% and then have mgl pick a column at a time. However, mgl just picks a random element from row1 and then a random element from row2
+% (3) The way the script "blocks" the trials is by using the trial number (e.g. for the first 50 trials, it sets the target to contrast c1 for the next 50 it sets it to contrast c2, 
+% etc.). This is not ideal because it does not guarantee that the locations will get randomized properly over each block.  For instance, location (0, 4.5) might be picked 
+% more often when the target contrast is c1 than when the target contrast is c2. 
+
+% NOTES:
+% To replicate what is described in the paper, we tell the subject to press the button 1 when they find the target and then proceed to fixate directly at the target that they found 
+% and then press the button 2. This is to make sure that the eyetracker gets an accurate position for where the subject though the target was. I just wanted to note that 
+% when the subject presses the button 1, nothing happens in the code, but when they press the button 2, their response is recorded.
 
 
 function myscreen = testSearch(varargin)

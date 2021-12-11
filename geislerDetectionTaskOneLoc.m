@@ -1,8 +1,21 @@
+% WRITTEN BY:
+% (1) Yehia Elkersh 
+% (2) Josh Wilson (generating 1/f noise)
+
 % DESCRIPTION: 
-% This script is set up to run the detection task in the Najemnik & Geisler 2005 Nature paper, but only on one location
-% for a full desctiption, read the header comments in geiselrSearchTaskMultipleLocs.
-% The location and target contrasts are changed at the outset of each run of the script, 
-% creating 25 different stimfiles for the 25 different locations
+% This script is set up to run the detection task in the Najemnik & Geisler 2005 Nature paper, but only for one location. For a full desctiption of the task and the script, 
+% read the header comments in geiselrSearchTaskMultipleLocs. This script
+% only differs in that it runs one location instead of multiple. 
+
+% DATA COLLECTION:
+% This is the scipt that was used to collect the data saved in the folder geislerDetectionData. 
+% It is important to note that Najemnik & Geisler used a different set of contrasts for each eccentricity. Here, we picked a location from each eccentricity and staircased the contrast 
+% in order to determine what set of contrasts to use for each location. Note that locations at the same eccentricity had the same set of contrasts.
+% It is also important to note that the location and the set of target contrasts were manually updated at the outset of each run of the script, creating 25 different stimfiles
+% for the 25 different locations. 
+
+% REFERENCE:
+% For a reference of what location and what target contrats was used in each stimfile, check out the txt file titled geislerLocationsAndContrastsReference.rtf
     
 function myscreen = testSearch(varargin)
 % check arguments
@@ -32,12 +45,12 @@ task{1}.parameter.whichSegment = [1 2];
 task{1}.response.correct = [];
 task{1}.response.contrast = [];
 
-% initialize locations array and save it in a task variable
+% initialize location array and save it in a task variable
 global location;
 location = [3.18 -3.18];
 task{1}.location = location;
 
-% Used to change the color of the cross on the 5th segment (i.e give feedback)
+% Used to change the color of the cross on the 5th segment (i.e to give feedback)
 global correct;
 
 
@@ -109,6 +122,7 @@ if task.thistrial.thisseg == 2
         % (2) Clipping values outside [-1, 1] range 
         stimBackground(stimBackground > 1) = 1;
         stimBackground(stimBackground < -1) = -1;
+        
         % (3) Actually creating the image through mgl
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
@@ -156,6 +170,7 @@ if task.thistrial.thisseg == 4
         % (2) Clipping values outside [-1, 1] range 
         stimBackground(stimBackground > 1) = 1;
         stimBackground(stimBackground < -1) = -1;
+        
         % (3) Actually creating the image through mgl
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
@@ -168,6 +183,7 @@ if task.thistrial.thisseg == 1 | task.thistrial.thisseg == 3 | task.thistrial.th
     mglClearScreen(0.5);
     mglFixationCross(0.4, 1, [0 0 0]);
 end
+
 if task.thistrial.thisseg == 6
     if correct == 1
         mglFixationCross(0.4, 2, [0 255 0]);
@@ -182,7 +198,7 @@ myscreen.flushMode = 1;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function that gets called to draw the stimulus each frame (STANDARD)
+% function that gets called to draw the stimulus each frame 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 
@@ -199,6 +215,7 @@ if task.thistrial.whichButton == 1 & task.thistrial.thisseg == 5
         task.response.correct = [task.response.correct 1];
         correct = 1;
     end
+    % if the button is 1 and the 2nd segment had the target, mark as incorrect
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 0];
         correct = 0;
@@ -210,10 +227,12 @@ end
 mglClearScreen(0.5);
 
 if task.thistrial.whichButton == 2 & task.thistrial.thisseg == 5
+    % if the button is 2 and the 1st segment had the target, mark as incorrect
     if task.thistrial.whichSegment == 1 
         task.response.correct = [task.response.correct 0];
         correct = 0;
     end
+    % if the button is 2 and the 2nd segment had the target, mark as correct
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 1];
         correct = 1;
@@ -235,7 +254,7 @@ end
 function stimBackground = makeStimBackground(myscreen)
 % (1) Generating 1/f noise
 noiseImage = makestim(myscreen);
-% (2) Subtracting the mean to center around 
+% (2) Subtracting the mean to center around 0
 noiseImageMean = mean(noiseImage(:));
 noiseImage = noiseImage - noiseImageMean;
 % (3) Adjusting the range to [-1,1] (Written by Justin)
@@ -249,7 +268,7 @@ stimBackground = noiseImage / rmsAdjust;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Making grating and gaussian for the target
+% Making the grating and gaussian for the target
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [gaussian grating] = makeGrating(task,myscreen)
 global location;
@@ -259,7 +278,7 @@ x = -location(1);
 y = -location(2);
 pixX = 38.8567214157064*x;
 pixY = 31.9291779098311*y;
-% NOTE: the parameters are set s.t. the FWHM of the Gaussian is equal to 1/cpd of the grating
+% NOTE: the parameters of mglMakeGaussian are set s.t. the FWHM of the Gaussian is equal to 1/cpd of the grating
 gaussian = mglMakeGaussian(60,60,0.16,0.16); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
 grating = mglMakeGrating(60,60,2.65413,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
 

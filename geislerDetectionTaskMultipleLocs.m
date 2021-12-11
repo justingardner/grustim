@@ -1,26 +1,26 @@
 % WRITTEN BY:
-% (1) Yehia Elkersh (The task)
+% (1) Yehia Elkersh 
 % (2) Josh Wilson (generating 1/f noise)
 
 % DESCRIPTION: 
 % This script is set up to run the detection task in the Najemnik & Geisler 2005 Nature paper. 
 
 % THE TASK: This is a basic 2AFC task, where ach "block" refers to a set of trials where the target appears in one particular location, 
-% which should beindicated to the subject at the beginning of each block. Within each block (i.e. at each location) the target contrasts is varied randomly. 
+% which should be indicated to the subject at the beginning of each block. Within each block (i.e. at each location) the target contrasts is varied randomly. 
 
 % FAULTS:
 % As of July 15, 2021, this scripts has a few faults
-% (1) It only runs on two locations, whereas N&G use 25, but that should be easy to fix. More importantly 
-% (2) Tt uses one set of target contrasts for all the locations, whereas N&G use use a different set of for each location. 
-% (3) The way the script "blocks" the trials is by using the trial number (e.g. for the first 200 trials, put the target in location x1, 
-% for the next 200 put it in location x2, etc.). This is not ideal because it does not guarantee that the target contrasts gets randomized properly over in each block. 
+% (1) It only runs on two locations, whereas N&G use 25, but that should be easy to fix.  
+% (2) More importantly, it uses one set of target contrasts for all the locations, whereas N&G use use a different set of contrasts for each location. 
+% (3) The way the script "blocks" the trials is by using the trial number (e.g. for the first 200 trials, it puts the target in location x1, 
+% for the next 200 it puts it in location x2, etc.). This is not ideal because it does not guarantee that the target contrasts gets randomized properly over in each block. 
 % For instance, targetContrat might be 0.5 more often in location x1 than in location x2. 
-% (4) The script does not inform the subject where the location is going to be during the proceeding block.
+% (4) The script does not inform the subject where the location is going to be for the proceeding block of trials.
 
 % SOLUTION: 
 % To fix the stated faults, one should split up the task into phases, such that phase{1} is text (or illustrations) telling the subject that the target
-% will be at location x1, phase{2} is running the block of trials at that location, phase(3) is informing the subject that the target will be at location x2, etc. 
-% This will also make it much relatively easy to have different contrasts for each location, and will ensure that the contrasts are properly randomized
+% will be at location x1, phase{2} is running the block of trials at location x1, phase(3) is informing the subject that the target will be at location x2, etc. 
+% This will also make it much relatively easy to have different contrasts for each location, and will ensure that the contrasts are properly randomized.
 
 % NOTES: 
 % (1) This scripts saves the locations into a task variable (task{1}.locations) in order to make it easy to access in geislerDetectionAnalysisMultipleLocs
@@ -54,14 +54,14 @@ task{1}.parameter.whichSegment = [1 2];
 task{1}.response.correct = [];
 task{1}.response.contrast = [];
 
-% initialize locations array and save it in a task variable
+% initialize locations array and save it in a task variable, making it easy to access in the analysis script
 locations = [0 0;
              0 4.5;];
 global randomLocations;
 randomLocations = locations(randperm(size(locations, 1)), :); 
 task{1}.locations = randomLocations;
 
-% Used to change the color of the cross on the 5th segment (i.e give feedback)
+% Used to change the color of the cross on the 5th segment (i.e  to give feedback)
 global correct;
 
 
@@ -133,6 +133,7 @@ if task.thistrial.thisseg == 2
         % (2) Clipping values outside [-1, 1] range 
         stimBackground(stimBackground > 1) = 1;
         stimBackground(stimBackground < -1) = -1;
+        
         % (3) Actually creating the image through mgl
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
@@ -180,6 +181,7 @@ if task.thistrial.thisseg == 4
         % (2) Clipping values outside [-1, 1] range 
         stimBackground(stimBackground > 1) = 1;
         stimBackground(stimBackground < -1) = -1;
+        
         % (3) Actually creating the image through mgl
         tex = mglCreateTexture(((stimBackground+1)/2)*255);
         mglBltTexture(tex,[0 0]);
@@ -192,11 +194,14 @@ if task.thistrial.thisseg == 1 | task.thistrial.thisseg == 3 | task.thistrial.th
     mglClearScreen(0.5);
     mglFixationCross(0.4, 1, [0 0 0]);
 end
+
 if task.thistrial.thisseg == 6
     if correct == 1
+        % if the subject was correct, display a green cross 
         mglFixationCross(0.4, 2, [0 255 0]);
     end
     if correct == 0
+        % if the subject was incorrect, display a red cross 
         mglFixationCross(0.4, 2, [255 0 0]);
     end
     
@@ -206,7 +211,7 @@ myscreen.flushMode = 1;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function that gets called to draw the stimulus each frame (STANDARD)
+% function that gets called to draw the stimulus each frame 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 
@@ -223,6 +228,7 @@ if task.thistrial.whichButton == 1 & task.thistrial.thisseg == 5
         task.response.correct = [task.response.correct 1];
         correct = 1;
     end
+    % if the button is 1 and the 2nd segment had the target, mark as incorrect
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 0];
         correct = 0;
@@ -234,10 +240,12 @@ end
 mglClearScreen(0.5);
 
 if task.thistrial.whichButton == 2 & task.thistrial.thisseg == 5
+    % if the button is 2 and the 1st segment had the target, mark as incorrect
     if task.thistrial.whichSegment == 1 
         task.response.correct = [task.response.correct 0];
         correct = 0;
     end
+    % if the button is 2 and the 2nd segment had the target, mark as correct
     if task.thistrial.whichSegment == 2
         task.response.correct = [task.response.correct 1];
         correct = 1;
@@ -259,7 +267,7 @@ end
 function stimBackground = makeStimBackground(myscreen)
 % (1) Generating 1/f noise
 noiseImage = makestim(myscreen);
-% (2) Subtracting the mean to center around 
+% (2) Subtracting the mean to center around 0
 noiseImageMean = mean(noiseImage(:));
 noiseImage = noiseImage - noiseImageMean;
 % (3) Adjusting the range to [-1,1] (Written by Justin)
@@ -273,13 +281,12 @@ stimBackground = noiseImage / rmsAdjust;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Making grating and gaussian for the target
+% Making the grating and gaussian for the target
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [gaussian grating] = makeGrating(task,myscreen)
 global randomLocations;
 
-% Determining the location of the target based on the session (trial number)
-% For now, we are only doing one location with 12 contrasts (544 trials)
+% Determining the location of the target based on the session (trial number). For now, we are only doing two location with 544 trials for each location
 if task.trialnum > 0 & task.trialnum <= 544
     locationVector = randomLocations(1,:);
     x = -locationVector(1);
@@ -292,6 +299,7 @@ if task.trialnum > 544 & task.trialnum <= 1088
 end
 pixX = 38.8567214157064*x;
 pixY = 31.9291779098311*y;
+% NOTE: the parameters of mglMakeGaussian are set s.t. the FWHM of the Gaussian is equal to 1/cpd of the grating
 gaussian = mglMakeGaussian(60,60,0.16,0.16); [h w] = size(gaussian); gaussian = gaussian((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX)); 
 grating = mglMakeGrating(60,60,2.65413,45,0); [h w] = size(grating); grating = grating((h/2-400+pixY):(h/2+400+pixY),(w/2-400+pixX):(w/2+400+pixX));
 

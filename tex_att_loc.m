@@ -128,7 +128,7 @@ stimulus.seg.stim = 1;
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 
-task{1}{1}.numTrials = 60;
+task{1}{1}.numTrials = 1000;
 task{1}{1}.random = 1;
 
 if stimulus.scan

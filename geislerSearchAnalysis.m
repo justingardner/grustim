@@ -1,5 +1,21 @@
-function geislerSearchAnalysis
+% WRITTEN BY: 
+% (1) Yehia Elkersh
+% (2) Josh Wilson (loading stimfiles)
 
+% DESCRIPTION: 
+% This scripts runs the analysis for the search task in the Najemnik & Gesiler 2005 Nature paper. 
+% As of July 29, 2021, the only analysis being done is plotting the eyes traces for a particular trial
+
+% NOTES:
+% (1) This needs to be double-checked, but I think there is a parameter in d called reactionTime, which corresponds to the exact time when the subject pressed the
+% response button (here the number 2). I am also pretty sure that the x and y positions if the eye are indexed by time, so to figure out where the subject was
+% fixating when they pressed the response button (in order to determine if they were fixating close to the target or not), you can get the
+% reactionTime of the trial and use it to index into the x and y position of their eye and then compare it with the position of the target on that trial
+
+
+
+
+function geislerSearchAnalysis
 % default return argument
 fit = [];
 
@@ -7,7 +23,7 @@ fit = [];
 if nargin < 1, stimfileNames = [];end
 
 % parse arguments
-%getArgs(varargin);
+% getArgs(varargin);
 % get filenames and path
 [e.path stimfileNames] = getStimfileNames(stimfileNames);
 if isempty(e.path),return,end
@@ -46,6 +62,9 @@ if e.nFiles == 0
   return
 end
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Analysis   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Plots traces of the eye movements on the first trial
 x = t.eye.xPos(1, :);

@@ -73,7 +73,7 @@ task{1}.waitForBacktick = 1;
 % Define stimulus timing
 task{1}.segmin = [0.1, 2.0, 2.0, 2.0];
 task{1}.segmax = [0.1, 2.0, 2.0, 5.0];
-stimlus.seg = {};
+stimulus.seg = {};
 stimulus.seg.fix = 1;
 stimulus.seg.stim = 2; % stimuli are presented
 %stimulus.seg.response = 3; % fixation cross goes off and they have to respond (stimuli still present) 

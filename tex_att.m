@@ -16,7 +16,7 @@ stimulus = struct;
 
 % add arguments later
 scan = 1;
-getArgs(varargin,{'scan=0', 'testing=0', 'noeye=0'}, 'verbose=1');
+getArgs(varargin,{'scan=1', 'testing=0', 'noeye=1'}, 'verbose=1');
 stimulus.scan = scan;
 stimulus.debug = testing;
 stimulus.noeye = noeye;
@@ -27,7 +27,8 @@ clear scan testing
 stimulus.counter = 1;
 
 %% Setup Screen
-if stimulus.scan
+%if stimulus.scan
+if true
   myscreen = initScreen('fMRIprojFlex');
 else
   %myscreen = initScreen('VPixx2');
@@ -43,7 +44,7 @@ localInitStimulus();
   
 % Set response keys
 stimulus.responseKeys = [1 2 3 4]; 
-
+%stimulus.responseKeys = [2 3];
 % set colors
 stimulus.colors.white = [1 1 1];
 stimulus.colors.black = [0 0 0];
@@ -111,8 +112,9 @@ clear sd
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
-task{1}{1}.segmin = [inf, 1.0, 1.0, 2.2, 0.2, 0.1];
-task{1}{1}.segmax = [inf, 1.0, 1.0, 2.2, 0.2, 0.1];
+                   % fix  cue  stim1 resp fb   iti
+task{1}{1}.segmin = [0.1, 1.0, 0.75, 2.2, 0.2, 1.4];
+task{1}{1}.segmax = [0.3, 1.5, 1.5, 2.2, 0.2, 2.4];
 
 stimulus.seg = {};
 stimulus.seg.fix = 1;
@@ -121,17 +123,13 @@ stimulus.seg.stim1 = 3;
 stimulus.seg.resp = 4;
 stimulus.seg.feedback = 5;
 stimulus.seg.ITI = 6;
-if stimulus.noeye==1
-  task{1}{1}.segmin(1) = 0.2;
-  task{1}{1}.segmax(1) = 0.2;
-end
 
 % Trial parameters
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse = zeros(size(task{1}{1}.segmin));
 task{1}{1}.getResponse(stimulus.seg.resp) = 1;
 
-task{1}{1}.numTrials = 60;
+task{1}{1}.numTrials = 1000;
 task{1}{1}.random = 1;
 
 if stimulus.scan
@@ -158,6 +156,8 @@ task{1}{1}.randVars.calculated.rightTop = {NaN};
 task{1}{1}.randVars.calculated.rightBottom = {NaN};
 task{1}{1}.randVars.calculated.leftImgClassName = {NaN};
 task{1}{1}.randVars.calculated.rightImgClassName = {NaN};
+task{1}{1}.randVars.calculated.rightTopIsSynth = NaN;
+task{1}{1}.randVars.calculated.leftTopIsSynth = NaN;
 task{1}{1}.randVars.calculated.dead = 0;
 
 for phaseNum = 1:length(task{1})
@@ -271,6 +271,17 @@ else
         task.thistrial.rightBottom = sprintf('%s_synth', rightImgClass);
         task.thistrial.rightTop = sprintf('%s_synth', rightImgClass);
 	end
+end
+
+% Set numerical variable to track whether each location is synth or original.
+locations = {'rightTop', 'rightBottom', 'leftTop', 'leftBottom'};
+for li = 1:length(locations)
+    location = locations{li};
+    if ~isempty(strfind(task.thistrial.(location), 'synth'))
+        task.thistrial.(sprintf('%sIsSynth', location)) = 1;
+    else
+        task.thistrial.(sprintf('%sIsSynth', location)) = 0;
+    end
 end
 
 stimulus.live.eyeCount = 0;
