@@ -65,6 +65,8 @@ end
 % initialize stimulus
 disp(' Initializing Stimulus....') 
 
+stimulus.stimStd = 0.4;
+stimulus.stimLum = 122;
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 stimulus.exp = exp;
 stimulus.design = design;
@@ -118,22 +120,13 @@ end
 
 %% Initialize trials 
 function [task myscreen] = initTrialCallback(task, myscreen)
+% before backtick..
     global stimulus 
     
     condNum = task.thistrial.thisphase; % each phase is a condition
     n = task.trialnum; % each phase is a condition
     stimulus.currdesign = stimulus.design(condNum);
     disp(['(trackpos_motorcalib) running stimulus ', stimulus.currdesign.name])
-    
-    % log start time.
-    stimulus.trial_starttime = datetime('now'); 
-    
-    % set mouse position to the middle of the screen
-    x_img = 0; y_img = 0;
-    x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
-    y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-    mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
-    if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor
     
     % set stimulus position
     stimulus.position = stimulus.currdesign.start_pos(n,:);
@@ -168,6 +161,21 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 % S1: Stimulus (10s)
 global stimulus 
 
+% log start time.
+tic
+stimulus.trial_starttime = datetime('now'); 
+
+% set mouse position to the middle of the screen
+x_img = 0; y_img = 0;
+x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
+y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
+mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor
+
+% number of frames for which the stimulus is stead
+stimulus.cursor_steady = 0;
+stimulus.cursor_prevpos = [ceil(x_screen),floor(y_screen)];
+
 end
 
 %% screen update
@@ -194,7 +202,8 @@ if (task.thistrial.thisseg== 1)
     mglBltTexture(stimulus.gaussian,stimulus.position); % draw stimulus
 
     % **&display mouse position
-    if (datetime('now')-stimulus.trial_starttime) < task.thistrial.waitsecs
+    % (datetime('now')-stimulus.trial_starttime) < task.thistrial.waitsecs
+    if toc < task.thistrial.waitsecs
         % set mouse to middle (green, can't move yet)
         mglSetMousePosition(ceil(myscreen.screenWidth/2),floor(myscreen.screenHeight/2), myscreen.screenNumber);
         mglGluDisk(0, 0, 0.1, [0 1 0])
@@ -209,11 +218,26 @@ if (task.thistrial.thisseg== 1)
         mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
         
         task.thistrial.trackResp(task.thistrial.framecount,:) = [mimg_x, mimg_y];
+        
+        % jumpsegment if the mouse is still for a second
+        
+        if sum(abs(stimulus.cursor_prevpos - [mimg_x, mimg_y])) < 0.1 && ...
+                sum(abs([mimg_x, mimg_y] - stimulus.position)) < stimulus.stimStd/2
+            stimulus.cursor_steady = stimulus.cursor_steady + 1;
+        else
+            stimulus.cursor_prevpos = [mimg_x, mimg_y];
+        end
+        
     end
 
     % ***record stimulus position and mouse position  
     task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.position;
     task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0);
+    
+    % if stimulus is steady for long
+    if stimulus.cursor_steady > task.thistrial.steady_thresh
+        task = jumpSegment(task); 
+    end
 
 
 end
@@ -317,7 +341,9 @@ if any(cellfun(@(a) strcmp(a, 'stillblob'),selected_packages))
     stillblob = struct();
     stillblob.name = 'stillblob';
     
-    radius = [0.4, 0.7, 1, 1.3, 1.6, 1.9];
+    maxr    = min(myscreen.imageWidth/2,myscreen.imageHeight/2) - 5; % few degrees in 
+    radius  = [maxr/5, maxr/4, maxr/3]; % start from the edge 
+    
     da = pi/4;
     angle  = 0:da:(2*pi-da);
     
@@ -455,11 +481,12 @@ function task = configureExperiment(task, myscreen, design)
         task{1}{phaseNum}.segmax           = [10]; 
         task{1}{phaseNum}.numTrials        = repeat_stims * design(condNum).n;
         task{1}{phaseNum}.getResponse      = [0]; %segment to get response.
-        task{1}{phaseNum}.synchToVol       = [1]; %segment to wait for backtick
+        task{1}{phaseNum}.synchToVol       = [0]; %segment to wait for backtick
         task{1}{phaseNum}.waitForBacktick  = 1; %wait for backtick before starting task phase
         
         % parameters
-        task{1}{phaseNum}.parameter.waitsecs    = 2;
+        task{1}{phaseNum}.parameter.waitsecs        = 2;
+        task{1}{phaseNum}.parameter.steady_thresh   = floor(2 * myscreen.framesPerSecond);%if cursor is 
 
         % calculated parameters
         maxframes = ceil(task{1}{phaseNum}.segmax(1)*myscreen.framesPerSecond)+10; %
