@@ -28,7 +28,7 @@ global stimulus; stimulus = struct;
 
 % Experimenter parameters
 %todo:  check these throughout the code!!
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.noeye               = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showmouse           = 0; 
 exp.grabframe           = 0; 
@@ -38,7 +38,6 @@ exp.phasescrambleOn     = 1;
 exp.backprecompute      = 1;
 exp.eyemousedebug       = 0; % debug eyetracker with mouse
 exp.downsample_timeRes  = 1;
-
 
 % Task design (might be changed later, so check this)
 % S1: Stimulus (30s) 
@@ -79,7 +78,7 @@ task{1}{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencin
 
 % change stimulus speed and luminance; cross conditions.
 teststimSteps = [0.7, 1, 1.3]; %[0.75, 1.5, 2.25];
-teststimLum   = task{1}{1}.parameter.noiseLum*[0.5, 1, 1.5, 2]; %SNR
+teststimLum   = task{1}{1}.parameter.noiseLum*[1, 1.5, 2]; %SNR
 % teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
 
 for stepIdx = 1:length(teststimSteps)
