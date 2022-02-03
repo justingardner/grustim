@@ -16,11 +16,9 @@ stimulus = struct;
 
 % add arguments later
 scan = 1;
-getArgs(varargin,{'scan=1', 'testing=0', 'noeye=1'}, 'verbose=1');
+getArgs(varargin,{'scan=0','noeye=1'}, 'verbose=1');
 stimulus.scan = scan;
-stimulus.debug = testing;
 stimulus.noeye = noeye;
-clear scan testing
 
 %% Stimulus parameters 
 %% Open Old Stimfile
@@ -34,7 +32,6 @@ myscreen.background = 0.5;
 
 %% Initialize Stimulus
 myscreen = initStimulus('stimulus',myscreen);
-localInitStimulus();
   
 % Set response keys
 stimulus.responseKeys = [1 2 3 4]; 
@@ -53,15 +50,15 @@ stimulus.live.cueColor = stimulus.colors.black;
 stimulus.curTrial(1) = 0;
 
 % Task important variables
-stimulus.imageNames = {'lawn', 'worms', 'dirt', 'blossoms', 'bricks'};
+stimulus.imageNames = {'elephant', 'tiger', 'car', 'lawn', 'worms', 'bricks'};
 stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
 stimulus.nTexFams = length(stimulus.imageNames);
-stimulus.imSize = 8;
-stimulus.stimXPos = 6;
-stimulus.stimYPos = 4;
-stimulus.num_samples = 1;
+stimulus.imSize = 12;
+stimulus.stimXPos = 8;
+stimulus.stimYPos = 0;
+stimulus.num_samples = 2;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
@@ -69,15 +66,43 @@ stimulus.stimDir = '~/proj/texture_stimuli/color/textures';
 stimulus.origDir = '~/proj/texture_stimuli/color/originals';
 
 %% Preload images
-localInitStimulus();
+
+mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
+stimulus.images = struct();
+disppercent(-inf, 'Preloading images');
+
+% load texture and noise samples
+for i = 1:stimulus.nTexFams
+  imName = stimulus.imageNames{i};
+
+  for j = 1:stimulus.num_samples
+    if isfile(    sprintf('%s/1x1_pool4_%s_smp%i.png', stimulus.stimDir, imName, j))
+      sd = imread(sprintf('%s/1x1_pool4_%s_smp%i.png', stimulus.stimDir, imName, j));
+    elseif isfile(sprintf('%s/1x1_pool4_%s_smp%i.jpg', stimulus.stimDir, imName, j))
+      sd = imread(sprintf('%s/1x1_pool4_%s_smp%i.jpg', stimulus.stimDir, imName, j));
+    else
+      disp(sprintf('1x1_pool4_%s_smp%i not found', imName, j));
+      keyboard
+    end
+    stimulus.images.(sprintf('%s_s%i', imName, j)) = genTexFromIm(sd, mask);
+  end
+
+  % Load noise samples.
+  orig = imread(sprintf('%s/%s.jpg', stimulus.origDir, imName));
+  stimulus.images.(sprintf('%s_s0', imName)) = genTexFromIm(orig, mask);
+  
+  disppercent(i / stimulus.nTexFams);
+end
+disppercent(inf);
+clear sd
 
 %%%%%%%%%%%%% TASK %%%%%%%%%%%%%%%%%
 task{1}{1} = struct;
 task{1}{1}.waitForBacktick = 1;
 
                    % fix  cue stim1 isi stim2 resp iti
-task{1}{1}.segmin = [0.1, 0.2, 2.0, 2.0, 0.2, 2.0, 0.4];
-task{1}{1}.segmax = [0.3, 0.2, 2.0, 2.0, 0.2, 2.0, 0.4];
+task{1}{1}.segmin = [0.0, 0.4, 2.0, 2.0, 0.2, 2.0, 0.4];
+task{1}{1}.segmax = [0.0, 0.4, 2.0, 2.0, 0.2, 2.0, 0.4];
 
 stimulus.seg = {};
 stimulus.seg.fix = 1;
@@ -108,11 +133,11 @@ end
 % Assign layer, texture family, and sample index in random blocks.
 task{1}{1}.parameter.leftImgClass = 1:length(stimulus.imageNames);
 task{1}{1}.parameter.rightImgClass = 1:length(stimulus.imageNames);
-task{1}{1}.parameter.cueFocal = [0,1]; % 0 = distributed, 1 = focal
+task{1}{1}.parameter.cueFocal = [0,1,1]; % 0 = distributed, 1 = focal
 task{1}{1}.parameter.cueSide = [1 2]; % 1 = left , 2 = right
-task{1}{1}.randVars.calculated.cueType = [1,2,3]; % 1 = left, 2 = right, 3 = distributed
-task{1}{1}.randVars.uniform.leftSame = [0,1]; % 0 = different, 1 = same
-task{1}{1}.randVars.uniform.rightSame = [0,1];
+task{1}{1}.randVars.calculated.cueType = NaN; % 1 = left, 2 = right, 0 = distributed
+task{1}{1}.randVars.uniform.leftSame = [0,1,1,1,1]; % 0 = different, 1 = same
+task{1}{1}.randVars.uniform.rightSame = [0,1,1,1,1];
 task{1}{1}.randVars.uniform.leftSample1 = [0,1,2]; % 0 = original, 1 = synth sample 1, 2 = synth sample2
 task{1}{1}.randVars.uniform.rightSample1 = [0,1,2]; 
 task{1}{1}.randVars.calculated.leftSample2 = NaN;
@@ -197,9 +222,10 @@ else
 end
 % Right side
 if task.thistrial.rightSame==0
-  other_samples = setdiff([0,1,2], task.thistrial.rightSample1)
+  other_samples = setdiff([0,1,2], task.thistrial.rightSample1);
   task.thistrial.rightSample2 = other_samples(randsample(length(other_samples),1));
-  stimulus.live.rightStim2 = stimulus.images.synths.(sprintf('%s_pool4_1', rightImgClass))
+else
+  task.thistrial.rightSample2 = task.thistrial.rightSample1;
 end
 stimulus.live.rightStim1 = stimulus.images.(sprintf('%s_s%i', rightImgClass, task.thistrial.rightSample1));
 stimulus.live.rightStim2 = stimulus.images.(sprintf('%s_s%i', rightImgClass, task.thistrial.rightSample2));
@@ -207,13 +233,19 @@ stimulus.live.leftStim1 = stimulus.images.(sprintf('%s_s%i', leftImgClass, task.
 stimulus.live.leftStim2 = stimulus.images.(sprintf('%s_s%i', leftImgClass, task.thistrial.leftSample2));
 
 stimulus.live.eyeCount = 0;
-cueType = {'Distributed', 'Focal'}
+cueType = {'Distributed', 'Focal'};
 cueSide = {'Left', 'Right'};
 sameDiff = {'Different', 'Same'};
-disp(sprintf('--- Trial %i - %s Cue, %s Response; Left: %s %s, Right: %s %s ---', task.trialnum, cueType{task.thistrial.cueFocal}, cueSide{task.thistrial.cueSide},...
+disp(sprintf('--- Trial %i - %s Cue, %s Response; Left: %s %s, Right: %s %s ---', task.trialnum, cueType{1+task.thistrial.cueFocal}, cueSide{task.thistrial.cueSide},...
                                    leftImgClass, sameDiff{task.thistrial.leftSame+1}, rightImgClass, sameDiff{1+task.thistrial.rightSame}));
 
 upFix(stimulus);
+
+if task.thistrial.cueFocal==1
+  task.thistrial.cueType = task.thistrial.cueSide;
+else
+  task.thistrial.cueType = 0;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Runs at the start of each Segment %%%%%%%%%%%%%%%%
@@ -242,8 +274,10 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus
 
 mglClearScreen(0.5);
-if any(task.thistrial.thisseg == [stimulus.seg.cue, stimulus.seg.response])
-    upCue(task);
+
+% Draw pre-cue and response cues 
+if ~any(task.thistrial.thisseg == [stimulus.seg.fix, stimulus.seg.iti])
+  upCue(task);
 end
 
 % Draw the stimuli at the correct flicker rate.
@@ -251,17 +285,19 @@ if task.thistrial.thisseg == stimulus.seg.stim1
   	mglBltTexture(stimulus.live.leftStim1, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
     mglBltTexture(stimulus.live.rightStim1, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
 elseif task.thistrial.thisseg == stimulus.seg.stim2
-  	mglBltTexture(stimulus.live.leftStims{2}, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
-    mglBltTexture(stimulus.live.rightStims{2}, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+  	mglBltTexture(stimulus.live.leftStim2, [-stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
+    mglBltTexture(stimulus.live.rightStim2, [stimulus.stimXPos, 0, stimulus.imSize, stimulus.imSize]);
 end
 
-if task.thistrial.thisseg == stimulus.seg.response && stimulus.live.gotResponse == 1
+if task.thistrial.thisseg == stimulus.seg.resp && stimulus.live.gotResponse == 1
+  % If subject has already responded, change cross color to green/red
 	if task.thistrial.correct == 1
 		upFix(stimulus, stimulus.colors.green);
   else
 		upFix(stimulus, stimulus.colors.red);
 	end
 else
+  % Draw neutral color cross.
 	upFix(stimulus);
 end
 
@@ -272,12 +308,12 @@ function upCue(task)
 
 global stimulus
 
-if task.thistrial.thisseg == stimulus.seg.cue && task.thistrial.cueFocal == 0
+if ~(task.thistrial.thisseg == stimulus.seg.resp) && task.thistrial.cueFocal == 0 % Draw distributed cue
 	drawArrow(0);
 	drawArrow(pi);
-elseif task.thistrial.cueSide == 1
+elseif task.thistrial.cueSide == 1 % Cue right
 	drawArrow(pi);
-else
+elseif task.thistrial.cueSide == 2 % Cue left 
 	drawArrow(0);
 end
 
@@ -285,8 +321,8 @@ end
 %%%%%%%% Draws arrow %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function drawArrow(theta)
-x=[1,.75,2,.75];
-y=[0,.5,0,-.5];
+x=[1,.75,2,.75]*.6;
+y=[0,.5,0,-.5]*.6;
 mglPolygon(cos(theta)*x - sin(theta)*y, sin(theta)*x + cos(theta)*y, [0,0,0])
 
 
@@ -307,10 +343,10 @@ if validResponse
     task.thistrial.response = task.thistrial.whichButton;
     disp(sprintf('Response: %i', task.thistrial.response));
     % Button 1 = Same; Button 2 = different
-    if task.thistrial.cueSide == 1
-    	task.thistrial.correct = mod(task.thistrial.response,2) == task.thistrial.rightSame;
-    else
-    	task.thistrial.correct = mod(task.thistrial.response,2) == (task.thistrial.leftSame);
+    if task.thistrial.cueSide == 1 % LEFT
+    	task.thistrial.correct = mod(task.thistrial.response,2) == task.thistrial.leftSame;
+    else % RIGHT
+    	task.thistrial.correct = mod(task.thistrial.response,2) == (task.thistrial.rightSame);
     end
     if task.thistrial.correct
     	disp('Correct!')
@@ -322,7 +358,7 @@ if validResponse
     disp(sprintf('Subject responded multiple times: %i',stimulus.live.gotResponse));
   end
   stimulus.live.gotResponse=stimulus.live.gotResponse+1;
-  task = jumpSegment(task);
+  %task = jumpSegment(task);
 else
   disp(sprintf('Invalid response key. Subject pressed %d', task.thistrial.whichButton));
   task.thistrial.response = -1;
@@ -389,19 +425,18 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function localInitStimulus()
+function images = localInitStimulus()
 
 global stimulus
 
 mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
-stimulus.images = struct();
+images = struct();
 disppercent(-inf, 'Preloading images');
 
 % load texture and noise samples
 for i = 1:stimulus.nTexFams
   imName = stimulus.imageNames{i};
 
-  layerI = stimulus.layerNames{li};
   for j = 1:stimulus.num_samples
     if isfile(    sprintf('%s/1x1_pool4_%s_smp%i.png', stimulus.stimDir, imName, j))
       sd = imread(sprintf('%s/1x1_pool4_%s_smp%i.png', stimulus.stimDir, imName, j));
@@ -411,12 +446,12 @@ for i = 1:stimulus.nTexFams
       disp(sprintf('1x1_pool4_%s_smp%i not found', imName, j));
       keyboard
     end
-    stimulus.images.(sprintf('%s_s%i', imName, j)) = genTexFromIm(sd, mask);
+    images.(sprintf('%s_s%i', imName, j)) = genTexFromIm(sd, mask);
   end
 
   % Load noise samples.
   orig = imread(sprintf('%s/%s.jpg', stimulus.origDir, imName));
-  stimulus.images.(sprintf('%s_s0', imName)) = genTexFromIm(orig, mask);
+  images.(sprintf('%s_s0', imName)) = genTexFromIm(orig, mask);
   
   disppercent(i / stimulus.nTexFams);
 end
