@@ -10,6 +10,7 @@
 %             The current code only replicates the detection task.
 %
 
+% making one line change
 %%%% test whether the stimulus is correctly displayed
 
 % build pink noise background
