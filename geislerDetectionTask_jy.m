@@ -11,51 +11,82 @@
 %
 
 % making one line change
-%%%% test whether the stimulus is correctly displayed
+
+function geislerDetectionTask_jy
+myscreen.screenNumber = 2;
+myscreen = initScreen(myscreen);
+mglVisualAngleCoordinates(57,[51 38]);
 
 % build pink noise background
-image = createPinkNoise(100,100);
+noise = createPinkNoise(myscreen);
 
-% set target locations
+% create a gabor patch
+task.gabor.size = 2;    % visual angle
+task.gabor.tilt = 45;
+task.gabor.cycle = 6;
+gabor = createGabor(task);
+
+% define locations
+
+% make stencils
+mglStencilCreateBegin(1);
+mglFillOval(0,0,[15,15]);
+mglStencilCreateEnd;
+mglClearScreen(.5);
+
+mglStencilCreateBegin(2);
+mglFillOval(loc(1), loc(2), [task.gabor.size, task.gabor.size]);
+
+% 
+mglClose
+mglOpen(2);
+mglClearScreen(.5);
+mglVisualAngleCoordinates(57,myscreen.displaySize);
+texture = mglCreateTexture(gabor);
+mglBltTexture(texture, [0 0 5 5], 0, 0, 0)
+mglFlush
 
 
-mglOpen(0,650,400);
-mglVisualAngleCoordinates(57,[51 38]);
-mglClearScreen;
-mglScreenCoordinates;
-
-% draw noise background
-
-
-mglTextDraw('Hello World!',[0 0]);
-
-% The above is drawn on the back-buffer of the double-buffered display
-% To make it show up you flush the display.
-% This function will wait till the end of the screen refresh
 mglFlush;
 mglClose
 
 
 %%%%%%%%%% helper functions
-function im = createPinkNoise(sz1, sz2)
+function norm_im = createPinkNoise(myscreen)
 
-%   make the odd size of the image
-if mod(sz1,2) == 0, sz1 = sz1-1; end
-if mod(sz2,2) == 0, sz2 = sz2-1; end
-    
-white = randn(sz1, sz2);
-white = 255 * (white-min(white(:)))./(max(white(:))-min(white(:)));
+w = myscreen.screenWidth;
+h = myscreen.screenHeight;
+sz = max(w,h);
 
-fwhite = fft2(white);
+% make the odd size of the image
+if mod(sz,2)~=0, sz = sz-1; end
+
+% fft on white noise
+white = randn(sz,sz);
+fwhite = fftshift(fft2(white));
 phase = angle(f_white);
 
-% create a pink noise filter
-pink_filter = zeros(ceil(size(f_white,1)/2), ceil(size(f_white,2)/2));
-pink_vector = zeros(size(pink_filter,1),1);
-for k = 1:length(pink_vector), pink_vector(k) = 1/k; end
-pink_filter(1:end-1, end) = flipud(reshape(pink_vector(1:end-1),[],1));
-pink_filter(end, 1:end-1) = fliplr(reshape(pink_vector(1:end-10,1,[]));
+% make pink filter
+pink_filter = zeros(sz,sz);
+[x y] = meshgrid(-ceil(sz/2)+1:ceil(sz/2)-1, -ceil(sz/2)+1:ceil(sz/2)-1);
+last_freq = ceil(sz/2);
+for f = 1:last_freq
+    index = (sqrt(x.^2 + y.^2) > f-1) & (sqrt(x.^2 + y.^2) < f+1);
+    pink_filter(index) = 1/f;
+end
 
-% fill a quadrant; dc component stays zero
-for row = 1:size(pink_filter,1)-1
-    for col = 1:size(pink_filter,2)-1
+% create new magnitude
+new_mag = fwhite .* pink_filter;
+new_Fourier = new_mag .* (cos(phase) + sqrt(-1)*sin(phase));
+im = ifft2(ifftshift(new_Fourier));
+norm_im = (im-min(im(:))) / (max(im(:)) - min(im(:))) .* 255; 
+
+function gabor = createGabor(task)
+grating = mglMakeGrating(task.gabor.size, task.gabor.size, task.gabor.cycle, ...
+    task.gabor.tilt, 0);
+gaussian = mglMakeGaussian(task.gabor.size, task.gabor.size, 1, 1);
+gabor = 255*(grating.*gaussian+1)/2;
+
+
+
+
