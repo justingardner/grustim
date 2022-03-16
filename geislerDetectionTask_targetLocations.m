@@ -9,7 +9,8 @@
 %
 
 
-function geislerDetectionTask_targetLocations(nTarget)
+function geislerDetectionTask_targetLocations
+
 clear all, close all
 myscreen.screenNumber = 2;
 myscreen = initScreen(myscreen);
@@ -25,8 +26,8 @@ task.noise.contrasts = .05;
 task.thistrial.noise_contrast = task.noise.contrasts;
 task = createPinkNoise(myscreen, task);
 
-
 % define locations
+nTarget = 25;
 task.gabor.nLoc = nTarget;   % 25 for the real experiment
 task = defineLocations(task);
 

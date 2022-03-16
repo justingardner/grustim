@@ -16,6 +16,7 @@ clear all, close all, clc
 global stimulus
 
 myscreen.screenNumber = 2;
+myscreen.responseKeys = {'50'}; % respond only with the space bar
 myscreen = initScreen(myscreen);
 
 % load pink_filter
@@ -23,7 +24,7 @@ if exist([cd '/geislerDetectionTask_pinkFilter.mat']) ~= 0
     load('geislerDetectionTask_pinkFilter.mat');
     stimulus.pink_filter = pink_filter;
 else
-    stimulus = createPinkFilter(myscreen);
+    createPinkFilter(myscreen);
 end
 
 %%%%% define task timings and responses
@@ -32,8 +33,9 @@ task{1}.segmin = [inf, .25, .5, .25, inf];
 task{1}.segmax = [inf, .25, .5, .25, inf];  
 %  = button press - stim1(250ms) - int(500ms) - stim2(250ms) - response
 task{1}.getResponse = [1 0 0 0 1];
-task{1}.numBlocks = 2;
-task{1}.numTrials = 2;
+stimulus.nBlocks = 2;
+stimulus.TrialsPerBlock = 2;
+task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 
 %%%%% set stimulus parameter
 stimulus.responseKeys = [50];   % space bar
@@ -46,13 +48,15 @@ stimulus.gabor.nLoc = 25;   % 25 for the real experiment
 stimulus.gabor.contrasts = [.2, .1, .075, .05];
 stimulus.contrast_combinations = [1: ...
     length(stimulus.noise.contrasts) * length(stimulus.gabor.contrasts)];
+stimulus.nPossibleContrasts = length(stimulus.contrast_combinations);
 defineLocations;
+
 
 %%%%% things to be randomized 
 task{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
-task{1}.randVars.calculated.noise_contrasts = nan;  
-task{1}.randVars.calculated.gabor_contrasts = nan;
-task{1}.randVars.calculated.gabor_location = nan;
+task{1}.randVars.calculated.noise_contrast = nan;  
+task{1}.randVars.calculated.gabor_contrast = nan;
+task{1}.randVars.calculated.gabor_location = [nan, nan];    % start with a random position
 
 %%%%% initialize stimulus
 myscreen = initStimulus('stimulus', myscreen);
@@ -63,42 +67,26 @@ mglStencilCreateBegin(1);
 mglVisualAngleCoordinates(myscreen.displayDistance,myscreen.displaySize);
 mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
 mglStencilCreateEnd;
+mglClearScreen(.5);
 
 %%%%% initialize task
-[task myscreen] = initTask(task,myscreen,...
+[task{1} myscreen] = initTask(task{1},myscreen,...
     @startSegmentCallback, @updateScreenCallback, @getResponseCallback, ...
-    @startTrialCallback, [], @startBlockCallback);
+    @startTrialCallback);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-[task myscreen] = updateTask(task,myscreen,1);
-
+while task{1}.trialnum <= task{1}.numTrials ...
+        || ~myscreen.userHitEsc
+    % update the task
+    [task myscreen] = updateTask(task,myscreen,1);
+    % flip the screen
+    myscreen = tickScreen(myscreen, task);
+end
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% startBlockCallback
-%   noise and stimulus contrasts and the location of target
-%   are fixed throughout the block
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [task myscreen] = startBlockCallback(task, myscreen)
-global stimulus
-
-% decide which contrast set to use
-nPossibleContrasts = length(stimulus.noise.contrasts) * length(stimulus.gabor.contrasts);
-index = reshape(1:nPossibleContrasts, ...
-    length(stimulus.noise.contrasts), length(stimulus.gabor.contrasts));
-whichContrasts = randsample(stimulus.contrast_combinations,1);
-[noise_contrast, gabor_contrast] = find(index == whichContrasts);
-task{1}.randVars.calculated.noise_contrasts = noise_contrast;
-task{1}.randVars.calculated.gabor_contrasts = gabor_contrast;
-stimulus.contrast_combinations(stimulus.contrast_combinations == whichContrasts) = [];
-
-% decide location to present the gabor
-gabor_location = randsample(stimulus.gabor.nLoc,1);
-task{1}.randVars.calculated.gabor_location = stimulus.gabor_locations(gabor_location,:);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -108,7 +96,27 @@ task{1}.randVars.calculated.gabor_location = stimulus.gabor_locations(gabor_loca
 function [task myscreen] = startTrialCallback(task, myscreen)
 global stimulus
 
+% for every new block, update stimulus 
+if mod(task.trialnum, stimulus.TrialsPerBlock) == 1
+    % decide on contrasts
+    stimulus.currentContrasts = randsample(stimulus.contrast_combinations,1);
+    stimulus.contrast_combinations(stimulus.contrast_combinations == stimulus.currentContrasts) = [];
+    
+    % decide on location to present the gabor
+    stimulus.current_gabor_location = randsample(stimulus.gabor.nLoc,1);
+end
+% decide on contrasts
+index = reshape(1:stimulus.nPossibleContrasts, ...
+    length(stimulus.noise.contrasts), length(stimulus.gabor.contrasts));
+[noise_contrast, gabor_contrast] = find(index == stimulus.currentContrasts);
+task.thistrial.noise_contrast = stimulus.noise.contrasts(noise_contrast);
+task.thistrial.gabor_contrast = stimulus.gabor.contrasts(gabor_contrast);
+
+% decide on location
+task.thistrial.gabor_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
+
 % generate noise images
+task.thistrial.noise_contrast
 createPinkNoise(myscreen, task);
 
 % generate gabor
@@ -119,7 +127,7 @@ combinedStimulus(task);
 
 % create texture in advance
 stimulus.tex_target = mglCreateTexture(stimulus.final_im{1});
-stimulus.tex_nontarget = mglCreatetexture(stimulus.final_im{2});
+stimulus.tex_nontarget = mglCreateTexture(stimulus.final_im{2});
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -176,12 +184,14 @@ function [task myscreen] = getResponseCallback(task, myscreen)
 global stimulus
 
 if task.thistrial.thisseg == 1
-    while ~any(stimulus.responseKeys == task.thistrial.whichButton)
-        continue;
-    end
+%     while 
+%         k = mglGetKeys;
+%         if (
+%         continue;
+%     end
     
     % remove the button responses to get response for the last segment
-    task.thistrial.whichButton = [];
+%     task.thistrial.whichButton = [];
 
     % move to the next segment
     task = jumpSegment(task);
@@ -198,7 +208,7 @@ end
 
 
 %%%%%%%%%% helper functions
-function task = createPinkFilter(myscreen)
+function createPinkFilter(myscreen)
 global stimulus
 w = myscreen.screenWidth;
 h = myscreen.screenHeight;
@@ -301,8 +311,8 @@ clear locations
 % convert the locations from visual angle to pixel
 % get parameters
 sz = max(size(stimulus.pink_filter));
-pix_noise_height = size(sz,1);
-pix_noise_width = size(sz,2);
+pix_noise_height = sz;
+pix_noise_width = sz;
 x_nPixPerCm = mglGetParam('xDeviceToPixels');
 y_nPixPerCm = mglGetParam('yDeviceToPixels');
 screen_distance = mglGetParam('devicePhysicalDistance');
