@@ -16,7 +16,11 @@ clear all, close all, clc
 global stimulus
 
 myscreen.screenNumber = 2;
-myscreen.responseKeys = {'50'}; % respond only with the space bar
+myscreen.saveData = 1;
+myscreen.datadir = '~/proj/data/geislerDetectionTask';
+mglSetParam('abortedStimfilesDir', '~/proj/data/geislerDetectionTask/aborted',1);
+
+myscreen.keyboard.nums = [44,48]; % respond only with the space bar
 myscreen = initScreen(myscreen);
 
 % load pink_filter
@@ -29,34 +33,42 @@ end
 
 %%%%% define task timings and responses
 task{1}.waitForBacktick = 1;
-task{1}.segmin = [inf, .25, .5, .25, inf];  
-task{1}.segmax = [inf, .25, .5, .25, inf];  
-%  = button press - stim1(250ms) - int(500ms) - stim2(250ms) - response
-task{1}.getResponse = [1 0 0 0 1];
-stimulus.nBlocks = 2;
+task{1}.seglen = [inf, 1, 1, 1, inf, 1];  
+%  fixation-stim1-int-stim2-response-feedback
+
+task{1}.getResponse = [1 0 0 0 1 0];
+stimulus.nBlocks = 1;
 stimulus.TrialsPerBlock = 2;
 task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 
 %%%%% set stimulus parameter
-stimulus.responseKeys = [50];   % space bar
+stimulus.responsekeys = [44,48];   % space bar
 stimulus.noise.size = 15;   % visual angle
 stimulus.noise.contrasts = [0, .05, .10, .20];
-stimulus.gabor.size = 2;    % visual angle
+
+stimulus.noise.contrasts = [0 0 .2 .2];
+
+stimulus.gabor.size = .5;    % visual angle
 stimulus.gabor.tilt = 315;
 stimulus.gabor.cycle = 6;
 stimulus.gabor.nLoc = 25;   % 25 for the real experiment
 stimulus.gabor.contrasts = [.2, .1, .075, .05];
+
+stimulus.gabor.contrasts = [1 1 .5 .5];
+
 stimulus.contrast_combinations = [1: ...
     length(stimulus.noise.contrasts) * length(stimulus.gabor.contrasts)];
 stimulus.nPossibleContrasts = length(stimulus.contrast_combinations);
 defineLocations;
 
 
-%%%%% things to be randomized 
+%%%%% things to be randomized or to be saved
 task{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
 task{1}.randVars.calculated.noise_contrast = nan;  
 task{1}.randVars.calculated.gabor_contrast = nan;
 task{1}.randVars.calculated.gabor_location = [nan, nan];    % start with a random position
+task{1}.randVars.calculated.correct = nan;
+task{1}.randVars.calculated.rt = nan;
 
 %%%%% initialize stimulus
 myscreen = initStimulus('stimulus', myscreen);
@@ -77,16 +89,24 @@ mglClearScreen(.5);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-while task{1}.trialnum <= task{1}.numTrials ...
-        || ~myscreen.userHitEsc
+while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc
     % update the task
     [task myscreen] = updateTask(task,myscreen,1);
     % flip the screen
     myscreen = tickScreen(myscreen, task);
 end
-% if we got here, we are at the end of the experiment
-myscreen = endTask(myscreen,task);
 
+% task ended
+mglClearScreen(0.5);
+mglTextSet([],32,1);
+% get count
+mglTextDraw('Experiment ends',[0, .7]);
+mglTextDraw('Please wait..', [0, -.7]);
+mglFlush
+
+% if we got here, we are at the end of the experiment
+mglWaitSecs(3);
+myscreen = endTask(myscreen,task);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -116,7 +136,6 @@ task.thistrial.gabor_contrast = stimulus.gabor.contrasts(gabor_contrast);
 task.thistrial.gabor_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
 
 % generate noise images
-task.thistrial.noise_contrast
 createPinkNoise(myscreen, task);
 
 % generate gabor
@@ -149,8 +168,19 @@ elseif task.thistrial.thisseg == 3
 elseif task.thistrial.thisseg == 5
     % present a screen with a white dot and wait for the response
     mglClearScreen(.5)
-    mglFillOval(0,0,[.2 .2],255)
-
+    mglTextSet([],32,1);
+    mglTextDraw(['Which screen showed the target?'],[0,1])
+    mglTextDraw(['1(<)  or  2(>)'],[0 -1]);
+    
+elseif task.thistrial.thisseg == 6
+    % indicate where the stimulus appeared
+    mglClearScreen(.5)
+    sz = size(stimulus.final_im{1},1);
+    feedback_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
+    feedback_location = pixelsToVisualAngle(feedback_location,sz);
+    mglGluAnnulus(feedback_location(1), feedback_location(2), .35, .4, ...
+        stimulus.feedback_color, 120, 2)
+    
 elseif task.thistrial.thisseg == task.thistrial.whichseg
     % present noise with gabor stimulus
     mglClearScreen(stimulus.bg_color{1});
@@ -184,26 +214,38 @@ function [task myscreen] = getResponseCallback(task, myscreen)
 global stimulus
 
 if task.thistrial.thisseg == 1
-%     while 
-%         k = mglGetKeys;
-%         if (
-%         continue;
-%     end
-    
-    % remove the button responses to get response for the last segment
-%     task.thistrial.whichButton = [];
-
+    % waiting for the subject to start the trial
+    while 1
+        keycode = mglGetKeys;
+        if any(keycode(stimulus.responsekeys)==1)
+            break
+        end
+    end
     % move to the next segment
     task = jumpSegment(task);
     
 elseif task.thistrial.thisseg == 5
     % get the response 
-    while ~any(stimulus.responseKeys == task.thistrial.whichButton)
-        continue;
+    while 1
+        keycode = mglGetKeys;
+        if any(keycode(stimulus.responsekeys)==1)
+            % save whether the response was correct
+            if (keycode(stimulus.responsekeys(1)) == 1 && task.thistrial.whichseg == 2) ...
+                    || (keycode(stimulus.responsekeys(2)) == 1 && task.thistrial.whichseg == 4)
+                task.thistrial.correct = 1;
+                task.thistrial.rt = task.thistrial.reactionTime;
+                stimulus.feedback_color = [0 1 0];  % green
+            else
+                task.thistrial.correct = 0;                
+                task.thistrial.rt = task.thistrial.reactionTime;
+                stimulus.feedback_color = [1 0 0];  % red
+            end            
+            break
+        end
     end
     
     % start a new trial
-    task = jumpSegment(task,inf);
+    task = jumpSegment(task);
 end
 
 
@@ -308,25 +350,9 @@ end
 locations_va = locations; 
 clear locations
 
-% convert the locations from visual angle to pixel
-% get parameters
-sz = max(size(stimulus.pink_filter));
-pix_noise_height = sz;
-pix_noise_width = sz;
-x_nPixPerCm = mglGetParam('xDeviceToPixels');
-y_nPixPerCm = mglGetParam('yDeviceToPixels');
-screen_distance = mglGetParam('devicePhysicalDistance');
-
-% convert angle to cm
-locations_cm = 2 .* screen_distance .* tan(locations_va ./2 .* (pi/180));
-
-% convert cm to pixel
-locations_pix = round([locations_cm(:,1) .* x_nPixPerCm, ...
-    locations_cm(:,2) .* y_nPixPerCm]);
-
-% centering
-locations = [locations_pix(:,1) + ceil(pix_noise_width/2), ...
-    locations_pix(:,2) + ceil(pix_noise_height/2)];
+% convert visual angle of the locations to pixels
+displaySize = max(size(stimulus.pink_filter));
+locations = visualAngleToPixels(locations_va, displaySize);
 
 stimulus.gabor_locations = locations;
 
@@ -359,14 +385,14 @@ final_im = noise + gabor_position;
 % scale it to [0 255], for both stimulus images
 final_im =  255 .* ((final_im + 1) ./ 2);
 stimulus.final_im{1} = final_im';
-stimulus.final_im{2} = 255 .* (stimulus.noise.im{2} + 1 ./ 2);
+stimulus.final_im{2} = 255 .* ((stimulus.noise.im{2} + 1) ./ 2);
 
 % decide background color
 for image = 1:2
     if task.thistrial.noise_contrast == 0
         bg_color = stimulus.final_im{image}(1,1);
     else
-        bg_color = mean(stimulus.final_im{image});
+        bg_color = mean(stimulus.final_im{image}(:));
     end
     stimulus.bg_color{image} = bg_color;
 end
