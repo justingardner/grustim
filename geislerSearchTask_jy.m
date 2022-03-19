@@ -1,30 +1,34 @@
 % geislerDetectionTask_jy.m
 % 
-%      usage: geislerDetectionTask_jy.m
+%      usage: geislerSearchTask_jy.m
 %         by: jiwon yeon
 %       date: 
 %  copyright: (c) 2022 Jiwon Yeon
 %    purpose: Replicating Najemnik&Geisler's 2005 study
 %
-%             The detection task presented two stimulus screens in a trial,
-%             one with the task target (grating) and the other without.
-%             Subjects have to indicate which screen contained the target
-%             grating stimulus. The grating target presented at the same
-%             location throughout a block.
+%             The search task. To properly run this task, subject must have
+%             completed the detection task (to set the target's contrast 
+%             level) A stimulus screen would be presented briefly and then 
+%             subjects have to indicate with the mouse where the target 
+%             appeared.
 %
 
-function geislerDetectionTask_jy
+%%%%
+%%%% need to change how to decide contrast and noise levels
+%%%%
+
+function geislerSearchTask_jy
 mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
 
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
-myscreen.datadir = '~/proj/data/geislerDetectionTask';
-mglSetParam('abortedStimfilesDir', '~/proj/data/geislerDetectionTask/aborted',1);
+myscreen.datadir = '~/proj/data/geislerSearchTask';
+mglSetParam('abortedStimfilesDir', '~/proj/data/geislerSearchTask/aborted',1);
 
-myscreen.keyboard.nums = [44,48]; % ',<' for 1, '.>' for 2
-myscreen = initScreen(myscreen);  
+myscreen.keyboard.nums = [50]; % respond only with the space bar
+myscreen = initScreen(myscreen);
 
 % load pink_filter
 if exist([cd '/geislerDetectionTask_pinkFilter.mat']) ~= 0
@@ -36,39 +40,45 @@ end
 
 %%%%% define task timings and responses
 task{1}.waitForBacktick = 1;
-task{1}.seglen = [inf, .25, .5, .25, inf, 1];  
-%  fixation-stim1-int-stim2-response-feedback
+task{1}.segmin = [inf, .1, inf, inf];  
+task{1}.segmax = [inf, .5, inf, inf];
+%  fixation-int-search-response
 
-task{1}.getResponse = [1 0 0 0 1 0];
+task{1}.getResponse = [1 0 1 0];
 stimulus.nBlocks = 1;
 stimulus.cBlock = 0;    % current block
 stimulus.TrialsPerBlock = 2;
 task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 
 %%%%% set stimulus parameter
-stimulus.responsekeys = [44,48];   % space bar
+stimulus.responsekeys = [50];   % space bar
 stimulus.noise.size = 15;   % visual angle
-stimulus.noise.contrasts = [0, .05, .10, .20];
+stimulus.noise.contrasts = [.05, .2];   % two levels of noise contrasts
+stimulus.noise.contrasts = .05;
 
-stimulus.gabor.size = .5;    % visual angle
+stimulus.gabor.size = 1;    % visual angle
 stimulus.gabor.tilt = 315;
 stimulus.gabor.cycle = 6;
-stimulus.gabor.nLoc = 25;   % 25 for the real experiment
-stimulus.gabor.contrasts = [.2, .1, .075, .05];
+stimulus.gabor.nLoc = 85;   % 85 for the real experiment
+
+% 6 levels of target contrasts, that computed from the dprime
+% d' = [3, 3.5, 4, 5, 6, 7];
+stimulus.gabor.contrasts = [1, .5, .25, .1, .075, .05];
+stimulus.gabor.contrasts = 1;
 
 stimulus.contrast_combinations = [1: ...
     length(stimulus.noise.contrasts) * length(stimulus.gabor.contrasts)];
 stimulus.nPossibleContrasts = length(stimulus.contrast_combinations);
 defineLocations;
 
-
 %%%%% things to be randomized or to be saved
-task{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
 task{1}.randVars.calculated.noise_contrast = nan;  
 task{1}.randVars.calculated.gabor_contrast = nan;
-task{1}.randVars.calculated.gabor_location = [nan, nan];    % start with a random position
-task{1}.randVars.calculated.correct = nan;
-task{1}.randVars.calculated.rt = nan;
+task{1}.randVars.calculated.gabor_location = [nan, nan]; 
+task{1}.randVars.calculated.mousePos = [nan nan];
+task{1}.randVars.calculated.detection_rt = nan;
+task{1}.randVars.calculated.decision_rt = nan;
+task{1}.randVars.calculated.response_offset = [nan nan];
 
 %%%%% initialize stimulus
 myscreen = initStimulus('stimulus', myscreen);
@@ -89,6 +99,9 @@ mglClearScreen(.5);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% hide cursor 
+mglDisplayCursor(0)
+
 while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc
     % update the task
     [task myscreen] = updateTask(task,myscreen,1);
@@ -118,16 +131,17 @@ global stimulus
 
 % for every new block, update stimulus 
 if mod(task.trialnum, stimulus.TrialsPerBlock) == 1
+    % update current block
+    stimulus.cBlock = stimulus.cBlock + 1;
+
     % decide on contrasts
     stimulus.currentContrasts = randsample(stimulus.contrast_combinations,1);
     stimulus.contrast_combinations(stimulus.contrast_combinations == stimulus.currentContrasts) = [];
-    
-    % decide on location to present the gabor
-    stimulus.current_gabor_location = randsample(stimulus.gabor.nLoc,1);
-    
-    % update current block
-    stimulus.cBlock = stimulus.cBlock + 1;
 end
+
+% decide on the location to present the gabor
+stimulus.current_gabor_location = randsample(stimulus.gabor.nLoc,1);
+task.thistrial.gabor_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
 
 % decide on contrasts
 index = reshape(1:stimulus.nPossibleContrasts, ...
@@ -135,9 +149,6 @@ index = reshape(1:stimulus.nPossibleContrasts, ...
 [noise_contrast, gabor_contrast] = find(index == stimulus.currentContrasts);
 task.thistrial.noise_contrast = stimulus.noise.contrasts(noise_contrast);
 task.thistrial.gabor_contrast = stimulus.gabor.contrasts(gabor_contrast);
-
-% decide on location
-task.thistrial.gabor_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
 
 % generate noise images
 createPinkNoise(myscreen, task);
@@ -164,62 +175,76 @@ if task.thistrial.thisseg == 1
     if mod(task.trialnum, stimulus.TrialsPerBlock) == 1
         mglClearScreen(.5)
         mglTextSet([],32,1);
-        mglTestDraw(sprintf('Starting block %d out of %d blocks', ...
+        mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
             stimulus.cBlock, stimulus.nBlocks),[0,0])
         mglFlush
-        mglWaitSec(2)
+        mglWaitSecs(2)
     end
     
     % show a fixation cross and wait for the button press
     mglClearScreen(.5)
-    mglFillOval(0,0,[.2 .2],0)
+    mglFillOval(0,0,[.2 .2],0)    
+    mglFlush
+    
+elseif task.thistrial.thisseg == 2 
+    % present an empty screen
+    mglClearScreen(.5)    
+    mglFlush
     
 elseif task.thistrial.thisseg == 3
-    % present a screen with a black dot
-    mglClearScreen(.5)
-    mglFillOval(0,0,[.2 .2],1)
-    
-elseif task.thistrial.thisseg == 5
-    % present a screen with a white dot and wait for the response
-    mglClearScreen(.5)
-    mglTextSet([],32,1);
-    mglTextDraw(['Which screen showed the target?'],[0,1])
-    mglTextDraw(['1(<)  or  2(>)'],[0 -1]);
-    
-elseif task.thistrial.thisseg == 6
-    % indicate where the stimulus appeared
-    mglClearScreen(.5)
-    sz = size(stimulus.final_im{1},1);
-    feedback_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
-    feedback_location = pixelsToVisualAngle(feedback_location,sz);
-    mglGluAnnulus(feedback_location(1), feedback_location(2), .35, .4, ...
-        stimulus.feedback_color, 120, 2)
-    
-elseif task.thistrial.thisseg == task.thistrial.whichseg
     % present noise with gabor stimulus
-    mglClearScreen(stimulus.bg_color{1});
+    mglClearScreen(stimulus.bg_color);
     mglStencilSelect(1);
     mglBltTexture(stimulus.tex_target,[0 0])
-    mglStencilSelect(0);
+    mglStencilSelect(0);    
+    mglFlush
     
-else
-    % present noise only screen
-    mglClearScreen(stimulus.bg_color{2});
-    mglStencilSelect(1);    
-    mglBltTexture(stimulus.tex_nontarget,[0 0]);
+elseif task.thistrial.thisseg == 4
+    % show mouse cursor at the initial location
+    mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
+        myscreen.screenNumber)
+    mglDisplayCursor(1)
+
+    % decision prompt
+    mglClearScreen(stimulus.bg_color);
+    mglStencilSelect(1);
+    mglBltTexture(stimulus.tex_nontarget,[0 0])
     mglStencilSelect(0);
+    mglTextDraw('Click on the location where the target appeared', [0,10])   
+    mglFlush
     
+    % start response time recording
+    stimulus.t0 = mglGetSecs;
+    
+    % start recording mouse positions
+    mInfo = mglGetMouse(myscreen.screenNumber);
+    mousePos(1,:) = [mInfo.x, mInfo.y];
+    
+    % keep recording until responding
+    while 1
+        mInfo = mglGetMouse(myscreen.screenNumber);
+        mousePos(end+1,:) = [mInfo.x, mInfo.y];
+        if mInfo.buttons
+            task.thistrial.decision_rt = mglGetSecs(stimulus.t0);
+            mglDisplayCursor(0)
+            break            
+        end        
+    end
+    
+    % save response info
+    task.thistrial.mousePos = mousePos;
+    task.thistrial.response_offset = task.thistrial.gabor_location - [mInfo.x, mInfo.y];
+    
+    task = jumpSegment(task);    
 end
-mglFlush
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = updateScreenCallback(task, myscreen)
-%%%%% this function is left empty since there's no component to be updated
-%%%%% by framewise
-
+%%% screen doesn't have to be updated
+    
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to get responses
@@ -238,27 +263,16 @@ if task.thistrial.thisseg == 1
     % move to the next segment
     task = jumpSegment(task);
     
-elseif task.thistrial.thisseg == 5
-    % get the response 
+elseif task.thistrial.thisseg == 3
+    % get detection response
     while 1
         keycode = mglGetKeys;
         if any(keycode(stimulus.responsekeys)==1)
-            % save whether the response was correct
-            if (keycode(stimulus.responsekeys(1)) == 1 && task.thistrial.whichseg == 2) ...
-                    || (keycode(stimulus.responsekeys(2)) == 1 && task.thistrial.whichseg == 4)
-                task.thistrial.correct = 1;
-                task.thistrial.rt = task.thistrial.reactionTime;
-                stimulus.feedback_color = [0 1 0];  % green
-            else
-                task.thistrial.correct = 0;                
-                task.thistrial.rt = task.thistrial.reactionTime;
-                stimulus.feedback_color = [1 0 0];  % red
-            end            
+            task.thistrial.detection_rt = task.thistrial.reactionTime;
             break
         end
     end
-    
-    % start a new trial
+    % move to the next segment
     task = jumpSegment(task);
 end
 
@@ -292,24 +306,22 @@ sz = max(w,h);
 % make the odd size of the image
 if mod(sz,2)==0, sz = sz-1; end
 
-for images = 1:2    % create two noise images
-    % fft on white noise
-    white = randn(sz,sz);
-    fwhite = fftshift(fft2(white));
-    phase = angle(fwhite);
-    
-    % create new magnitude
-    new_mag = fwhite .* stimulus.pink_filter;
-    new_Fourier = new_mag .* (cos(phase) + sqrt(-1)*sin(phase));
-    im = ifft2(ifftshift(new_Fourier));
-    
-    % change contrast
-    contrast = task.thistrial.noise_contrast;
-    N = length(im(:));
-    m_im = mean(im(:));
-    coeff = sqrt((N*contrast^2) / sum((im(:)-m_im).^2));
-    stimulus.noise.im{images} = coeff .* im;
-end
+% fft on white noise
+white = randn(sz,sz);
+fwhite = fftshift(fft2(white));
+phase = angle(fwhite);
+
+% create new magnitude
+new_mag = fwhite .* stimulus.pink_filter;
+new_Fourier = new_mag .* (cos(phase) + sqrt(-1)*sin(phase));
+im = ifft2(ifftshift(new_Fourier));
+
+% change contrast
+contrast = task.thistrial.noise_contrast;
+N = length(im(:));
+m_im = mean(im(:));
+coeff = sqrt((N*contrast^2) / sum((im(:)-m_im).^2));
+stimulus.noise.im = coeff .* im;
 
 function createGabor(task)
 global stimulus
@@ -372,7 +384,7 @@ stimulus.gabor_locations = locations;
 
 function combinedStimulus(task)
 global stimulus
-noise = stimulus.noise.im{1};
+noise = stimulus.noise.im;
 gabor = stimulus.gabor.im;
 location = task.thistrial.gabor_location;   % gabor's center
 
@@ -387,8 +399,8 @@ stencil = (sqrt(stencil_x.^2 + stencil_y.^2) <= radius);
 gabor_circle = stencil' .* gabor;
 
 % determine the location to display
-x_lims = [location(1)-ceil(size(gabor_circle,1)/2)+1, location(1)+ceil(size(gabor_circle,1)/2)-1];
-y_lims = [location(2)-ceil(size(gabor_circle,2)/2)+1, location(2)+ceil(size(gabor_circle,2)/2)-1];
+x_lims = [location(1)-floor(size(gabor_circle,1)/2), location(1)+floor(size(gabor_circle,1)/2)];
+y_lims = [location(2)-floor(size(gabor_circle,2)/2), location(2)+floor(size(gabor_circle,2)/2)];
 
 gabor_position = zeros(size(noise,1), size(noise,2));
 gabor_position(x_lims(1):x_lims(2),y_lims(1):y_lims(2)) = gabor_circle;
@@ -399,16 +411,10 @@ final_im = noise + gabor_position;
 % scale it to [0 255], for both stimulus images
 final_im =  255 .* ((final_im + 1) ./ 2);
 stimulus.final_im{1} = final_im';
-stimulus.final_im{2} = 255 .* ((stimulus.noise.im{2} + 1) ./ 2);
+stimulus.final_im{2} = (255 .* ((noise + 1)./2))';
 
 % decide background color
-for image = 1:2
-    if task.thistrial.noise_contrast == 0
-        bg_color = stimulus.final_im{image}(1,1);
-    else
-        bg_color = mean(stimulus.final_im{image}(:));
-    end
-    stimulus.bg_color{image} = bg_color;
-end
+bg_color = mean(stimulus.final_im{2}(:));
+stimulus.bg_color = bg_color;
 
 
