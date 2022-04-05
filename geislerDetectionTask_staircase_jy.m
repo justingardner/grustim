@@ -1,19 +1,21 @@
-% geislerDetectionTask_jy.m
+% geislerDetectionTask_staircase_jy.m
 % 
-%      usage: geislerDetectionTask_jy.m
+%      usage: geislerDetectionTask_staircase_jy.m
 %         by: jiwon yeon
 %       date: 
 %  copyright: (c) 2022 Jiwon Yeon
-%    purpose: Replicating Najemnik&Geisler's 2005 study
+%    purpose: Get contrast values for Najemnik&Geisler's 2005 experiment
 %
-%             The detection task presented two stimulus screens in a trial,
+%             The task presented two stimulus screens in a trial,
 %             one with the task target (grating) and the other without.
 %             Subjects have to indicate which screen contained the target
-%             grating stimulus. The grating target presented at the same
+%             grating stimulus. 
+%             The target locations are limited to left, right, up, and down 
+%             from the center. 
 %             location throughout a block.
 %
 
-function geislerDetectionTask_jy
+function geislerDetectionTask_staircase_jy
 mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
@@ -28,8 +30,8 @@ myscreen.keyboard.nums = [44,48]; % ',<' for 1, '.>' for 2
 myscreen = initScreen(myscreen);  
 
 % load pink_filter
-if exist([cd '/geislerDetectionTask_pinkFilter.mat']) ~= 0
-    load('geislerDetectionTask_pinkFilter.mat');
+if exist('~/proj/grustim/geislerDetectionTask_pinkFilter.mat') ~= 0
+    load('~/proj/grustim/geislerDetectionTask_pinkFilter.mat');
     stimulus.pink_filter = pink_filter;
 else
     createPinkFilter(myscreen);
@@ -37,37 +39,43 @@ end
 
 %%%%% define task timings and responses
 task{1}.waitForBacktick = 1;
-task{1}.seglen = [inf, .25, .5, .25, inf, 1];  
+task{1}.seglen = [inf, 5, .5, 5, inf, 1];  
 %  fixation-stim1-int-stim2-response-feedback
 
 task{1}.getResponse = [1 0 0 0 1 0];
-stimulus.nBlocks = 1;
-stimulus.cBlock = 0;    % current block
-stimulus.TrialsPerBlock = 100;
+stimulus.nBlocks = 8;
+stimulus.cBlock = 1;    % current block
+nContrasts = 7;
+stimulus.TrialsPerBlock = nContrasts*5;
 task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 
 %%%%% set stimulus parameter
 stimulus.responsekeys = [44,48];   % space bar
 stimulus.noise.size = 15;   % visual angle
-stimulus.noise.contrasts = [.2];
 
 stimulus.gabor.size = .5;    % visual angle
-stimulus.gabor.tilt = 315;
+stimulus.gabor.tilt = 0;
 stimulus.gabor.cycle = 6;
-stimulus.gabor.nLoc = 25;   % 25 for the real experiment
-stimulus.gabor.contrasts = [.8 .4];%[.2, .1, .075, .05];
-
-stimulus.contrast_combinations = [1: ...
-    length(stimulus.noise.contrasts) * length(stimulus.gabor.contrasts)];
-stimulus.nPossibleContrasts = length(stimulus.contrast_combinations);
+contrast_minmax = exp([.05 .35]); %[.2, .1, .075, .05];
+gabor_contrasts = logspace(contrast_minmax(1), contrast_minmax(2), nContrasts);
+gabor_contrasts = log(log10(gabor_contrasts));
+gabor_contrasts = .5;
+initialContrast = gabor_contrasts(randsample(length(gabor_contrasts),1));
 defineLocations;
+stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
+    stimulus.nBlocks/size(stimulus.gabor_locations,1));
 
+%%%%% initialize staircase
+stimulus.stair = doStaircase('init','fixed',['fixedVals=' num2str(gabor_contrasts)], ...
+    ['nTrials=' num2str(task{1}.numTrials)]);
 
 %%%%% things to be randomized or to be saved
+task{1}.parameter.noise_contrast = [.2];
+task{1}.random = 1;
+
 task{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
-task{1}.randVars.calculated.noise_contrast = nan;  
+task{1}.randVars.gabor_location = nan;
 task{1}.randVars.calculated.gabor_contrast = nan;
-task{1}.randVars.calculated.gabor_location = [nan, nan];    % start with a random position
 task{1}.randVars.calculated.correct = nan;
 task{1}.randVars.calculated.rt = nan;
 
@@ -123,33 +131,39 @@ myscreen = endTask(myscreen,task);
 function [task myscreen] = startTrialCallback(task, myscreen)
 global stimulus
 
-% for every new block, update stimulus 
-if mod(task.trialnum, stimulus.TrialsPerBlock) == 1
-    % decide on contrasts
-    stimulus.currentContrasts = randsample(stimulus.contrast_combinations,1);
-    stimulus.contrast_combinations(stimulus.contrast_combinations == stimulus.currentContrasts) = [];
-    
-    % decide on location to present the gabor
-    stimulus.current_gabor_location = randsample(stimulus.gabor.nLoc,1);
+% for every new block, give a short break
+if (mod(task.trialnum, stimulus.TrialsPerBlock) == 1) && (task.trialnum ~= 1)
+    mglClearScreen(.5)
+    mglTextSet([],32,1);
+    mglTextDraw(['Take a short break'],[0,.7])
+    mglTextDraw(['Press any keys when you are ready'], [0,-.7])
+    mglFlush    
     
     % update current block
     stimulus.cBlock = stimulus.cBlock + 1;
+    
+    % Listen keys
+    while 1
+        k= mglGetKeys;
+        if (any(k)), break; end
+    end
 end
 
-% decide on contrasts
-index = reshape(1:stimulus.nPossibleContrasts, ...
-    length(stimulus.noise.contrasts), length(stimulus.gabor.contrasts));
-[noise_contrast, gabor_contrast] = find(index == stimulus.currentContrasts);
-task.thistrial.noise_contrast = stimulus.noise.contrasts(noise_contrast);
-task.thistrial.gabor_contrast = stimulus.gabor.contrasts(gabor_contrast);
-
-% decide on location
-task.thistrial.gabor_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
+% decide on the gabor location
+if mod(task.trialnum, stimulus.TrialsPerBlock)==1
+    index = randsample(1:length(stimulus.locations_left),1);
+    stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
+    stimulus.locations_left(index) = [];
+end
+% task.thistrial.gabor_location = stimulus.gaborLoc_thisblock;
+task.thistrial.gabor_location = 2;
 
 % generate noise images
 createPinkNoise(myscreen, task);
 
 % generate gabor
+[gabor_contrast, stimulus.stair] = doStaircase('testValue', stimulus.stair);
+task.thistrial.gabor_contrast = gabor_contrast;
 createGabor(task);
 
 % combine noise and gabor
@@ -168,16 +182,29 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 if task.thistrial.thisseg == 1
-    % show how many blocks are left 
     if mod(task.trialnum, stimulus.TrialsPerBlock) == 1
+        % show how many blocks are left 
         mglClearScreen(.5)
         mglTextSet([],32,1);
         mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
             stimulus.cBlock, stimulus.nBlocks),[0,0])
         mglFlush
         mglWaitSecs(2)
+        
+        % show where the target will appear
+        mglClearScreen(.5)
+        mglTextSet([],32,1);
+        mglTextDraw(['Target location for this block'], [0, 10])
+        sz = size(stimulus.final_im{1},1);
+        target_location = stimulus.gabor_locations(task.thistrial.gabor_location,:);
+        target_location = pixelsToVisualAngle(target_location,sz);
+        mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+            [1 1 1], 120, 2)
+        mglFillOval(0,0,[.2 .2],0)
+        mglFlush;
+        mglWaitSecs(3);
     end
-    
+        
     % show a fixation cross and wait for the button press
     mglClearScreen(.5)
     mglFillOval(0,0,[.2 .2],0)
@@ -195,13 +222,9 @@ elseif task.thistrial.thisseg == 5
     mglTextDraw(['1(<)  or  2(>)'],[0 -1]);
     
 elseif task.thistrial.thisseg == 6
-    % indicate where the stimulus appeared
+    % feedback
     mglClearScreen(.5)
-    sz = size(stimulus.final_im{1},1);
-    feedback_location = stimulus.gabor_locations(stimulus.current_gabor_location,:);
-    feedback_location = pixelsToVisualAngle(feedback_location,sz);
-    mglGluAnnulus(feedback_location(1), feedback_location(2), .35, .4, ...
-        stimulus.feedback_color, 120, 2)
+    mglFillOval(0,0,[.2 .2],stimulus.feedback_color);
     
 elseif task.thistrial.thisseg == task.thistrial.whichseg
     % present noise with gabor stimulus
@@ -254,14 +277,20 @@ elseif task.thistrial.thisseg == 5
             % save whether the response was correct
             if (keycode(stimulus.responsekeys(1)) == 1 && task.thistrial.whichseg == 2) ...
                     || (keycode(stimulus.responsekeys(2)) == 1 && task.thistrial.whichseg == 4)
+                % correct trial
                 task.thistrial.correct = 1;
                 task.thistrial.rt = task.thistrial.reactionTime;
-                stimulus.feedback_color = [0 1 0];  % green
+                stimulus.feedback_color = [0 1 0];  % green                
             else
+                % incorrect trial
                 task.thistrial.correct = 0;                
                 task.thistrial.rt = task.thistrial.reactionTime;
                 stimulus.feedback_color = [1 0 0];  % red
-            end            
+            end
+            
+            % update staircase
+            stimulus.stair = doStaircase('update', stimulus.stair, ...
+                task.thistrial.correct, task.thistrial.gabor_contrast);            
             break
         end
     end
@@ -326,41 +355,24 @@ grating = mglMakeGrating(stimulus.gabor.size, stimulus.gabor.size, ...
 contrast = task.thistrial.gabor_contrast;
 grating = grating * contrast;
 gaussian = mglMakeGaussian(stimulus.gabor.size, stimulus.gabor.size, 1, 1);
-stimulus.gabor.im = (grating.*gaussian)/2;
+stimulus.gabor.im = grating.*gaussian;
 
 function defineLocations
 global stimulus
-% determine how many layers to have
-% maximum number of locations per layer is 8
-nLoc = stimulus.gabor.nLoc;
-if nLoc > 8 && mod(nLoc,8) ~= 0 
-    if mod(nLoc,8) < 4
-        nLoc = floor(nLoc/8) * 8 + 1;
-    else 
-        nLoc = ceil(nLoc/8) * 8 + 1;
-    end
-    stimulus.gabor.nLoc = nLoc;
-    nLayer = floor(nLoc/8);
-elseif nLoc <= 8
-    nLayer = 1;
-end
-
-radius_va = linspace(0, stimulus.noise.size/2+1, nLayer+2);     % radius in visual angle
+% for the staircase, use only 4 locations - up, down, left, and right
+nLoc = 4;
+nLayer = 1;
+radius_va = linspace(0, stimulus.noise.size/2, nLayer+2);     % radius in visual angle
 radius_va = radius_va(2:end-1);
 
-% theta
-if nLoc < 8
-    theta = linspace(0, 2*pi, nLoc+1);
-else
-    theta = linspace(0, 2*pi, 9);
-end
+theta = linspace(0, 2*pi, nLoc+1);
 theta(end) = [];
 
 % determine locations - in visual angle
-locations = [0, 0];
+locations = [];
 cTheta = 0;     % current theta
 cLayer = 1;     % current layer
-for cLoc = 1:nLoc-1
+for cLoc = 1:nLoc
     cTheta = cTheta + 1;
     x_pos = radius_va(cLayer) * cos(theta(cTheta));
     y_pos = radius_va(cLayer) * sin(theta(cTheta));    
@@ -382,7 +394,8 @@ function combinedStimulus(task)
 global stimulus
 noise = stimulus.noise.im{1};
 gabor = stimulus.gabor.im;
-location = task.thistrial.gabor_location;   % gabor's center
+location_num = task.thistrial.gabor_location;   
+location = stimulus.gabor_locations(location_num,:);
 
 % make circular gabor patch
 radius_va = stimulus.gabor.size/2;
@@ -403,6 +416,10 @@ gabor_position(x_lims(1):x_lims(2),y_lims(1):y_lims(2)) = gabor_circle;
 
 % add gabor to the noise
 final_im = noise + gabor_position;
+
+% clip to max and min
+final_im(final_im > 1) = 1;
+final_im(final_im < -1) = -1;
 
 % scale it to [0 255], for both stimulus images
 final_im =  255 .* ((final_im + 1) ./ 2);

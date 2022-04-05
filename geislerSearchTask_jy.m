@@ -1,4 +1,4 @@
-% geislerDetectionTask_jy.m
+% geislerSearchTask_jy.m
 % 
 %      usage: geislerSearchTask_jy.m
 %         by: jiwon yeon
@@ -25,6 +25,7 @@ global stimulus
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/data/geislerSearchTask';
+myscreen.eyetracker = 0;
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerSearchTask/aborted',1);
 
 myscreen.keyboard.nums = [50]; % respond only with the space bar
@@ -99,6 +100,12 @@ mglClearScreen(.5);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Eye calibration (optional)
+if ~myscreen.eyetracker
+    disp(' Calibrating Eye ....')
+    myscreen = eyeCalibDisp(myscreen);
+end
+
 % hide cursor 
 mglDisplayCursor(0)
 
