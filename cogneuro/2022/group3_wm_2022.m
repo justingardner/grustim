@@ -67,7 +67,7 @@ stimulus.seg.ITI=6;
 
 %% Task important variables
 stimulus.nImages = 20;
-stimulus.arraySize = 8;
+stimulus.arraySize = 5;
 
 % Set display parameters (image size, image eccentricity).
 stimulus.imSize = 6;
@@ -86,7 +86,7 @@ task{1}.numTrials = 180;
 task{1}.random = 1;
 
 % Task parameters
-task{1}.parameter.numCued = [2,4,6];
+task{1}.parameter.numCued = [1,2,4];
 task{1}.parameter.rotation = [0, 50]; % How much is the probe stim rotated?
 task{1}.parameter.match  = [-1, 0, 1]; % 1: yes cued, 0: noncued but in stimulus array, -1: not presented in stim array
 
@@ -100,7 +100,7 @@ task{1}.randVars.calculated.cued_stims = {NaN};
 task{1}.randVars.calculated.probe_stim = NaN;
 
 % Preload images
-stim_dir = '~/proj/grustim/cogneuro/2022/task_images';
+stim_dir = '~/proj/grustim/cogneuro/2022/group3_images';
 stimulus.nImages = 20;
 for i = 1:stimulus.nImages
   stimulus.stims.(sprintf('image%i', i)) = genTexFromIm(imread(sprintf('%s/task_symbol%02i.png', stim_dir, i)));
