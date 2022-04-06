@@ -39,11 +39,11 @@ end
 
 %%%%% define task timings and responses
 task{1}.waitForBacktick = 1;
-task{1}.seglen = [inf, 5, .5, 5, inf, 1];  
+task{1}.seglen = [inf, .25, .5, .25, inf, .5];  
 %  fixation-stim1-int-stim2-response-feedback
 
 task{1}.getResponse = [1 0 0 0 1 0];
-stimulus.nBlocks = 8;
+stimulus.nBlocks = 16;
 stimulus.cBlock = 1;    % current block
 nContrasts = 7;
 stimulus.TrialsPerBlock = nContrasts*5;
@@ -54,13 +54,11 @@ stimulus.responsekeys = [44,48];   % space bar
 stimulus.noise.size = 15;   % visual angle
 
 stimulus.gabor.size = .5;    % visual angle
-stimulus.gabor.tilt = 0;
+stimulus.gabor.tilt = 315;   % 315 degree
 stimulus.gabor.cycle = 6;
-contrast_minmax = exp([.05 .35]); %[.2, .1, .075, .05];
+contrast_minmax = [.05 .2]; %[.2, .1, .075, .05];
 gabor_contrasts = logspace(contrast_minmax(1), contrast_minmax(2), nContrasts);
-gabor_contrasts = log(log10(gabor_contrasts));
-gabor_contrasts = .5;
-initialContrast = gabor_contrasts(randsample(length(gabor_contrasts),1));
+gabor_contrasts = log10(gabor_contrasts);
 defineLocations;
 stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
     stimulus.nBlocks/size(stimulus.gabor_locations,1));
@@ -155,8 +153,7 @@ if mod(task.trialnum, stimulus.TrialsPerBlock)==1
     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
     stimulus.locations_left(index) = [];
 end
-% task.thistrial.gabor_location = stimulus.gaborLoc_thisblock;
-task.thistrial.gabor_location = 2;
+task.thistrial.gabor_location = stimulus.gaborLoc_thisblock;
 
 % generate noise images
 createPinkNoise(myscreen, task);
