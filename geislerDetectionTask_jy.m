@@ -59,7 +59,7 @@ stimulus.locations_left = 1:stimulus.gabor.nLoc;
 %%%%% parameters regarding to the experiment duration
 stimulus.nBlocks = stimulus.gabor.nLoc;
 stimulus.cBlock = 1;    % current block
-stimulus.TrialsPerBlock = length(stimulus.gabor.contrasts) * 1;
+stimulus.TrialsPerBlock = length(stimulus.gabor.contrasts) * 10;
 task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 
 %%%%% things to be randomized or to be saved
