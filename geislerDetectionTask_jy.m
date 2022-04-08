@@ -127,7 +127,7 @@ global stimulus
 
 % for every new block,
 % give a short break, if it is not the first block
-if stimulus.cBlock ~= 1 && (mod(task.trialnum, stimulus.TrialsPerBlock) == 1)
+if (task.trialnum ~= 1) && (mod(task.trialnum, stimulus.TrialsPerBlock) == 1)
     mglClearScreen(.5)
     mglTextSet([],32,1);
     mglTextDraw(['Take a short break'],[0,.7])
