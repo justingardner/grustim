@@ -34,10 +34,11 @@ exp.showmouse           = 0;
 exp.grabframe           = 0; 
 exp.whitenoiseOn        = 0; % 1: white noise; 2: 
 exp.fixateCenter        = 1;
-exp.phasescrambleOn     = 1;
-exp.backprecompute      = 1;
+exp.phasescrambleOn     = 1; %
+exp.backprecompute      = 1; % load precomputed background noise 
 exp.eyemousedebug       = 0; % debug eyetracker with mouse
-exp.downsample_timeRes  = 1;
+exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
+exp.usejoystick 		= 1; % use joystick. Need "simulink 3D animation" package downloaded. 
 
 % Task design (might be changed later, so check this)
 % S1: Stimulus (30s) 
@@ -185,14 +186,25 @@ if stimulus.exp.grabframe
     frame = {};
 end
 
-%% Eye calibration
-if ~exp.noeye && ~exp.debug
+%% Eye calibration and check joystick
+if ~stimulus.exp.noeye && ~stimulus.exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
     
     % let the user know
     disp(sprintf('(trackpos) Starting Run...'));
 end
+
+if ~stimulus.exp.usejoystick
+global joy; joy = vrjoystick(1); % use simulink 3d animation to load joystick object
+if isempty(joy)
+    stimulus.exp.usejoystick = 0;
+    exp = stimulus.exp;
+    disp(' FAILED TO FIND JOYSTICK! MAKE SURE SIMULINK 3D ANIMATION PACKAGE IS INSTALLED AND THE JOYSTICK IS PROPERLY CONNECTED');
+    disp(' USING MOUSE FOR TRACKING');
+end
+end
+
 
 %% run the task
 disp(' Running Task....'); stimulus.t0 = mglGetSecs; % 
@@ -242,7 +254,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     stimulus.backLum            = task.thistrial.backLum;
     stimulus.noiseLum           = task.thistrial.noiseLum;
     
-    stimulus = myInitStimulus(stimulus,myscreen,task); %centerX,Y, diameter called by getArgs.
+    stimulus = trackposInitStimulus(stimulus,myscreen); 
     
     % save seed for generating random textures
     rng('shuffle','twister'); 
@@ -271,14 +283,17 @@ global stimulus
 if task.thistrial.thisseg == 1       
     %% set stimulus
     % after the noise bc we want to recreate the texture with the seed.
-    stimulus = myInitStimulus(stimulus,myscreen,task); %centerX,Y, diameter called by getArgs.
+    stimulus = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
     
-    % set mouse position to the stimulus direction. 
-    x_img = stimulus.position(1);  y_img = stimulus.position(2);
-    x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
-    y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-    mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-    if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor
+    if ~stimulus.exp.usejoystick
+        % set mouse position to the stimulus direction. 
+        x_img = stimulus.position(1);  y_img = stimulus.position(2);
+        x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
+        y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
+        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
+    end
+
+    if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor if needed
     
     task.thistrial.initStim = stimulus.position;% [stimx, stimy];
     
@@ -321,6 +336,7 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 %% Update Screen
 
 global stimulus % call stimulus. Takes ~0.000013 s.
+if stimulus.exp.usejoystick, global joy;,end
 % stimulus.timedebug(9,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.0087425s
 mglClearScreen(stimulus.backLum/255);
 
@@ -346,10 +362,16 @@ if (task.thistrial.thisseg== 1)
     % stimulus.timedebug(3,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.000495s
 
     % **&display mouse position
-    mInfo = mglGetMouse(myscreen.screenNumber);
-    mimg_x = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-    mimg_y = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-    mglGluDisk(mimg_x, mimg_y, 0.1, [1 0 0])
+    if ~stimulus.exp.usejoystick
+        mInfo = mglGetMouse(myscreen.screenNumber);
+        stimulus.pointer(1) = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+        stimulus.pointer(2) = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+    else
+        [vx vy] = joy2vel(joy, sens)
+        stimulus.pointer(1) = stimulus.pointer(1) + vx;
+        stimulus.pointer(2) = stimulus.pointer(2) + vy;
+    end
+    mglGluDisk(stimulus.pointer(1), stimulus.pointer(2), 0.1, [1 0 0])
     % stimulus.timedebug(4,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~9.2678e-5 s
 
     % ***record stimulus position and mouse position  
@@ -360,7 +382,7 @@ if (task.thistrial.thisseg== 1)
     % stimulus.timedebug(5,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~7.67331e-5 s
 
     if stimulus.exp.fixateCenter == 1
-        mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
+        mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor.response,60,1);
         mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
     
@@ -370,7 +392,7 @@ elseif (task.thistrial.thisseg == 2)
         mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
     
-    mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
+    mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor.response,60,1);
 end
 
 % fixation cross for all tasks. 
@@ -412,47 +434,6 @@ function [task myscreen] = responseCallback(task, myscreen)
 
 global stimulus
  
-end
-
-%% Initialize stimulus
-function stimulus = myInitStimulus(stimulus,myscreen,task)  
-    % set standard deviation of stimulus
-    
-    % stimulus size
-    if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 1;,end %unit: imageX, in deg. 
-    %GardnerLab: stimstd = 2; CSNL stimStd = 0.4.. (why...?)
-    stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
-    
-    %stimulus initial position. uniform distribution across the screen
-    x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
-    y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
-    stimulus.position = [x_img, y_img];
-    
-    % stimulus speed
-    if ~isfield(stimulus,'stepStd'), stimulus.stepStd = 3/myscreen.framesPerSecond;,end %unit: cm/s to deg/frame
-    % this might change based on effective sampling rate.
-    
-    % stimulus luminance
-    if ~isfield(stimulus,'stimLum'), stimulus.stimLum = 122;,end %unit: luminance
-            
-    % background noise
-    if ~isfield(stimulus,'noiseLum'), stimulus.noiseLum = 122;,end; % unit: luminance
-    
-    % background luminance
-    if ~isfield(stimulus,'backLum'), stimulus.backLum = 32;,end; % unit: luminance
-
-    % initialize stimulus
-    if isfield(stimulus,'gaussian'), mglDeleteTexture(stimulus.gaussian);, end 
-    gaussian    =  mglMakeGaussian(stimulus.patchsize,stimulus.patchsize,...
-        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum);
-    gaussian_rgb           = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
-    gaussian_rgb(4,:,:)    = round(gaussian');
-    gaussian_rgb           = uint8(gaussian_rgb);
-
-    stimulus.gaussian = mglCreateTexture(gaussian_rgb);
-    
-    % fixation cross
-    stimulus.fixColor = [1 1 1];
 end
 
 function stimulus = updateTarget(stimulus,myscreen,task)

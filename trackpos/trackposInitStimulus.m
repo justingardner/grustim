@@ -9,6 +9,10 @@ function stimulus = trackposInitStimulus(stimulus,myscreen)
     x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
     y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
     stimulus.position = [x_img, y_img];
+    
+    % stimulus speed
+    % this might change based on effective sampling rate.
+    if ~isfield(stimulus,'stepStd'), stimulus.stepStd = 3/myscreen.framesPerSecond;,end %unit: cm/s to deg/frame
         
     % stimulus luminance
     if ~isfield(stimulus,'stimLum'), stimulus.stimLum = 122;,end %unit: luminance
@@ -27,6 +31,9 @@ function stimulus = trackposInitStimulus(stimulus,myscreen)
     gaussian_rgb(4,:,:)    = round(gaussian');
     gaussian_rgb           = uint8(gaussian_rgb);
     stimulus.gaussian = mglCreateTexture(gaussian_rgb);
+    
+    % pointer position
+    stimulus.pointer            = [0, 0]; % pointer position 
     
     % fixation cross colors
     stimulus.fixColors.response = [1 1 1];
