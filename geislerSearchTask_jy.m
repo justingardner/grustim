@@ -337,7 +337,7 @@ grating = mglMakeGrating(stimulus.gabor.size, stimulus.gabor.size, ...
 contrast = task.thistrial.gabor_contrast;
 grating = grating * contrast;
 gaussian = mglMakeGaussian(stimulus.gabor.size, stimulus.gabor.size, 1, 1);
-stimulus.gabor.im = (grating.*gaussian)/2;
+stimulus.gabor.im = (grating.*gaussian);
 
 function defineLocations
 global stimulus

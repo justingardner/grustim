@@ -38,8 +38,8 @@ end
 %%%%% define task timings and responses
 task{1}.waitForBacktick = 1;
 task{1}.seglen = [inf, .25, .5, .25, inf, .6];  
-%  fixation-stim1-int-stim2-response-feedback
 task{1}.getResponse = [1 0 0 0 1 0];
+%  fixation-stim1-int-stim2-response-feedback
 
 %%%%% set stimulus parameter
 stimulus.responsekeys = [44,48];   % space bar
@@ -59,7 +59,7 @@ stimulus.locations_left = 1:stimulus.gabor.nLoc;
 %%%%% parameters regarding to the experiment duration
 stimulus.nBlocks = stimulus.gabor.nLoc;
 stimulus.cBlock = 1;    % current block
-stimulus.TrialsPerBlock = length(stimulus.gabor.contrasts) * 10;
+stimulus.TrialsPerBlock = length(stimulus.gabor.contrasts) * 5;
 task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 
 %%%%% things to be randomized or to be saved
@@ -231,7 +231,7 @@ else
     mglStencilSelect(1);    
     mglBltTexture(stimulus.tex_nontarget,[0 0]);
     mglStencilSelect(0);
-    
+
 end
 mglFlush
 
@@ -250,7 +250,7 @@ function [task myscreen] = updateScreenCallback(task, myscreen)
 function [task myscreen] = getResponseCallback(task, myscreen)
 global stimulus
 
-if task.thistrial.thisseg == 1
+if task.thistrial.thisseg == 1 || task.thistrial.thisseg==2
     % waiting for the subject to start the trial
     while 1
         keycode = mglGetKeys;
