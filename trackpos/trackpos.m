@@ -72,6 +72,7 @@ task{1}{1}.randVars.calculated.initStim     = [nan nan];
 task{1}{1}.randVars.calculated.trackStim    = nan(maxframes,2);
 task{1}{1}.randVars.calculated.trackResp    = nan(maxframes,2);
 task{1}{1}.randVars.calculated.trackEye     = nan(maxframes,2);
+task{1}{1}.randVars.calculated.trackJoy     = nan(maxframes,4);
 task{1}{1}.randVars.calculated.trackTime    = nan(1,maxframes);
 task{1}{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file
 
@@ -195,13 +196,20 @@ if ~stimulus.exp.noeye && ~stimulus.exp.debug
     disp(sprintf('(trackpos) Starting Run...'));
 end
 
-if ~stimulus.exp.usejoystick
+if stimulus.exp.usejoystick
 global joy; joy = vrjoystick(1); % use simulink 3d animation to load joystick object
 if isempty(joy)
     stimulus.exp.usejoystick = 0;
     exp = stimulus.exp;
     disp(' FAILED TO FIND JOYSTICK! MAKE SURE SIMULINK 3D ANIMATION PACKAGE IS INSTALLED AND THE JOYSTICK IS PROPERLY CONNECTED');
     disp(' USING MOUSE FOR TRACKING');
+else
+    joy_params              = struct();
+    joy_params.maxv         = 0.2;
+    joy_params.deadzone     = 0.02;
+    joy_params.sensitivity  = 2;
+    joy_params.poly_order   = 1.2;
+    stimulus.joy_params     = joy_params;
 end
 end
 
@@ -367,10 +375,11 @@ if (task.thistrial.thisseg== 1)
         stimulus.pointer(1) = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
         stimulus.pointer(2) = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
     else
-        [vx vy] = joy2vel(joy, sens)
-        stimulus.pointer(1) = stimulus.pointer(1) + vx;
-        stimulus.pointer(2) = stimulus.pointer(2) + vy;
+        [vx, vy] = joy2vel(joy, stimulus.joy_params, myscreen);
+        stimulus = update_pointer(stimulus, [vx, vy], myscreen);
+        task.thistrial.trackJoy(task.thistrial.framecount,:)  = axis(joy);
     end
+    
     mglGluDisk(stimulus.pointer(1), stimulus.pointer(2), 0.1, [1 0 0])
     % stimulus.timedebug(4,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); %takes ~9.2678e-5 s
 
@@ -434,6 +443,13 @@ function [task myscreen] = responseCallback(task, myscreen)
 
 global stimulus
  
+end
+
+function stimulus = update_pointer(stimulus, vel,myscreen)
+    pos = stimulus.pointer;
+    [horz_out, vert_out] = check_oob(pos + vel, myscreen, stimulus);
+    stimulus.pointer(1) = stimulus.pointer(1) + (1-horz_out)*vel(1);
+    stimulus.pointer(2) = stimulus.pointer(2) + (1-vert_out)*vel(1);
 end
 
 function stimulus = updateTarget(stimulus,myscreen,task)

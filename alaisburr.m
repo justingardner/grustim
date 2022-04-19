@@ -60,7 +60,7 @@ global stimulus
  
 % get arguments
 bimodal = 0;
-getArgs(varargin,{'width=6','visual=0','auditory=0','bimodal=0','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','useStaircase=0','nStaircaseTrials=40','restartStaircase=0'},'verbose=1');
+getArgs(varargin,{'width=[4 6 9 12]','visual=0','auditory=0','bimodal=1','dispPlots=1','auditoryTrain=0','visualTrain=0','tenbit=1','doGammaTest=0','stimulusContrast=1','SNR=1.3','doTestSNR=0','backgroundFreq=2.05','doTestStimSize=0','maxSNR=1.3','useStaircase=0','nStaircaseTrials=40','restartStaircase=0','doEyecalib=0'},'verbose=1');
 
  % close screen if open - to make sure that gamma gets sets correctly
 mglClose;
@@ -70,7 +70,7 @@ if visual || visualTrain
     stimulus.task = 1;
 elseif auditory || auditoryTrain
     stimulus.task = 2;
-elseif stimulus.bimodal
+elseif bimodal
     stimulus.task = 3;
 end
 
@@ -89,13 +89,8 @@ stimulus.useStaircase = useStaircase;
 stimulus.restartStaircase = restartStaircase;
 %%%%%%%%%%%%%%%%%%%%%%%%%
 stimulus.width = width;
-<<<<<<< Updated upstream
-stimulus.stimDur = 0.015; % 15ms
-stimulus.gaussainDur = 0.015; % 15ms
-=======
-stimulus.stimDur = .15; % 15ms
+stimulus.stimDur = .015; % 15ms
 stimulus.gaussainDur = .015; % 15ms
->>>>>>> Stashed changes
 stimulus.clickDur = 0.0015; % 1.5ms
 stimulus.samplesPerSecond = 44100;
 stimulus.ISI = .500; % 500ms
@@ -174,11 +169,11 @@ end
 %%%%%%%%%%%%%%%%%%%%% 
 task{1}{1}.waitForBacktick = 1;
 % trial: Fixation + Stim1 (.015s/.0015s) + ISI (.5s) + Stim2 (.015s/.0015s) + Resp + ITI
-task{1}{1}.segmin = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
-task{1}{1}.segmax = [1 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 1];
+task{1}{1}.segmin = [.5 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 .5];
+task{1}{1}.segmax = [.5 stimulus.stimDur stimulus.ISI stimulus.stimDur 1.5 .5];
 task{1}{1}.getResponse = [0 0 0 0 1 0];
 if stimulus.bimodal
-  task{1}{1}.numBlocks = 10;
+  task{1}{1}.numBlocks = 20;
 elseif stimulus.visual || stimulus.auditory
   task{1}{1}.numBlocks = 20;
 end
@@ -192,7 +187,7 @@ task{1}{1}.random = 1;
 task{1}{1}.parameter.posDiff = [-15 -11 -8 -6 -4 -2 2 4 6 8 11 15]; 
 if stimulus.task == 3
     %bimodal displacement
-  task{1}{1}.parameter.displacement = [0];
+  task{1}{1}.parameter.displacement = [-5 0 5];
 end
 task{1}{1}.parameter.SNR = stimulus.SNR;
 task{1}{1}.parameter.width = stimulus.width;
@@ -448,15 +443,9 @@ if stimulus.task ~= 2
   % on a blank background if snr is inf
   if isinf(stimulus.SNR)
     if task.thistrial.thisseg == stimulus.interval(1)
-<<<<<<< Updated upstream
       mglBltTexture(stimulus.tex, [task.thistrial.xposV(1), 1]);
     elseif task.thistrial.thisseg == stimulus.interval(2)
       mglBltTexture(stimulus.tex, [task.thistrial.xposV(2), 1]);
-=======
-        mglBltTexture(stimulus.tex, [task.thistrial.xposV(1)+2 * randn(1), 1]);
-    elseif task.thistrial.thisseg == stimulus.interval(2)
-        mglBltTexture(stimulus.tex, [task.thistrial.xposV(2)+2 * randn(1), 1]);
->>>>>>> Stashed changes
     end
   else
     % otherwise display on noise background
@@ -535,6 +524,7 @@ if ~task.thistrial.gotResponse
             disp(sprintf('(alaisburr) Trial %i: %0.2f %i %c correct centerInt %i resp %i', ...
              task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
         end
+        task = jumpSegment(task);
     else
         % incorrect
         task.thistrial.correct = 0;
@@ -548,6 +538,7 @@ if ~task.thistrial.gotResponse
             disp(sprintf('(alaisburr) Trial %i: %0.2f %i %c incorrect centerInt %i resp %i', ...
              task.trialnum, task.thistrial.diff, task.thistrial.displacement, task.thistrial.left, task.thistrial.centerWhich, task.thistrial.whichButton))
         end
+        task = jumpSegment(task);
     end
         
     task.thistrial.resp = task.thistrial.whichButton;

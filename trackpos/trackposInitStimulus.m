@@ -5,10 +5,13 @@ function stimulus = trackposInitStimulus(stimulus,myscreen)
     %GardnerLab: stimstd = 1; CSNL stimStd = 0.4.. (why...?)
     stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
     
-    %stimulus initial position. uniform distribution across the screen
-    x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
-    y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
-    stimulus.position = [x_img, y_img];
+    if ~isfield(stimulus,'position'), 
+        %stimulus initial position. uniform distribution across the screen
+        x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
+        y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
+        stimulus.position = [x_img, y_img];
+        stimulus.velocity = [0,0];
+    end
     
     % stimulus speed
     % this might change based on effective sampling rate.
