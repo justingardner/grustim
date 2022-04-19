@@ -43,11 +43,11 @@ task{1}.seglen = [inf, .25, .5, .25, inf, .5];
 %  fixation-stim1-int-stim2-response-feedback
 
 task{1}.getResponse = [1 0 0 0 1 0];
-stimulus.nBlocks = 16;
+stimulus.nBlocks = 1;
 stimulus.cBlock = 1;    % current block
-nContrasts = 7;
-stimulus.TrialsPerBlock = nContrasts*5;
-task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
+% nContrasts = 7;
+% stimulus.TrialsPerBlock = nContrasts*5;
+task{1}.numTrials = 40;
 
 %%%%% set stimulus parameter
 stimulus.responsekeys = [44,48];   % space bar
@@ -56,16 +56,30 @@ stimulus.noise.size = 15;   % visual angle
 stimulus.gabor.size = .5;    % visual angle
 stimulus.gabor.tilt = 315;   % 315 degree
 stimulus.gabor.cycle = 6;
-contrast_minmax = [.05 .2]; %[.2, .1, .075, .05];
-gabor_contrasts = logspace(contrast_minmax(1), contrast_minmax(2), nContrasts);
-gabor_contrasts = log10(gabor_contrasts);
+
+%%% parameters used for the constant stimuli method %%%
+% contrast_minmax = [.05 .2]; %[.2, .1, .075, .05];
+% gabor_contrasts = logspace(contrast_minmax(1), contrast_minmax(2), nContrasts);
+% gabor_contrasts = log10(gabor_contrasts);
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 defineLocations;
-stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
-    stimulus.nBlocks/size(stimulus.gabor_locations,1));
+stimulus.gaborLoc_thisblock = 1;    % one location per block
+if stimulus.gaborLoc_thisblock < 10
+    init_threshold = .13;
+else
+    init_threshold = .2;
+end
+
+% stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
+%     stimulus.nBlocks/size(stimulus.gabor_locations,1));
 
 %%%%% initialize staircase
-stimulus.stair = doStaircase('init','fixed',['fixedVals=' num2str(gabor_contrasts)], ...
-    ['nTrials=' num2str(task{1}.numTrials)]);
+% stimulus.stair = doStaircase('init','fixed',['fixedVals=' num2str(gabor_contrasts)], ...
+%     ['nTrials=' num2str(task{1}.numTrials)]);
+stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
+    ['initialThreshold = ' num2str(init_threshold)], 'nTrials=40');
+
 
 %%%%% things to be randomized or to be saved
 task{1}.parameter.noise_contrast = [.2];
@@ -97,10 +111,10 @@ mglClearScreen(.5);
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % Eye calibration (optional)
-% if ~myscreen.eyetracker
-%     disp(' Calibrating Eye ....')
-%     myscreen = eyeCalibDisp(myscreen);
-% end
+if ~myscreen.eyetracker
+    disp(' Calibrating Eye ....')
+    myscreen = eyeCalibDisp(myscreen);
+end
 
 while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc
     % update the task
@@ -148,11 +162,11 @@ if (mod(task.trialnum, stimulus.TrialsPerBlock) == 1) && (task.trialnum ~= 1)
 end
 
 % decide on the gabor location
-if mod(task.trialnum, stimulus.TrialsPerBlock)==1
-    index = randsample(1:length(stimulus.locations_left),1);
-    stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
-    stimulus.locations_left(index) = [];
-end
+% if mod(task.trialnum, stimulus.TrialsPerBlock)==1
+%     index = randsample(1:length(stimulus.locations_left),1);
+%     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
+%     stimulus.locations_left(index) = [];
+% end
 task.thistrial.gabor_location = stimulus.gaborLoc_thisblock;
 
 % generate noise images

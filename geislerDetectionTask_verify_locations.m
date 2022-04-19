@@ -123,8 +123,10 @@ tex = mglCreateTexture(final_im);
 mglStencilSelect(1);
 mglBltTexture(tex,[0 0])
 mglStencilSelect(0);
+mglFillOval(0,0,[.2 .2],0)
 
-for loc = 1:nLoc
+for loc = [2, 10, 18];
+% loc = 18;
     sz = size(stimulus.pink_filter);
     target_location = gabor_locations(loc,:);
     target_location = pixelsToVisualAngle(target_location,sz);
@@ -132,6 +134,8 @@ for loc = 1:nLoc
         [1 1 1], 120, 2)
 end
 mglFlush;
+
+
 
 
 
