@@ -51,6 +51,7 @@ stimulus.cBlock = 1;    % current block
 % nContrasts = 7;
 stimulus.TrialsPerBlock = 40;
 task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
+stimulus.gabor.nLoc = 25;
 
 %%%%% set stimulus parameter
 stimulus.responsekeys = [44,48];   % space bar
@@ -60,13 +61,14 @@ stimulus.gabor.size = .5;    % visual angle
 stimulus.gabor.tilt = 315;   % 315 degree
 stimulus.gabor.cycle = 6;
 
-%%% parameters used for the constant stimuli method %%%
+%%%%% parameters used for the constant stimuli method %%%
 % contrast_minmax = [.05 .2]; %[.2, .1, .075, .05];
 % gabor_contrasts = logspace(contrast_minmax(1), contrast_minmax(2), nContrasts);
 % gabor_contrasts = log10(gabor_contrasts);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-defineLocations;
+% % define4Locations;   % four locations: right,left,up,& down
+defineLocations;    % locations with predefined numbers
 stimulus.gaborLoc_thisblock = testingLoc;    % one location per block
 if stimulus.gaborLoc_thisblock < 10
     init_threshold = .13;
@@ -81,7 +83,9 @@ end
 % stimulus.stair = doStaircase('init','fixed',['fixedVals=' num2str(gabor_contrasts)], ...
 %     ['nTrials=' num2str(task{1}.numTrials)]);
 stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
-    ['initialThreshold = ' num2str(init_threshold)], 'nTrials=40');
+    ['initialThreshold=' num2str(init_threshold)], ...
+    'initialStepsize=.05', ...
+    'nTrials=40');
 
 
 %%%%% things to be randomized or to be saved
@@ -114,10 +118,15 @@ mglClearScreen(.5);
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % Eye calibration (optional)
-if isfield(myscreen,'eyetracker')
-    disp(' Calibrating Eye ....')
-    myscreen = eyeCalibDisp(myscreen);
-end
+% if isfield(myscreen,'eyetracker')
+%     disp(' Calibrating Eye ....')
+%     myscreen = eyeCalibDisp(myscreen);
+% end
+
+mglClearScreen(.5);
+mglTextSet([],32,1);
+mglTextDraw('Starting the experiment...',[0,0]);
+mglFlush
 
 while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc
     % update the task
@@ -129,7 +138,6 @@ end
 % task ended
 mglClearScreen(0.5);
 mglTextSet([],32,1);
-% get count
 mglTextDraw('Experiment ends',[0, .7]);
 mglTextDraw('Please wait..', [0, -.7]);
 mglFlush
@@ -209,7 +217,7 @@ if task.thistrial.thisseg == 1
         mglClearScreen(.5)
         mglTextSet([],32,1);
         mglTextDraw(['Target location for this block'], [0, 10])
-        sz = size(stimulus.final_im{1},1);
+        sz = size(stimulus.pink_filter,1);
         target_location = stimulus.gabor_locations(task.thistrial.gabor_location,:);
         target_location = pixelsToVisualAngle(target_location,sz);
         mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
@@ -239,6 +247,13 @@ elseif task.thistrial.thisseg == 6
     % feedback
     mglClearScreen(.5)
     mglFillOval(0,0,[.2 .2],stimulus.feedback_color);
+    
+    % show the target location
+    sz = size(stimulus.pink_filter,1);
+    target_location = stimulus.gabor_locations(task.thistrial.gabor_location,:);
+    target_location = pixelsToVisualAngle(target_location,sz);
+    mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+        [1 1 1], 120, 2)
     
 elseif task.thistrial.thisseg == task.thistrial.whichseg
     % present noise with gabor stimulus
@@ -372,6 +387,56 @@ gaussian = mglMakeGaussian(stimulus.gabor.size, stimulus.gabor.size, 1, 1);
 stimulus.gabor.im = grating.*gaussian;
 
 function defineLocations
+global stimulus
+% determine how many layers to have
+% maximum number of locations per layer is 8
+nLoc = stimulus.gabor.nLoc;
+if nLoc > 8 && mod(nLoc,8) ~= 0 
+    if mod(nLoc,8) < 4
+        nLoc = floor(nLoc/8) * 8 + 1;
+    else 
+        nLoc = ceil(nLoc/8) * 8 + 1;
+    end
+    stimulus.gabor.nLoc = nLoc;
+    nLayer = floor(nLoc/8);
+elseif nLoc <= 8
+    nLayer = 1;
+end
+
+radius_va = linspace(0, stimulus.noise.size/2+1, nLayer+2);     % radius in visual angle
+radius_va = radius_va(2:end-1);
+
+% theta
+if nLoc < 8
+    theta = linspace(0, 2*pi, nLoc+1);
+else
+    theta = linspace(0, 2*pi, 9);
+end
+theta(end) = [];
+
+% determine locations - in visual angle
+locations = [0, 0];
+cTheta = 0;     % current theta
+cLayer = 1;     % current layer
+for cLoc = 1:nLoc-1
+    cTheta = cTheta + 1;
+    x_pos = radius_va(cLayer) * cos(theta(cTheta));
+    y_pos = radius_va(cLayer) * sin(theta(cTheta));    
+    locations = [locations; [x_pos, y_pos]];
+    
+    if cTheta == 8, cTheta = 0; end
+    if mod(cLoc,8) == 0, cLayer = cLayer+1; end
+end
+locations_va = locations; 
+clear locations
+
+% convert visual angle of the locations to pixels
+displaySize = max(size(stimulus.pink_filter));
+locations = visualAngleToPixels(locations_va, displaySize);
+
+stimulus.gabor_locations = locations;
+
+function define4Locations
 global stimulus
 % for the staircase, use only 4 locations - up, down, left, and right
 nLoc = 4;
