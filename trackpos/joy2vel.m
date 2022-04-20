@@ -3,8 +3,8 @@ function [vx, vy] = joy2vel(joy, prms, myscreen)
     % prms: struct with transducer parameters
         % prms.maxv: maximum velocity as a fraction of screen radius
         % prms.deadzone: width of deadzone in fraction. 
-        % prms.sensivity: order of polynomial positive integer s = s^{2*sens + 1}
-        % prms.poly_order: order of polynomial positive integer s = s^{2*sens + 1}
+        % prms.sensivity: order of polynomial (positive real) s = s^{2*sens + 1}
+        % prms.poly_order: order of polynomial for transducer (positive real) 
     % todo: try rotation in z;
     % todo: turn throttle off
     % todo: use buttons to control sensitivity and transducer exponents
@@ -54,13 +54,7 @@ function y = lintrans(x,ymax)
 end
 
 function y = polytrans(x,order)    
-    if order >= 0 
-        y = x;
-        y(x>=0) = 1 * abs(x(x>=0)).^(order);
-        y(x<0) = -1 * abs(x(x<0)).^(order);
-    else
-        y = x;
-        y(x>=0) = 1 * abs(x(x>=0)).^(1/order);
-        y(x<0) = -1 * abs(x(x<0)).^(1/order);
-    end
+    y = x;
+    y(x>=0) = 1 * abs(x(x>=0)).^(order);
+    y(x<0) = -1 * abs(x(x<0)).^(order);
 end
