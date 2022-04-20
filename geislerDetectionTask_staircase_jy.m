@@ -20,11 +20,14 @@ mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
 
+testingLoc = 1;
+myscreen.eyetracker = 1;
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
-myscreen.datadir = '~/proj/data/geislerDetectionTask';
+myscreen.datadir = '~/proj/jiwon/data/geislerDetectionTask';
+if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
 myscreen.eyetracker = 1;
-mglSetParam('abortedStimfilesDir', '~/proj/data/geislerDetectionTask/aborted',1);
+mglSetParam('abortedStimfilesDir', '~/proj/jiwon/data/geislerDetectionTask/aborted',1);
 
 myscreen.keyboard.nums = [44,48]; % ',<' for 1, '.>' for 2
 myscreen = initScreen(myscreen);  
@@ -46,8 +49,8 @@ task{1}.getResponse = [1 0 0 0 1 0];
 stimulus.nBlocks = 1;
 stimulus.cBlock = 1;    % current block
 % nContrasts = 7;
-% stimulus.TrialsPerBlock = nContrasts*5;
-task{1}.numTrials = 40;
+stimulus.TrialsPerBlock = 40;
+task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 
 %%%%% set stimulus parameter
 stimulus.responsekeys = [44,48];   % space bar
@@ -64,7 +67,7 @@ stimulus.gabor.cycle = 6;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 defineLocations;
-stimulus.gaborLoc_thisblock = 1;    % one location per block
+stimulus.gaborLoc_thisblock = testingLoc;    % one location per block
 if stimulus.gaborLoc_thisblock < 10
     init_threshold = .13;
 else
@@ -111,7 +114,7 @@ mglClearScreen(.5);
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % Eye calibration (optional)
-if ~myscreen.eyetracker
+if isfield(myscreen,'eyetracker')
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
 end
