@@ -43,7 +43,9 @@ function y = deadzone(x, deadzone_frac)
     idx = (x < deadzone_frac) & (x > -1 * deadzone_frac);
     y = x;
     y(idx) = 0;
-
+    % rescale everything else to new range
+    y(y>0) = 1/(1-deadzone_frac)*(y(y>0) - deadzone_frac); 
+    y(y<0) = 1/(1-deadzone_frac)*(deadzone_frac + y(y<0)); 
 end
 
 function y = lintrans(x,ymax)
