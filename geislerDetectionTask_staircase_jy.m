@@ -10,7 +10,7 @@
 %             one with the task target (grating) and the other without.
 %             Subjects have to indicate which screen contained the target
 %             grating stimulus. 
-%             The target locations are limited to left, right, up, and down 
+%             The target locations are limited to left, right, up, and down
 %             from the center. 
 %             location throughout a block.
 %
@@ -20,7 +20,8 @@ mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
 
-testingLoc = 1;
+testingLoc = 20;
+mglSetSID('test')
 myscreen.eyetracker = 1;
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
@@ -42,7 +43,7 @@ end
 
 %%%%% define task timings and responses
 task{1}.waitForBacktick = 1;
-task{1}.seglen = [inf, .25, .5, .25, inf, .5];  
+task{1}.seglen = [inf, 1, .5, 1, inf, .5];  
 %  fixation-stim1-int-stim2-response-feedback
 
 task{1}.getResponse = [1 0 0 0 1 0];
@@ -73,7 +74,7 @@ stimulus.gaborLoc_thisblock = testingLoc;    % one location per block
 if stimulus.gaborLoc_thisblock < 10
     init_threshold = .13;
 else
-    init_threshold = .2;
+    init_threshold = 1;
 end
 
 % stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
@@ -118,10 +119,10 @@ mglClearScreen(.5);
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % Eye calibration (optional)
-% if isfield(myscreen,'eyetracker')
-%     disp(' Calibrating Eye ....')
-%     myscreen = eyeCalibDisp(myscreen);
-% end
+if isfield(myscreen,'eyetracker')
+    disp(' Calibrating Eye ....')
+    myscreen = eyeCalibDisp(myscreen);
+end
 
 mglClearScreen(.5);
 mglTextSet([],32,1);
