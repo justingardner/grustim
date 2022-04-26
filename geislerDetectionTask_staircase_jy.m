@@ -22,7 +22,8 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-myscreen.eyetracker = 1;
+eyetracker = 0;
+myscreen.eyetracker = eyetracker;
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/jiwon/data/geisler';
@@ -90,7 +91,7 @@ stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
 
 
 %%%%% things to be randomized or to be saved
-task{1}.waitForBacktick = 0;
+task{1}.waitForBacktick = 1;
 task{1}.parameter.noise_contrast = [.2];
 task{1}.random = 1;
 
@@ -120,7 +121,7 @@ mglClearScreen(.5);
 % Main display 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % % Eye calibration (optional)
-if isfield(myscreen,'eyetracker')
+if eyetracker
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
 end
