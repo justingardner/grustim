@@ -20,15 +20,15 @@ mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
 
-testingLoc = 20;
+testingLoc = input('Testing location?: ');
 mglSetSID('test')
 myscreen.eyetracker = 1;
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
-myscreen.datadir = '~/proj/jiwon/data/geislerDetectionTask';
+myscreen.datadir = '~/proj/jiwon/data/geisler';
 if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
 myscreen.eyetracker = 1;
-mglSetParam('abortedStimfilesDir', '~/proj/jiwon/data/geislerDetectionTask/aborted',1);
+mglSetParam('abortedStimfilesDir', '~/proj/jiwon/data/geisler/aborted',1);
 
 myscreen.keyboard.nums = [44,48]; % ',<' for 1, '.>' for 2
 myscreen = initScreen(myscreen);  
@@ -74,7 +74,7 @@ stimulus.gaborLoc_thisblock = testingLoc;    % one location per block
 if stimulus.gaborLoc_thisblock < 10
     init_threshold = .13;
 else
-    init_threshold = 1;
+    init_threshold = .2;
 end
 
 % stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
@@ -90,6 +90,7 @@ stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
 
 
 %%%%% things to be randomized or to be saved
+task{1}.waitForBacktick = 0;
 task{1}.parameter.noise_contrast = [.2];
 task{1}.random = 1;
 
@@ -126,10 +127,11 @@ end
 
 mglClearScreen(.5);
 mglTextSet([],32,1);
-mglTextDraw('Starting the experiment...',[0,0]);
-mglFlush
+mglTextDraw('Starting experiment',[0,0]);
+mglFlush;
+mglWaitSecs(2)
 
-while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc
+while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc    
     % update the task
     [task myscreen] = updateTask(task,myscreen,1);
     % flip the screen
@@ -226,8 +228,7 @@ if task.thistrial.thisseg == 1
         mglTextSet([],32,1);
         mglTextDraw(['Target location for this block'], [0, 10])
         sz = size(stimulus.pink_filter,1);
-        target_location = stimulus.gabor_locations(task.thistrial.gabor_location,:);
-        target_location = pixelsToVisualAngle(target_location,sz);
+        target_location = stimulus.gabor_locations_deg(task.thistrial.gabor_location,:);
         mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
             [1 1 1], 120, 2)
         mglFillOval(0,0,[.2 .2],0)
@@ -258,8 +259,7 @@ elseif task.thistrial.thisseg == 6
     
     % show the target location
     sz = size(stimulus.pink_filter,1);
-    target_location = stimulus.gabor_locations(task.thistrial.gabor_location,:);
-    target_location = pixelsToVisualAngle(target_location,sz);
+    target_location = stimulus.gabor_locations_deg(task.thistrial.gabor_location,:);    
     mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
         [1 1 1], 120, 2)
     
