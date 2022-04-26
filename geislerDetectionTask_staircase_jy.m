@@ -22,13 +22,13 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-eyetracker = 1;
+eyetracker = 0;
+myscreen.displayName = 'monitor';
+
 myscreen.eyetracker = eyetracker;
-myscreen.screenNumber = 2;
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/jiwon/data/geisler';
 if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
-myscreen.eyetracker = 1;
 mglSetParam('abortedStimfilesDir', '~/proj/jiwon/data/geisler/aborted',1);
 
 myscreen.keyboard.nums = [44,48]; % ',<' for 1, '.>' for 2
@@ -89,9 +89,7 @@ stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
     'initialStepsize=.05', ...
     'nTrials=40');
 
-
 %%%%% things to be randomized or to be saved
-task{1}.waitForBacktick = 1;
 task{1}.parameter.noise_contrast = [.2];
 task{1}.random = 1;
 
@@ -131,6 +129,9 @@ mglTextSet([],32,1);
 mglTextDraw('Starting experiment',[0,0]);
 mglFlush;
 mglWaitSecs(2)
+
+mglClearScreen(.5);
+mglFlush;
 
 while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc    
     % update the task
@@ -176,12 +177,12 @@ if (mod(task.trialnum, stimulus.TrialsPerBlock) == 1) && (task.trialnum ~= 1)
     end
 end
 
-% % decide on the gabor location
-% if mod(task.trialnum, stimulus.TrialsPerBlock)==1
-%     index = randsample(1:length(stimulus.locations_left),1);
-%     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
-%     stimulus.locations_left(index) = [];
-% end
+% % % % decide on the gabor location
+% % % if mod(task.trialnum, stimulus.TrialsPerBlock)==1
+% % %     index = randsample(1:length(stimulus.locations_left),1);
+% % %     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
+% % %     stimulus.locations_left(index) = [];
+% % % end
 task.thistrial.gabor_location = stimulus.gaborLoc_thisblock;
 
 % generate noise images
@@ -221,7 +222,7 @@ if task.thistrial.thisseg == 1
         mglTextSet([],32,1);
         mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
             stimulus.cBlock, stimulus.nBlocks),[0,0])
-        mglFlush
+        mglFlush;
         mglWaitSecs(2)
         
         % show where the target will appear
