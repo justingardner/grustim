@@ -22,7 +22,7 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-eyetracker = 0;
+eyetracker = 1;
 myscreen.eyetracker = eyetracker;
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
@@ -44,7 +44,7 @@ end
 
 %%%%% define task timings and responses
 task{1}.waitForBacktick = 1;
-task{1}.seglen = [inf, 1, .5, 1, inf, .5];  
+task{1}.seglen = [inf, .25, .5, .25, inf, .5];  
 %  fixation-stim1-int-stim2-response-feedback
 
 task{1}.getResponse = [1 0 0 0 1 0];
