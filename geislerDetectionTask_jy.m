@@ -157,6 +157,11 @@ createPinkNoise(myscreen, task);
 
 % generate gabor
 createGabor(task);
+if task.trialnum == 1
+    % convert visual angle of the locations to pixels
+    displaySize = size(stimulus.noise.im{1});
+    stimulus.gabor_locations_pix = visualAngleToPixels(stimulus.gabor_locations_deg, displaySize);
+end
 
 % combine noise and gabor
 combinedStimulus(task);
@@ -308,21 +313,25 @@ stimulus.pink_filter = pink_filter;
 
 function createPinkNoise(myscreen, task)
 global stimulus
-w = myscreen.screenWidth;
-h = myscreen.screenHeight;
-sz = max(w,h);
+noise_with_buffer = stimulus.noise.size + 3;    % visual angle
+noise_frame_pixel = visualAngleToPixels(noise_with_buffer, ...
+    [myscreen.screenWidth, myscreen.screenHeight]);
+% make the size of the image an odd number
+if mod(noise_frame_pixel,2)==0, noise_frame_pixel = noise_frame_pixel+1; end    
 
-% make the odd size of the image
-if mod(sz,2)==0, sz = sz-1; end
+filter_sz = size(stimulus.pink_filter);
+pink_filter = stimulus.pink_filter(...
+    floor(filter_sz(1)/2)+1-(noise_frame_pixel-1)/2:floor(filter_sz(1)/2)+1+(noise_frame_pixel-1)/2, ...
+    floor(filter_sz(2)/2)+1-(noise_frame_pixel-1)/2:floor(filter_sz(2)/2)+1+(noise_frame_pixel-1)/2);
 
 for images = 1:2    % create two noise images
     % fft on white noise
-    white = randn(sz,sz);
+    white = randn(noise_frame_pixel, noise_frame_pixel);
     fwhite = fftshift(fft2(white));
     phase = angle(fwhite);
     
     % create new magnitude
-    new_mag = fwhite .* stimulus.pink_filter;
+    new_mag = fwhite .* pink_filter;
     new_Fourier = new_mag .* (cos(phase) + sqrt(-1)*sin(phase));
     im = ifft2(ifftshift(new_Fourier));
     
@@ -384,40 +393,33 @@ for cLoc = 1:nLoc-1
     if cTheta == 8, cTheta = 0; end
     if mod(cLoc,8) == 0, cLayer = cLayer+1; end
 end
-locations_va = locations; 
-clear locations
-
-% convert visual angle of the locations to pixels
-displaySize = max(size(stimulus.pink_filter));
-locations = visualAngleToPixels(locations_va, displaySize);
-
-stimulus.gabor_locations = locations;
+stimulus.gabor_locations_deg = locations;
 
 function combinedStimulus(task)
 global stimulus
 noise = stimulus.noise.im{1};
 gabor = stimulus.gabor.im;
-location = stimulus.gabor_locations(task.thistrial.gabor_location,:);   % gabor's center
+location = stimulus.gabor_locations_pix(task.thistrial.gabor_location,:);   % gabor's center
 
 % make circular gabor patch
-radius_va = stimulus.gabor.size/2;
-radius_cm = 2 .* mglGetParam('devicePhysicalDistance') * tan(radius_va /2 * (pi/180));
-radius_pix = radius_cm * min([mglGetParam('xDeviceToPixels'), mglGetParam('yDeviceToPixels')]);
-radius = round(radius_pix);
-[stencil_x, stencil_y] = meshgrid(-ceil(size(gabor,1)/2)+1:ceil(size(gabor,1)/2)-1, ...
-    -ceil(size(gabor,2)/2)+1:ceil(size(gabor,2)/2)-1);
-stencil = (sqrt(stencil_x.^2 + stencil_y.^2) <= radius);
+radius_pixel = visualAngleToPixels(stimulus.gabor.size/2);
+gabor_sz = size(gabor);
+[stencil_x, stencil_y] = meshgrid(-(gabor_sz(1)-1)/2:(gabor_sz(1)-1)/2, ...
+    -(gabor_sz(2)-1)/2:(gabor_sz(2)-1)/2);
+stencil = (sqrt(stencil_x.^2 + stencil_y.^2) <= radius_pixel);
 gabor_circle = stencil' .* gabor;
 
 % determine the location to display
-x_lims = [location(1)-ceil(size(gabor_circle,1)/2)+1, location(1)+ceil(size(gabor_circle,1)/2)-1];
-y_lims = [location(2)-ceil(size(gabor_circle,2)/2)+1, location(2)+ceil(size(gabor_circle,2)/2)-1];
-
 gabor_position = zeros(size(noise,1), size(noise,2));
-gabor_position(x_lims(1):x_lims(2),y_lims(1):y_lims(2)) = gabor_circle;
+gabor_position([location(1)-(gabor_sz(1)-1)/2:location(1)+(gabor_sz(1)-1)/2], ...
+    [location(2)-(gabor_sz(2)-1)/2:location(2)+(gabor_sz(2)-1)/2]) = gabor_circle;
 
 % add gabor to the noise
 final_im = noise + gabor_position;
+
+% clip to max and min
+final_im(final_im > 1) = 1;
+final_im(final_im < -1) = -1;
 
 % scale it to [0 255], for both stimulus images
 final_im =  255 .* ((final_im + 1) ./ 2);
