@@ -14,10 +14,10 @@
 %
 
 function geislerDetectionTask_jy
-mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
 
+mglSetSID('test');
 myscreen.screenNumber = 2;
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/data/geislerDetectionTask';

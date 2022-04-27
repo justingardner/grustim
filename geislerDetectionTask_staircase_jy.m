@@ -43,16 +43,16 @@ else
 end
 
 %%%%% define task timings and responses
-task{1}.waitForBacktick = 0;
-task{1}.seglen = [inf, .25, .5, .25, inf, .7];  
+task{1}{1}.waitForBacktick = 0;
+task{1}{1}.seglen = [inf, .25, .5, .25, inf, .7];  
 %  fixation-stim1-int-stim2-response-feedback
 
-task{1}.getResponse = [1 0 0 0 1 0];
+task{1}{1}.getResponse = [1 0 0 0 1 0];
 stimulus.nBlocks = 3;
 stimulus.cBlock = 1;    % current block
 % nContrasts = 7;
 stimulus.TrialsPerBlock = 2;
-task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
+task{1}{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 stimulus.gabor.nLoc = 25;
 
 %%%%% set stimulus parameter
@@ -90,14 +90,14 @@ stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
     'nTrials=40');
 
 %%%%% things to be randomized or to be saved
-task{1}.parameter.noise_contrast = [.2];
-task{1}.random = 1;
+task{1}{1}.parameter.noise_contrast = [.2];
+task{1}{1}.random = 1;
 
-task{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
-task{1}.randVars.gabor_location = nan;
-task{1}.randVars.calculated.gabor_contrast = nan;
-task{1}.randVars.calculated.correct = nan;
-task{1}.randVars.calculated.rt = nan;
+task{1}{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
+task{1}{1}.randVars.gabor_location = nan;
+task{1}{1}.randVars.calculated.gabor_contrast = nan;
+task{1}{1}.randVars.calculated.correct = nan;
+task{1}{1}.randVars.calculated.rt = nan;
 
 %%%%% initialize stimulus
 myscreen = initStimulus('stimulus', myscreen);
@@ -110,10 +110,17 @@ mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
 mglStencilCreateEnd;
 mglClearScreen(.5);
 
+%%%%% set up for phase 2
+task{1}{2}.seglen = [inf, 2, 3];
+task{1}{2}.getResponse = [1 0 0];
+
 %%%%% initialize task
-[task{1} myscreen] = initTask(task{1},myscreen,...
+[task{1}{1} myscreen] = initTask(task{1}{1},myscreen,...
     @startSegmentCallback, @updateScreenCallback, @getResponseCallback, ...
     @startTrialCallback);
+[task{1}{2} myscreen] = initTask(task{1}{2},myscreen,...
+    @phase2startSegmentCallback, @phase2updateScreenCallback, @phase2getResponseCallback);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display 
@@ -133,69 +140,20 @@ while 1
     if k(myscreen.keyboard.backtick)==1, break; end
 end
 
-phaseNum = 2;
-while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc     
-    if phaseNum == 1
-        % update the task
-        [task myscreen] = updateTask(task,myscreen,1);
-        % flip the screen
-        myscreen = tickScreen(myscreen, task);
-       
-        % change phase
-        if task{1}.trialnum > 1 && task{1}.trialnum < task{1}.numTrials ...
-                && task{1}.thistrial.thisseg == length(task{1}.seglen)
-            if mod(task{1}.trialnum, stimulus.TrialsPerBlock) == 0
-                phaseNum = 2;
-                mglWaitSecs(.7);
-            end
-        end        
-    else 
-        % give a short break for every new block (except for the first block)
-        if task{1}.trialnum ~= 1
-            mglClearScreen(.5)
-            mglTextSet([],32,1);
-            mglTextDraw(['Take a short break'],[0,.7])
-            mglTextDraw(['Press any keys when you are ready'], [0,-.7])
-            mglFlush
-            
-            % update current block
-            stimulus.cBlock = stimulus.cBlock + 1;
-            
-            % Listen keys
-            while 1
-                k = mglGetKeys;
-                if (any(k)), break; end
-            end
+stimulus.phaseNum = 2;
+while (task{1}{1}.trialnum <= task{1}{1}.numTrials) && ~myscreen.userHitEsc     
+    % update the task
+    [task myscreen] = updateTask(task,myscreen,stimulus.phaseNum);
+    % flip the screen
+    myscreen = tickScreen(myscreen, task);
+    
+    % change phase to present instructions
+    if task{1}{1}.trialnum > 1 && task{1}{1}.trialnum < task{1}{1}.numTrials ...
+            && task{1}{1}.thistrial.thisseg == length(task{1}{1}.seglen)
+        if mod(task{1}{1}.trialnum, stimulus.TrialsPerBlock) == 0
+            stimulus.phaseNum = 2;
+            mglWaitSecs(.7);
         end
-        
-        % % % % decide on the gabor location
-        % % % if mod(task{1}.trialnum, stimulus.TrialsPerBlock)==1
-        % % %     index = randsample(1:length(stimulus.locations_left),1);
-        % % %     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
-        % % %     stimulus.locations_left(index) = [];
-        % % % end
-        
-        %%% present block and target location inforamtion
-        % show how many blocks are left
-        mglClearScreen(.5)
-        mglTextSet([],32,1);
-        mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
-            stimulus.cBlock, stimulus.nBlocks),[0,0])
-        mglFlush;
-        mglWaitSecs(2)
-        
-        % show where the target will appear
-        mglClearScreen(.5)
-        mglTextSet([],32,1);
-        mglTextDraw(['Target location for this block'], [0, 10])
-        target_location = stimulus.gabor_locations_deg(stimulus.gaborLoc_thisblock,:);
-        mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
-            [1 1 1], 120, 2)
-        mglFillOval(0,0,[.2 .2],0)
-        mglFlush;
-        mglWaitSecs(3);
-        
-        phaseNum = 1;
     end
 end
 
@@ -210,7 +168,7 @@ mglFlush
 mglWaitSecs(3);
 myscreen = endTask(myscreen,task);
 
-
+%% phase 1 callbacks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % startTrialCallback
 %   prepare the noise and stimulus images to present
@@ -345,13 +303,78 @@ elseif task.thistrial.thisseg == 5
             break
         end
     end
-    
-    % start a new trial
     task = jumpSegment(task);
 end
 
+%% phase 2 callbacks
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% phase 2 startSegmentCallback
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [task myscreen] = phase2startSegmentCallback(task, myscreen)
+global stimulus
 
-%%%%%%%%%% helper functions
+if task.thistrial.thisseg == 1
+    if task{1}.trialnum ~= 1
+        mglClearScreen(.5)
+        mglTextSet([],32,1);
+        mglTextDraw(['Take a short break'],[0,.7])
+        mglTextDraw(['Press any keys when you are ready'], [0,-.7])        
+        
+        % update current block
+        stimulus.cBlock = stimulus.cBlock + 1;
+        
+        % % % % decide on the gabor location - blockwise
+        % % % if mod(task{1}.trialnum, stimulus.TrialsPerBlock)==1
+        % % %     index = randsample(1:length(stimulus.locations_left),1);
+        % % %     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
+        % % %     stimulus.locations_left(index) = [];
+        % % % end        
+    end
+        
+elseif task.thistrial.thisseg == 2
+    %%% present block and target location inforamtion
+    % show how many blocks are left
+    mglClearScreen(.5)
+    mglTextSet([],32,1);
+    mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
+        stimulus.cBlock, stimulus.nBlocks),[0,0])
+    
+elseif task.thistrial.thisseg == 3
+    % show where the target will appear
+    mglClearScreen(.5)
+    mglTextSet([],32,1);
+    mglTextDraw(['Target location for this block'], [0, 10])
+    target_location = stimulus.gabor_locations_deg(stimulus.gaborLoc_thisblock,:);
+    mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+        [1 1 1], 120, 2)
+    mglFillOval(0,0,[.2 .2],0)
+    
+    % change phase once get this point
+    stimulus.phaseNum = 1;
+    
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% phase 2 getResponseCallback
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [task myscreen] = getResponseCallback(task, myscreen)
+if task.thistrial.thisseg == 1
+    while 1
+        k = mglGetKeys;
+        if (any(k)), break; end
+    end
+    task = jumpSegment(task);
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% phase 2 updateScreenCallback
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [task myscreen] = phase2updateScreenCallback(task, myscreen)
+%%%%% this function is left empty since there's no component to be updated
+%%%%% by framewise
+
+
+%% helper functions
 function createPinkFilter(myscreen)
 global stimulus
 w = myscreen.screenWidth;
