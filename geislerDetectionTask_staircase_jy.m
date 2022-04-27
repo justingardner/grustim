@@ -43,15 +43,15 @@ else
 end
 
 %%%%% define task timings and responses
-task{1}.waitForBacktick = 1;
-task{1}.seglen = [inf, .25, .5, .25, inf, .5];  
+task{1}.waitForBacktick = 0;
+task{1}.seglen = [inf, .25, .5, .25, inf, .7];  
 %  fixation-stim1-int-stim2-response-feedback
 
 task{1}.getResponse = [1 0 0 0 1 0];
-stimulus.nBlocks = 1;
+stimulus.nBlocks = 3;
 stimulus.cBlock = 1;    % current block
 % nContrasts = 7;
-stimulus.TrialsPerBlock = 40;
+stimulus.TrialsPerBlock = 2;
 task{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 stimulus.gabor.nLoc = 25;
 
@@ -128,16 +128,75 @@ mglClearScreen(.5);
 mglTextSet([],32,1);
 mglTextDraw('Starting experiment',[0,0]);
 mglFlush;
-mglWaitSecs(2)
+while 1
+    k = mglGetKeys;
+    if k(myscreen.keyboard.backtick)==1, break; end
+end
 
-mglClearScreen(.5);
-mglFlush;
-
-while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc    
-    % update the task
-    [task myscreen] = updateTask(task,myscreen,1);
-    % flip the screen
-    myscreen = tickScreen(myscreen, task);
+phaseNum = 2;
+while (task{1}.trialnum <= task{1}.numTrials) && ~myscreen.userHitEsc     
+    if phaseNum == 1
+        % update the task
+        [task myscreen] = updateTask(task,myscreen,1);
+        % flip the screen
+        myscreen = tickScreen(myscreen, task);
+       
+        % change phase
+        if task{1}.trialnum > 1 && task{1}.trialnum < task{1}.numTrials ...
+                && task{1}.thistrial.thisseg == length(task{1}.seglen)
+            if mod(task{1}.trialnum, stimulus.TrialsPerBlock) == 0
+                phaseNum = 2;
+                mglWaitSecs(.7);
+            end
+        end        
+    else 
+        % give a short break for every new block (except for the first block)
+        if task{1}.trialnum ~= 1
+            mglClearScreen(.5)
+            mglTextSet([],32,1);
+            mglTextDraw(['Take a short break'],[0,.7])
+            mglTextDraw(['Press any keys when you are ready'], [0,-.7])
+            mglFlush
+            
+            % update current block
+            stimulus.cBlock = stimulus.cBlock + 1;
+            
+            % Listen keys
+            while 1
+                k = mglGetKeys;
+                if (any(k)), break; end
+            end
+        end
+        
+        % % % % decide on the gabor location
+        % % % if mod(task{1}.trialnum, stimulus.TrialsPerBlock)==1
+        % % %     index = randsample(1:length(stimulus.locations_left),1);
+        % % %     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
+        % % %     stimulus.locations_left(index) = [];
+        % % % end
+        
+        %%% present block and target location inforamtion
+        % show how many blocks are left
+        mglClearScreen(.5)
+        mglTextSet([],32,1);
+        mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
+            stimulus.cBlock, stimulus.nBlocks),[0,0])
+        mglFlush;
+        mglWaitSecs(2)
+        
+        % show where the target will appear
+        mglClearScreen(.5)
+        mglTextSet([],32,1);
+        mglTextDraw(['Target location for this block'], [0, 10])
+        target_location = stimulus.gabor_locations_deg(stimulus.gaborLoc_thisblock,:);
+        mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+            [1 1 1], 120, 2)
+        mglFillOval(0,0,[.2 .2],0)
+        mglFlush;
+        mglWaitSecs(3);
+        
+        phaseNum = 1;
+    end
 end
 
 % task ended
@@ -159,30 +218,7 @@ myscreen = endTask(myscreen,task);
 function [task myscreen] = startTrialCallback(task, myscreen)
 global stimulus
 
-% for every new block, give a short break
-if (mod(task.trialnum, stimulus.TrialsPerBlock) == 1) && (task.trialnum ~= 1)
-    mglClearScreen(.5)
-    mglTextSet([],32,1);
-    mglTextDraw(['Take a short break'],[0,.7])
-    mglTextDraw(['Press any keys when you are ready'], [0,-.7])
-    mglFlush    
-    
-    % update current block
-    stimulus.cBlock = stimulus.cBlock + 1;
-    
-    % Listen keys
-    while 1
-        k= mglGetKeys;
-        if (any(k)), break; end
-    end
-end
-
-% % % % decide on the gabor location
-% % % if mod(task.trialnum, stimulus.TrialsPerBlock)==1
-% % %     index = randsample(1:length(stimulus.locations_left),1);
-% % %     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
-% % %     stimulus.locations_left(index) = [];
-% % % end
+% specify the target location
 task.thistrial.gabor_location = stimulus.gaborLoc_thisblock;
 
 % generate noise images
@@ -216,28 +252,6 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 if task.thistrial.thisseg == 1
-    if mod(task.trialnum, stimulus.TrialsPerBlock) == 1
-        % show how many blocks are left 
-        mglClearScreen(.5)
-        mglTextSet([],32,1);
-        mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
-            stimulus.cBlock, stimulus.nBlocks),[0,0])
-        mglFlush;
-        mglWaitSecs(2)
-        
-        % show where the target will appear
-        mglClearScreen(.5)
-        mglTextSet([],32,1);
-        mglTextDraw(['Target location for this block'], [0, 10])
-        sz = size(stimulus.pink_filter,1);
-        target_location = stimulus.gabor_locations_deg(task.thistrial.gabor_location,:);
-        mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
-            [1 1 1], 120, 2)
-        mglFillOval(0,0,[.2 .2],0)
-        mglFlush;
-        mglWaitSecs(3);
-    end
-        
     % show a fixation cross and wait for the button press
     mglClearScreen(.5)
     mglFillOval(0,0,[.2 .2],0)
@@ -260,7 +274,6 @@ elseif task.thistrial.thisseg == 6
     mglFillOval(0,0,[.2 .2],stimulus.feedback_color);
     
     % show the target location
-    sz = size(stimulus.pink_filter,1);
     target_location = stimulus.gabor_locations_deg(task.thistrial.gabor_location,:);    
     mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
         [1 1 1], 120, 2)
