@@ -17,7 +17,7 @@
 
 function geislerDetectionTask_staircase_jy
 mglClose        % close MGL if it's open
-clear all, close all, clc
+% clear all, close all, clc
 global stimulus
 
 testingLoc = input('Testing location?: ');
@@ -140,6 +140,7 @@ while 1
     if k(myscreen.keyboard.backtick)==1, break; end
 end
 
+myscreen.flushMode = 1;
 stimulus.phaseNum = 2;
 while (task{1}{1}.trialnum <= task{1}{1}.numTrials) && ~myscreen.userHitEsc     
     % update the task
@@ -147,7 +148,7 @@ while (task{1}{1}.trialnum <= task{1}{1}.numTrials) && ~myscreen.userHitEsc
     % flip the screen
     myscreen = tickScreen(myscreen, task);
     
-    % change phase to present instructions
+    % change phase to present instructions    
     if task{1}{1}.trialnum > 1 && task{1}{1}.trialnum < task{1}{1}.numTrials ...
             && task{1}{1}.thistrial.thisseg == length(task{1}{1}.seglen)
         if mod(task{1}{1}.trialnum, stimulus.TrialsPerBlock) == 0
@@ -314,6 +315,7 @@ end
 function [task myscreen] = phase2startSegmentCallback(task, myscreen)
 global stimulus
 
+myscreen.flushMode = 1;
 if task.thistrial.thisseg == 1
     if task{1}.trialnum ~= 1
         mglClearScreen(.5)
@@ -358,7 +360,7 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % phase 2 getResponseCallback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [task myscreen] = getResponseCallback(task, myscreen)
+function [task myscreen] = phase2getResponseCallback(task, myscreen)
 if task.thistrial.thisseg == 1
     while 1
         k = mglGetKeys;
