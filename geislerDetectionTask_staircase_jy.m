@@ -209,6 +209,7 @@ disp(sprintf('Trial: %i Contrast: %0.2f',task.trialnum,task.thistrial.gabor_cont
 function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
+myscreen.flushMode = 1;
 if task.thistrial.thisseg == 1
     % show a fixation cross and wait for the button press
     mglClearScreen(.5)
