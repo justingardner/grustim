@@ -16,7 +16,7 @@
 %
 
 function geislerDetectionTask_staircase_jy
-mglClose        % close MGL if it's open
+% mglClose        % close MGL if it's open
 % clear all, close all, clc
 global stimulus
 
@@ -140,20 +140,33 @@ while 1
     if k(myscreen.keyboard.backtick)==1, break; end
 end
 
-myscreen.flushMode = 1;
+% myscreen.flushMode = 1;
 stimulus.phaseNum = 2;
 while (task{1}{1}.trialnum <= task{1}{1}.numTrials) && ~myscreen.userHitEsc     
     % update the task
-    [task myscreen] = updateTask(task,myscreen,stimulus.phaseNum);
+    [task{1} myscreen] = updateTask(task{1},myscreen,stimulus.phaseNum);
+    
+    % break the while loop when it reaches to the last trial
+    if task{1}{1}.trialnum > task{1}{1}.numTrials
+        break;
+    end
+    
     % flip the screen
     myscreen = tickScreen(myscreen, task);
     
     % change phase to present instructions    
-    if task{1}{1}.trialnum > 1 && task{1}{1}.trialnum < task{1}{1}.numTrials ...
-            && task{1}{1}.thistrial.thisseg == length(task{1}{1}.seglen)
-        if mod(task{1}{1}.trialnum, stimulus.TrialsPerBlock) == 0
-            stimulus.phaseNum = 2;
-            mglWaitSecs(.7);
+    if stimulus.phaseNum == 1
+        if task{1}{1}.trialnum > 1 && task{1}{1}.trialnum < task{1}{1}.numTrials ...
+                && task{1}{1}.thistrial.thisseg == length(task{1}{1}.seglen)
+            if mod(task{1}{1}.trialnum, stimulus.TrialsPerBlock) == 0
+                stimulus.phaseNum = 2;
+                mglWaitSecs(.7);
+            end
+        end
+    elseif stimulus.phaseNum == 2
+        if task{1}{2}.thistrial.thisseg == length(task{1}{2}.seglen)
+            stimulus.phaseNum = 1;
+            mglWaitSecs(task{1}{2}.seglen(end))
         end
     end
 end
@@ -317,8 +330,8 @@ global stimulus
 
 myscreen.flushMode = 1;
 if task.thistrial.thisseg == 1
-    if task{1}.trialnum ~= 1
-        mglClearScreen(.5)
+    mglClearScreen(.5)
+    if task.trialnum ~= 1        
         mglTextSet([],32,1);
         mglTextDraw(['Take a short break'],[0,.7])
         mglTextDraw(['Press any keys when you are ready'], [0,-.7])        
@@ -332,7 +345,10 @@ if task.thistrial.thisseg == 1
         % % %     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
         % % %     stimulus.locations_left(index) = [];
         % % % end        
+    else
+        task = jumpSegment(task);
     end
+
         
 elseif task.thistrial.thisseg == 2
     %%% present block and target location inforamtion
@@ -350,10 +366,7 @@ elseif task.thistrial.thisseg == 3
     target_location = stimulus.gabor_locations_deg(stimulus.gaborLoc_thisblock,:);
     mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
         [1 1 1], 120, 2)
-    mglFillOval(0,0,[.2 .2],0)
-    
-    % change phase once get this point
-    stimulus.phaseNum = 1;
+    mglFillOval(0,0,[.2 .2],0)    
     
 end
 
@@ -361,12 +374,13 @@ end
 % phase 2 getResponseCallback
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = phase2getResponseCallback(task, myscreen)
-if task.thistrial.thisseg == 1
+if task.thistrial.thisseg == 1   
     while 1
         k = mglGetKeys;
         if (any(k)), break; end
     end
     task = jumpSegment(task);
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
