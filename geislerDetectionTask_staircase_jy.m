@@ -22,7 +22,7 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-eyetracker = 0;
+eyetracker = 1;
 myscreen.displayName = 'monitor';
 
 myscreen.eyetracker = eyetracker;
@@ -48,10 +48,10 @@ task{1}{1}.seglen = [inf, .25, .5, .25, inf, .7];
 %  fixation-stim1-int-stim2-response-feedback
 
 task{1}{1}.getResponse = [1 0 0 0 1 0];
-stimulus.nBlocks = 3;
+stimulus.nBlocks = 1;
 stimulus.cBlock = 1;    % current block
 % nContrasts = 7;
-stimulus.TrialsPerBlock = 2;
+stimulus.TrialsPerBlock = 45;
 task{1}{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 stimulus.gabor.nLoc = 25;
 
