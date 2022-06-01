@@ -50,7 +50,7 @@ task{1}{1}.seglen = [inf, .25, .5, .25, inf, .7];
 task{1}{1}.getResponse = [1 0 0 0 1 0];
 stimulus.nBlocks = 1;
 stimulus.cBlock = 1;    % current block
-% nContrasts = 7;
+nContrasts = 7;
 stimulus.TrialsPerBlock = 45;
 task{1}{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
 stimulus.gabor.nLoc = 25;
@@ -63,34 +63,47 @@ stimulus.gabor.size = .5;    % visual angle
 stimulus.gabor.tilt = 315;   % 315 degree
 stimulus.gabor.cycle = 6;
 
-%%%%% parameters used for the constant stimuli method %%%
-% contrast_minmax = [.05 .2]; %[.2, .1, .075, .05];
-% gabor_contrasts = logspace(contrast_minmax(1), contrast_minmax(2), nContrasts);
-% gabor_contrasts = log10(gabor_contrasts);
+%%%%% parameters used for the constant stimuli method
+
+%%%% Especially, the minmax contrast values were computed from updown
+%%%% staircase method that previously conducted (220601)
+[minval maxval threshold] = findminmax(testingLoc);
+
+gabor_contrasts = logspace(minval, maxval, nContrasts);
+gabor_contrasts = log10(gabor_contrasts);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % % define4Locations;   % four locations: right,left,up,& down
 defineLocations;    % locations with predefined numbers
 stimulus.gaborLoc_thisblock = testingLoc;    % one location per block
-if stimulus.gaborLoc_thisblock < 10
-    init_threshold = .13;
-else
-    init_threshold = .2;
-end
 
-% stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
-%     stimulus.nBlocks/size(stimulus.gabor_locations,1));
+%%%%% initial threshold has to be defined for updown staircase
+% if stimulus.gaborLoc_thisblock == 1
+%     init_threshold = .1;
+% elseif stimulus.gaborLoc_thisblock < 10
+%     init_threshold = .15;
+% elseif stimulus.gaborLoc_thisblock < 18
+%     init_threshold = .3;    
+% else
+%     init_threshold = .5;
+% end
+% init_threshold = .15;
+
+stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
+    stimulus.nBlocks/size(stimulus.gabor_locations,1));
 
 %%%%% initialize staircase
-% stimulus.stair = doStaircase('init','fixed',['fixedVals=' num2str(gabor_contrasts)], ...
-%     ['nTrials=' num2str(task{1}.numTrials)]);
-stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
-    ['initialThreshold=' num2str(init_threshold)], ...
-    'initialStepsize=.05', ...
-    'minStepsize=.01', ...
-    'maxStepsize=.05', ...
-    'stepRule=Levitt', ...
-    'nTrials=40');
+stimulus.stair = doStaircase('init','fixed',['fixedVals=' num2str(gabor_contrasts)], ...
+    ['nTrials=' num2str(task{1}.numTrials)]);
+% stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
+%     ['initialThreshold=' num2str(init_threshold)], ...
+%     'initialStepsize=.05', ...
+%     'minStepsize=.01', ...
+%     'maxStepsize=.05', ...
+%     'minThreshold=0', ...
+%     'maxThreshold=1', ...
+%     'stepRule=Levitt', ...
+%     'nTrials=40');
 
 %%%%% things to be randomized or to be saved
 task{1}{1}.parameter.noise_contrast = [.2];
@@ -565,5 +578,7 @@ for image = 1:2
     end
     stimulus.bg_color{image} = bg_color;
 end
+
+
 
 
