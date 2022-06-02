@@ -4,16 +4,13 @@
 %         by: jiwon yeon
 %       date: 
 %  copyright: (c) 2022 Jiwon Yeon
-%    purpose: Get contrast values for Najemnik&Geisler's 2005 experiment
-%
-%             The task presented two stimulus screens in a trial,
-%             one with the task target (grating) and the other without.
-%             Subjects have to indicate which screen contained the target
-%             grating stimulus. 
-%             The target locations are limited to left, right, up, and down
-%             from the center. 
-%             location throughout a block.
-%
+%    purpose: Measure threshold at each target location for the 
+%             Geisler & Najemnik's detection task
+%             The staircase has two sections
+%             The first section uses a few fixed contrast values and based
+%             on the result, the second section decided more fine-tuned
+%             contrast values for the testing
+%             
 
 function geislerDetectionTask_staircase_jy
 % mglClose        % close MGL if it's open
@@ -22,7 +19,7 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-eyetracker = 1;
+eyetracker = 0;
 myscreen.displayName = 'monitor';
 
 myscreen.eyetracker = eyetracker;
@@ -42,78 +39,49 @@ else
     createPinkFilter(myscreen);
 end
 
-%%%%% define task timings and responses
-task{1}{1}.waitForBacktick = 0;
-task{1}{1}.seglen = [inf, .25, .5, .25, inf, .7];  
-%  fixation-stim1-int-stim2-response-feedback
-
-task{1}{1}.getResponse = [1 0 0 0 1 0];
-stimulus.nBlocks = 1;
-stimulus.cBlock = 1;    % current block
-nContrasts = 7;
-stimulus.TrialsPerBlock = 45;
-task{1}{1}.numTrials = stimulus.nBlocks * stimulus.TrialsPerBlock;
+%%%% stimulus setup for making gabor
 stimulus.gabor.nLoc = 25;
-
-%%%%% set stimulus parameter
-stimulus.responsekeys = [44,48];   % '<,' & '>.'
-stimulus.noise.size = 15;   % visual angle
-
 stimulus.gabor.size = .5;    % visual angle
 stimulus.gabor.tilt = 315;   % 315 degree
 stimulus.gabor.cycle = 6;
-
-%%%%% parameters used for the constant stimuli method
-
-%%%% Especially, the minmax contrast values were computed from updown
-%%%% staircase method that previously conducted (220601)
-[minval maxval threshold] = findminmax(testingLoc);
-
-gabor_contrasts = logspace(minval, maxval, nContrasts);
-gabor_contrasts = log10(gabor_contrasts);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-% % define4Locations;   % four locations: right,left,up,& down
-defineLocations;    % locations with predefined numbers
+stimulus.noise.size = 15;   % visual angle
+stimulus.noise_contrast = .2;
+stimulus.responsekeys = [44,48];   % '<,' & '>.'
 stimulus.gaborLoc_thisblock = testingLoc;    % one location per block
+defineLocations;    % locations with predefined numbers
 
-%%%%% initial threshold has to be defined for updown staircase
-% if stimulus.gaborLoc_thisblock == 1
-%     init_threshold = .1;
-% elseif stimulus.gaborLoc_thisblock < 10
-%     init_threshold = .15;
-% elseif stimulus.gaborLoc_thisblock < 18
-%     init_threshold = .3;    
-% else
-%     init_threshold = .5;
-% end
-% init_threshold = .15;
-
-stimulus.locations_left = repmat(1:size(stimulus.gabor_locations,1), 1, ...
-    stimulus.nBlocks/size(stimulus.gabor_locations,1));
-
-%%%%% initialize staircase
-stimulus.stair = doStaircase('init','fixed',['fixedVals=' num2str(gabor_contrasts)], ...
-    ['nTrials=' num2str(task{1}.numTrials)]);
-% stimulus.stair = doStaircase('init','upDown','nup=1','ndown=2',...
-%     ['initialThreshold=' num2str(init_threshold)], ...
-%     'initialStepsize=.05', ...
-%     'minStepsize=.01', ...
-%     'maxStepsize=.05', ...
-%     'minThreshold=0', ...
-%     'maxThreshold=1', ...
-%     'stepRule=Levitt', ...
-%     'nTrials=40');
-
-%%%%% things to be randomized or to be saved
-task{1}{1}.parameter.noise_contrast = [.2];
+%%%% first task setup
+%%%% fixed staircase with a small number of contrast values
+task{1}{1}.seglen = [inf, .25, .5, .25, inf, .7];  
+        %  fixation-stim1-int-stim2-response-feedback
+task{1}{1}.getResponse = [1 0 0 0 1 0];
 task{1}{1}.random = 1;
-
 task{1}{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
 task{1}{1}.randVars.gabor_location = nan;
 task{1}{1}.randVars.calculated.gabor_contrast = nan;
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.rt = nan;
+task{1}{1}.currentTask = 'task1';
+
+stimulus.task1.gabor_contrast = [.05 .15 .3 .7];
+stimulus.task1.nTrial = length(stimulus.task1.gabor_contrast) * 5;
+stimulus.task1.stair = doStaircase('init','fixed',...
+    ['fixedVals=' num2str(stimulus.task1.gabor_contrast)], ...
+    ['nTrials=' stimulus.task1.nTrial]);
+task{1}{1}.numTrials = stimulus.task1.nTrial;
+
+%%%% second task setup
+%%%% based on the first task, test with a more fine tuned contrasts
+task{2}{1}.seglen = [inf, .25, .5, .25, inf, .7];  
+        %  fixation-stim1-int-stim2-response-feedback
+task{2}{1}.getResponse = [1 0 0 0 1 0];
+task{2}{1}.random = 1;
+task{2}{1}.randVars.uniform.whichseg = [2 4];    % at which segment to present the stimulus
+task{2}{1}.randVars.gabor_location = nan;
+task{2}{1}.randVars.calculated.gabor_contrast = nan;
+task{2}{1}.randVars.calculated.correct = nan;
+task{2}{1}.randVars.calculated.rt = nan;
+task{2}{1}.currentTask = 'task2';
 
 %%%%% initialize stimulus
 myscreen = initStimulus('stimulus', myscreen);
@@ -126,17 +94,10 @@ mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
 mglStencilCreateEnd;
 mglClearScreen(.5);
 
-%%%%% set up for phase 2
-task{1}{2}.seglen = [inf, 2, 3];
-task{1}{2}.getResponse = [1 0 0];
-
-%%%%% initialize task
+%%%%% initialize the first task
 [task{1}{1} myscreen] = initTask(task{1}{1},myscreen,...
     @startSegmentCallback, @updateScreenCallback, @getResponseCallback, ...
     @startTrialCallback);
-[task{1}{2} myscreen] = initTask(task{1}{2},myscreen,...
-    @phase2startSegmentCallback, @phase2updateScreenCallback, @phase2getResponseCallback);
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display 
@@ -156,35 +117,86 @@ while 1
     if k(myscreen.keyboard.backtick)==1, break; end
 end
 
-% myscreen.flushMode = 1;
-stimulus.phaseNum = 2;
-while (task{1}{1}.trialnum <= task{1}{1}.numTrials) && ~myscreen.userHitEsc     
+mglClearScreen(.5)
+mglTextSet([],32,1);
+mglTextDraw(['Target location for this task'], [0, 12])
+sz = size(stimulus.pink_filter);
+target_location = stimulus.gabor_locations_deg(testingLoc,:);
+mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+    [1 1 1], 120, 2)
+mglFillOval(0,0,[.2 .2],0)
+mglFlush;
+mglWaitSecs(3);
+
+% do the first task
+while task{1}{1}.trialnum <= task{1}{1}.numTrials && ~myscreen.userHitEsc
     % update the task
-    [task{1} myscreen] = updateTask(task{1},myscreen,stimulus.phaseNum);
-    
-    % break the while loop when it reaches to the last trial
-    if task{1}{1}.trialnum > task{1}{1}.numTrials
-        break;
-    end
-    
+    [task{1} myscreen] = updateTask(task{1},myscreen,1);
+   
     % flip the screen
     myscreen = tickScreen(myscreen, task);
-    
-    % change phase to present instructions    
-    if stimulus.phaseNum == 1
-        if task{1}{1}.trialnum > 1 && task{1}{1}.trialnum < task{1}{1}.numTrials ...
-                && task{1}{1}.thistrial.thisseg == length(task{1}{1}.seglen)
-            if mod(task{1}{1}.trialnum, stimulus.TrialsPerBlock) == 0
-                stimulus.phaseNum = 2;
-                mglWaitSecs(.7);
-            end
-        end
-    elseif stimulus.phaseNum == 2
-        if task{1}{2}.thistrial.thisseg == length(task{1}{2}.seglen)
-            stimulus.phaseNum = 1;
-            mglWaitSecs(task{1}{2}.seglen(end))
-        end
-    end
+end
+
+% after first task, compute threshold to set the contrast values for the
+% second task
+mglClearScreen(.5)
+% mglTextSet([],32,1);
+% mglTextDraw(['Adjusting the stimulus''s contrast level...'], [0,0])
+% sz = size(stimulus.pink_filter);
+mglFlush;
+
+t = doStaircase('threshold',stimulus.task1.stair);
+threshold = t.threshold;
+if threshold < .01, threshold = .01; end
+% x = t.fit.x;
+% y = t.fit.y;
+% minval = max(x(y<=.55));
+% maxval = min(x(y>=.95));
+% if isempty(minval), minval = .03; end
+% if isempty(maxval), maxval = .08; end
+% 
+% log_contrasts = [logspace(minval, threshold, 4), ...
+%     logspace(threshold, maxval, 4)];
+% log_contrasts(4) = [];
+% contrasts = log10(log_contrasts);
+% 
+% stimulus.task2.gabor_contrast = contrasts;
+% stimulus.task2.nTrial = length(stimulus.task1.gabor_contrast) * 7;
+% stimulus.task2.stair = doStaircase('init','fixed',...
+%     ['fixedVals=' num2str(stimulus.task2.gabor_contrast)], ...
+%     ['nTrials=' stimulus.task2.nTrial]);
+
+stimulus.task2.stair = doStaircase('init','updown','nup=1','ndown=3', ...
+    'stepRule=levitt', 'nTrials=50', ...
+    'initialStepsize=.3', 'minStepsize=.01',...
+    'minThreshold=.01', 'maxThreshold=.9', ...
+    ['initialThreshold=' num2str(threshold)]);
+task{2}{1}.numTrials = stimulus.task2.stair.stopCriterion;
+
+%%%% initialize the second task
+[task{2}{1} myscreen] = initTask(task{2}{1},myscreen,...
+    @startSegmentCallback, @updateScreenCallback, @getResponseCallback, ...
+    @startTrialCallback);
+
+%%% notice that second part of the task will begin 
+% mglClearScreen(.5)
+% mglTextSet([],32,1);
+% mglTextDraw(['Resuming the task'], [0, 12])
+% sz = size(stimulus.pink_filter);
+% target_location = stimulus.gabor_locations_deg(testingLoc,:);
+% mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+%     [1 1 1], 120, 2)
+% mglFillOval(0,0,[.2 .2],0)
+% mglFlush;
+% mglWaitSecs(3);
+
+% do the second task
+while task{2}{1}.trialnum <= task{2}{1}.numTrials && ~myscreen.userHitEsc
+    % update the task
+    [task{2} myscreen] = updateTask(task{2},myscreen,1);
+   
+    % flip the screen
+    myscreen = tickScreen(myscreen, task);
 end
 
 % task ended
@@ -198,7 +210,8 @@ mglFlush
 mglWaitSecs(3);
 myscreen = endTask(myscreen,task);
 
-%% phase 1 callbacks
+
+%% callbacks
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % startTrialCallback
 %   prepare the noise and stimulus images to present
@@ -213,7 +226,8 @@ task.thistrial.gabor_location = stimulus.gaborLoc_thisblock;
 createPinkNoise(myscreen, task);
 
 % generate gabor
-[gabor_contrast, stimulus.stair] = doStaircase('testValue', stimulus.stair);
+[gabor_contrast, stimulus.(task.currentTask).stair] = ...
+    doStaircase('testValue', stimulus.(task.currentTask).stair);
 task.thistrial.gabor_contrast = gabor_contrast;
 createGabor(task);
 
@@ -329,82 +343,14 @@ elseif task.thistrial.thisseg == 5
             end
             
             % update staircase
-            stimulus.stair = doStaircase('update', stimulus.stair, ...
+            stimulus.(task.currentTask).stair = ...
+                doStaircase('update', stimulus.(task.currentTask).stair, ...
                 task.thistrial.correct, task.thistrial.gabor_contrast);            
             break
         end
     end
     task = jumpSegment(task);
 end
-
-%% phase 2 callbacks
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% phase 2 startSegmentCallback
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [task myscreen] = phase2startSegmentCallback(task, myscreen)
-global stimulus
-
-myscreen.flushMode = 1;
-if task.thistrial.thisseg == 1
-    mglClearScreen(.5)
-    if task.trialnum ~= 1        
-        mglTextSet([],32,1);
-        mglTextDraw(['Take a short break'],[0,.7])
-        mglTextDraw(['Press any keys when you are ready'], [0,-.7])        
-        
-        % update current block
-        stimulus.cBlock = stimulus.cBlock + 1;
-        
-        % % % % decide on the gabor location - blockwise
-        % % % if mod(task{1}.trialnum, stimulus.TrialsPerBlock)==1
-        % % %     index = randsample(1:length(stimulus.locations_left),1);
-        % % %     stimulus.gaborLoc_thisblock = stimulus.locations_left(index);
-        % % %     stimulus.locations_left(index) = [];
-        % % % end        
-    else
-        task = jumpSegment(task);
-    end
-
-        
-elseif task.thistrial.thisseg == 2
-    %%% present block and target location inforamtion
-    % show how many blocks are left
-    mglClearScreen(.5)
-    mglTextSet([],32,1);
-    mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
-        stimulus.cBlock, stimulus.nBlocks),[0,0])
-    
-elseif task.thistrial.thisseg == 3
-    % show where the target will appear
-    mglClearScreen(.5)
-    mglTextSet([],32,1);
-    mglTextDraw(['Target location for this block'], [0, 10])
-    target_location = stimulus.gabor_locations_deg(stimulus.gaborLoc_thisblock,:);
-    mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
-        [1 1 1], 120, 2)
-    mglFillOval(0,0,[.2 .2],0)    
-    
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% phase 2 getResponseCallback
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [task myscreen] = phase2getResponseCallback(task, myscreen)
-if task.thistrial.thisseg == 1   
-    while 1
-        k = mglGetKeys;
-        if (any(k)), break; end
-    end
-    task = jumpSegment(task);
-
-end
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% phase 2 updateScreenCallback
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [task myscreen] = phase2updateScreenCallback(task, myscreen)
-%%%%% this function is left empty since there's no component to be updated
-%%%%% by framewise
 
 
 %% helper functions
@@ -452,7 +398,7 @@ for images = 1:2    % create two noise images
     im = ifft2(ifftshift(new_Fourier));
     
     % change contrast
-    contrast = task.thistrial.noise_contrast;
+    contrast = stimulus.noise_contrast;
     N = length(im(:));
     m_im = mean(im(:));
     coeff = sqrt((N*contrast^2) / sum((im(:)-m_im).^2));
@@ -571,11 +517,7 @@ stimulus.final_im{2} = 255 .* ((stimulus.noise.im{2} + 1) ./ 2);
 
 % decide background color
 for image = 1:2
-    if task.thistrial.noise_contrast == 0
-        bg_color = stimulus.final_im{image}(1,1);
-    else
-        bg_color = mean(stimulus.final_im{image}(:));
-    end
+    bg_color = mean(stimulus.final_im{image}(:));
     stimulus.bg_color{image} = bg_color;
 end
 
