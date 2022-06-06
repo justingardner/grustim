@@ -23,8 +23,8 @@ clear all, close all, clc
 global stimulus
 
 myscreen.screenNumber = 2;
-myscreen.saveData = 1;
-myscreen.datadir = '~/proj/data/geislerSearchTask';
+myscreen.saveData = 0;
+myscreen.datadir = '~/proj/jiwon/data/geisler/geislerSearchTask';
 myscreen.eyetracker = 0;
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerSearchTask/aborted',1);
 
