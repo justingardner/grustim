@@ -110,7 +110,7 @@ end
 
 mglClearScreen(.5);
 mglTextSet([],32,1);
-mglTextDraw('Starting experiment',[0,0]);
+mglTextDraw('Starting the experiment',[0,0]);
 mglFlush;
 while 1
     k = mglGetKeys;
