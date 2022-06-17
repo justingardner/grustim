@@ -19,7 +19,7 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-eyetracker = 0;
+eyetracker = 1;
 myscreen.displayName = 'monitor';
 
 myscreen.eyetracker = eyetracker;
@@ -140,14 +140,16 @@ end
 % after first task, compute threshold to set the contrast values for the
 % second task
 mglClearScreen(.5)
-% mglTextSet([],32,1);
-% mglTextDraw(['Adjusting the stimulus''s contrast level...'], [0,0])
-% sz = size(stimulus.pink_filter);
+mglTextSet([],32,1);
+mglTextDraw(['Adjusting the stimulus''s contrast level...'], [0,0])
+sz = size(stimulus.pink_filter);
 mglFlush;
 
 t = doStaircase('threshold',stimulus.task1.stair);
 threshold = t.threshold;
-if threshold < .01, threshold = .01; end
+if threshold < .01, threshold = .01;
+elseif threshold >= 1, threshold = .09; end
+
 % x = t.fit.x;
 % y = t.fit.y;
 % minval = max(x(y<=.55));
@@ -177,6 +179,7 @@ task{2}{1}.numTrials = stimulus.task2.stair.stopCriterion;
 [task{2}{1} myscreen] = initTask(task{2}{1},myscreen,...
     @startSegmentCallback, @updateScreenCallback, @getResponseCallback, ...
     @startTrialCallback);
+mglWaitSecs(2);
 
 %%% notice that second part of the task will begin 
 % mglClearScreen(.5)
