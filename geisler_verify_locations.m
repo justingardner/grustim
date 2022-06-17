@@ -1,5 +1,3 @@
-function geislerDetectionTask_verify_locations
-
 mglClose        % close MGL if it's open
 clear all, close all, clc
 
@@ -7,9 +5,11 @@ mglSetSID('test')
 myscreen.screenNumber = 2;
 % myscreen.displayName = 'bowmore';
 myscreen.saveData = 0;
+testing = 'Search';  % Detection or Search
+disp(['Verify locations of the ' testing ' task'])
 
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerDetectionTask/aborted',1);
-myscreen = initScreen(myscreen);  
+myscreen = initScreen(myscreen);
 
 load('geislerDetectionTask_pinkFilter.mat');
 stimulus.pink_filter = pink_filter;
@@ -22,7 +22,6 @@ stimulus.noise.contrasts = [.2];
 stimulus.gabor.size = 1;    % visual angle
 stimulus.gabor.tilt = 315;
 stimulus.gabor.cycle = 6;
-nLoc = 25;   % 25 for the real experiment
 stimulus.gabor.contrasts = .5;
 
 
@@ -31,18 +30,18 @@ noise_with_buffer = stimulus.noise.size + 3;    % visual angle
 noise_frame_pixel = visualAngleToPixels(noise_with_buffer, ...
     [myscreen.screenWidth, myscreen.screenHeight]);
 % make the size of the image an odd number
-if mod(noise_frame_pixel,2)==0, noise_frame_pixel = noise_frame_pixel+1; end    
+if mod(noise_frame_pixel,2)==0, noise_frame_pixel = noise_frame_pixel+1; end
 
 filter_sz = size(stimulus.pink_filter);
 pink_filter = stimulus.pink_filter(...
     floor(filter_sz(1)/2)+1-(noise_frame_pixel-1)/2:floor(filter_sz(1)/2)+1+(noise_frame_pixel-1)/2, ...
     floor(filter_sz(2)/2)+1-(noise_frame_pixel-1)/2:floor(filter_sz(2)/2)+1+(noise_frame_pixel-1)/2);
-    
+
 % fft on white noise
 white = randn(noise_frame_pixel, noise_frame_pixel);
 fwhite = fftshift(fft2(white));
 phase = angle(fwhite);
-    
+
 % create new magnitude
 new_mag = fwhite .* pink_filter;
 new_Fourier = new_mag .* (cos(phase) + sqrt(-1)*sin(phase));
@@ -54,32 +53,64 @@ coeff = sqrt((N*stimulus.noise.contrasts^2) / sum((im(:)-m_im).^2));
 noise = coeff .* im;
 
 %% define locations
-nLayer = floor((nLoc-1)/8);
-radius_va = linspace(0, stimulus.noise.size/2+1, nLayer+2);     % radius in visual angle
-radius_va = radius_va(2:end-1);
-
-% theta
-theta = linspace(0, 2*pi, 9);
-theta(end) = [];
-
-% determine locations - in visual angle
-locations = [0, 0];
-cTheta = 0;     % current theta
-cLayer = 1;     % current layer
-for cLoc = 1:nLoc-1
-    cTheta = cTheta + 1;
-    x_pos = radius_va(cLayer) * cos(theta(cTheta));
-    y_pos = radius_va(cLayer) * sin(theta(cTheta));    
-    locations = [locations; [x_pos, y_pos]];
+if strcmp(testing, 'Detection')
+    nLoc = 25;   % 25 for the real experiment
+    nLayer = floor((nLoc-1)/8);
+    radius_va = linspace(0, stimulus.noise.size/2+1, nLayer+2);     % radius in visual angle
+    radius_va = radius_va(2:end-1);
     
-    if cTheta == 8, cTheta = 0; end
-    if mod(cLoc,8) == 0, cLayer = cLayer+1; end
+    % theta
+    theta = linspace(0, 2*pi, 9);
+    theta(end) = [];
+    
+    % determine locations - in visual angle
+    locations = [0, 0];
+    cTheta = 0;     % current theta
+    cLayer = 1;     % current layer
+    for cLoc = 1:nLoc-1
+        cTheta = cTheta + 1;
+        x_pos = radius_va(cLayer) * cos(theta(cTheta));
+        y_pos = radius_va(cLayer) * sin(theta(cTheta));
+        locations = [locations; [x_pos, y_pos]];
+        
+        if cTheta == 8, cTheta = 0; end
+        if mod(cLoc,8) == 0, cLayer = cLayer+1; end
+    end
+    
+elseif strcmp(testing, 'Search')
+    h_dist = 1.5;     % horizontal distance betweeen any two gabors
+    v_dist = sqrt(h_dist^2-(h_dist/2)^2);
+    y_lim = stimulus.noise.size - 1;    
+    
+    trigrid = [];
+    y_current = 0;
+    xx = 0;
+    displacement = 0;
+    while y_current < y_lim
+        if displacement == 0
+            xx = [0:h_dist:y_lim]';
+            yy = ones(length(xx), 1)*y_current;
+            displacement = 1;
+        else
+            xx = [h_dist/2:h_dist:y_lim]';
+            yy = ones(length(xx), 1)*y_current;
+            displacement = 0;
+        end
+        trigrid = [trigrid;[xx, yy]];
+        y_current = y_current+v_dist;
+    end
+
+    trigrid = trigrid - repmat(max(trigrid)./2,size(trigrid,1),1);
+    inside = sqrt(trigrid(:,1).^2+trigrid(:,2).^2) <= y_lim/2;    
+    
+    locations = trigrid(inside,:);
+    nLoc = size(locations,1);
 end
-gabor_locations_va = locations; 
+
+gabor_locations_va = locations;
 gabor_locations_onNoise = visualAngleToPixels(gabor_locations_va, noise_frame_pixel);
 
 % gabor_locations_onNoise(end-1,:) = [273 80];
-
 
 %% create gabor
 grating = mglMakeGrating(stimulus.gabor.size, stimulus.gabor.size, ...
@@ -110,6 +141,7 @@ final_im = noise + gabor_position;
 
 % scale it to [0 255], for both stimulus images
 final_im =  255 .* ((final_im + 1) ./ 2);
+final_im = final_im;
 
 %% Make stencil
 mglClearScreen(.5);
@@ -127,9 +159,12 @@ mglBltTexture(tex,[0,0])
 mglStencilSelect(0)
 
 for loc = 1:nLoc;
-    mglGluAnnulus(gabor_locations_va(loc,1), gabor_locations_va(loc,2), ...
-            stimulus.gabor.size/2-.07, stimulus.gabor.size/2, ...
-            [1 1 1], 120, 2)
+    mglGluAnnulus(gabor_locations_va(loc,2), gabor_locations_va(loc,1), ...
+        stimulus.gabor.size/2-.07, stimulus.gabor.size/2, ...
+        [1 1 1], 120, 2)
+    mglTextSet([],20,1);    
+    mglTextDraw(num2str(loc), ...
+        [gabor_locations_va(loc,2) gabor_locations_va(loc,1)]);
 end
 mglFlush
 

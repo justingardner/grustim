@@ -110,7 +110,7 @@ end
 
 mglClearScreen(.5);
 mglTextSet([],32,1);
-mglTextDraw('Starting experiment',[0,0]);
+mglTextDraw('Starting the experiment',[0,0]);
 mglFlush;
 while 1
     k = mglGetKeys;
@@ -122,7 +122,7 @@ mglTextSet([],32,1);
 mglTextDraw(['Target location for this task'], [0, 12])
 sz = size(stimulus.pink_filter);
 target_location = stimulus.gabor_locations_deg(testingLoc,:);
-mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+mglGluAnnulus(target_location(2), target_location(1), .35, .4, ...
     [1 1 1], 120, 2)
 mglFillOval(0,0,[.2 .2],0)
 mglFlush;
@@ -281,7 +281,7 @@ elseif task.thistrial.thisseg == 6
     
     % show the target location
     target_location = stimulus.gabor_locations_deg(task.thistrial.gabor_location,:);    
-    mglGluAnnulus(target_location(1), target_location(2), .35, .4, ...
+    mglGluAnnulus(target_location(2), target_location(1), .35, .4, ...
         [1 1 1], 120, 2)
     
 elseif task.thistrial.thisseg == task.thistrial.whichseg
@@ -515,7 +515,7 @@ final_im(final_im < -1) = -1;
 
 % scale it to [0 255], for both stimulus images
 final_im =  255 .* ((final_im + 1) ./ 2);
-stimulus.final_im{1} = final_im';
+stimulus.final_im{1} = final_im;
 stimulus.final_im{2} = 255 .* ((stimulus.noise.im{2} + 1) ./ 2);
 
 % decide background color
