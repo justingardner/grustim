@@ -10,8 +10,10 @@ classdef (Abstract) trackingTask
         pos_start;  % starting position of stimulus         
                         
         % trial paremters
-        stimulus;   % mx1 cell of images to Blt e.g. (mainstim*, background, stim2,...)
-        positions;  % mx4 position of stimulus [xpos ypos width height]. 
+        stimulus    = {};  % mx1 cell of images to Blt e.g. (mainstim*, background, stim2,...)
+                           % dimensions: 
+                           % background: rgb
+        positions   = {};  % mx1 cell of 4x1 position of stimulus [xpos ypos width height]. 
         
         state;      % current state vector 
         A;          % dynamics update matrix
@@ -26,13 +28,15 @@ classdef (Abstract) trackingTask
 
     methods (Abstract)
         % return task object that can be run on trackpos.m
-        thistask    = configureExperiment(obj,task, myscreen) 
+        thistask    = configureExperiment(obj,task, myscreen, stimulus) 
         
         % trial update
         % if there are parameters being randomized by mgl on trial by trial
         % basis, this function should interact with it 
-        task        = initTrial(obj,task, myscreen)
+        task        = initTrial(obj,task, myscreen, stimulus)
         
+        task        = startSegment(obj, task, myscreen, stimulus)
+
         % update function for the stimulus
         % set background luminance
         % blt all images (stimuli and background)

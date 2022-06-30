@@ -1,9 +1,9 @@
-classdef stillblob < trackingTask
+classdef circular < trackingTask
     
 properties
     % task parameter
-    name        = 'stillblob'
-    numTrials  = 0;    % total number of trials
+    name        = 'circular'
+    numTrials   = 0;    % total number of trials
     pos_start   = {};   % {(n x 2), .... } starting positions of stimulus
     
     % trial paremters
@@ -98,7 +98,7 @@ methods
     end
     
     % return task object that can be run on trackpos.m
-    function thistask    = configureExperiment(obj, stimulus, task, myscreen) 
+    function thistask = configureExperiment(obj, task, myscreen, stimulus) 
         thistask        = struct();
         thistask.segmin = [obj.maxtrialtime];
         thistask.segmax = [obj.maxtrialtime];
@@ -135,7 +135,7 @@ methods
     end
     
     function task = startSegment(obj, task, myscreen, stimulus)
-        tic
+        
     end
 
     % frame update
@@ -165,15 +165,18 @@ methods
             task = jumpSegment(task); 
         end
         
-        % update framecount
-        task.thistrial.framecount = task.thistrial.framecount + 1;
-        
         % update stimuli position
             
         % update background
         obj.stimulus{2}  = stimulus.backnoise{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
+        
+        % update fixation
+        if stimulus.exp.fixateCenter == 1 % fixation below others.
+            mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor.response,60,1);
+            mglGluDisk(0,0,0.1,rand(1,3),60,1);
+        end
+    end
+
     end
     
-end
-
 end
