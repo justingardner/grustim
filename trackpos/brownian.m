@@ -99,6 +99,9 @@ methods
     
     % return task object that can be run on trackpos.m
     function thistask    = configureExperiment(obj, stimulus, task, myscreen) 
+        
+        
+        
         thistask        = struct();
         thistask.segmin = [obj.maxtrialtime];
         thistask.segmax = [obj.maxtrialtime];

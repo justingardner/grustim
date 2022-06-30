@@ -7,8 +7,6 @@
 % todo: make noiseLum more flexible
 
 function myscreen = trackpos(varargin)
- 
-
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 % set up screen
 myscreen = struct();
@@ -24,114 +22,32 @@ end
 myscreen                = initScreen(myscreen);
 
 %% parameters
-global stimulus; stimulus = struct;
-
 % Experimenter parameters
 %todo:  check these throughout the code!!
 exp.debug               = 0; % debug code
 exp.noeye               = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
-exp.showmouse           = 0; 
-exp.grabframe           = 0; 
-exp.whitenoiseOn        = 0; % 1: white noise; 2: 
-exp.fixateCenter        = 1;
-exp.phasescrambleOn     = 1; %
-exp.backprecompute      = 1; % load precomputed background noise 
-exp.eyemousedebug       = 0; % debug eyetracker with mouse
-exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
+exp.showmouse           = 0; % show mouse during everything
+exp.fixateCenter        = 1; %
 exp.usejoystick 		= 1; % use joystick. Need "simulink 3D animation" package downloaded. 
 
-% Task design (might be changed later, so check this)
-% S1: Stimulus (30s) 
-% S2: Fixation (3s)
-task{1}{1}.segmin           = [30 0.1]; % fixation for shorter bc of the segment start takes time.
-task{1}{1}.segmax           = [30 0.1]; 
-task{1}{1}.numTrials        = 5; % changed later depending on the condition
-task{1}{1}.getResponse      = [0 0]; %segment to get response.
-task{1}{1}.synchToVol       = [0 1]; %segmet to wait for backtick
-task{1}{1}.waitForBacktick  = 1; %wait for backtick before starting task
-task{1}{1}.random           = 1;
+exp.backprecompute      = '/Users/gru/proj/grustim/trackpos/trackpos.mat'; % precomputed background
+exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
+exp.phasescrambleOn     = 1; %
+exp.whitenoiseOn        = 0; % 1: white noise; 2: 
 
-% task parameters for adaptation conditions
-task{1}{1}.random               = 1;
-if exp.whitenoiseOn == 1 || exp.phasescrambleOn == 1
-    task{1}{1}.parameter.phasescrambleOn    = 1;
-    task{1}{1}.parameter.backLum            = 90; %160;%90;  % background luminance; units: luminance 
-    task{1}{1}.parameter.noiseLum           = 32;
-else 
-    task{1}{1}.parameter.backLum = 90;  % background luminance; units: fraction of full luminance 
-end
-% task{1}{1}.parameter.stimLum = 255 - task{1}{1}.parameter.backLum;  % stimulus luminance (out of 255)
+exp.grabframe           = 0; % capture frames
 
+global stimulus; stimulus = struct;
+stimulus.exp = exp;
 
-% calculated parameters
-maxframes = ceil(task{1}{1}.segmax(1)*myscreen.framesPerSecond) + 20;
-task{1}{1}.randVars.calculated.randomSeed   = nan;
-task{1}{1}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
-task{1}{1}.randVars.calculated.perm         = nan(maxframes,1);
-task{1}{1}.randVars.calculated.initStim     = [nan nan];
-task{1}{1}.randVars.calculated.trackStim    = nan(maxframes,2);
-task{1}{1}.randVars.calculated.trackResp    = nan(maxframes,2);
-task{1}{1}.randVars.calculated.trackEye     = nan(maxframes,2);
-task{1}{1}.randVars.calculated.trackJoy     = nan(maxframes,4);
-task{1}{1}.randVars.calculated.trackTime    = nan(1,maxframes);
-task{1}{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file
+task = {}; 
+% specify task design
+sb      = stillblob();
+phase1  = sb.configureExperiment(stimulus,task,myscreen);
+task{1} = {phase1};
 
-%% Set up tasks 
-
-% change stimulus speed and luminance; cross conditions.
-teststimSteps = [0.7, 1, 1.3]; %[0.75, 1.5, 2.25];
-teststimLum   = task{1}{1}.parameter.noiseLum*[1, 1.5, 2]; %SNR
-% teststimLum   = linspace(task{1}{1}.parameter.stimLum, task{1}{1}.parameter.noiseLum,3);
-
-for stepIdx = 1:length(teststimSteps)
-    idx = (stepIdx-1)*(2) + 1;
-    % adaptation condition, at full luminance
-    task{1}{idx}                                = task{1}{1};  
-    task{1}{idx}.parameter.stimStep             = teststimSteps(stepIdx);
-    task{1}{idx}.parameter.phasescrambleOn      = 0;
-    task{1}{idx}.parameter.noiseLum             = 0;  
-    task{1}{idx}.parameter.stimLum              = 32;
-    if exp.debug
-        task{1}{idx}.segmin                         = [10 1]; %fixation time constrained by the texture loading
-        task{1}{idx}.segmax                         = [10 1]; 
-        task{1}{idx}.numTrials                      = 1;
-    else
-        task{1}{idx}.segmin                         = [30 1]; %fixation time constrained by the texture loading
-        task{1}{idx}.segmax                         = [30 1]; 
-        task{1}{idx}.numTrials                      = 5;
-    end
-    
-    % adaptation task
-    idx = (stepIdx-1)*(2) + 2; %cycle through the luminances first.
-
-    task{1}{idx}                            = task{1}{1};  
-    task{1}{idx}.parameter.phasescrambleOn  = 1;
-    task{1}{idx}.parameter.noiseLum         = 32;
-    task{1}{idx}.parameter.stimStep         = teststimSteps(stepIdx);
-    task{1}{idx}.parameter.stimLum          = teststimLum;
-    if exp.debug
-        task{1}{idx}.segmin                 = [10 1]; %fixation time constrained a bit by the texture loading
-        task{1}{idx}.segmax                 = [10 1]; 
-        task{1}{idx}.numTrials              = 1 * length(teststimLum);
-    else
-        task{1}{idx}.segmin                 = [30 1]; %fixation time constrained by the texture loading
-        task{1}{idx}.segmax                 = [30 1]; 
-        task{1}{idx}.numTrials              = 10 * length(teststimLum);
-    end
-end
-
-
-% count trials
-numTrials        = 0;
-for stepIdx = 1:length(teststimSteps)
-    idx1 = (stepIdx-1)*(2) + 1;
-    idx2 = (stepIdx-1)*(2) + 2;
-    numTrials = numTrials + task{1}{idx1}.numTrials + task{1}{idx2}.numTrials;
-end
-trialdur = 31;
-taskdur = (trialdur * numTrials)/60/60; % approximate duration in hours
-disp(['Approx task duration = ' num2str(taskdur) ' hours']);
-
+task{1} = add_calculated_params(task{1});
+totaldur = approximate_total_task_dur(task);
 
 %% initialize
 % intiailize task
@@ -143,45 +59,42 @@ for phaseN = 1:length(task{1})
 end
 
 % initialize stimulus
-disp(' Initializing Stimulus....') 
+myscreen = initStimulus('stimulus',myscreen); % save the stimulus
 
-myscreen = initStimulus('stimulus',myscreen); % what does this do???
-stimulus.exp = exp;
-
+%% load background
 if stimulus.exp.phasescrambleOn == 1;
     disp('Loading phase scrambled background noise...')
 
     tic
-    if stimulus.exp.backprecompute == 1;
-        savefile = '/Users/gru/proj/grustim/trackpos/trackpos.mat';
-        % savefile            = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
-        if ~exist(savefile,'file')
-            error('need background file')
-        end
-        
-        load(savefile,'backgroundnoise_rgb');
-
-        if isfield(stimulus,'backnoise')
-            for idx = 1:length(stimulus.backnoise)
-                mglDeleteTexture(stimulus.backnoise{idx});
-            end
-        end
-
-        % create all background textures and then load them later
-        if stimulus.exp.debug 
-            nnn = 200;
-        else
-            nnn = size(backgroundnoise_rgb,4);
-        end
-        for idx = 1:nnn %too big?? memory?
-            stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));
-        end
-
-        clearvars('backgroundnoise_rgb')
+    savefile = stimulus.exp.backprecompute;
+    % savefile            = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
+    if ~exist(savefile,'file')
+        error('need background file')
     end
+
+    load(savefile,'backgroundnoise_rgb');
+
+    if isfield(stimulus,'backnoise')
+        for idx = 1:length(stimulus.backnoise)
+            mglDeleteTexture(stimulus.backnoise{idx});
+        end
+    end
+
+    % create all background textures and then load them later
+    if stimulus.exp.debug 
+        nnn = 200;
+    else
+        nnn = size(backgroundnoise_rgb,4);
+    end
+    for idx = 1:nnn %too big?? memory?
+        stimulus.backnoise{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));
+    end
+
+    clearvars('backgroundnoise_rgb')
     toc
 end
 
+%% grabframe
 if stimulus.exp.grabframe
     global frame
     frame = {};
@@ -213,14 +126,13 @@ else
 end
 end
 
-
 %% run the task
 disp(' Running Task....'); stimulus.t0 = mglGetSecs; % 
 
 % let the experimentee know too...
 % mglClearScreen(task{1}{1}.parameter.backLum/255);
-mglTextDraw('task (trackpos) starting... ', [0 0.5])
-mglTextDraw('Track the brightest point of the screen with the red mouse cursor',[0 -0.5]);
+mglTextDraw('task starting... ', [0 0.5])
+mglTextDraw('Track the target with the red pointer',[0 -0.5]);
 mglTextDraw('When you are ready, press backtick to go to next trial',[0 -1.5]);
 mglFlush
 
@@ -271,7 +183,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     rng(task.thistrial.randomSeed,'twister');
     
     %% noise
-    if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1
+    if stimulus.exp.phasescrambleOn == 1
         nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
@@ -540,19 +452,19 @@ function totaldur = approximate_total_task_dur(task)
     disp(['Approx task duration = ' num2str(totaldur) ' hours']);
 end
 
-function add_calculated_params(task)
+function task = add_calculated_params(task)
 
-    for phaseNum = 1:length(task{1})
-        maxframes = ceil(task{1}{phaseNum}.segmax(1)*myscreen.framesPerSecond) + 20;
-        task{1}{phaseNum}.randVars.calculated.randomSeed   = nan;
-        task{1}{phaseNum}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
-        task{1}{phaseNum}.randVars.calculated.perm         = nan(maxframes,1);
-        task{1}{phaseNum}.randVars.calculated.initStim     = [nan nan];
-        task{1}{phaseNum}.randVars.calculated.trackStim    = nan(maxframes,2);
-        task{1}{phaseNum}.randVars.calculated.trackResp    = nan(maxframes,2);
-        task{1}{phaseNum}.randVars.calculated.trackEye     = nan(maxframes,2);
-        task{1}{phaseNum}.randVars.calculated.trackJoy     = nan(maxframes,4);
-        task{1}{phaseNum}.randVars.calculated.trackTime    = nan(1,maxframes);
-        task{1}{phaseNum}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file
+    for phaseNum = 1:length(task)
+        maxframes = ceil(task{phaseNum}.segmax(1)*myscreen.framesPerSecond) + 20;
+        task{phaseNum}.randVars.calculated.randomSeed   = nan;
+        task{phaseNum}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
+        task{phaseNum}.randVars.calculated.perm         = nan(maxframes,1);
+        task{phaseNum}.randVars.calculated.initStim     = [nan nan];
+        task{phaseNum}.randVars.calculated.trackStim    = nan(maxframes,2);
+        task{phaseNum}.randVars.calculated.trackResp    = nan(maxframes,2);
+        task{phaseNum}.randVars.calculated.trackEye     = nan(maxframes,2);
+        task{phaseNum}.randVars.calculated.trackJoy     = nan(maxframes,4);
+        task{phaseNum}.randVars.calculated.trackTime    = nan(1,maxframes);
+        task{phaseNum}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file
     end
 end
