@@ -1,5 +1,7 @@
 %% Initialize stimulus, initialize blob
-function stimulus = trackposInitStimulus(stimulus,myscreen)      
+function stimulus = trackposInitStimulus(obj,myscreen)      
+    
+    stimulus = obj;
     % stimulus size
     if ~isfield(stimulus,'stimStd'), stimulus.stimStd = 1;,end %unit: imageX, in deg. 
     %GardnerLab: stimstd = 1; CSNL stimStd = 0.4.. (why...?)
@@ -35,6 +37,7 @@ function stimulus = trackposInitStimulus(stimulus,myscreen)
     gaussian_rgb           = uint8(gaussian_rgb);
     stimulus.gaussian = mglCreateTexture(gaussian_rgb);
     
+    %% todo: move to main task?
     % pointer position
     stimulus.pointer            = [0, 0]; % pointer position 
     

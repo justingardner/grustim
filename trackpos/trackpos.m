@@ -305,20 +305,10 @@ if task.thistrial.thisseg == 1
     
     task.thistrial.initStim = stimulus.position;% [stimx, stimy];
     
-    %{ 
-    see the stimulus
-    for idx = 1:length(stimulus.backnoise)
-        mglClearScreen(0);
-        mglBltTexture(stimulus.backnoise{idx},[0 0 myscreen.imageWidth myscreen.imageHeight])
-        mglBltTexture(stimulus.gaussian,stimulus.position);
-        mglFlush
-        stimulus        = updateTarget(stimulus,myscreen,task); % update position.
-        pause(1/myscreen.framesPerSecond)
-    end
-    %}   
-    
-    %% frame counter.
+    %% 
     task.thistrial.framecount = 0;
+    task.thistrial.movecursor = false; % need to set to true for pointer to move
+
     
     if stimulus.exp.grabframe
         global frame
@@ -338,12 +328,21 @@ end
 
 %% screen update
 function [task myscreen] = screenUpdateCallback(task, myscreen)
-% S1: Stimulus (30s)
-% S2: Fixation (3s)
+
+global stimulus
+
+task  = update(obj, task, myscreen, stimulus);       
+task.thistrial.movecursor
+stimulus.pointer
+
+
+
+
+    
+    
 
 %% Update Screen
 
-global stimulus % call stimulus. Takes ~0.000013 s.
 if stimulus.exp.usejoystick, global joy;,end
 % stimulus.timedebug(9,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.0087425s
 mglClearScreen(stimulus.backLum/255);
@@ -351,13 +350,8 @@ mglClearScreen(stimulus.backLum/255);
 if (task.thistrial.thisseg== 1)
     task.thistrial.framecount = task.thistrial.framecount + 1;
     
-    % stimulus.timedebug(10,task.thistrial.framecount) = mglGetSecs(stimulus.t0); % takes ~ 6.264918 e-5 s
-    % stimulus.timedebug(1,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0);
-
     stimulus        = updateTarget(stimulus,myscreen,task); % update position.
     
-    % stimulus.timedebug(2,task.thistrial.framecount+1) = mglGetSecs(stimulus.t0); % takes ~0.00012s 
-    % inject noise
     if task.thistrial.phasescrambleOn == 1 && mod(task.thistrial.framecount, stimulus.exp.downsample_timeRes) == 0
         idx = task.thistrial.bgpermute(task.thistrial.framecount);
         mglBltTexture(stimulus.backnoise{idx},...
@@ -531,4 +525,34 @@ toc
 %end
 save(savefile, 'backgroundnoise_rgb*','-v7.3')
 
+end
+
+%% utility
+function totaldur = approximate_total_task_dur(task)
+    % count trials
+    numTrials        = 0; 
+    totaltime        = 0;
+    for phaseNum = 1:length(task{1})
+        numTrials = numTrials + task{1}{phaseNum}.numTrials;
+        totaltime = totaltime + task{1}{phaseNum}.numTrials * sum(task{1}{phaseNum}.segmax);
+    end
+    totaldur = totaltime/60/60;
+    disp(['Approx task duration = ' num2str(totaldur) ' hours']);
+end
+
+function add_calculated_params(task)
+
+    for phaseNum = 1:length(task{1})
+        maxframes = ceil(task{1}{phaseNum}.segmax(1)*myscreen.framesPerSecond) + 20;
+        task{1}{phaseNum}.randVars.calculated.randomSeed   = nan;
+        task{1}{phaseNum}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
+        task{1}{phaseNum}.randVars.calculated.perm         = nan(maxframes,1);
+        task{1}{phaseNum}.randVars.calculated.initStim     = [nan nan];
+        task{1}{phaseNum}.randVars.calculated.trackStim    = nan(maxframes,2);
+        task{1}{phaseNum}.randVars.calculated.trackResp    = nan(maxframes,2);
+        task{1}{phaseNum}.randVars.calculated.trackEye     = nan(maxframes,2);
+        task{1}{phaseNum}.randVars.calculated.trackJoy     = nan(maxframes,4);
+        task{1}{phaseNum}.randVars.calculated.trackTime    = nan(1,maxframes);
+        task{1}{phaseNum}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file
+    end
 end
