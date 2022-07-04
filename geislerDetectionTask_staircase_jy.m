@@ -20,9 +20,8 @@ global stimulus
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
 eyetracker = 0;
-myscreen.displayName = 'monitor';
+% myscreen.displayName = 'monitor';
 
-myscreen.eyetracker = eyetracker;
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/jiwon/data/geisler';
 if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
@@ -124,7 +123,9 @@ sz = size(stimulus.pink_filter);
 target_location = stimulus.gabor_locations_deg(testingLoc,:);
 mglGluAnnulus(target_location(2), target_location(1), .35, .4, ...
     [1 1 1], 120, 2)
-mglFillOval(0,0,[.2 .2],0)
+% mglGluAnnulus(target_location(2), target_location(1), .35, .4, ...
+%     [1 1 1], 120);
+mglFillOval(0,0,[.2 .2],0);
 mglFlush;
 mglWaitSecs(3);
 
