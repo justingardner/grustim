@@ -155,7 +155,7 @@ end
 
 %% Initialize trials 
 function [task myscreen] = initTrialCallback(task, myscreen)
-% before backtick..
+    % before backtick..
     global stimulus 
     
     condNum = task.thistrial.thisphase; % each phase is a condition
@@ -387,9 +387,9 @@ if any(cellfun(@(a) strcmp(a, 'stillblob'),selected_packages))
         start_pos = start_pos(randperm(stillblob.n),:);
     end    
     
-    stillblob.start_pos = start_pos;
-    stillblob.vel = zeros(stillblob.n,2);
-    stillblob.update = @(pos,vel,sb, n, m, s) update_stillblob(pos, vel, sb, n,m,s);
+    stillblob.start_pos     = start_pos;
+    stillblob.vel           = zeros(stillblob.n,2);
+    stillblob.update        = @(pos,vel,sb, n, m, s) update_stillblob(pos, vel, sb, n,m,s);
 end
 
 % linear target movement
