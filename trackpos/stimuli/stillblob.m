@@ -18,6 +18,7 @@ properties
     
     movecursor      = 0;    
     cursor_steady   = 0; % frames for which the cursor is steady
+    t0              = 0; % frames for which the cursor is steady
     
     bgfile           = [];
 
@@ -60,7 +61,7 @@ methods
         
         % time threshold for going into next trial in frames
         % user needs to be steady for this amount of frames.
-        p.addParameter('steady_thresh_frame', floor(2 * myscreen.framesPerSecond), @(x)(isnumeric(x)))
+        p.addParameter('steady_thresh_frame', floor(1*myscreen.framesPerSecond), @(x)(isnumeric(x)))
         p.addParameter('steady_thresh_deg', 0.2, @(x)(isnumeric(x)))
         p.addParameter('waitsecs', 2, @(x)(isnumeric(x))) 
         p.addParameter('maxtrialtime', 10, @(x)(isnumeric(x))) % in seconds
@@ -125,7 +126,7 @@ methods
     end
 
     % trial update?
-    function task  = initTrial(obj, task, myscreen)
+    function task  = initTrial(obj, task, myscreen, stimulus)
         trackpos_stim = trackposInitStimulus(obj,myscreen);
         
         % initialize stimulus position
@@ -143,7 +144,7 @@ methods
         % trial terminal conditions
         obj.cursor_steady = 0; 
         
-        tic; % start trial        
+        obj.t0 = tic; % start trial        
     end
     
     function task = startSegment(obj, task, myscreen, stimulus)
@@ -162,7 +163,7 @@ methods
         end
         
         % pointer updates
-        if toc < obj.waitsecs
+        if toc(obj.t0) < obj.waitsecs
             obj.movecursor = false;
         else
             obj.movecursor = true;
@@ -170,8 +171,11 @@ methods
         
         % cursorsteady, if the cursor is moving
         if obj.movecursor
-            if sqrt(sum(square(obj.positions{1} - stimulus.pointer))) < obj.steady_thresh_deg
+            r = sqrt(sum((obj.positions{1} - stimulus.pointer).^2));
+            if r < obj.steady_thresh_deg
                 obj.cursor_steady = obj.cursor_steady + 1;
+            else
+                obj.cursor_steady =0;
             end
 
             if obj.cursor_steady > obj.steady_thresh_frame
@@ -188,7 +192,11 @@ methods
         
         % update fixation
         if stimulus.exp.fixateCenter == 1 % fixation below others.
-            mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
+            if obj.movecursor
+                mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
+            else
+                mglGluAnnulus(0,0,0.2,0.3,[0 1 0],60,1);
+            end
             mglGluDisk(0,0,0.1,rand(1,3),60,1);
         end
     end

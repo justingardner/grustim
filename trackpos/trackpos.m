@@ -16,7 +16,6 @@ else
     myscreen.subjectID  = mglGetSID;
 end
 
-myscreen.displayName = 'debug'; 
 %myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 %myscreen.hideCursor = 1;
 myscreen                = initScreen(myscreen);
@@ -25,7 +24,7 @@ myscreen                = initScreen(myscreen);
 % Experimenter parameters
 %todo:  check these throughout the code!!
 exp.debug               = 0; % debug code
-exp.noeye               = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+exp.noeye               = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.fixateCenter        = 1; %
@@ -42,7 +41,7 @@ stimulus.exp = exp;
 
 task = {}; 
 % specify task design
-sb      = stillblob(myscreen, 'backLum', 0, 'maxtrialtime',30000);
+sb      = stillblob(myscreen, 'backLum', 0, 'maxtrialtime',30,'steady_thresh_frame',50);
 phase1  = sb.configureExperiment(stimulus,task,myscreen);
 task{1} = {phase1};
 stimulus.task = {sb};
@@ -188,7 +187,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     end
     
     % task initTrial
-    stimulus.task{phaseNum}.initTrial(task, myscreen);
+    stimulus.task{phaseNum}.initTrial(task, myscreen,stimulus);
     
     % count frames
     task.thistrial.framecount = 0;
@@ -216,11 +215,15 @@ end
 %% screen update
 function [task myscreen] = screenUpdateCallback(task, myscreen)
 
+t0 = tic;
+
 global stimulus
 phaseNum = task.thistrial.thisphase;
 
 % update framecount
 task.thistrial.framecount = task.thistrial.framecount + 1;
+
+t1 = toc(t0);
 
 % move cursor        
 if stimulus.task{phaseNum}.movecursor
@@ -236,13 +239,19 @@ if stimulus.task{phaseNum}.movecursor
     end
 end
 
+t2 = toc(t0);
+
 % update task stimulus
 task  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
+
+t3 = toc(t0);
 
 % display cursor
 if stimulus.task{phaseNum}.movecursor && stimulus.exp.dispPointer
     mglGluDisk(stimulus.pointer(1), stimulus.pointer(2), 0.1, [1 0 0])
 end
+
+t4 = toc(t0);
 
 % eye tracking
 if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1])
@@ -253,15 +262,22 @@ if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1])
     task.thistrial.trackEyeTime(task.thistrial.framecount)  = postime;
 end
 
+t5 = toc(t0);
+
 % save tracking variables
 task.thistrial.trackResp(task.thistrial.framecount,:) = stimulus.pointer;
 task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.task{phaseNum}.positions{1};
 task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0); 
+t6 = toc(t0);
 
 % grabframe
 if stimulus.exp.grabframe && (task.thistrial.thisseg== 1)
     global frame; frame{task.thistrial.framecount} = mglFrameGrab;
 end
+
+disp(['Time elasped: ' num2str(t6), '; d1 = '  num2str(t1), ...
+    '; d2 = '  num2str(t2-t1) '; d3 = ' num2str(t3-t2) ...
+    '; d4 = '  num2str(t4-t3) '; d5 = ' num2str(t5-t4) '; d6 = '  num2str(t6-t5)]);
 
 end
 
