@@ -2,28 +2,31 @@ classdef stillblob < trackingTask
     
 properties
     % task parameter
-    name        = 'stillblob'
-    numTrials  = 0;    % total number of trials
-    pos_start   = {};   % {(n x 2), .... } starting positions of stimulus
+    name            = 'stillblob'
+    numTrials       = 0;    % total number of trials
+    pos_start       = cell(1,1);   % mx1 cell {(numTrials x 2), .... } of starting positions of stimuli
     
-    % trial paremters
-    stimulus    = {};  % mx1 cell of images to Blt e.g. (mainstim*, background, stim2,...)
+    % trial parameters
+    stimulus        = cell(1,1);  % mx1 cell of images to Blt e.g. (mainstim*, background, stim2,...)
                        % dimensions: 
                        % background: rgb
-    positions   = {};  % mx1 cell of 4x1 position of stimulus [xpos ypos width height]. 
+    positions       = cell(1,1);  % mx1 cell of 4x1 position of stimulus [xpos ypos width height]. 
     
-    state       = zeros(2,1);      % current state vector 
-    A           = eye(2,2);      % dynamics update matrix
-    W           = zeros(2,1);      % dynamics noise
+    state           = zeros(4,1);       % current state vector [target_x, pointer_x, target_y, pointer_y]
+    A               = eye(4,4);         % dynamics update matrix
+    W               = zeros(4,1);       % dynamics noise
     
-    cursorsteady = 0; % frames for which the cursor is steady
+    movecursor      = 0;    
+    cursor_steady   = 0; % frames for which the cursor is steady
+    
+    bgfile           = [];
 
     % stillblob fixed parameters
     nonvarparams   = {'steady_thresh_frame' 'steady_thresh_deg' 'waitsecs' 'maxtrialtime', 'maxtrials'};
     steady_thresh_frame;    % if subject is near the target for this long, go to next trial
     steady_thresh_deg;      % if the pointer is within this threshold of target, count frame as "steady"
     waitsecs;               % allow movement after this many seconds
-    maxtrialtime;
+    maxtrialtime;           % maximum trial time in seconds
     maxtrials;
       
     % stillblob variable parameters
@@ -47,7 +50,7 @@ methods
         
         if any(cellfun(@(x)(strcmp(x,'pos_start')), varargin))
             % if start_pos exist as a parameter
-            p.addParameter('pos_start', [], @()(isnumeric(x)))
+            p.addParameter('pos_start', cell(1,1), @()(isnumeric(x)))
         else
             % otherwise generate test poitns around circles
             % radius can't be too big
@@ -74,9 +77,14 @@ methods
         %% initialize
         % initial positions
         if isfield(p.Results, 'pos_start')
-            assert(size(p.Results.pos_start,2)==2, "check initial positions") 
-            obj.pos_start{1} = p.Results.pos_start;
-            obj.numTrials = min(p.Results.maxtrials, size(p.Results.pos_start,1));
+            obj.pos_start = p.Results.pos_start;
+            for si = 1:length(p.Results.pos_start)
+                assert(size(p.Results.pos_start{si},1)==size(p.Results.pos_start{1},1), ...
+                    'initial positions of the different stimuli should match') 
+                assert(size(p.Results.pos_start{si},2)==2, ...
+                    'check initial positions') 
+            end
+            obj.numTrials = min(p.Results.maxtrials, size(p.Results.pos_start{1},1));
         else
             % define starting position for main stimulus
             for r = p.Results.r
@@ -89,10 +97,13 @@ methods
         end
         
         if p.Results.randomize_order
-            obj.pos_start{1} = obj.pos_start{1}(randperm(stillblob.n),:);
+            permidx = randperm(obj.numTrials);
+            for si = 1:length(obj.pos_start)
+                obj.pos_start{si} = obj.pos_start{si}(permidx,:);
+            end
         end
         
-        for param = [varparams, nonvarparams]
+        for param = [obj.varparams, obj.nonvarparams]
             eval(['obj.' param{1} ' = p.Results.' param{1}])
         end
     end
@@ -114,24 +125,25 @@ methods
     end
 
     % trial update?
-    function task  = initTrial(obj, task, myscreen, stimulus)
+    function task  = initTrial(obj, task, myscreen)
         trackpos_stim = trackposInitStimulus(obj,myscreen);
         
         % initialize stimulus position
         obj.stimulus{1}    = trackpos_stim.gaussian;
-        obj.positions{1}   = [obj.pos_start(task.trialnum,2), [], []];
+        obj.positions{1}   = [obj.pos_start{1}(task.trialnum,:), [], []];
         
         % initialize background position
-        if task.thistrial.noiseLum > 0
+        if ~isempty(obj.bgfile) && task.thistrial.noiseLum > 0
             nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
             task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
-            obj.stimulus{2}  = stimulus.backnoise{task.thistrial.bgpermute(1)};
-            obj.positions{2} = [0,0,myscreen.imageWidth, myscreen.imageHeight]]; 
+            obj.stimulus{2}  = stimulus.backnoise{task.thistrial.thisphase}{task.thistrial.bgpermute(1)};
+            obj.positions{2} = [0,0,myscreen.imageWidth, myscreen.imageHeight]; 
         end
         
         % trial terminal conditions
         obj.cursor_steady = 0; 
         
+        tic; % start trial        
     end
     
     function task = startSegment(obj, task, myscreen, stimulus)
@@ -144,41 +156,43 @@ methods
         % background luminance
         mglClearScreen(task.thistrial.backLum/255);
         
-        % blt stimuli
+        % blt all stimuli (including background)
         for stimidx = 1:length(obj.stimulus)
-            mglBltTexture(obj.stimulus{stimidx},obj.positions{stimidx})
+            mglBltTexture(obj.stimulus{stimidx}, obj.positions{stimidx})
         end
         
         % pointer updates
-        if tic < obj.waitsecs
-            task.thistrial.movecursor = false;
+        if toc < obj.waitsecs
+            obj.movecursor = false;
         else
-            task.thistrial.movecursor = true;
+            obj.movecursor = true;
         end
         
-        % cursorsteady
-        if sum(abs(obj.positions{1}(1:2) - stimulus.pointer)) < stimulus.stimStd/2
-            obj.cursor_steady = obj.cursor_steady + 1;
-        end
+        % cursorsteady, if the cursor is moving
+        if obj.movecursor
+            if sqrt(sum(square(obj.positions{1} - stimulus.pointer))) < obj.steady_thresh_deg
+                obj.cursor_steady = obj.cursor_steady + 1;
+            end
 
-        if obj.cursor_steady > obj.steady_thresh
-            task = jumpSegment(task); 
+            if obj.cursor_steady > obj.steady_thresh_frame
+                task = jumpSegment(task); 
+            end
         end
         
-        % update stimuli position
+        % update stimuli position: none for stillblob
             
         % update background
-        obj.stimulus{2}  = stimulus.backnoise{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
+        if ~isempty(obj.bgfile) && task.thistrial.noiseLum > 0
+            obj.stimulus{2}  = stimulus.backnoise{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
+        end
         
         % update fixation
         if stimulus.exp.fixateCenter == 1 % fixation below others.
-            mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor.response,60,1);
+            mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
             mglGluDisk(0,0,0.1,rand(1,3),60,1);
         end
     end
 
     end
     
-end
-
 end

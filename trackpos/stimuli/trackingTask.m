@@ -2,26 +2,28 @@
 % defines how the stimulus should update during the task
 % 
 
-classdef (Abstract) trackingTask
+classdef (Abstract) trackingTask < handle
     properties (Abstract)
         % task parameters
         name;       % name of task
-        n;          % number of trials
+        numTrials;          % number of trials
         pos_start;  % starting position of stimulus         
                         
-        % trial paremters
-        stimulus    = {};  % mx1 cell of images to Blt e.g. (mainstim*, background, stim2,...)
+        % trial parameters
+        stimulus;  % mx1 cell of images to Blt e.g. (mainstim*, background, stim2,...)
                            % dimensions: 
                            % background: rgb
-        positions   = {};  % mx1 cell of 4x1 position of stimulus [xpos ypos width height]. 
+        positions;  % mx1 cell of 4x1 position of stimulus [xpos ypos width height]. 
         
         state;      % current state vector 
         A;          % dynamics update matrix
         W;          % dynamics noise
+        movecursor; % indicates whether we can move cursor
         
-        bgpermute;
+        bgfile;     % background file to preload at task initialization
         
-        % task parametrs
+                
+        % task parameters
         nonvarparams;   % cell of parameter names to be included as parameters in mgl task.
         varparams;      % cell of parameter names to be included as parameters in mgl task.
     end
