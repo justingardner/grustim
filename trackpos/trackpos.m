@@ -165,10 +165,7 @@ end
 function [task myscreen] = initTrialCallback(task, myscreen)
     global stimulus    
     phaseNum = task.thistrial.thisphase; % phaseNum?
-    
-    % 
-    stimulus.pointer = zeros(1,2);
-    
+       
     % save seed for generating random textures
     rng('shuffle','twister'); 
     s=rng; 
@@ -189,6 +186,10 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     % task initTrial
     stimulus.task{phaseNum}.initTrial(task, myscreen,stimulus);
     
+    % initialize position to the stimulus position
+    % for joystick and mouse tracking
+    stimulus.pointer = stimulus.task{phaseNum}.positions{1}(1:2);
+        
     % count frames
     task.thistrial.framecount = 0;
 end
@@ -213,7 +214,7 @@ end
 end
 
 %% screen update
-function [task myscreen] = screenUpdateCallback(task, myscreen)
+function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
 t0 = tic;
 
@@ -223,7 +224,7 @@ phaseNum = task.thistrial.thisphase;
 % update framecount
 task.thistrial.framecount = task.thistrial.framecount + 1;
 
-t1 = toc(t0);
+if stimulus.exp.debug, t1 = toc(t0); end
 
 % move cursor        
 if stimulus.task{phaseNum}.movecursor
@@ -239,19 +240,19 @@ if stimulus.task{phaseNum}.movecursor
     end
 end
 
-t2 = toc(t0);
+if stimulus.exp.debug, t2 = toc(t0); end
 
 % update task stimulus
 task  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
 
-t3 = toc(t0);
+if stimulus.exp.debug, t3 = toc(t0); end
 
 % display cursor
 if stimulus.task{phaseNum}.movecursor && stimulus.exp.dispPointer
     mglGluDisk(stimulus.pointer(1), stimulus.pointer(2), 0.1, [1 0 0])
 end
 
-t4 = toc(t0);
+if stimulus.exp.debug, t4 = toc(t0); end
 
 % eye tracking
 if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1])
@@ -262,7 +263,7 @@ if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1])
     task.thistrial.trackEyeTime(task.thistrial.framecount)  = postime;
 end
 
-t5 = toc(t0);
+if stimulus.exp.debug, t5 = toc(t0); end
 
 % save tracking variables
 task.thistrial.trackResp(task.thistrial.framecount,:) = stimulus.pointer;
@@ -275,9 +276,12 @@ if stimulus.exp.grabframe && (task.thistrial.thisseg== 1)
     global frame; frame{task.thistrial.framecount} = mglFrameGrab;
 end
 
-disp(['Time elasped: ' num2str(t6), '; d1 = '  num2str(t1), ...
-    '; d2 = '  num2str(t2-t1) '; d3 = ' num2str(t3-t2) ...
-    '; d4 = '  num2str(t4-t3) '; d5 = ' num2str(t5-t4) '; d6 = '  num2str(t6-t5)]);
+% debug
+if stimulus.exp.debug
+    disp(['Time elasped: ' num2str(t6), '; d1 = '  num2str(t1), ...
+        '; d2 = '  num2str(t2-t1) '; d3 = ' num2str(t3-t2) ...
+        '; d4 = '  num2str(t4-t3) '; d5 = ' num2str(t5-t4) '; d6 = '  num2str(t6-t5)]);
+end
 
 end
 

@@ -18,11 +18,12 @@ classdef (Abstract) trackingTask < handle
         state;      % current state vector 
         A;          % dynamics update matrix
         W;          % dynamics noise
+        cidx;       % controllable states
+        
         movecursor; % indicates whether we can move cursor
         
         bgfile;     % background file to preload at task initialization
         
-                
         % task parameters
         nonvarparams;   % cell of parameter names to be included as parameters in mgl task.
         varparams;      % cell of parameter names to be included as parameters in mgl task.
@@ -50,6 +51,12 @@ classdef (Abstract) trackingTask < handle
     end
     
     methods
+        function initialize_params(obj, parserOut)
+            for param = [obj.varparams, obj.nonvarparams]
+                eval(['obj.' param{1} ' = parserOut.Results.' param{1}])
+            end
+        end
+        
         function pos = returnstimpos(obj)
             pos = obj.positions(1,1:2); % first stimulus should be the main stimulus to track
         end

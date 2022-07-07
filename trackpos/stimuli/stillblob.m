@@ -15,6 +15,8 @@ properties
     state           = zeros(4,1);       % current state vector [target_x, pointer_x, target_y, pointer_y]
     A               = eye(4,4);         % dynamics update matrix
     W               = zeros(4,1);       % dynamics noise
+    B               = [0,0; 0,0; 1,0; 0,1]; % independent controllable states
+
     
     movecursor      = 0;    
     cursor_steady   = 0; % frames for which the cursor is steady
@@ -104,9 +106,7 @@ methods
             end
         end
         
-        for param = [obj.varparams, obj.nonvarparams]
-            eval(['obj.' param{1} ' = p.Results.' param{1}])
-        end
+        obj.initialize_params(obj,p)
     end
     
     % return task object that can be run on trackpos.m
@@ -140,6 +140,13 @@ methods
             obj.stimulus{2}  = stimulus.backnoise{task.thistrial.thisphase}{task.thistrial.bgpermute(1)};
             obj.positions{2} = [0,0,myscreen.imageWidth, myscreen.imageHeight]; 
         end
+        
+        % set mouse position to the stimulus position. 
+        x_img = obj.pos_start{1}(task.trialnum,1);  y_img = obj.pos_start{1}(task.trialnum,2);
+        x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
+        y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
+        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
+        if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor
         
         % trial terminal conditions
         obj.cursor_steady = 0; 

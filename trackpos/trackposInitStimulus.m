@@ -24,7 +24,7 @@ function stimulus = trackposInitStimulus(obj,myscreen)
     % stimulus speed
     % this might change based on effective sampling rate.
     if ~isfield(obj,'stepStd'), 
-        stimulus.stepStd = 3/myscreen.framesPerSecond;
+        stimulus.stepStd = 1; % in deg/sec
     else
        stimulus.stepStd = obj.stepStd; 
     end %unit: cm/s to deg/frame
