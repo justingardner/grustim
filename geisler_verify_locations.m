@@ -1,3 +1,5 @@
+function geisler_verify_locations
+
 mglClose        % close MGL if it's open
 clear all, close all, clc
 
@@ -11,12 +13,11 @@ disp(['Verify locations of the ' testing ' task'])
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerDetectionTask/aborted',1);
 myscreen = initScreen(myscreen);
 
-load('geislerDetectionTask_pinkFilter.mat');
-stimulus.pink_filter = pink_filter;
-
 %%%%% set stimulus parameter
 stimulus.responsekeys = [44,48];   % space bar
 stimulus.noise.size = 15;   % visual angle
+stimulus.noise.size_pix = visualAngleToPixels(stimulus.noise.size, ...
+    [myscreen.screenWidth, myscreen.screenHeight]);
 stimulus.noise.contrasts = [.2];
 
 stimulus.gabor.size = 1;    % visual angle
@@ -31,6 +32,23 @@ noise_frame_pixel = visualAngleToPixels(noise_with_buffer, ...
     [myscreen.screenWidth, myscreen.screenHeight]);
 % make the size of the image an odd number
 if mod(noise_frame_pixel,2)==0, noise_frame_pixel = noise_frame_pixel+1; end
+
+% pink filter is already saved as a file. just load the variable
+if exist('geislerDetectionTask_pinkFilter.mat') == 2
+    load('geislerDetectionTask_pinkFilter.mat')
+end
+
+% pink filter has not created before or needs to re-created
+if exist('geislerDetectionTask_pinkFilter.mat') == 0 || size(pink_filter,1) < double(noise_frame_pixel)
+    clear pink_filter
+    fprintf('[geisler] Creating pink filter... \n')
+    pink_filter = createPinkFilter(myscreen);
+    save('geislerDetectionTask_pinkFilter.mat', 'pink_filter')
+    fprintf('[geisler] Process done! \n')
+else
+    fprintf('[geisler] Pink filter size is compatible with the current monitor setup \n')
+end
+stimulus.pink_filter = pink_filter;
 
 filter_sz = size(stimulus.pink_filter);
 pink_filter = stimulus.pink_filter(...
@@ -144,34 +162,53 @@ final_im =  255 .* ((final_im + 1) ./ 2);
 final_im = final_im;
 
 %% Make stencil
+fprintf('[geisler] Creating stencil \n')
 mglClearScreen(.5);
+mglFlush();
+
 mglStencilCreateBegin(1);
 mglVisualAngleCoordinates(myscreen.displayDistance,myscreen.displaySize);
 mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
+% mglFillOval(0, 0, [30 30]);
 mglStencilCreateEnd;
-mglClearScreen(.5);
+fprintf('[geisler] Process done! \n')
 
 %% present screen
+fprintf('[geisler] Generating gabors at each locations \n')
 mglClearScreen(.5);
 tex = mglCreateTexture(final_im);
-mglStencilSelect(1)
-mglBltTexture(tex,[0,0])
-mglStencilSelect(0)
+mglStencilSelect(1);
+mglBltTexture(tex,[0,0]);
+mglStencilSelect(0);
 
-for loc = 1:nLoc;
+for loc = 1:nLoc
     mglGluAnnulus(gabor_locations_va(loc,2), gabor_locations_va(loc,1), ...
         stimulus.gabor.size/2-.07, stimulus.gabor.size/2, ...
-        [1 1 1], 120, 2)
+        [1 1 1], 120, 2);
     mglTextSet([],20,1);    
     mglTextDraw(num2str(loc), ...
         [gabor_locations_va(loc,2) gabor_locations_va(loc,1)]);
 end
-mglFlush
+fprintf('[geisler] Process done! \n')
+
+mglFlush();
 
 
+%%%%%% helper function
+function pink_filter = createPinkFilter(myscreen)
+w = myscreen.screenWidth;
+h = myscreen.screenHeight;
+sz = max(w,h);
 
+% make the odd size of the image
+if mod(sz,2)==0, sz = sz-1; end
 
-
-
-
+% make pink filter
+last_freq = ceil(sz/2);
+pink_filter = zeros(sz,sz);
+[x y] = meshgrid(-ceil(sz/2)+1:ceil(sz/2)-1, -ceil(sz/2)+1:ceil(sz/2)-1);
+index = sqrt(x.^2 + y.^2);
+for f = 1:last_freq
+    pink_filter(index > f-1 & index < f+1) = 1/f;
+end
 
