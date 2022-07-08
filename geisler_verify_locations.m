@@ -16,8 +16,6 @@ myscreen = initScreen(myscreen);
 %%%%% set stimulus parameter
 stimulus.responsekeys = [44,48];   % space bar
 stimulus.noise.size = 15;   % visual angle
-stimulus.noise.size_pix = visualAngleToPixels(stimulus.noise.size, ...
-    [myscreen.screenWidth, myscreen.screenHeight]);
 stimulus.noise.contrasts = [.2];
 
 stimulus.gabor.size = 1;    % visual angle
@@ -168,8 +166,14 @@ mglFlush();
 
 mglStencilCreateBegin(1);
 mglVisualAngleCoordinates(myscreen.displayDistance,myscreen.displaySize);
-mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
-% mglFillOval(0, 0, [30 30]);
+% mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
+x = -round(stimulus.noise.size/2,2):.01:0;
+y = sqrt((stimulus.noise.size/2)^2 - x.^2);
+x = [x, -x(end-1:-1:1)];
+y = [y, y(end-1:-1:1)];
+x = [x, x(end-1:-1:2)];
+y = [y, -y(end-1:-1:2)];
+mglPolygon(x,y,[1 1 1]);
 mglStencilCreateEnd;
 fprintf('[geisler] Process done! \n')
 
@@ -183,7 +187,7 @@ mglStencilSelect(0);
 
 for loc = 1:nLoc
     mglGluAnnulus(gabor_locations_va(loc,2), gabor_locations_va(loc,1), ...
-        stimulus.gabor.size/2-.07, stimulus.gabor.size/2, ...
+        stimulus.gabor.size-.07, stimulus.gabor.size, ...
         [1 1 1], 120, 2);
     mglTextSet([],20,1);    
     mglTextDraw(num2str(loc), ...
