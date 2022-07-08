@@ -1,5 +1,6 @@
 %% Initialize stimulus, initialize blob
-function stimulus = trackposInitStimulus(obj,myscreen)      
+function stimulus = trackposInitStimulus(obj,myscreen)    
+% todo: make this only about generating stimulus image
     
     stimulus = struct();
     % stimulus size
@@ -36,27 +37,17 @@ function stimulus = trackposInitStimulus(obj,myscreen)
        stimulus.stimLum = obj.stimLum; 
     end %unit: luminance
             
-    % background noise
-    if ~isfield(stimulus,'noiseLum'), 
-        stimulus.noiseLum = 122;
-    else
-       stimulus.noiseLum = obj.noiseLum; 
-    end; % unit: luminance
-    
-    % background luminance
-    if ~isfield(stimulus,'backLum')
-        stimulus.backLum = 32;
-    else
-       stimulus.backLum = obj.backLum; 
-    end; % unit: luminance
-
     % generate stimulus image
-    gaussian    =  mglMakeGaussian(stimulus.patchsize,stimulus.patchsize,...
-        stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum);
-    gaussian_rgb           = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
-    gaussian_rgb(4,:,:)    = round(gaussian');
-    gaussian_rgb           = uint8(gaussian_rgb);
-    stimulus.gaussian = mglCreateTexture(gaussian_rgb);
+    if stimulus.stimLum == 0 || stimulus.stimStd == 0
+        stimulus.gaussian = 0;
+    else
+        gaussian    =  mglMakeGaussian(stimulus.patchsize,stimulus.patchsize,...
+            stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum);
+        gaussian_rgb           = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
+        gaussian_rgb(4,:,:)    = round(gaussian');
+        gaussian_rgb           = uint8(gaussian_rgb);
+        stimulus.gaussian = mglCreateTexture(gaussian_rgb);
+    end
     
     %% todo: move to main task?
     % pointer position

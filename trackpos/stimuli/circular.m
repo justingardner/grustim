@@ -25,7 +25,7 @@ properties
     
     bgfile          = '/Users/gru/data/trackpos/trackpos.mat';
 
-    % stillblob fixed parameters
+    % fixed parameters
     nonvarparams   = {'steady_thresh_frame' 'steady_thresh_deg' 'waitsecs' 'maxtrialtime', 'maxtrials'};
     steady_thresh_frame;    % if subject is near the target for this long, go to next trial
     steady_thresh_deg;      % if the pointer is within this threshold of target, count frame as "steady"
@@ -33,7 +33,7 @@ properties
     maxtrialtime;           % maximum trial time in seconds
     maxtrials;
       
-    % stillblob variable parameters
+    % variable parameters
     varparams   = {'backLum' 'noiseLum' 'stimLum' 'stimStd', 'thetaStep', 'rStep', 'r_logSpace'};
     backLum;
     noiseLum;
@@ -210,9 +210,9 @@ methods
         % update fixation
         if stimulus.exp.fixateCenter == 1 % fixation below others.
             if obj.movecursor
-                mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
-            else
                 mglGluAnnulus(0,0,0.2,0.3,[0 1 0],60,1);
+            else
+                mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
             end
             mglGluDisk(0,0,0.1,rand(1,3),60,1);
         end

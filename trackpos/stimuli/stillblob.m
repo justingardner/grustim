@@ -200,9 +200,9 @@ methods
         % update fixation
         if stimulus.exp.fixateCenter == 1 % fixation below others.
             if obj.movecursor
-                mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
-            else
                 mglGluAnnulus(0,0,0.2,0.3,[0 1 0],60,1);
+            else
+                mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
             end
             mglGluDisk(0,0,0.1,rand(1,3),60,1);
         end

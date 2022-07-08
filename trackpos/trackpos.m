@@ -5,6 +5,10 @@
 %    purpose: 
 
 % todo: make noiseLum more flexible
+% todo: currently only segment 1 is the tracking period (calculated
+% variables stored only here including eye tracking, stimulus and response
+% etc... make this more flexible? framecount is a bit awkward too.
+% indicate tracking period or 
 
 function myscreen = trackpos(varargin)
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
@@ -248,7 +252,7 @@ task  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
 if stimulus.exp.debug, t3 = toc(t0); end
 
 % display cursor
-if stimulus.task{phaseNum}.movecursor && stimulus.exp.dispPointer
+if stimulus.exp.dispPointer
     mglGluDisk(stimulus.pointer(1), stimulus.pointer(2), 0.1, [1 0 0])
 end
 
