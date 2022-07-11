@@ -19,8 +19,8 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-eyetracker = 0;
-% myscreen.displayName = 'monitor';
+eyetracker = 1;
+myscreen.displayName = 'VPixx';
 
 myscreen.eyetracker = eyetracker;
 myscreen.saveData = 1;
@@ -112,6 +112,7 @@ mglClearScreen(.5);
 mglTextSet([],32,1);
 mglTextDraw('Starting the experiment',[0,0]);
 mglFlush;
+disp('Press backtick(''`'') to start the experiment')
 while 1
     k = mglGetKeys;
     if k(myscreen.keyboard.backtick)==1, break; end
@@ -137,7 +138,7 @@ while task{1}{1}.trialnum <= task{1}{1}.numTrials && ~myscreen.userHitEsc
     myscreen = tickScreen(myscreen, task);
 end
 
-% after first task, compute threshold to set the contrast values for the
+% after the first task, compute threshold to set the contrast values for the
 % second task
 mglClearScreen(.5)
 % mglTextSet([],32,1);
@@ -178,7 +179,7 @@ task{2}{1}.numTrials = stimulus.task2.stair.stopCriterion;
     @startSegmentCallback, @updateScreenCallback, @getResponseCallback, ...
     @startTrialCallback);
 
-%%% notice that second part of the task will begin 
+%%% notify that the second part of the task will begin 
 % mglClearScreen(.5)
 % mglTextSet([],32,1);
 % mglTextDraw(['Resuming the task'], [0, 12])
