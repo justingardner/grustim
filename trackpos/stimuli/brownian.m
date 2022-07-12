@@ -1,4 +1,5 @@
 classdef brownian < trackingTask
+    %todo: checkoob
     
 properties
     % task parameter
@@ -16,18 +17,19 @@ properties
     state;       % current state vector 
     A;           % dynamics update matrix
     W;           % dynamics noise
-    cidx;        % controllable states   
     pidx;        % position index of target
+    cidx;        % controllable states   
 
     movecursor      = 0;    
     t0              = 0;
     bgfile          = '/Users/gru/data/trackpos/trackpos.mat';
 
     % fixed parameters
-    nonvarparams   = {'iti', 'maxtrialtime', 'trialpause'};
+    nonvarparams   = {'iti', 'maxtrialtime', 'trialpause' 'maxtrials'};
     iti;
     maxtrialtime;
     trialpause; % need to press backtick after each trial
+    maxtrials;
       
     % variable parameters
     varparams   = {'backLum' 'noiseLum' 'stimLum' 'stimStd' 'stepStd' 'dynamics_order' 'pointLum' 'pointStd'};
@@ -57,8 +59,9 @@ methods
             p.addParameter('pos_start', cell(1,1), @()(isnumeric(x)))
         end
         p.addParameter('iti', 2, @(x)(isnumeric(x))) 
+        p.addParameter('maxtrials', 10, @(x)(isnumeric(x))) 
         p.addParameter('maxtrialtime', 15, @(x)(isnumeric(x))) 
-        p.addParameter('trialpause', False, @(x)(islogical(x))) 
+        p.addParameter('trialpause', false, @(x)(islogical(x))) 
        
         p.addParameter('backLum', 90, @(x)(isnumeric(x))) ;
         p.addParameter('noiseLum', 0, @(x)(isnumeric(x))) ;
@@ -66,8 +69,8 @@ methods
         p.addParameter('stimStd', 0.4, @(x)(isnumeric(x))) ;
         p.addParameter('stepStd', 1, @(x)(isnumeric(x))) ;
         p.addParameter('dynamics_order', 0, @(x)(isinteger(x))) ;
-        p.addParameter('pointLum', 255, @(x)(isinteger(x)));
-        p.addParameter('pointStd', 0, @(x)(isinteger(x)));
+        p.addParameter('pointLum', 255, @(x)(isnumeric(x)));
+        p.addParameter('pointStd', 0, @(x)(isnumeric(x)));
                 
         p.parse(varargin{:})
                 
@@ -79,11 +82,11 @@ methods
         else
             obj.numTrials = p.Results.maxtrials;
             x_img = 1/3*myscreen.imageWidth*(2*rand(obj.numTrials,1)-1); 
-            y_img = 1/3*myscreen.imageWidth*(2*rand(obj.numTrials,1)-1);
+            y_img = 1/3*myscreen.imageHeight*(2*rand(obj.numTrials,1)-1);
             obj.pos_start{1} = [x_img, y_img];
         end
         
-        obj.initialize_params(obj,p)
+        obj.initialize_params(p)
         
         obj.state = nan(4,1);       % current state vector 
         obj.A     = nan(4,4);           % dynamics update matrix
@@ -97,7 +100,12 @@ methods
         thistask.segmin = [obj.maxtrialtime, obj.iti];
         thistask.segmax = [obj.maxtrialtime, obj.iti];
         
-        thistask.numTrials          = obj.numTrials;
+        if stimulus.exp.debug
+            thistask.numTrials          = 5;
+        else
+            thistask.numTrials          = obj.numTrials;
+        end
+        
         thistask.getResponse        = [0,0];
         if obj.trialpause
             thistask.synchToVol     = [0, 1];
@@ -107,11 +115,11 @@ methods
         thistask.waitForBacktick    = 1;
         
         for param = obj.varparams
-            eval(['thistask.parameter.' param{1} ' = obj.' param{1}])
+            eval(['thistask.parameter.' param{1} ' = obj.' param{1} ';'])
         end
         
         if obj.pointLum > 0 && obj.pointStd > 0
-            obj.turnOffDefaultPointer()
+            obj.turnOffDefaultPointer();
         end
     end
     
@@ -126,7 +134,7 @@ methods
         if ~isempty(obj.bgfile) && task.thistrial.noiseLum > 0
             nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
             task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
-            obj.stimulus{2}  = stimulus.backnoise{task.thistrial.thisphase}{task.thistrial.bgpermute(1)};
+            obj.stimulus{2}  = stimulus.backnoise{1}{task.thistrial.bgpermute(1)};
             obj.positions{2} = [0,0,myscreen.imageWidth, myscreen.imageHeight]; 
         end
         
@@ -143,7 +151,7 @@ methods
         x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
         y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
         mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-        if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor
+        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
         
         % keep track of start trial        
         obj.t0 = tic; 
@@ -155,10 +163,10 @@ methods
         obj.state = [obj.positions{1}(1:2)'; zeros(1,do*2); obj.positions{1}(1:2)']; % current state vector 
         obj.A     = blkdiag(triu(ones(do+1)), triu(ones(do+1)), zeros(2,2));         % dynamics update matrix
         obj.pidx  = [1, 2+do];
-        obj.cidx  = [ss-2,ss-1];
+        obj.cidx  = [ss-1,ss];
         obj.W     = zeros(ss,2); % dynamics noise
         obj.W(do+1,1)   = task.thistrial.stepStd/sqrt(myscreen.framesPerSecond);
-        obj.W(2*do+2,1) = task.thistrial.stepStd/sqrt(myscreen.framesPerSecond);
+        obj.W(2*do+2,2) = task.thistrial.stepStd/sqrt(myscreen.framesPerSecond);
     end
     
     function task = startSegment(obj, task, myscreen, stimulus)
@@ -180,19 +188,24 @@ methods
         if task.thistrial.thisseg == 1
             % blt all stimuli (including background)
             for stimidx = 1:length(obj.stimulus)
-                if obj.stimulus{stimidx} == 0 % if we get null image, return a red annulus
-                    mglGluDisk(stimulus.pointer(1), stimulus.pointer(2), 0.1, [1 0 0])
-                else
+                if isstruct(obj.stimulus{stimidx}) % if we get null image, return a red annulus
                     mglBltTexture(obj.stimulus{stimidx}, obj.positions{stimidx})
                 end
             end
-
+            
+            % overlay red disk
+            for stimidx = 1:length(obj.stimulus)
+                if ~isstruct(obj.stimulus{stimidx}) % if we get null image, return a red annulus
+                    mglGluDisk(obj.positions{stimidx}(1), obj.positions{stimidx}(2), 0.2, [1 0 0])
+                end
+            end
+            
             % update stimuli position
-            obj.updateStimulus(stimulus)
+            obj.updateStimulus(myscreen,stimulus)
 
             % update background
             if ~isempty(obj.bgfile) && task.thistrial.noiseLum > 0
-                obj.stimulus{2}  = stimulus.backnoise{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
+                obj.stimulus{2}  = stimulus.backnoise{1}{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
             end
         else
             task.thistrial.framecount = [];
@@ -206,14 +219,20 @@ methods
     end
     
         
-    function updateStimulus(obj, stimulus)
+    function updateStimulus(obj, myscreen, stimulus)
         % update state
-        obj.state               = obj.A * obj.state + obj.W * rand(size(obj.W,2),1);
-        obj.state(obj.cidx)     = stimulus.position;
+        noise       = obj.W * normrnd(0,1,size(obj.W,2),1);
+        newstate    = obj.A * obj.state + noise;
+        
+        % subtract back if out of bounds
+        [horz_out, vert_out] = check_oob(newstate(obj.pidx), myscreen, stimulus);    
+        newstate(obj.pidx(1))  = newstate(obj.pidx(1)) - horz_out * noise(obj.pidx(1));
+        newstate(obj.pidx(2))  = newstate(obj.pidx(2)) - vert_out * noise(obj.pidx(2));
         
         % update position
-        obj.positions{1}(1:2)   = obj.state(obj.pidx);
-        
+        obj.positions{1}(1:2)   = newstate(obj.pidx); 
+        obj.state               = newstate;
+        obj.state(obj.cidx)     = stimulus.pointer;
         obj.positions{3}(1:2)   = stimulus.pointer;
     end
 
@@ -222,8 +241,8 @@ end
 methods(Static)
     function turnOffDefaultPointer
         global stimulus;
-        if ~stimulus.exp.disPointer
-            stimulus.exp.disPointer = 0;
+        if stimulus.exp.dispPointer
+            stimulus.exp.dispPointer = 0;
         end
     end
 end

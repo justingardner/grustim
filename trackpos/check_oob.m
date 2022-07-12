@@ -1,5 +1,5 @@
 function [horz_out, vert_out] = check_oob(pos, myscreen, stimulus)    
-    stimstd = stimulus.stimStd;
+    stimstd = 0.4; %stimulus.stimStd;
     xBound = myscreen.imageWidth/2;
     yBound = myscreen.imageHeight/2;
     

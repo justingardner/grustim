@@ -18,6 +18,7 @@ classdef (Abstract) trackingTask < handle
         state;      % current state vector 
         A;          % dynamics update matrix
         W;          % dynamics noise
+        pidx;       % position index
         cidx;       % controllable states
         
         movecursor; % indicates whether we can move cursor
@@ -53,7 +54,7 @@ classdef (Abstract) trackingTask < handle
     methods
         function initialize_params(obj, parserOut)
             for param = [obj.varparams, obj.nonvarparams]
-                eval(['obj.' param{1} ' = parserOut.Results.' param{1}])
+                eval(['obj.' param{1} ' = parserOut.Results.' param{1} ';'])
             end
         end
         

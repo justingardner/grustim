@@ -16,7 +16,8 @@ properties
     A               = eye(4,4);         % dynamics update matrix
     W               = zeros(4,1);       % dynamics noise
     B               = [0,0; 0,0; 1,0; 0,1]; % independent controllable states
-
+    pidx            = [1,2];
+    cidx            = [3,4];
     
     movecursor      = 0;    
     cursor_steady   = 0; % frames for which the cursor is steady
@@ -106,7 +107,7 @@ methods
             end
         end
         
-        obj.initialize_params(obj,p)
+        obj.initialize_params(p)
     end
     
     % return task object that can be run on trackpos.m
@@ -121,7 +122,7 @@ methods
         thistask.waitForBacktick    = 1;
         
         for param = obj.varparams
-            eval(['thistask.parameter.' param{1} ' = obj.' param{1}])
+            eval(['thistask.parameter.' param{1} ' = obj.' param{1}  ';'])
         end
     end
 
@@ -146,7 +147,7 @@ methods
         x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
         y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
         mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-        if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end %hide cursor
+        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
         
         % trial terminal conditions
         obj.cursor_steady = 0; 
@@ -194,7 +195,7 @@ methods
             
         % update background
         if ~isempty(obj.bgfile) && task.thistrial.noiseLum > 0
-            obj.stimulus{2}  = stimulus.backnoise{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
+            obj.stimulus{2}  = stimulus.backnoise{1}{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
         end
         
         % update fixation

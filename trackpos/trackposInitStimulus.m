@@ -4,7 +4,7 @@ function stimulus = trackposInitStimulus(obj,myscreen)
     
     stimulus = struct();
     % stimulus size
-    if ~isfield(obj,'stimStd')
+    if ~isfield(obj,'stimStd') && ~isprop(obj,'stimStd')
         stimulus.stimStd = 1;
     else
         stimulus.stimStd = obj.stimStd;
@@ -12,7 +12,7 @@ function stimulus = trackposInitStimulus(obj,myscreen)
     %GardnerLab: stimstd = 1; CSNL stimStd = 0.4.. 
     stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
     
-    if ~isfield(obj,'position'), 
+    if ~isfield(obj,'position') && ~isprop(obj,'position') 
         %stimulus initial position. uniform distribution across the screen
         x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
         y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
@@ -24,14 +24,14 @@ function stimulus = trackposInitStimulus(obj,myscreen)
     
     % stimulus speed
     % this might change based on effective sampling rate.
-    if ~isfield(obj,'stepStd'), 
+    if ~isfield(obj,'stepStd') && ~isprop(obj,'stepStd') 
         stimulus.stepStd = 1; % in deg/sec
     else
        stimulus.stepStd = obj.stepStd; 
     end %unit: cm/s to deg/frame
         
     % stimulus luminance
-    if ~isfield(stimulus,'stimLum'), 
+    if ~isfield(stimulus,'stimLum') && ~isprop(obj,'stimLum') 
         stimulus.stimLum = 122;
     else
        stimulus.stimLum = obj.stimLum; 
