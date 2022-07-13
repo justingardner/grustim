@@ -11,6 +11,7 @@
 % indicate tracking period or 
 % todo: only load background once
 % todo: move cursor into the task stimuli 
+% todo: move things to startsegment. clear screen at inittrial
 
 function myscreen = trackpos(varargin)
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
@@ -29,7 +30,7 @@ myscreen                = initScreen(myscreen);
 %% experiment parameters
 % Experimenter parameters
 %todo:  check these throughout the code!!
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.noeye               = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
@@ -46,7 +47,8 @@ global stimulus; stimulus = struct;
 stimulus.exp = exp;
 
 task = {}; 
-% specify task design
+
+%% specify task design
 % sb      = stillblob(myscreen, 'backLum', 0, 'maxtrialtime',30,'steady_thresh_frame',50);
 % phase1  = sb.configureExperiment(stimulus,task,myscreen);
 stimsize = 1;
@@ -64,8 +66,20 @@ cp4     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 64, 'stimStd', stimsize)
 cp5     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 64, 'stimStd', 0,  'pointLum', 64, 'pointStd', stimsize);
 cp6     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 0, 'stimStd', 0);
 %stimulus.task = {circ1,circ2};
-stimulus.task = {cp2, cp3, cp4, cp5}; %, cp3, cp4, cp5, cp6};
+%stimulus.task = {cp2, cp3, cp4, cp5}; %, cp3, cp4, cp5, cp6};
 
+% run the task at multiple radii.
+stimulus.task = {};
+thetaStd0_r1 = pi/3; % angular velocity at r=1; 
+for r = [2,4,6,8,10]
+    thetaStd0 = thetaStd0_r1/r; % keep linear velocity constant
+    circ   = circular(myscreen, 'noiseLum', 32, 'stimLum', 80, 'stimStd', stimsize, ...
+                      'r', [r], 'thetaStd0', thetaStd0, ...
+                      'maxtrials',5);
+    stimulus.task{end+1} = circ;                   
+end
+
+%% configure task
 task{1} = cell(length(stimulus.task),1);
 for ts = 1:length(stimulus.task)
     task{1}{ts} = stimulus.task{ts}.configureExperiment(task,myscreen,stimulus);

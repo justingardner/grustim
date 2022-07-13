@@ -79,12 +79,12 @@ methods
         p.addParameter('stimLum', 255, @(x)(isnumeric(x))) 
         p.addParameter('stimStd', 1, @(x)(isnumeric(x))) 
         
-        p.addParameter('thetaStep', [pi/3], @(x)(isnumeric(x))) 
+        p.addParameter('thetaStep', [0], @(x)(isnumeric(x))) 
         p.addParameter('thetaStd0', 0, @(x)(isnumeric(x))) 
         p.addParameter('thetaStd1', [0], @(x)(isnumeric(x)))  % (pi/30)^2
         p.addParameter('thetaStd2', [0], @(x)(isnumeric(x))) 
 
-        p.addParameter('rStd', [1] , @(x)(isnumeric(x))) 
+        p.addParameter('rStd', [0] , @(x)(isnumeric(x))) 
         p.addParameter('r_logSpace', false, @(x)(islogical(x))) 
         
         p.addParameter('randomize_order', true, @(x) (islogical(x)))
@@ -198,6 +198,12 @@ methods
     end
     
     function task = startSegment(obj, task, myscreen, stimulus)
+        % set mouse position to the stimulus position. 
+        x_img = obj.pos_start{1}(task.trialnum,1);  y_img = obj.pos_start{1}(task.trialnum,2);
+        x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
+        y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
+        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
+        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor        
         
     end
 
