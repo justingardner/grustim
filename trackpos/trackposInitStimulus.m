@@ -31,11 +31,32 @@ function stimulus = trackposInitStimulus(obj,myscreen)
     end %unit: cm/s to deg/frame
         
     % stimulus luminance
-    if ~isfield(stimulus,'stimLum') && ~isprop(obj,'stimLum') 
+    if ~isfield(obj,'stimLum') && ~isprop(obj,'stimLum') 
         stimulus.stimLum = 122;
     else
        stimulus.stimLum = obj.stimLum; 
     end %unit: luminance
+    
+    if ~isfield(obj,'stimColor') && ~isprop(obj,'stimColor') 
+       stimulus.stimColor = [1;1;1];
+    else
+        if ischar(obj.stimColor)
+            if obj.stimColor == 'k'
+                stimulus.stimColor = [1;1;1];
+            elseif obj.stimColor == 'r'
+                stimulus.stimColor = [1;0;0];
+            elseif obj.stimColor == 'b'
+                stimulus.stimColor = [0;0;1];
+            elseif obj.stimColor == 'g'
+                stimulus.stimColor = [0;1;0];
+            end
+        elseif isvector(obj.stimColor)  && length(obj.stimColor) == 3
+            stimulus.stimColor = obj.stimColor;
+        else
+            print('check input stimColor property')
+            stimulus.stimColor = [1;1;1];
+        end
+    end 
             
     % generate stimulus image
     if stimulus.stimLum == 0 || stimulus.stimStd == 0
@@ -43,7 +64,7 @@ function stimulus = trackposInitStimulus(obj,myscreen)
     else
         gaussian    =  mglMakeGaussian(stimulus.patchsize,stimulus.patchsize,...
             stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum);
-        gaussian_rgb           = 255*ones(4,size(gaussian,2),size(gaussian,1),'uint8');
+        gaussian_rgb           = 255*repmat([stimulus.stimColor; 1], 1, size(gaussian,2),size(gaussian,1));
         gaussian_rgb(4,:,:)    = round(gaussian');
         gaussian_rgb           = uint8(gaussian_rgb);
         stimulus.gaussian = mglCreateTexture(gaussian_rgb);

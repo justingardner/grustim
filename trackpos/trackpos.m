@@ -30,13 +30,13 @@ myscreen                = initScreen(myscreen);
 %% experiment parameters
 % Experimenter parameters
 %todo:  check these throughout the code!!
-exp.debug               = 0; % debug code
+exp.debug               = 1; % debug code
 exp.noeye               = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.fixateCenter        = 1; %
 exp.dispPointer         = 1; % display pointer
-exp.useJoystick 		= 0; % use joystick. Need "simulink 3D animation" package downloaded. 
+exp.useJoystick 		= 1; % use joystick. Need "simulink 3D animation" package downloaded. 
 
 exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
 exp.phasescrambleOn     = 1; % load background, if specified by task
@@ -51,33 +51,49 @@ task = {};
 %% specify task design
 % sb      = stillblob(myscreen, 'backLum', 0, 'maxtrialtime',30,'steady_thresh_frame',50);
 % phase1  = sb.configureExperiment(stimulus,task,myscreen);
-stimsize = 1;
-circ1   = circular(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', stimsize, 'rStd', [1]);
-circ2   = circular(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', stimsize, 'r_logSpace', true, 'rStd', 0.3);
-circ3   = circular(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', stimsize, 'r_logSpace', false, 'rStd', 0,...
-                   'thetaStep',0, 'thetaStd0', pi/10);
-circ4   = circular(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', stimsize, 'r_logSpace', false, 'rStd', 0,...
-                   'thetaStep',0, 'thetaStd1', (pi/30)^2);
+stimsize = []; 
+stepStd = 1; 
+lums = [16,32,48,64,255];
+% no noise
+cps = {};
+cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
+    'stimLum', lums, 'stimColor', {'k'}, 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', 1, ...
+    'pointLum',lums, 'pointColor', {'r'},'pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5);
+cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
+    'stimLum', lums, 'stimColor', {'k'}, 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', 1, ...
+    'pointLum',lums, 'pointColor', {'r'},'pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 1);
+for stepStd = [1,2,3]
+    for pointStepStd = [0,0.5,1]
+        cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
+            'stimLum', lums, 'stimColor', {'k'}, 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', stepStd, ...
+            'pointLum',lums, 'pointColor', {'r'},'pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', pointStepStd);
+    end
+end
+  
+stimulus.task = cps;
 
-cp1     = brownian(myscreen, 'noiseLum', 0, 'stimLum', 92, 'stimStd', stimsize);
-cp2     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', stimsize);
-cp3     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', 0,  'pointLum', 96, 'pointStd', stimsize);
-cp4     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 64, 'stimStd', stimsize);
-cp5     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 64, 'stimStd', 0,  'pointLum', 64, 'pointStd', stimsize);
-cp6     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 0, 'stimStd', 0);
+% cp2     = brownian(myscreen, 'noiseLum', 0, 'stimLum', 96, 'stimStd', stimsize, 'stepStd', stepStd);
+% cp2     = brownian(myscreen, 'noiseLum', 0, 'stimLum', 96, 'stimStd', stimsize, 'stepStd', stepStd);
+% cp2     = brownian(myscreen, 'noiseLum', 0, 'stimLum', 96, 'stimStd', stimsize, 'stepStd', stepStd);
+% 
+% stimsize = 1; stepStd = 1; 
+% cp3     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', 0,  'pointLum', 96, 'pointStd', stimsize);
+% cp4     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 64, 'stimStd', stimsize);
+% cp5     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 64, 'stimStd', 0,  'pointLum', 64, 'pointStd', stimsize);
+% cp6     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 0, 'stimStd', 0);
 %stimulus.task = {circ1,circ2};
 %stimulus.task = {cp2, cp3, cp4, cp5}; %, cp3, cp4, cp5, cp6};
-
-% run the task at multiple radii.
-stimulus.task = {};
-thetaStd0_r1 = pi/3; % angular velocity at r=1; 
-for r = [2,4,6,8,10]
-    thetaStd0 = thetaStd0_r1/r; % keep linear velocity constant
-    circ   = circular(myscreen, 'noiseLum', 32, 'stimLum', 80, 'stimStd', stimsize, ...
-                      'r', [r], 'thetaStd0', thetaStd0, ...
-                      'maxtrials',5);
-    stimulus.task{end+1} = circ;                   
-end
+% 
+% % run the task at multiple radii.
+% stimulus.task = {};
+% thetaStd0_r1 = pi/3; % angular velocity at r=1; 
+% for r = [2,4,6,8,10]
+%     thetaStd0 = thetaStd0_r1/r; % keep linear velocity constant
+%     circ   = circular(myscreen, 'noiseLum', 32, 'stimLum', 80, 'stimStd', stimsize, ...
+%                       'r', [r], 'thetaStd0', thetaStd0, ...
+%                       'maxtrials',5);
+%     stimulus.task{end+1} = circ;                   
+% end
 
 %% configure task
 task{1} = cell(length(stimulus.task),1);
@@ -138,7 +154,7 @@ if stimulus.exp.grabframe
 end
 
 %% Eye calibration and check joystick
-if ~stimulus.exp.noeye && ~stimulus.exp.debug
+if ~stimulus.exp.noeye %&& ~stimulus.exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
     
@@ -147,21 +163,9 @@ if ~stimulus.exp.noeye && ~stimulus.exp.debug
 end
 
 if stimulus.exp.useJoystick
-stimulus.joy = vrjoystick(1); % use simulink 3d animation to load joystick object
-if isempty(stimulus.joy)
-    stimulus.exp.useJoystick = 0;
-    exp = stimulus.exp;
-    disp(' FAILED TO FIND JOYSTICK! MAKE SURE SIMULINK 3D ANIMATION PACKAGE IS INSTALLED AND THE JOYSTICK IS PROPERLY CONNECTED');
-    disp(' USING MOUSE FOR TRACKING ...');
-else
-    joy_params              = struct();
-    joy_params.maxv         = 0.2;
-    joy_params.deadzone     = 0.02;
-    joy_params.sensitivity  = 2;
-    joy_params.poly_order   = 1.2;
-    stimulus.joy_params     = joy_params;
+    stimulus = calibrateJoy(myscreen, stimulus);
 end
-end
+exp = stimulus.exp;
 
 %% run the task
 disp(' Running Task....'); stimulus.t0 = mglGetSecs; % 
@@ -282,6 +286,7 @@ task  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
 if stimulus.exp.dispPointer
     mglGluDisk(stimulus.pointer(1), stimulus.pointer(2), 0.2, [1 0 0])
 end
+
 if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
 % if we are in the tracking period,  save tracking variables

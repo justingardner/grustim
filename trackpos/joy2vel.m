@@ -14,9 +14,16 @@ function [vx, vy] = joy2vel(joy, prms, myscreen)
     maxv    = maxr; % maxmimum velocity takes our pointer off the screen within one time frame
     
     a = axis(joy); 
+    a = a - [prms.bias 0];
     % make forward go up; make sensitivity increase as throttle is more
     % forward
-    x = a(1); y=-1* a(2); z=a(3); s= -1* a(4); 
+    theta = -1*a(3)*prms.theta_range;  % -1 to 1 =>  -pi/6 to pi/6 % 
+    x0 = a(1)* prms.xyratio; y0=-1* a(2); 
+    r0 = sqrt(x0^2 + y0^2);
+    theta0 = atan2(y0,x0);
+    x = r0*cos(theta0+theta);
+    y = r0*sin(theta0+theta);
+    s = -1* a(4); 
 
     sigma = polytrans(convert_range(s),prms.sensitivity);
     vx = lintrans(...

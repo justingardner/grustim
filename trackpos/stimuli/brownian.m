@@ -32,15 +32,19 @@ properties
     maxtrials;
       
     % variable parameters
-    varparams   = {'backLum' 'noiseLum' 'stimLum' 'stimStd' 'stepStd' 'dynamics_order' 'pointLum' 'pointStd'};
+    varparams   = {'backLum' 'noiseLum' 'stimLum' 'stimColor' 'stimStd' 'stepStd' 'dynamics_order' ...
+                   'pointLum' 'pointColor' 'pointStd' 'pointStepStd'};
     backLum;
     noiseLum;
     stimLum;
     stimStd;
     stepStd;
+    stimColor; 
     dynamics_order;
     pointLum;
     pointStd;
+    pointStepStd;
+    pointColor;
 end
     
     
@@ -66,11 +70,14 @@ methods
         p.addParameter('backLum', 90, @(x)(isnumeric(x))) ;
         p.addParameter('noiseLum', 0, @(x)(isnumeric(x))) ;
         p.addParameter('stimLum', 255, @(x)(isnumeric(x))) ;
+        p.addParameter('stimColor', 'k', @(x)(iscellstr(x)));
         p.addParameter('stimStd', 0.4, @(x)(isnumeric(x))) ;
         p.addParameter('stepStd', 1, @(x)(isnumeric(x))) ;
         p.addParameter('dynamics_order', 0, @(x)(isinteger(x))) ;
         p.addParameter('pointLum', 255, @(x)(isnumeric(x)));
+        p.addParameter('pointColor', 'r', @(x)(iscellstr(x)));
         p.addParameter('pointStd', 0, @(x)(isnumeric(x)));
+        p.addParameter('pointStepStd', 0, @(x)(isnumeric(x)));
                 
         p.parse(varargin{:})
                 
@@ -118,9 +125,10 @@ methods
             eval(['thistask.parameter.' param{1} ' = obj.' param{1} ';'])
         end
         
-        if obj.pointLum > 0 && obj.pointStd > 0
-            obj.turnOffDefaultPointer();
-        end
+        obj.turnOffDefaultPointer();
+%         if obj.pointLum > 0 && obj.pointStd > 0
+%             obj.turnOffDefaultPointer();
+%         end
     end
     
     % trial update?
@@ -142,6 +150,7 @@ methods
         pointer = struct();
         pointer.stimLum     = obj.pointLum;
         pointer.stimStd     = obj.pointStd;
+        pointer.stimColor   = obj.pointColor;
         pointer_stim        = trackposInitStimulus(pointer,myscreen);
         obj.stimulus{3}     = pointer_stim.gaussian;
         obj.positions{3}    = [obj.pos_start{1}(task.trialnum,:), [], []];
@@ -164,10 +173,13 @@ methods
         obj.A     = blkdiag(triu(ones(do+1)), triu(ones(do+1)), zeros(2,2));         % dynamics update matrix
         obj.pidx  = [1, 2+do];
         obj.cidx  = [ss-1,ss];
-        obj.W     = zeros(ss,2); % dynamics noise
-        obj.W(do+1,1)   = task.thistrial.stepStd/sqrt(myscreen.framesPerSecond);
-        obj.W(2*do+2,2) = task.thistrial.stepStd/sqrt(myscreen.framesPerSecond);
+        obj.W     = zeros(ss,4); % dynamics noise
+        obj.W((do+1),1)   = task.thistrial.stepStd/sqrt(myscreen.framesPerSecond);
+        obj.W(2*(do+1),2) = task.thistrial.stepStd/sqrt(myscreen.framesPerSecond);
+        obj.W(2*(do+1)+1,3) = task.thistrial.pointStepStd/sqrt(myscreen.framesPerSecond);
+        obj.W(2*(do+1)+2,4) = task.thistrial.pointStepStd/sqrt(myscreen.framesPerSecond);
     end
+  
     
     function task = startSegment(obj, task, myscreen, stimulus)
         if task.thistrial.thisseg == 1
@@ -217,23 +229,28 @@ methods
             mglGluDisk(0,0,0.1,rand(1,3),60,1);
         end
     end
-    
-        
+     
     function updateStimulus(obj, myscreen, stimulus)
         % update state
         noise       = obj.W * normrnd(0,1,size(obj.W,2),1);
         newstate    = obj.A * obj.state + noise;
+        newstate(obj.cidx) = stimulus.pointer + noise(obj.cidx);
         
-        % subtract back if out of bounds
+        % pointer: subtract back if out of bounds
+        [horz_out, vert_out] = check_oob(newstate(obj.cidx), myscreen, stimulus);    
+        newstate(obj.cidx(1))  = newstate(obj.cidx(1)) - horz_out * noise(obj.cidx(1));
+        newstate(obj.cidx(2))  = newstate(obj.cidx(2)) - vert_out * noise(obj.cidx(2));
+        stimulus.pointer       = newstate(obj.cidx);
+        
+        % target: subtract back if out of bounds
         [horz_out, vert_out] = check_oob(newstate(obj.pidx), myscreen, stimulus);    
         newstate(obj.pidx(1))  = newstate(obj.pidx(1)) - horz_out * noise(obj.pidx(1));
         newstate(obj.pidx(2))  = newstate(obj.pidx(2)) - vert_out * noise(obj.pidx(2));
         
         % update position
         obj.positions{1}(1:2)   = newstate(obj.pidx); 
-        obj.state               = newstate;
-        obj.state(obj.cidx)     = stimulus.pointer;
         obj.positions{3}(1:2)   = stimulus.pointer;
+        obj.state               = newstate;
     end
 
 end

@@ -6,7 +6,7 @@ classdef (Abstract) trackingTask < handle
     properties (Abstract)
         % task parameters
         name;       % name of task
-        numTrials;          % number of trials
+        numTrials;  % number of trials
         pos_start;  % starting position of stimulus         
                         
         % trial parameters
