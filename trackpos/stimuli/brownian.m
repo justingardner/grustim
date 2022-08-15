@@ -58,9 +58,9 @@ methods
         p = inputParser;
         p.KeepUnmatched = true;
         
-        if any(cellfun(@(x)(strcmp(x,'pos_start')), varargin))
+        if any(cellfun(@(x)(ischar(x) && strcmp(x,'pos_start')), varargin))
             % if start_pos exist as a parameter
-            p.addParameter('pos_start', cell(1,1), @()(isnumeric(x)))
+            p.addParameter('pos_start', cell(1,1), @(x)(isnumeric(x)))
         end
         p.addParameter('iti', 2, @(x)(isnumeric(x))) 
         p.addParameter('maxtrials', 10, @(x)(isnumeric(x))) 
@@ -70,12 +70,12 @@ methods
         p.addParameter('backLum', 90, @(x)(isnumeric(x))) ;
         p.addParameter('noiseLum', 0, @(x)(isnumeric(x))) ;
         p.addParameter('stimLum', 255, @(x)(isnumeric(x))) ;
-        p.addParameter('stimColor', 'k', @(x)(iscellstr(x)));
+        p.addParameter('stimColor', 'k');
         p.addParameter('stimStd', 0.4, @(x)(isnumeric(x))) ;
         p.addParameter('stepStd', 1, @(x)(isnumeric(x))) ;
         p.addParameter('dynamics_order', 0, @(x)(isinteger(x))) ;
         p.addParameter('pointLum', 255, @(x)(isnumeric(x)));
-        p.addParameter('pointColor', 'r', @(x)(iscellstr(x)));
+        p.addParameter('pointColor', 'r'); %todo: add checks
         p.addParameter('pointStd', 0, @(x)(isnumeric(x)));
         p.addParameter('pointStepStd', 0, @(x)(isnumeric(x)));
                 
@@ -133,8 +133,13 @@ methods
     
     % trial update?
     function task  = initTrial(obj, task, myscreen, stimulus)
+        
         % initialize stimulus position
-        trackpos_stim = trackposInitStimulus(obj,myscreen);
+        target = struct();
+        for param = {'stimStd', 'stepStd', 'stimLum', 'stimColor'}
+           eval(['target.' param{1} ' = task.thistrial.' param{1} ';'])
+        end
+        trackpos_stim      = trackposInitStimulus(target,myscreen);
         obj.stimulus{1}    = trackpos_stim.gaussian;
         obj.positions{1}   = [obj.pos_start{1}(task.trialnum,:), [], []];
         
@@ -147,10 +152,14 @@ methods
         end
         
         % initialize the pointer
-        pointer = struct();
-        pointer.stimLum     = obj.pointLum;
-        pointer.stimStd     = obj.pointStd;
-        pointer.stimColor   = obj.pointColor;
+        pointer             = struct();
+%         for param = {'pointStd', 'pointStepStd', 'pointLum', 'pointColor'}
+%            eval(['pointer.stim' param{1}[5:] ' = task.thistrial.' param{1} ';'])
+%         end
+        pointer.stimLum     = task.thistrial.pointLum;
+        pointer.stimStd     = task.thistrial.pointStd;
+        pointer.stepStd     = task.thistrial.pointStepStd;
+        pointer.stimColor   = task.thistrial.pointColor;
         pointer_stim        = trackposInitStimulus(pointer,myscreen);
         obj.stimulus{3}     = pointer_stim.gaussian;
         obj.positions{3}    = [obj.pos_start{1}(task.trialnum,:), [], []];
@@ -206,11 +215,11 @@ methods
             end
             
             % overlay red disk
-            for stimidx = 1:length(obj.stimulus)
-                if ~isstruct(obj.stimulus{stimidx}) % if we get null image, return a red annulus
-                    mglGluDisk(obj.positions{stimidx}(1), obj.positions{stimidx}(2), 0.2, [1 0 0])
-                end
-            end
+%             for stimidx = 1:length(obj.stimulus)
+%                 if ~isstruct(obj.stimulus{stimidx}) % if we get null image, return a red annulus
+%                     mglGluDisk(obj.positions{stimidx}(1), obj.positions{stimidx}(2), 0.2, [1 0 0])
+%                 end
+%             end
             
             % update stimuli position
             obj.updateStimulus(myscreen,stimulus)
@@ -234,13 +243,34 @@ methods
         % update state
         noise       = obj.W * normrnd(0,1,size(obj.W,2),1);
         newstate    = obj.A * obj.state + noise;
-        newstate(obj.cidx) = stimulus.pointer + noise(obj.cidx);
         
-        % pointer: subtract back if out of bounds
-        [horz_out, vert_out] = check_oob(newstate(obj.cidx), myscreen, stimulus);    
-        newstate(obj.cidx(1))  = newstate(obj.cidx(1)) - horz_out * noise(obj.cidx(1));
-        newstate(obj.cidx(2))  = newstate(obj.cidx(2)) - vert_out * noise(obj.cidx(2));
-        stimulus.pointer       = newstate(obj.cidx);
+        % update mouse
+        if strcmp(stimulus.exp.controlMethod, 'mouse')
+            mInfo = mglGetMouse(myscreen.screenNumber);
+            stimulus.pointer(1) = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+            stimulus.pointer(2) = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+            
+            % perturb current position
+            newstate(obj.cidx) = stimulus.pointer' + noise(obj.cidx);
+            
+            % pointer: subtract back if out of bounds
+            [horz_out, vert_out] = check_oob(newstate(obj.cidx), myscreen, stimulus);    
+            newstate(obj.cidx(1))  = newstate(obj.cidx(1)) - horz_out * noise(obj.cidx(1));
+            newstate(obj.cidx(2))  = newstate(obj.cidx(2)) - vert_out * noise(obj.cidx(2));
+            stimulus.pointer       = newstate(obj.cidx)';
+            
+            x_img = stimulus.pointer(1);  y_img = stimulus.pointer(2);
+            x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
+            y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
+            mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
+        else
+            newstate(obj.cidx) = stimulus.pointer' + noise(obj.cidx);
+            % pointer: subtract back if out of bounds
+            [horz_out, vert_out] = check_oob(newstate(obj.cidx), myscreen, stimulus);    
+            newstate(obj.cidx(1))  = newstate(obj.cidx(1)) - horz_out * noise(obj.cidx(1));
+            newstate(obj.cidx(2))  = newstate(obj.cidx(2)) - vert_out * noise(obj.cidx(2));
+            stimulus.pointer       = newstate(obj.cidx)';
+        end
         
         % target: subtract back if out of bounds
         [horz_out, vert_out] = check_oob(newstate(obj.pidx), myscreen, stimulus);    

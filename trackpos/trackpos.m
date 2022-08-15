@@ -36,7 +36,9 @@ exp.showMouse           = 0; % show mouse during everything
 
 exp.fixateCenter        = 1; %
 exp.dispPointer         = 1; % display pointer
-exp.useJoystick 		= 1; % use joystick. Need "simulink 3D animation" package downloaded. 
+exp.controlMethod       = 'mouse'; %todo: 1: mouse; 2: eye; 3:joystick
+exp.useJoystick 		= 0; % use joystick. Need "simulink 3D animation" package downloaded. 
+exp.useEyeTrack         = 0; % control cursor with 
 
 exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
 exp.phasescrambleOn     = 1; % load background, if specified by task
@@ -53,20 +55,23 @@ task = {};
 % phase1  = sb.configureExperiment(stimulus,task,myscreen);
 stimsize = []; 
 stepStd = 1; 
-lums = [16,32,48,64,255];
+lums = [32,48,64,96,255];
 % no noise
+for lums =  [32,48,64,96,255];
 cps = {};
 cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-    'stimLum', lums, 'stimColor', {'k'}, 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', 1, ...
-    'pointLum',lums, 'pointColor', {'r'},'pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5);
+    'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', 1, ...
+    'pointLum',lums, 'pointColor', 'r`','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.1);
 cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-    'stimLum', lums, 'stimColor', {'k'}, 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', 1, ...
-    'pointLum',lums, 'pointColor', {'r'},'pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 1);
+    'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', 1, ...
+    'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5);
+end
+
 for stepStd = [1,2,3]
     for pointStepStd = [0,0.5,1]
         cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-            'stimLum', lums, 'stimColor', {'k'}, 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', stepStd, ...
-            'pointLum',lums, 'pointColor', {'r'},'pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', pointStepStd);
+            'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stepStd', stepStd, ...
+            'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', pointStepStd);
     end
 end
   
@@ -181,7 +186,13 @@ if ~exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
 phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
-    [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
+    [task{1}, myscreen, newphaseNum] = updateTask(task{1},myscreen,phaseNum); % update the task
+    if newphaseNum ~= phaseNum
+        mglClearScreen();
+        mglTextDraw('Press backtick to go to next trial',[0 0]);
+        mglFlush;
+    end
+    phaseNum = newphaseNum;
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
 
@@ -269,11 +280,11 @@ phaseNum = task.thistrial.thisphase;
 % move cursor        
 if stimulus.task{phaseNum}.movecursor 
     % **&display mouse position
-    if ~stimulus.exp.useJoystick
+    if strcmp(stimulus.exp.controlMethod, 'mouse')
         mInfo = mglGetMouse(myscreen.screenNumber);
-        stimulus.pointer(1) = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
-        stimulus.pointer(2) = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
-    else
+%         stimulus.pointer(1) = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
+%         stimulus.pointer(2) = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
+    elseif strcmp(stimulus.exp.controlMethod, 'joystick')
         [vx, vy] = joy2vel(stimulus.joy, stimulus.joy_params, myscreen);
         stimulus = update_pointer(stimulus, [vx, vy], myscreen);
     end
@@ -346,7 +357,6 @@ function totaldur = approximate_total_task_dur(task)
     totaldur = totaltime/60/60;
     disp(['Approx task duration = ' num2str(totaldur) ' hours']);
 end
-
 
 function task = add_calculated_params(task, myscreen)
     for phaseNum = 1:length(task)

@@ -1,6 +1,8 @@
 function stimulus = calibrateJoy(myscreen, stimulus)
     %CALIBRATEJOY Summary of this function goes here
     %   Detailed explanation goes here
+    
+    disp(' (calibrateJoy) calibrating joystick ...');
 
     stimulus.joy = vrjoystick(1); % use simulink 3d animation to load joystick object
     if isempty(stimulus.joy)
@@ -21,8 +23,9 @@ function stimulus = calibrateJoy(myscreen, stimulus)
     
     stimulus.pointer = [1,1];
     
-    mglClearScreen;mglFlush;
+    mglClearScreen;
     mglTextDraw('Calibrating joystick...  Please let go of the joystick.',[0 0]);
+    mglFlush;
     myscreen = tickScreen(myscreen,[]); 
     a = axis(stimulus.joy);
     n=0; % need to be still for at least 100 frames
@@ -41,7 +44,7 @@ function stimulus = calibrateJoy(myscreen, stimulus)
     
     mglClearScreen;
     mglTextDraw('Press <space> to continue.',[0 0]);
-    mglFlush
+    mglFlush;
     [keyCodes keyTimes] = mglGetKeyEvent([],1);
     while ~any(keyCodes==myscreen.keyboard.space)
         if any(keyCodes == myscreen.keyboard.esc)
@@ -82,7 +85,7 @@ function stimulus = calibrateJoy(myscreen, stimulus)
         if toc > screencleartime
             mglClearScreen
             tic
-            joy_params
+            joy_params;
         end
         
         myscreen = tickScreen(myscreen,[]);     % flip screen

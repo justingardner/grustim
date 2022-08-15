@@ -1,6 +1,9 @@
 %% Initialize stimulus, initialize blob
 function stimulus = trackposInitStimulus(obj,myscreen)    
 % todo: make this only about generating stimulus image
+    if isempty(obj)
+        obj = struct();
+    end
     
     stimulus = struct();
     % stimulus size
@@ -40,6 +43,9 @@ function stimulus = trackposInitStimulus(obj,myscreen)
     if ~isfield(obj,'stimColor') && ~isprop(obj,'stimColor') 
        stimulus.stimColor = [1;1;1];
     else
+        if iscell(obj.stimColor)
+            obj.stimColor = obj.stimColor{1};
+        end
         if ischar(obj.stimColor)
             if obj.stimColor == 'k'
                 stimulus.stimColor = [1;1;1];
