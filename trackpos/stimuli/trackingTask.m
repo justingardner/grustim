@@ -13,8 +13,10 @@ classdef (Abstract) trackingTask < handle
         state;      % current state vector 
         A;          % dynamics update matrix
         W;          % dynamics noise
-        pidx;       % position index
-        cidx;       % controllable states
+        tpidx;       % position index of target
+        ppidx;       % position index of pointer
+        tnidx;       % noise index of target
+        pnidx;       % noise index of pointer
         
         movecursor; % indicates whether we can move cursor during this trial
         doTrack;    % indicates whether we should start recording tracking variables

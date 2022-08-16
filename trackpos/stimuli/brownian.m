@@ -12,8 +12,10 @@ properties
     state;       % current state vector 
     A;           % dynamics update matrix
     W;           % dynamics noise matrix
-    pidx;        % position index of target
-    cidx;        % position index of pointer
+    tpidx;       % position index of target
+    ppidx;       % position index of pointer
+    tnidx;       % noise index of target
+    pnidx;       % noise index of pointer
 
     movecursor      = false;
     doTrack         = true;    % indicates whether we should start recording tracking variables
@@ -68,7 +70,7 @@ methods
         p.addParameter('stimColor', 'k');
         p.addParameter('stimStd', 0.4, @(x)(isnumeric(x))) ;
         p.addParameter('stimStepStd', 1, @(x)(isnumeric(x))) ;
-        p.addParameter('dynamics_order', 0, @(x)(isinteger(x))) ;
+        p.addParameter('dynamics_order', 1, @(x)(isinteger(x))) ;
         p.addParameter('pointLum', 255, @(x)(isnumeric(x)));
         p.addParameter('pointColor', 'r'); %todo: add checks
         p.addParameter('pointStd', 0, @(x)(isnumeric(x)));
@@ -93,8 +95,10 @@ methods
         obj.state = nan(4,1);       % current state vector 
         obj.A     = nan(4,4);       % dynamics update matrix
         obj.W     = nan(4,2);       % dynamics noise
-        obj.pidx  = nan(2,1);       % controllable states   
-        obj.cidx  = nan(2,1);       % controllable states   
+        obj.tpidx  = nan(2,1);       % controllable states   
+        obj.ppidx  = nan(2,1);       % controllable states   
+        obj.tnidx  = nan(2,1);       % controllable states   
+        obj.pnidx  = nan(2,1);       % controllable states   
     end
     
     % return task object that can be run on trackpos.m
@@ -120,11 +124,6 @@ methods
         for param = obj.varparams
             eval(['thistask.parameter.' param{1} ' = obj.' param{1} ';'])
         end
-        
-        obj.turnOffDefaultPointer();
-%         if obj.pointLum > 0 && obj.pointStd > 0
-%             obj.turnOffDefaultPointer();
-%         end
     end
     
     % trial update?
@@ -141,7 +140,7 @@ methods
         % initialize the pointer
         pointer             = struct();
         for param = {'pointStd', 'pointStepStd', 'pointLum', 'pointColor'}
-           eval(['pointer.stim' lower(param{1}(6:end)) ' = task.thistrial.' param{1} ';'])
+           eval(['pointer.' lower(param{1}(6:end)) ' = task.thistrial.' param{1} ';'])
         end
         stimulus.pointer            = trackposInitStimulus(pointer,myscreen);
         stimulus.pointer.position   = initpos; % initialize pointer position to the stimulus position
@@ -158,28 +157,33 @@ methods
         Aee         = triu(ones(2));
         Aee(end,:)  = zeros(1,2);
         obj.A     = blkdiag(A11, A11, Aee, Aee); % dynamics update matrix
-        obj.pidx  = [1, 2+do]; % index of target position
-        obj.cidx  = [ss-3,ss-1]; % index of pointer position
+        obj.tpidx  = [1, 2+do];      % index of target position
+        obj.ppidx  = [ss-3,ss-1];    % index of pointer position
+        obj.tnidx  = [do+1, 2*(do+1)]; % target noise index
+        obj.pnidx  = [2*(do+1)+2,2*(do+1)+4]; % pointer noise index
         obj.W     = zeros(ss,4); % dynamics noise
-        obj.W((do+1),1)     = task.thistrial.stimStepStd/sqrt(myscreen.framesPerSecond); % last element affected by noise
-        obj.W(2*(do+1),2)   = task.thistrial.stimStepStd/sqrt(myscreen.framesPerSecond);
-        obj.W(2*(do+1)+2,3) = task.thistrial.pointStepStd/sqrt(myscreen.framesPerSecond);
-        obj.W(2*(do+1)+4,4) = task.thistrial.pointStepStd/sqrt(myscreen.framesPerSecond);
+        obj.W(obj.tnidx(1),1)     = task.thistrial.stimStepStd/sqrt(myscreen.framesPerSecond); % last element affected by noise
+        obj.W(obj.tnidx(2),2)   = task.thistrial.stimStepStd/sqrt(myscreen.framesPerSecond);
+        obj.W(obj.pnidx(1),3) = task.thistrial.pointStepStd/sqrt(myscreen.framesPerSecond);
+        obj.W(obj.pnidx(2),4) = task.thistrial.pointStepStd/sqrt(myscreen.framesPerSecond);
         
         % initialize state
         obj.state = zeros(ss,1);
-        obj.state(obj.pidx) = initpos;
-        obj.state(obj.cidx) = initpos;
+        obj.state(obj.tpidx) = initpos;
+        obj.state(obj.ppidx) = initpos;
     end
   
     
-    function task = startSegment(obj, task, myscreen, stimulus)
+    function stimulus = startSegment(obj, task, myscreen, stimulus)
         if task.thistrial.thisseg == 1 % tracking
             obj.movecursor  = true;
             obj.doTrack     = true;
         else % ITI
             obj.movecursor = false;
             obj.doTrack    = false;
+            
+            stimulus.target = [];
+            stimulus.pointer = [];
         end   
     end
 
@@ -199,23 +203,26 @@ methods
     function stimulus = updateStimulus(obj, myscreen, stimulus)
         % update state
         noise                       = obj.W * normrnd(0,1,size(obj.W,2),1);
+        obj.state(obj.ppidx(1))      = stimulus.pointer.position(1);
+        obj.state(obj.ppidx(2))      = stimulus.pointer.position(2);
         newstate                    = obj.A * obj.state + noise;
         
         % update pointer
         % perturb current position
-        pointer_newpos              = stimulus.pointer.position' + noise(obj.cidx);
+        pointer_newpos              = stimulus.pointer.position' + noise(obj.ppidx);
 
         % pointer: subtract back if out of bounds
-        [horz_out, vert_out]        = check_oob(pointer_newpos, myscreen, stimulus.pointer.std);    
-        newstate(obj.cidx(1))       = pointer_newpos(1) - horz_out * noise(obj.cidx(1));
-        newstate(obj.cidx(2))       = pointer_newpos(2) - vert_out * noise(obj.cidx(2));
-        stimulus.pointer.position   = newstate(obj.cidx)';
+        [horz_out, vert_out]        = check_oob(newstate(obj.ppidx), myscreen, stimulus.pointer.std);
+        newstate(obj.ppidx(1))      = (1-horz_out) * newstate(obj.ppidx(1)) + horz_out * obj.state(obj.ppidx(1));
+        newstate(obj.ppidx(2))      = (1-vert_out) * newstate(obj.ppidx(2)) + vert_out * obj.state(obj.ppidx(2));
+        stimulus.pointer.position   = newstate(obj.ppidx)';
+%         disp(['pointer pos (brownian): ' num2str(stimulus.pointer.position)]) % todo: delete this line after checking
 
         % target: subtract back if out of bounds
-        [horz_out, vert_out]        = check_oob(newstate(obj.pidx), myscreen, stimulus.target.std);    
-        newstate(obj.pidx(1))       = newstate(obj.pidx(1)) - horz_out * noise(obj.pidx(1));
-        newstate(obj.pidx(2))       = newstate(obj.pidx(2)) - vert_out * noise(obj.pidx(2));
-        stimulus.target.position    = newstate(obj.pidx)';
+        [horz_out, vert_out]        = check_oob(newstate(obj.tpidx), myscreen, stimulus.target.std);    
+        newstate(obj.tpidx(1))      = (1-horz_out) * newstate(obj.tpidx(1)) + horz_out * obj.state(obj.tpidx(1));
+        newstate(obj.tpidx(2))      = (1-vert_out) * newstate(obj.tpidx(2)) + vert_out * obj.state(obj.tpidx(2));
+        stimulus.target.position    = newstate(obj.tpidx)';
         
         % update position
         obj.state                   = newstate;
@@ -224,12 +231,7 @@ methods
 end
 
 methods(Static)
-    function turnOffDefaultPointer
-        global stimulus;
-        if stimulus.exp.dispPointer
-            stimulus.exp.dispPointer = 0;
-        end
-    end
+
 end
 
 end

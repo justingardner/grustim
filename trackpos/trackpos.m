@@ -52,7 +52,6 @@ exp.trackEye            = 1; % 1 if no eyetracking (mouse for eye); 0 if there i
 exp.showMouse           = 0; % show mouse during everything
 
 exp.fixateCenter        = 1; % fixate center
-exp.dispPointer         = 1; % display pointer
 exp.controlMethod       = 'mouse'; %todo: 1: mouse; 2: eye; 3:joystick
 
 exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
@@ -70,18 +69,19 @@ task = {};
 % phase1  = sb.configureExperiment(stimulus,task,myscreen);
 
 % no noise
-for lums =  [32,48,64,96,255];
 cps = {};
-cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-    'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stimStepStd', 1, ...
-    'pointLum',lums, 'pointColor', 'r`','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.1,...
-    'bgfile', []);
-cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-    'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stimStepStd', 1, ...
-    'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5,...
-    'bgfile', []);
+for lums =  [32,48,64,96,255];
+    cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
+        'stimLum', lums, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', 1, ...
+        'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5,...
+        'bgfile', []);
+    cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
+        'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stimStepStd', 1, ...
+        'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5,...
+        'bgfile', []);
 end
 
+lums =  [32,48,64,96,255];
 for stimStepStd = [1,2,3]
     for pointStepStd = [0,0.5,1]
         cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
@@ -175,7 +175,7 @@ if stimulus.exp.grabframe
 end
 
 %% Eye calibration and check joystick
-if stimulus.exp.trackEye %&& ~stimulus.exp.debug
+if stimulus.exp.trackEye && ~stimulus.exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
     
@@ -277,26 +277,28 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
     global stimulus 
     phaseNum = task.thistrial.thisphase;
    
-    stimulus.task{phaseNum}.startSegment(task, myscreen, stimulus);
+    stimulus = stimulus.task{phaseNum}.startSegment(task, myscreen, stimulus);
     
     if stimulus.task{phaseNum}.doTrack
         task.thistrial.framecount = 1;
+
+        % set mouse to the middle
+        % we extract only relative position (velocity) from the mouse positions
+        if strcmp(stimulus.exp.controlMethod, 'mouse')
+            x_screen = myscreen.screenWidth/2;
+            y_screen = myscreen.screenHeight/2;
+            mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+
+            mInfo = mglGetMouse(myscreen.screenNumber);
+            [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
+            stimulus.target.mouse0 = [x,y];
+            disp(['mouse position: ' num2str(x) ','  num2str(y)]) % todo: delete this line after checking
+        end
+
     else
         task.thistrial.framecount = [];
     end
-    
-    % set mouse to the middle
-    % we extract only relative position (velocity) from the mouse positions
-    if strcmp(stimulus.exp.controlMethod, 'mouse')
-        x_screen = myscreen.screenWidth/2;
-        y_screen = myscreen.screenHeight/2;
-        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
 
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
-        stimulus.target.mouse0 = [x,y];
-        disp(['mouse position: ' num2str(x) ','  num2str(y)]) % todo: delete this line after checking
-    end
     if stimulus.exp.grabframe
         global frame
         %save('/Users/jryu/Dropbox/Stanford/Current/FYP/FYP talk/figures/trackposTask_nonoise_160back.mat', 'frame','-v7.3')
@@ -322,14 +324,27 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
             vx = x - stimulus.target.mouse0(1);
             vy = y - stimulus.target.mouse0(2);
 
+            if norm([vx, vy]) > 1e-2
+                disp(['mouse vel: ' num2str(vx) ','  num2str(vy)]) % todo: delete this line after checking
+                disp(['pointer pos: ' num2str(stimulus.pointer.position)]) % todo: delete this line after checking
+            end
+
             % reset mouse position
-            mglSetMousePosition(ceil(myscreen.screenWidth/2),...
-                floor(myscreen.screenHeight/2), myscreen.screenNumber);      
+            if mInfo.x < myscreen.screenWidth * 0.1 || mInfo.x > myscreen.screenWidth *0.9 ...
+                    || mInfo.y <  myscreen.screenHeight*0.1 || mInfo.y > myscreen.screenHeight*0.9
+                mglSetMousePosition(ceil(myscreen.screenWidth/2),...
+                    floor(myscreen.screenHeight/2), myscreen.screenNumber);      
+                stimulus.target.mouse0 = [0,0];
+            else
+                stimulus.target.mouse0 = [x,y];
+            end
             
-            stimulus.pointer.position = update_pointer(stimulus.pointer, [vx, vy], myscreen);            
+            [x,y] = update_pointer(stimulus.pointer, [vx, vy], myscreen);
+            stimulus.pointer.position = [x,y];
         elseif strcmp(stimulus.exp.controlMethod, 'joystick')
             [vx, vy] = joy2vel(stimulus.joy, stimulus.joy_params, myscreen);
-            stimulus.pointer.position = update_pointer(stimulus.pointer, [vx, vy], myscreen);
+            [x,y] = update_pointer(stimulus.pointer, [vx, vy], myscreen);
+            stimulus.pointer.position = [x,y];
         elseif strcmp(stimulus.exp.controlMethod, 'eye')
             % cheat a bit take previous frame position...
             stimulus.pointer.position = ...
@@ -358,7 +373,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         task.thistrial.framecount = task.thistrial.framecount + 1;
     end
 
-
     % display background
     if ~isempty(stimulus.task{phaseNum}.bgfile) && task.thistrial.noiseLum > 0 && stimulus.exp.phasescrambleOn
         mglBltTexture(...
@@ -367,10 +381,12 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     end
     
     % display target
-    mglBltTexture(stimulus.target.img, stimulus.target.position)
+    if ~isempty(stimulus.target)
+        mglBltTexture(stimulus.target.img, stimulus.target.position)
+    end
     
     % display pointer
-    if stimulus.exp.dispPointer
+    if ~isempty(stimulus.pointer)
         mglBltTexture(stimulus.pointer.img, stimulus.pointer.position)
     end
     
@@ -407,7 +423,7 @@ function [x,y] = update_pointer(obj, vel, myscreen)
     
     [horz_out, vert_out] = check_oob(pos + vel, myscreen, obj.std);
     x = pos(1) + (1-horz_out)*vel(1);
-    y = pos(2)+ (1-vert_out)*vel(2);
+    y = pos(2) + (1-vert_out)*vel(2);
 end
 
 function [x,y] = screen2deg(x_screen, y_screen, myscreen)

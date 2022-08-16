@@ -55,6 +55,9 @@ function blob = trackposInitStimulus(obj,myscreen)
                 blob.color = [0;0;1];
             elseif obj.color == 'g'
                 blob.color = [0;1;0];
+            else
+                print('check blob color property')
+                blob.color = [1;1;1];
             end
         elseif isvector(obj.color)  && length(obj.color) == 3
             blob.color = obj.color;
