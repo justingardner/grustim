@@ -9,19 +9,15 @@ classdef (Abstract) trackingTask < handle
         numTrials;  % number of trials
         pos_start;  % starting position of stimulus         
                         
-        % trial parameters
-        stimulus;  % mx1 cell of images to Blt e.g. (mainstim*, background, stim2,...)
-                           % dimensions: 
-                           % background: rgb
-        positions;  % mx1 cell of 4x1 position of stimulus [xpos ypos width height]. 
-        
+        % trial parameters        
         state;      % current state vector 
         A;          % dynamics update matrix
         W;          % dynamics noise
         pidx;       % position index
         cidx;       % controllable states
         
-        movecursor; % indicates whether we can move cursor
+        movecursor; % indicates whether we can move cursor during this trial
+        doTrack;    % indicates whether we should start recording tracking variables
         
         bgfile;     % background file to preload at task initialization
         
@@ -53,15 +49,9 @@ classdef (Abstract) trackingTask < handle
     
     methods
         function initialize_params(obj, parserOut)
-            for param = [obj.varparams, obj.nonvarparams]
+            for param = parserOut.Parameters
                 eval(['obj.' param{1} ' = parserOut.Results.' param{1} ';'])
             end
         end
-        
-        function pos = returnstimpos(obj)
-            pos = obj.positions(1,1:2); % first stimulus should be the main stimulus to track
-        end
-        
     end
-    
 end

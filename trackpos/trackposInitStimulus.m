@@ -1,88 +1,78 @@
-%% Initialize stimulus, initialize blob
-function stimulus = trackposInitStimulus(obj,myscreen)    
-% todo: make this only about generating stimulus image
+%% Initialize blob, initialize blob
+function blob = trackposInitStimulus(obj,myscreen)    
+% todo: make this only about generating blob image
     if isempty(obj)
         obj = struct();
     end
     
-    stimulus = struct();
-    % stimulus size
-    if ~isfield(obj,'stimStd') && ~isprop(obj,'stimStd')
-        stimulus.stimStd = 1;
+    blob = struct();
+    % blob size
+    if ~isfield(obj,'std') && ~isprop(obj,'std')
+        blob.std = 1;
     else
-        stimulus.stimStd = obj.stimStd;
+        blob.std = obj.std;
     end %unit: imageX, in deg.
-    %GardnerLab: stimstd = 1; CSNL stimStd = 0.4.. 
-    stimulus.patchsize = min(6*stimulus.stimStd,min(myscreen.imageWidth,myscreen.imageHeight));
+    %GardnerLab: stimstd = 1; CSNL std = 0.4.. 
+    blob.patchsize = min(6*blob.std,min(myscreen.imageWidth,myscreen.imageHeight));
     
     if ~isfield(obj,'position') && ~isprop(obj,'position') 
-        %stimulus initial position. uniform distribution across the screen
-        x_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
-        y_img = min(3*stimulus.stimStd,1/3*myscreen.imageWidth)*(2*rand(1)-1);
-        stimulus.position = [x_img, y_img];
-        stimulus.velocity = [0,0];
+        %blob initial position. uniform distribution across the screen
+        x_img = min(3*blob.std,1/3*myscreen.imageWidth)*(2*rand(1)-1); 
+        y_img = min(3*blob.std,1/3*myscreen.imageWidth)*(2*rand(1)-1);
+        blob.position = [x_img, y_img];
+        blob.velocity = [0,0];
     else
-       stimulus.position = obj.position; 
+       blob.position = obj.position; 
     end
     
-    % stimulus speed
+    % blob speed
     % this might change based on effective sampling rate.
-    if ~isfield(obj,'stepStd') && ~isprop(obj,'stepStd') 
-        stimulus.stepStd = 1; % in deg/sec
+    if ~isfield(obj,'stepstd') && ~isprop(obj,'stepstd') 
+        blob.stepstd = 1; % in deg/sec
     else
-       stimulus.stepStd = obj.stepStd; 
+       blob.stepstd = obj.stepstd; 
     end %unit: cm/s to deg/frame
         
-    % stimulus luminance
-    if ~isfield(obj,'stimLum') && ~isprop(obj,'stimLum') 
-        stimulus.stimLum = 122;
+    % blob luminance
+    if ~isfield(obj,'lum') && ~isprop(obj,'lum') 
+        blob.lum = 122;
     else
-       stimulus.stimLum = obj.stimLum; 
+       blob.lum = obj.lum; 
     end %unit: luminance
     
-    if ~isfield(obj,'stimColor') && ~isprop(obj,'stimColor') 
-       stimulus.stimColor = [1;1;1];
+    if ~isfield(obj,'color') && ~isprop(obj,'color') 
+       blob.color = [1;1;1];
     else
-        if iscell(obj.stimColor)
-            obj.stimColor = obj.stimColor{1};
+        if iscell(obj.color)
+            obj.color = obj.color{1};
         end
-        if ischar(obj.stimColor)
-            if obj.stimColor == 'k'
-                stimulus.stimColor = [1;1;1];
-            elseif obj.stimColor == 'r'
-                stimulus.stimColor = [1;0;0];
-            elseif obj.stimColor == 'b'
-                stimulus.stimColor = [0;0;1];
-            elseif obj.stimColor == 'g'
-                stimulus.stimColor = [0;1;0];
+        if ischar(obj.color)
+            if obj.color == 'k'
+                blob.color = [1;1;1];
+            elseif obj.color == 'r'
+                blob.color = [1;0;0];
+            elseif obj.color == 'b'
+                blob.color = [0;0;1];
+            elseif obj.color == 'g'
+                blob.color = [0;1;0];
             end
-        elseif isvector(obj.stimColor)  && length(obj.stimColor) == 3
-            stimulus.stimColor = obj.stimColor;
+        elseif isvector(obj.color)  && length(obj.color) == 3
+            blob.color = obj.color;
         else
-            print('check input stimColor property')
-            stimulus.stimColor = [1;1;1];
+            print('check input color property')
+            blob.color = [1;1;1];
         end
     end 
             
-    % generate stimulus image
-    if stimulus.stimLum == 0 || stimulus.stimStd == 0
-        stimulus.gaussian = 0;
+    % generate blob image
+    if blob.lum == 0 || blob.std == 0
+        blob.gaussian = 0;
     else
-        gaussian    =  mglMakeGaussian(stimulus.patchsize,stimulus.patchsize,...
-            stimulus.stimStd,stimulus.stimStd)*(stimulus.stimLum);
-        gaussian_rgb           = 255*repmat([stimulus.stimColor; 1], 1, size(gaussian,2),size(gaussian,1));
+        gaussian    =  mglMakeGaussian(blob.patchsize,blob.patchsize,...
+            blob.std,blob.std)*(blob.lum);
+        gaussian_rgb           = 255*repmat([blob.color; 1], 1, size(gaussian,2),size(gaussian,1));
         gaussian_rgb(4,:,:)    = round(gaussian');
         gaussian_rgb           = uint8(gaussian_rgb);
-        stimulus.gaussian = mglCreateTexture(gaussian_rgb);
+        blob.img = mglCreateTexture(gaussian_rgb);
     end
-    
-    %% todo: move to main task?
-    % pointer position
-    stimulus.pointer            = [0, 0]; % pointer position 
-    
-    % fixation cross colors
-    stimulus.fixColors.response = [1 1 1];
-    stimulus.fixColors.stim     = [0 1 0]; % green
-    stimulus.fixColors.est      = [1 0 0]; % red
-    stimulus.fixColors.afc      = [0 0 1]; % blue
 end
