@@ -20,6 +20,7 @@ classdef (Abstract) trackingTask < handle
         
         movecursor; % indicates whether we can move cursor during this trial
         doTrack;    % indicates whether we should start recording tracking variables
+        displayFix; % display fixation at current segmention
         
         bgfile;     % background file to preload at task initialization
         

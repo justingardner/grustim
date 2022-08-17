@@ -19,6 +19,7 @@ properties
 
     movecursor      = false;
     doTrack         = true;    % indicates whether we should start recording tracking variables
+    displayFix      = true; % display fixation at current segmention
 
     % fixed parameters
     nonvarparams   = {'iti', 'maxtrialtime', 'trialpause' 'maxtrials'};
@@ -145,6 +146,8 @@ methods
         stimulus.pointer            = trackposInitStimulus(pointer,myscreen);
         stimulus.pointer.position   = initpos; % initialize pointer position to the stimulus position
         
+        obj.displayFix = false;
+        
         % define dynamics
         % state: target position (x,y), target velocity + (higher order)
         % (x,y), pointer position (x,y) and velocity
@@ -178,9 +181,11 @@ methods
         if task.thistrial.thisseg == 1 % tracking
             obj.movecursor  = true;
             obj.doTrack     = true;
+            obj.displayFix 	= true;
         else % ITI
-            obj.movecursor = false;
-            obj.doTrack    = false;
+            obj.movecursor  = false;
+            obj.doTrack     = false;
+            obj.displayFix 	= true;
             
             stimulus.target = [];
             stimulus.pointer = [];
@@ -203,28 +208,38 @@ methods
     function stimulus = updateStimulus(obj, myscreen, stimulus)
         % update state
         noise                       = obj.W * normrnd(0,1,size(obj.W,2),1);
-        obj.state(obj.ppidx(1))      = stimulus.pointer.position(1);
-        obj.state(obj.ppidx(2))      = stimulus.pointer.position(2);
-        newstate                    = obj.A * obj.state + noise;
+        obj.state(obj.ppidx(1))     = stimulus.pointer.position(1);
+        obj.state(obj.ppidx(2))     = stimulus.pointer.position(2);
+        
+        nanindex = isnan(obj.state);
+        if any(nanindex)
+            obj.state(nanindex) = 0; % replace NaN with 0s for proper matrix multiplication
+        end
+        
+        newstate = obj.A * obj.state + noise;
         
         % update pointer
-        % perturb current position
-        pointer_newpos              = stimulus.pointer.position' + noise(obj.ppidx);
-
         % pointer: subtract back if out of bounds
-        [horz_out, vert_out]        = check_oob(newstate(obj.ppidx), myscreen, stimulus.pointer.std);
-        newstate(obj.ppidx(1))      = (1-horz_out) * newstate(obj.ppidx(1)) + horz_out * obj.state(obj.ppidx(1));
-        newstate(obj.ppidx(2))      = (1-vert_out) * newstate(obj.ppidx(2)) + vert_out * obj.state(obj.ppidx(2));
-        stimulus.pointer.position   = newstate(obj.ppidx)';
-%         disp(['pointer pos (brownian): ' num2str(stimulus.pointer.position)]) % todo: delete this line after checking
+        if any(noise(obj.pnidx)~=0) && all(~nanindex(obj.ppidx)) % if we added noise.
+            [horz_out, vert_out]        = check_oob(newstate(obj.ppidx), myscreen, stimulus.pointer.std);
+            newstate(obj.ppidx(1))      = (1-horz_out) * newstate(obj.ppidx(1)) + horz_out * obj.state(obj.ppidx(1));
+            newstate(obj.ppidx(2))      = (1-vert_out) * newstate(obj.ppidx(2)) + vert_out * obj.state(obj.ppidx(2));
+        end
+%       disp(['pointer pos (brownian): ' num2str(stimulus.pointer.position)]) % todo: delete this line after checking
 
         % target: subtract back if out of bounds
-        [horz_out, vert_out]        = check_oob(newstate(obj.tpidx), myscreen, stimulus.target.std);    
-        newstate(obj.tpidx(1))      = (1-horz_out) * newstate(obj.tpidx(1)) + horz_out * obj.state(obj.tpidx(1));
-        newstate(obj.tpidx(2))      = (1-vert_out) * newstate(obj.tpidx(2)) + vert_out * obj.state(obj.tpidx(2));
-        stimulus.target.position    = newstate(obj.tpidx)';
+        if any(noise(obj.tnidx)~=0) && all(~nanindex(obj.tpidx))
+            [horz_out, vert_out]        = check_oob(newstate(obj.tpidx), myscreen, stimulus.target.std);    
+            newstate(obj.tpidx(1))      = (1-horz_out) * newstate(obj.tpidx(1)) + horz_out * obj.state(obj.tpidx(1));
+            newstate(obj.tpidx(2))      = (1-vert_out) * newstate(obj.tpidx(2)) + vert_out * obj.state(obj.tpidx(2));
+        end
+        
+        % replace nans back
+        newstate(nanindex) = NaN;
         
         % update position
+        stimulus.pointer.position   = newstate(obj.ppidx)';
+        stimulus.target.position    = newstate(obj.tpidx)';
         obj.state                   = newstate;
     end
 

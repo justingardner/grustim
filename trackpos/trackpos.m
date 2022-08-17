@@ -45,9 +45,9 @@ end
 myscreen                = initScreen(myscreen);
 
 %% experiment parameters
-% Experimenter parameters
+% Experimenter parameters`
 %todo:  check these throughout the code!!
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.trackEye            = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
@@ -68,27 +68,21 @@ task = {};
 % sb      = stillblob(myscreen, 'backLum', 0, 'maxtrialtime',30,'steady_thresh_frame',50);
 % phase1  = sb.configureExperiment(stimulus,task,myscreen);
 
-% no noise
+% no noise run
 cps = {};
-for lums =  [32,48,64,96,255];
-    cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-        'stimLum', lums, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', 1, ...
-        'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5,...
+for stimStepStd = [1,2,3]
+for pointStepStd = [0,0.1,0.5]
+    % 3 learning phase
+    cps{end+1} = brownian(myscreen, 'maxtrials', 3, 'noiseLum', 0, 'backLum', 90, ...
+        'stimLum', 255, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
+        'pointLum',255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', pointStepStd, ...
         'bgfile', []);
-    cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-        'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stimStepStd', 1, ...
-        'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', 0.5,...
+    
+    cps{end+1} = brownian(myscreen, 'maxtrials', 35, 'noiseLum', 0, 'backLum', 90, ...
+        'stimLum', [16,32,48,64,96], 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
+        'pointLum', 255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', pointStepStd, ...
         'bgfile', []);
 end
-
-lums =  [32,48,64,96,255];
-for stimStepStd = [1,2,3]
-    for pointStepStd = [0,0.5,1]
-        cps{end+1} = brownian(myscreen, 'maxtrials', 100, 'noiseLum', 0, 'backLum', 90, ...
-            'stimLum', lums, 'stimColor', 'k', 'stimStd', [0.1, 0.5, 1, 2], 'stimStepStd', stimStepStd, ...
-            'pointLum',lums, 'pointColor', 'r','pointStd', [0.1, 0.5, 1, 2], 'pointStepStd', pointStepStd,...
-            'bgfile', []);
-    end
 end
   
 stimulus.task = cps;
@@ -175,7 +169,15 @@ if stimulus.exp.grabframe
 end
 
 %% Eye calibration and check joystick
-if stimulus.exp.trackEye && ~stimulus.exp.debug
+
+if strcmp(exp.controlMethod,'eye') && ~stimulus.exp.trackEye
+    disp(' Need to track eye..  setting  exp.trackEye to true')
+    stimulus.exp.trackEye = true;
+    exp.trackEye = true;
+    
+end
+
+if stimulus.exp.trackEye %% && ~stimulus.exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
     
@@ -211,7 +213,7 @@ phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, newphaseNum] = updateTask(task{1},myscreen,phaseNum); % update the task
     if newphaseNum ~= phaseNum
-        mglClearScreen();
+        mglClearScreen(90/255);
         mglTextDraw('Press backtick to go to next trial',[0 0]);
         mglFlush;
     end
@@ -291,8 +293,7 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 
             mInfo = mglGetMouse(myscreen.screenNumber);
             [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
-            stimulus.target.mouse0 = [x,y];
-            disp(['mouse position: ' num2str(x) ','  num2str(y)]) % todo: delete this line after checking
+            stimulus.pointer.mouse0 = [x,y];
         end
 
     else
@@ -314,6 +315,14 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     global stimulus
     phaseNum = task.thistrial.thisphase;
 
+    % eye tracking
+    if stimulus.exp.trackEye && stimulus.task{phaseNum}.doTrack
+        % mouse version for testing with no eyetracker
+        [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
+        task.thistrial.trackEye(task.thistrial.framecount,:)    = pos;
+        task.thistrial.trackEyeTime(task.thistrial.framecount)  = postime;
+    end
+    
     % move cursor        
     if stimulus.task{phaseNum}.movecursor 
         % **&display mouse position
@@ -321,10 +330,10 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
             % extract how much the mouse moved mouse position
             mInfo = mglGetMouse(myscreen.screenNumber);
             [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
-            vx = x - stimulus.target.mouse0(1);
-            vy = y - stimulus.target.mouse0(2);
+            vx = x - stimulus.pointer.mouse0(1);
+            vy = y - stimulus.pointer.mouse0(2);
 
-            if norm([vx, vy]) > 1e-2
+            if norm([vx, vy]) > 1e-2 && stimulus.exp.debug
                 disp(['mouse vel: ' num2str(vx) ','  num2str(vy)]) % todo: delete this line after checking
                 disp(['pointer pos: ' num2str(stimulus.pointer.position)]) % todo: delete this line after checking
             end
@@ -334,9 +343,9 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
                     || mInfo.y <  myscreen.screenHeight*0.1 || mInfo.y > myscreen.screenHeight*0.9
                 mglSetMousePosition(ceil(myscreen.screenWidth/2),...
                     floor(myscreen.screenHeight/2), myscreen.screenNumber);      
-                stimulus.target.mouse0 = [0,0];
+                stimulus.pointer.mouse0 = [0,0];
             else
-                stimulus.target.mouse0 = [x,y];
+                stimulus.pointer.mouse0 = [x,y];
             end
             
             [x,y] = update_pointer(stimulus.pointer, [vx, vy], myscreen);
@@ -348,7 +357,12 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         elseif strcmp(stimulus.exp.controlMethod, 'eye')
             % cheat a bit take previous frame position...
             stimulus.pointer.position = ...
-                task.thistrial.trackEye(task.thistrial.framecount-1,:); 
+                task.thistrial.trackEye(task.thistrial.framecount,:); 
+            
+            if false && stimulus.exp.debug
+                disp(['(trackpos) pointer pos: ' num2str(stimulus.pointer.position)]) % todo: delete this line after checking
+                disp(['(trackpos) target pos: ' num2str(stimulus.target.position)]) % todo: delete this line after checking
+            end
         end
     end
 
@@ -361,15 +375,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         task.thistrial.trackResp(task.thistrial.framecount,:) = stimulus.pointer.position;
         task.thistrial.trackStim(task.thistrial.framecount,:) = stimulus.target.position;
         task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0); 
-
-        % eye tracking
-        if stimulus.exp.trackEye
-            % mouse version for testing with no eyetracker
-            [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
-            task.thistrial.trackEye(task.thistrial.framecount,:)    = pos;
-            task.thistrial.trackEyeTime(task.thistrial.framecount)  = postime;
-        end
-
         task.thistrial.framecount = task.thistrial.framecount + 1;
     end
 
@@ -396,7 +401,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     end
     
     % display fixation
-    if stimulus.exp.fixateCenter == 1 % fixation below others.
+    if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
         mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
         mglGluDisk(0,0,0.1,rand(1,3),60,1);
     end
