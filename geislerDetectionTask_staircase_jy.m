@@ -22,7 +22,6 @@ mglSetSID('test')
 eyetracker = 1;
 myscreen.displayName = 'VPixx';
 
-myscreen.eyetracker = eyetracker;
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/jiwon/data/geisler';
 if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
