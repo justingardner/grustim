@@ -71,8 +71,7 @@ function blob = trackposInitStimulus(obj,myscreen)
     if blob.lum == 0 || blob.std == 0
         blob.gaussian = 0;
     else
-        gaussian    =  mglMakeGaussian(blob.patchsize,blob.patchsize,...
-            blob.std,blob.std)*(blob.lum);
+        gaussian    =  mglMakeGaussian(blob.patchsize,blob.patchsize,blob.std,blob.std)*(blob.lum);
         gaussian_rgb           = 255*repmat([blob.color; 1], 1, size(gaussian,2),size(gaussian,1));
         gaussian_rgb(4,:,:)    = round(gaussian');
         gaussian_rgb           = uint8(gaussian_rgb);

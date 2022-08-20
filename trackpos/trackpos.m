@@ -51,11 +51,11 @@ exp.debug               = 0; % debug code
 exp.trackEye            = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
-exp.fixateCenter        = 1; % fixate center
-exp.controlMethod       = 'mouse'; %todo: 1: mouse; 2: eye; 3:joystick
+exp.fixateCenter        = 0; % fixate center
+exp.controlMethod       = 'eye'; %todo: 1: mouse; 2: eye; 3:joystick
 
 exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
-exp.phasescrambleOn     = 1; % load background, if specified by task
+exp.phasescrambleOn     = 0; % load background, if specified by task
 
 exp.grabframe           = 0; % capture frames; todo: change. specify save directory
 
@@ -70,19 +70,20 @@ task = {};
 
 % no noise run
 cps = {};
-for stimStepStd = [1,2,3]
-for pointStepStd = [0,0.1,0.5]
+stimStdList = [0.5,1,1.5,2];
+for stimStepStd = [3,2,1]
     % 3 learning phase
     cps{end+1} = brownian(myscreen, 'maxtrials', 3, 'noiseLum', 0, 'backLum', 90, ...
         'stimLum', 255, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
-        'pointLum',255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', pointStepStd, ...
+        'pointLum',255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', 0, ...
         'bgfile', []);
     
-    cps{end+1} = brownian(myscreen, 'maxtrials', 35, 'noiseLum', 0, 'backLum', 90, ...
-        'stimLum', [16,32,48,64,96], 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
-        'pointLum', 255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', pointStepStd, ...
-        'bgfile', []);
-end
+    for stimStd = stimStdList
+        cps{end+1} = brownian(myscreen, 'maxtrials', 32, 'noiseLum', 0, 'backLum', 90, ...
+            'stimLum', [16,32,48,96], 'stimColor', 'k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
+            'pointLum', 255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', 0, ...
+            'bgfile', []);
+    end
 end
   
 stimulus.task = cps;
@@ -174,16 +175,21 @@ if strcmp(exp.controlMethod,'eye') && ~stimulus.exp.trackEye
     disp(' Need to track eye..  setting  exp.trackEye to true')
     stimulus.exp.trackEye = true;
     exp.trackEye = true;
-    
 end
 
-if stimulus.exp.trackEye %% && ~stimulus.exp.debug
-    disp(' Calibrating Eye ....')
-    myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
-    
-    % let the user know
-    disp(sprintf('(trackpos) Starting Run...'));
-end
+[positions_target, positions_eye] = calibrateEye(myscreen, stimulus, true);
+eyecalib = struct();
+eyecalib.target{1}      = positions_target;
+eyecalib.eye{1}         = positions_eye;
+stimulus.eyecalib       = eyecalib;
+        
+% if stimulus.exp.trackEye %% && ~stimulus.exp.debug
+%     disp(' Calibrating Eye ....')
+%     myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
+%     
+%     % let the user know
+%     disp(sprintf('(trackpos) Starting Run...'));
+% end
 
 if ~strcmp(stimulus.exp.controlMethod, 'mouse') && ...
         ~strcmp(stimulus.exp.controlMethod, 'eye') &&...
@@ -214,6 +220,10 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, newphaseNum] = updateTask(task{1},myscreen,phaseNum); % update the task
     if newphaseNum ~= phaseNum
         mglClearScreen(90/255);
+        [positions_target, positions_eye] = calibrateEye(myscreen, stimulus, true);
+        stimulus.eyecalib.target{newphaseNum}    = positions_target;
+        stimulus.eyecalib.eye{newphaseNum}       = positions_eye;
+        
         mglTextDraw('Press backtick to go to next trial',[0 0]);
         mglFlush;
     end
