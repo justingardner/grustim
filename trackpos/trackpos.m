@@ -70,8 +70,8 @@ task = {};
 
 % no noise run
 cps = {};
-stimStdList = [0.5,1,1.5,2];
-for stimStepStd = [3,2,1]
+stimStdList = [1,1.5];
+for stimStepStd = [2,1]
     % 3 learning phase
     cps{end+1} = brownian(myscreen, 'maxtrials', 3, 'noiseLum', 0, 'backLum', 90, ...
         'stimLum', 255, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
