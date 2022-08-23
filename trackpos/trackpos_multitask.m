@@ -36,7 +36,7 @@ myscreen = initScreen(myscreen);
 % Experimenter parameters
 exp                 = struct();
 exp.debug           = false;
-exp.noeye           = false;
+exp.noeye           = true;
 exp.eyemousedebug   = false;
 exp.showmouse       = false;
 exp.phasescrambleOn = false;
@@ -168,8 +168,9 @@ mglDisplayCursor(0); %hide cursor
 mglTextDraw('task (trackpos_multitask) starting... ', [0 1])
 mglTextDraw('After the stimulus is presented, you will be asked to perform one of the two tasks, depending on the fixation color',[0 0]);
 mglTextDraw('Estimation task (red fixation): move the mouse to the center of stimulus. Press 3 when done.',[0 -1]);
-mglTextDraw('2AFC task (blue fixation): press 1 if the stimulus is to the right of fixation. 2 otherwise',[0 -2]);
-mglTextDraw('press backtick to go to next trial',[0 -3]);
+mglTextDraw('2AFC task (blue fixation): press 1 if the stimulus is to the left of fixation. 2 otherwise',[0 -2]);
+mglTextDraw('If you need to take a break, wait for a afc trial to start then leave. press space to skip trial',[0 -3]);
+mglTextDraw('press backtick (`) to go to next trial',[0 -4]);
 mglFlush
 
 if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
@@ -177,8 +178,8 @@ if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 phaseNum = 1;phaseNum2=1;phaseNum3=1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
-    [task{2}, myscreen, phaseNum2] = updateTask(task{2},myscreen,phaseNum2);
-    [task{3}, myscreen, phaseNum3] = updateTask(task{3},myscreen,phaseNum3);
+    [task{2}, myscreen] = updateTask(task{2},myscreen,1);
+    [task{3}, myscreen] = updateTask(task{3},myscreen,1);
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
 
