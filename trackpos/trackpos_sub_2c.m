@@ -18,6 +18,7 @@ task{1}.parameter.noiseLum   = params.noiseLum;
 task{1}.parameter.stimright  = [0,1];
 task{1}.parameter.posDiff    = params.posDiff; 
 task{1}.parameter.stimLum 	 = params.stimLum;
+task{1}.parameter.stimStd 	 = params.stimStd;
 
 % note: seglen are changed later
 if ~exp.feedback 
@@ -81,14 +82,15 @@ elseif task.thistrial.thisseg == 2
     if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
 
     % start the task.
-    stimulus.stimLum    = task.thistrial.stimLum;
+    stimulus.lum        = task.thistrial.stimLum;
+    stimulus.std        = task.thistrial.stimStd;
     stimulus.backLum    = task.thistrial.backLum;
     stimulus.noiseLum   = task.thistrial.noiseLum;
     
     task.thistrial.framecount = 0;
     task.thistrial.stimdur    = task.thistrial.seglen(3);
     
-    stimulus = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
+    stimulus.target = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
     
     if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1;
         nframes = length(task.thistrial.bgpermute);
@@ -147,7 +149,7 @@ end
 if task.thistrial.thisseg == 3 % stimulus
     stim_pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
     task.thistrial.stimON(task.thistrial.framecount) = 1;
-    mglBltTexture(stimulus.gaussian,[stim_pos 0]);
+    mglBltTexture(stimulus.target.img,[stim_pos 0]);
     
 elseif task.thistrial.thisseg == 5 %feedback period
     % no fixation cross until response.

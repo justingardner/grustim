@@ -39,8 +39,8 @@ exp.debug           = false;
 exp.noeye           = false;
 exp.eyemousedebug   = false;
 exp.showmouse       = false;
-exp.phasescrambleOn = true;
-exp.backprecompute  = true;
+exp.phasescrambleOn = false;
+exp.backprecompute  = false;
 exp.feedback        = true; 
 exp.estim_horiz     = true;  % do hoiztonal estimation
 exp.estim_verti     = false; % do vertical estimation
@@ -51,21 +51,25 @@ exp.colorfix        = false;
 task{1}{1}.random = 1; 
 
 params.backLum    = 90; %32;  % background luminance; units: fraction of full luminance 
-params.noiseLum   = 32; % noise luminance, if there is one.
+params.noiseLum   = 0; % noise luminance, if there is one.
 
 % main task parameters
 tasks2run         = {'est', '2c'};
-teststimLum       = [1, 1.5] * params.noiseLum; %SNR
-teststimDur       = [2/60, 5/60, 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-posDiff           = logspace(log(0.05)/log(10),log(0.5)/log(10),8); % in degs; minimum and maximum offset from fixation
-trialpercond      = 12;
+teststimLum       = [16]; % [16,32,48,96]
+teststimStd       = [1]; %[1,1.5,2]
+teststimDur       = [2/60, 3/60, 4/60, 6/60, 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+
+posDiff           = logspace(log10(0.05),log10(0.5),8); % in degs; minimum and maximum offset from fixation
+
+trialpercond      = 10;
 if exp.debug, trialpercond = 3; end
 
 task{1}{1}.parameter.currtask   = tasks2run; % forst fixed values
 params.posDiff   = posDiff; % forst fixed values
 params.stimLum 	= teststimLum;
 params.stimDur 	= teststimDur; % teststimDur is also saved under stimulus
-params.numTrials = length(tasks2run) * trialpercond*length(teststimDur) * ...
+params.stimStd 	= teststimStd; % teststimDur is also saved under stimulus
+params.numTrials = length(tasks2run) * trialpercond*length(teststimDur) * length(teststimStd)*...
     length(teststimLum)*2*length(posDiff);
 
 task{1}{1}.segmin           = [inf]; % for running other tasks
@@ -84,10 +88,15 @@ disp(['Approx task duration = ' num2str(taskdur) ' hours']);
 global stimulus;
 stimulus = [];
 
-stimulus.exp = exp;
-stimulus.teststimDur        = teststimDur; % not saved in the task.
+stimulus.exp            = exp;
+stimulus.teststimDur    = teststimDur; % not saved in the task.
+stimulus.target         = trackposInitStimulus(stimulus,myscreen);
 
-stimulus = trackposInitStimulus(stimulus,myscreen);
+stimulus.fixColors.response = [1 1 1];
+stimulus.fixColors.stim     = [0 1 0]; % green
+stimulus.fixColors.est      = [1 0 0]; % red
+stimulus.fixColors.afc      = [0 0 1]; % blue
+
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 
 if stimulus.exp.phasescrambleOn == 1
@@ -165,11 +174,11 @@ mglFlush
 
 if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 
-phaseNum = 1;
+phaseNum = 1;phaseNum2=1;phaseNum3=1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
-    [task{2}, myscreen] = updateTask(task{2},myscreen,1);
-    [task{3}, myscreen] = updateTask(task{3},myscreen,1);
+    [task{2}, myscreen, phaseNum2] = updateTask(task{2},myscreen,phaseNum2);
+    [task{3}, myscreen, phaseNum3] = updateTask(task{3},myscreen,phaseNum3);
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
 
@@ -184,6 +193,7 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     task.thistrial.posDiff      = nan; % forst fixed values
     task.thistrial.stimLum      = nan;
     task.thistrial.stimDur      = nan; % teststimDur is also saved under stimulusnan
+    task.thistrial.stimStd      = nan; % teststimDur is also saved under stimulusnan
     
     % print trial number every 5%. 
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
