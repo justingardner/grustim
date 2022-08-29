@@ -26,6 +26,7 @@ task{1}.parameter.stimright  = [0,1];
 task{1}.parameter.posDiff    = params.posDiff; 
 task{1}.parameter.stimLum 	 = params.stimLum;
 task{1}.parameter.stimStd 	 = params.stimStd;
+task{1}.parameter.stimColor  = params.stimColor;
 
 % note: seglen are changed later
 if ~exp.feedback 
@@ -95,6 +96,7 @@ elseif task.thistrial.thisseg == 2
     
     stimulus.lum    = task.thistrial.stimLum;
     stimulus.std    = task.thistrial.stimStd;    
+    stimulus.color  = task.thistrial.stimColor;    
 
     task.thistrial.framecount = 0;
     task.thistrial.stimDur    = task.thistrial.seglen(3); % stimulus period

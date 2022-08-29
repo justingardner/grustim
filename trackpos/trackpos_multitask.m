@@ -56,19 +56,20 @@ params.noiseLum   = 0; % noise luminance, if there is one.
 % main task parameters
 tasks2run         = {'est', '2c'};
 teststimLum       = [16]; % [16,32,48,96]
-teststimStd       = [1]; %[1,1.5,2]
+teststimStd       = [2]; %[1,1.5,2]
 teststimDur       = [2/60, 3/60, 4/60, 6/60, 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
 
-posDiff           = logspace(log10(0.05),log10(0.5),8); % in degs; minimum and maximum offset from fixation
+posDiff           = logspace(log10(0.05),log10(0.8),8); % in degs; minimum and maximum offset from fixation
 
 trialpercond      = 10;
 if exp.debug, trialpercond = 3; end
 
 task{1}{1}.parameter.currtask   = tasks2run; % forst fixed values
-params.posDiff   = posDiff; % forst fixed values
-params.stimLum 	= teststimLum;
-params.stimDur 	= teststimDur; % teststimDur is also saved under stimulus
-params.stimStd 	= teststimStd; % teststimDur is also saved under stimulus
+params.posDiff      = posDiff; % forst fixed values
+params.stimLum      = teststimLum;
+params.stimDur      = teststimDur; % teststimDur is also saved under stimulus
+params.stimStd      = teststimStd; % teststimDur is also saved under stimulus
+params.stimColor    = 'b';
 params.numTrials = length(tasks2run) * trialpercond*length(teststimDur) * length(teststimStd)*...
     length(teststimLum)*2*length(posDiff);
 
@@ -95,7 +96,7 @@ stimulus.target         = trackposInitStimulus(stimulus,myscreen);
 stimulus.fixColors.response = [1 1 1];
 stimulus.fixColors.stim     = [0 1 0]; % green
 stimulus.fixColors.est      = [1 0 0]; % red
-stimulus.fixColors.afc      = [0 0 1]; % blue
+stimulus.fixColors.afc      = [1 1 1]; % blue
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 

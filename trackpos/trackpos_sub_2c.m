@@ -19,6 +19,7 @@ task{1}.parameter.stimright  = [0,1];
 task{1}.parameter.posDiff    = params.posDiff; 
 task{1}.parameter.stimLum 	 = params.stimLum;
 task{1}.parameter.stimStd 	 = params.stimStd;
+task{1}.parameter.stimColor	 = params.stimColor;
 
 % note: seglen are changed later
 if ~exp.feedback 
@@ -84,6 +85,7 @@ elseif task.thistrial.thisseg == 2
     % start the task.
     stimulus.lum        = task.thistrial.stimLum;
     stimulus.std        = task.thistrial.stimStd;
+    stimulus.color      = task.thistrial.stimColor;
     stimulus.backLum    = task.thistrial.backLum;
     stimulus.noiseLum   = task.thistrial.noiseLum;
     
