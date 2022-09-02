@@ -213,7 +213,7 @@ elseif task.thistrial.thisseg == 4
     % show mouse cursor at the initial location
     mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
         myscreen.screenNumber)
-    mglDisplayCursor(1)
+%     mglDisplayCursor(1)
 
     % decision prompt
     mglClearScreen(stimulus.bg_color{2});
@@ -228,21 +228,26 @@ elseif task.thistrial.thisseg == 4
     
     % start recording mouse positions
     mInfo = mglGetMouse(myscreen.screenNumber);
-    mousePos(1,:) = [mInfo.x, mInfo.y];
+    x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
+    y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
+    mousePos(1,:) = [x,y];
+    mglGluDisk(mousePos(1,1), mousePos(1,2),1,'r')
     
     % keep recording until responding
     while 1
         mInfo = mglGetMouse(myscreen.screenNumber);
-        mousePos(end+1,:) = [mInfo.x, mInfo.y];
+        x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
+        y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
+        mousePos(end+1,:) = [x,y];
         if mInfo.buttons
             task.thistrial.decision_rt = mglGetSecs(stimulus.t0);
-            mglDisplayCursor(0)
+%             mglDisplayCursor(0)
             break            
         end        
     end
     
     % save response info
-    task.thistrial.mousePos = mousePos;     % is this in va or pixels?
+    task.thistrial.mousePos = mousePos;     % in degrees
     task.thistrial.response_offset = task.thistrial.gabor_location - [mInfo.x, mInfo.y];
     
     task = jumpSegment(task);    
