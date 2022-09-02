@@ -19,8 +19,9 @@ clear all, close all, clc
 global stimulus
 
 eyetracker = 0;
-myscreen.screenNumber = 2;
-myscreen.saveData = 1;
+% myscreen.screenNumber = 2;
+myscreen.displayname = 'dell-wuTsai';
+myscreen.saveData = 0;
 myscreen.datadir = '~/proj/jiwon/data/geisler/geislerSearchTask';
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerSearchTask/aborted',1);
 
@@ -47,8 +48,9 @@ stimulus.gabor.size = 1;    % visual angle
 stimulus.gabor.tilt = 315;
 stimulus.gabor.cycle = 6;
 % 6 levels of target contrasts, that computed from the dprime
-% d' = [3, 3.5, 4, 5, 6, 7];
-stimulus.gabor.contrasts = 1;
+% d' = [3, 3.5, 4, 5, 6, 7];    my dprime was around 2.3 for 0.12 contrast
+% level
+stimulus.gabor.contrasts = [.15, .2, .25, .35, .5];
 defineLocations
 
 %%%%% define task timings and responses

@@ -19,8 +19,8 @@ global stimulus
 
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
-eyetracker = 1;
-myscreen.displayName = 'VPixx';
+eyetracker = 0;
+myscreen.displayName = 'home';
 
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/jiwon/data/geisler';
