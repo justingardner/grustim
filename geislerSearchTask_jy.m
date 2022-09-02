@@ -18,10 +18,10 @@ mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
 
-eyetracker = 0;
-% myscreen.screenNumber = 2;
-myscreen.displayname = 'dell-wuTsai';
-myscreen.saveData = 0;
+eyetracker = 1;
+myscreen.screenNumber = 2;
+% myscreen.displayname = 'dell-wuTsai';
+myscreen.saveData = 1;
 myscreen.datadir = '~/proj/jiwon/data/geisler/geislerSearchTask';
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerSearchTask/aborted',1);
 
@@ -35,9 +35,9 @@ if exist([cd '/geislerDetectionTask_pinkFilter.mat']) ~= 0
 else
     createPinkFilter(myscreen);
 end
-stimulus.nBlocks = 2;   % 6 blocks
+stimulus.nBlocks = 6;   % 6 blocks
 stimulus.cBlock = 0;    % current block
-stimulus.TrialsPerBlock = 2;    % 32 trials per block
+stimulus.TrialsPerBlock = 32;    % 32 trials per block
 
 %%%%% set stimulus parameter
 stimulus.responsekeys = [50];   % space bar
@@ -66,6 +66,7 @@ task{1}{1}.randVars.block.gabor_location = 1:stimulus.gabor.nLoc;
 task{1}{1}.randVars.block.gabor_contrast = stimulus.gabor.contrasts; 
 task{1}{1}.randVars.calculated.detection_rt = nan;
 task{1}{1}.randVars.calculated.decision_rt = nan;
+task{1}{1}.randVars.calculated.framecount = nan;
 task{1}{1}.randVars.calculated.mousePos = [nan nan];
 task{1}{1}.randVars.calculated.response_offset = [nan nan];
 
@@ -210,47 +211,8 @@ elseif task.thistrial.thisseg == 3
     disp(['current target:' num2str(task.thistrial.gabor_location)])
     
 elseif task.thistrial.thisseg == 4
-    % show mouse cursor at the initial location
-    mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
-        myscreen.screenNumber)
-%     mglDisplayCursor(1)
-
-    % decision prompt
-    mglClearScreen(stimulus.bg_color{2});
-    mglStencilSelect(1);
-    mglBltTexture(stimulus.tex_nontarget,[0 0])
-    mglStencilSelect(0);
-    mglTextDraw('Click on the screen where the target appeared', [0,10])   
-    mglFlush
+    task.thistrial.framecount = 1;
     
-    % start response time recording
-    stimulus.t0 = mglGetSecs;
-    
-    % start recording mouse positions
-    mInfo = mglGetMouse(myscreen.screenNumber);
-    x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
-    y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
-    mousePos(1,:) = [x,y];
-    mglGluDisk(mousePos(1,1), mousePos(1,2),1,'r')
-    
-    % keep recording until responding
-    while 1
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
-        y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
-        mousePos(end+1,:) = [x,y];
-        if mInfo.buttons
-            task.thistrial.decision_rt = mglGetSecs(stimulus.t0);
-%             mglDisplayCursor(0)
-            break            
-        end        
-    end
-    
-    % save response info
-    task.thistrial.mousePos = mousePos;     % in degrees
-    task.thistrial.response_offset = task.thistrial.gabor_location - [mInfo.x, mInfo.y];
-    
-    task = jumpSegment(task);    
     
 elseif task.thistrial.thisseg == 5
     mglClearScreen(stimulus.bg_color{2});
@@ -270,8 +232,43 @@ end
 % function that gets called to draw the stimulus each frame
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = updateScreenCallback(task, myscreen)
-%%% screen doesn't have to be updated
+
+if task.thistrial.thisseg==4
+    global stimulus
+    % show mouse cursor at the initial location
+    mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
+        myscreen.screenNumber)
     
+    % decision prompt
+    mglClearScreen(stimulus.bg_color{2});
+    mglStencilSelect(1);
+    mglBltTexture(stimulus.tex_nontarget,[0 0])
+    mglStencilSelect(0);
+    mglTextDraw('Click on the screen where the target appeared', [0,10])
+    
+    % start response time recording
+    stimulus.t0 = mglGetSecs;
+    
+    % start recording mouse positions
+    mInfo = mglGetMouse(myscreen.screenNumber);
+    x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
+    y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
+    mousePos(task.thistrial.framecount,:) = [x,y];
+    mglGluDisk(mousePos(task.thistrial.framecount,1), mousePos(task.thistrial.framecount,2),1,'r')
+    
+    % keep recording until responding
+    if mInfo.buttons
+        % get decision RT
+        task.thistrial.decision_rt = mglGetSecs(stimulus.t0);    
+        
+        % save response info
+        task.thistrial.mousePos = mousePos;     % in degrees
+        task.thistrial.response_offset = task.thistrial.gabor_location - [mInfo.x, mInfo.y];
+    
+        % jump segment
+        task = jumpSegment(task);
+    end    
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to get responses
