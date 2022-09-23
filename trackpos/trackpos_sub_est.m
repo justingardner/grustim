@@ -88,8 +88,6 @@ if task.thistrial.thisseg == 1
 elseif task.thistrial.thisseg == 2
     % start the task.
     if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
-
-    
     
     stimulus.backLum    = task.thistrial.backLum;
     stimulus.noiseLum   = task.thistrial.noiseLum;
@@ -136,7 +134,12 @@ if task.thistrial.thisseg== 1
 
 else
     %% do the task
-    mglClearScreen(stimulus.backLum/255);
+    % set background luminance
+    if task.thistrial.backLum > 1
+        mglClearScreen(stimulus.backLum/255);
+    else
+        mglClearScreen(stimulus.backLum);
+    end
 
     task.thistrial.framecount = task.thistrial.framecount + 1;
     task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus
@@ -154,14 +157,14 @@ else
         if stimulus.exp.colorfix
             % changing fixation colors
             % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
-            mglGluDisk(0,0,0.1,rand(1,3),60,1);
+            mglGluDisk(0,0,0.2,rand(1,3),60,1);
         else
-            mglGluDisk(0, 0, 0.1, stimulus.fixColors.stim,60,1); 
+            mglGluDisk(0, 0, 0.2, stimulus.fixColors.stim,60,1); 
         end
 
     elseif any(task.thistrial.thisseg == [4,5])
         % fixation indicating estimation task
-        mglGluDisk(0, 0, 0.1, stimulus.fixColors.est,60,1); 
+        mglGluDisk(0, 0, 0.2, stimulus.fixColors.est,60,1); 
     end
 
     % draw blob or response feedback
@@ -178,11 +181,11 @@ else
 
         if ~stimulus.exp.estim_horiz, degx = 0; end
         if ~stimulus.exp.estim_verti, degy = 0; end
-        mglGluDisk(degx, degy, 0.1, [1 0 0]);
+        mglGluDisk(degx, degy, 0.2, [1 0 0]);
 
     elseif task.thistrial.thisseg == 5 % feedback period
         stim_pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-        mglGluDisk(stim_pos, 0, 0.1, [1 0 0]) ;    % draw center of blob
+        mglGluDisk(stim_pos, 0, 0.2, [1 0 0]) ;    % draw center of blob
 
     end
 

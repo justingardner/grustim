@@ -260,7 +260,12 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 
 global stimulus % call stimulus
 
-mglClearScreen(stimulus.backLum/255);
+% set background luminance
+if task.thistrial.backLum > 1
+    mglClearScreen(task.thistrial.backLum/255);
+else
+    mglClearScreen(task.thistrial.backLum);
+end
 
 task.thistrial.framecount = task.thistrial.framecount + 1;
 task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus
@@ -271,8 +276,14 @@ if stimulus.exp.colorfix
     % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
     mglGluDisk(0,0,0.1,rand(1,3),60,1);
 else
-    % blue fixation dot
-    mglGluDisk(0, 0, 0.1, [0 0 1],60,1); 
+%     % blue fixation dot ??
+%     mglGluDisk(0, 0, 0.1, [0 0 1],60,1); 
+    
+    if isfield(stimulus,'pointer') && ~isempty(stimulus.pointer)
+        mglBltTexture(stimulus.pointer.img, [0,0]);
+    else
+        mglGluDisk(0, 0, 0.1, [1 0 0]) % small red dot (cursor)
+    end
 end
 
 % inject noise, track time
@@ -299,6 +310,12 @@ elseif task.thistrial.thisseg == 3 %response period;
     
     if ~stimulus.exp.estim_horiz, degx = 0; end
     if ~stimulus.exp.estim_verti, degy = 0; end
+    
+    if isfield(stimulus,'pointer') && ~isempty(stimulus.pointer)
+        mglBltTexture(stimulus.pointer.img, [degx, degy]);
+    else
+        mglGluDisk(0, 0, 0.1, [1 0 0]) % small red dot (cursor)
+    end
     mglGluDisk(degx, degy, 0.1, [1 0 0]);
     
     task.thistrial.stimON(task.thistrial.framecount) = 1; %count stimulus

@@ -120,7 +120,12 @@ end
 
 else
 %% do the task
-mglClearScreen(stimulus.backLum/255);
+% set background luminance
+if task.thistrial.backLum > 1
+    mglClearScreen(stimulus.backLum/255);
+else
+    mglClearScreen(stimulus.backLum);
+end
 
 task.thistrial.framecount = task.thistrial.framecount + 1;
 task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus
@@ -137,14 +142,14 @@ if any(task.thistrial.thisseg == [2, 3])
     if stimulus.exp.colorfix
         % changing fixation colors
         % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
-        mglGluDisk(0,0,0.1,rand(1,3),60,1);
+        mglGluDisk(0,0,0.2,rand(1,3),60,1);
     else
-        mglGluDisk(0, 0, 0.1, stimulus.fixColors.stim,60,1); 
+        mglGluDisk(0, 0, 0.2, stimulus.fixColors.stim,60,1); 
     end
     
 elseif any(task.thistrial.thisseg == [4,5])
     % fixation indicating estimation task
-    mglGluDisk(0, 0, 0.1, stimulus.fixColors.afc,60,1); 
+    mglGluDisk(0, 0, 0.2, stimulus.fixColors.afc,60,1); 
 end
 
 % draw blob or response feedback
@@ -155,11 +160,11 @@ if task.thistrial.thisseg == 3 % stimulus
     
 elseif task.thistrial.thisseg == 5 %feedback period
     % no fixation cross until response.
-    mglGluAnnulus(0,0,0.2,0.3,stimulus.currfixColor,60,1);
+    mglGluAnnulus(0,0,0.2,0.5,stimulus.currfixColor,60,1);
     
     % feedback about presented position
 %     stim_pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-%     mglGluDisk(stim_pos, 0, 0.1, [1 0 0]) ;    % draw center of blob
+%     mglGluDisk(stim_pos, 0, 0.2, [1 0 0]) ;    % draw center of blob
 
 end
 

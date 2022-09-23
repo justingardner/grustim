@@ -210,9 +210,6 @@ methods
     % frame update
     % need to define an update function for the stimulus
     function task  = update(obj, task, myscreen, stimulus)       
-        % background luminance
-        mglClearScreen(task.thistrial.backLum/255);
-        
         % blt all stimuli (including background)
         for stimidx = 1:length(obj.stimulus)
             mglBltTexture(obj.stimulus{stimidx}, obj.positions{stimidx})

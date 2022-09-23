@@ -250,7 +250,12 @@ function [task myscreen] = screenUpdateCallback(task, myscreen)
 
 global stimulus % call stimulus
 
-mglClearScreen(stimulus.backLum/255);
+% set background luminance
+if task.thistrial.backLum > 1
+    mglClearScreen(task.thistrial.backLum/255);
+else
+    mglClearScreen(task.thistrial.backLum);
+end
 
 task.thistrial.framecount = task.thistrial.framecount + 1;
 task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus

@@ -30,8 +30,18 @@ else
     myscreen.saveData = 1;
 end
 
+% /Users/JRyu/github/mgl/task/displays, 0001_dn0a22167c_220912.mat
+myscreen.displayName    = 'gardnerlab420';
+myscreen.calibType      = 'Specify particular calibration';
+myscreen.calibFilename  = '0001_dn0a22167c_220912.mat';
+myscreen.calibFullFilename = '/Users/JRyu/github/mgl/task/displays/0001_dn0a22167c_220912';
 myscreen.saveData       = 1; % save stimfile to data directory
+myscreen.datadir        = '/Users/JRyu/Dropbox/GardnerLab/data/';
+
 myscreen = initScreen(myscreen);
+
+% set to argb2101010 pixel format
+mglMetalSetViewColorPixelFormat(4);
 
 % Experimenter parameters
 exp                 = struct();
@@ -44,38 +54,41 @@ exp.backprecompute  = false;
 exp.feedback        = true; 
 exp.estim_horiz     = true;  % do hoiztonal estimation
 exp.estim_verti     = false; % do vertical estimation
-exp.colorfix        = false;
+exp.colorfix        = false; % colored fixation
 
 %% task parameters
 % stimulus and background
 task{1}{1}.random = 1; 
 
-params.backLum    = 90; %32;  % background luminance; units: fraction of full luminance 
+params.backLum    = 0.4; %32;  % background luminance; units: fraction of full luminance 
 params.noiseLum   = 0; % noise luminance, if there is one.
 
 % main task parameters
 tasks2run         = {'est', '2c'};
-teststimLum       = [16]; % [16,32,48,96]
-teststimStd       = [2]; %[1,1.5,2]
-teststimDur       = [2/60, 3/60, 4/60, 6/60, 10/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+teststimLum       = [0.1, 0.2]; % [0.1,0.2,0.5] % [16,32,48,96]
+teststimStd       = [1]; % [1,2]
+teststimDur       = [2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+trialpercond      = 6; % 18 total
 
-posDiff           = logspace(log10(0.05),log10(0.8),8); % in degs; minimum and maximum offset from fixation
 
-trialpercond      = 10;
-if exp.debug, trialpercond = 3; end
+
+
+posDiff           = logspace(log10(0.05),log10(0.8),7); % in degs; minimum and maximum offset from fixation
+
+if exp.debug, trialpercond = 1; end
 
 task{1}{1}.parameter.currtask   = tasks2run; % forst fixed values
 params.posDiff      = posDiff; % forst fixed values
 params.stimLum      = teststimLum;
 params.stimDur      = teststimDur; % teststimDur is also saved under stimulus
 params.stimStd      = teststimStd; % teststimDur is also saved under stimulus
-params.stimColor    = 'b';
+params.stimColor    = 'k';
 params.numTrials = length(tasks2run) * trialpercond*length(teststimDur) * length(teststimStd)*...
     length(teststimLum)*2*length(posDiff);
 
 task{1}{1}.segmin           = [inf]; % for running other tasks
 task{1}{1}.segmax           = [inf]; % jumpsegment if the other task is finished
-% task{1}{1}.synchToVol       = [1]; % wait for backtick before going onto next trial
+% task{1}{1}.synchToVol     = [1]; % wait for backtick before going onto next trial
 
 task{1}{1}.waitForBacktick  = 1;
 
@@ -97,6 +110,12 @@ stimulus.fixColors.response = [1 1 1];
 stimulus.fixColors.stim     = [0 1 0]; % green
 stimulus.fixColors.est      = [1 0 0]; % red
 stimulus.fixColors.afc      = [1 1 1]; % blue
+
+pointer             = struct();
+pointer.std = 0.1; 
+pointer.lum = 1;
+pointer.color = 'r';
+stimulus.pointer            = trackposInitStimulus(pointer,myscreen);
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 
@@ -176,6 +195,8 @@ mglFlush
 
 if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 
+
+
 phaseNum = 1;phaseNum2=1;phaseNum3=1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
@@ -217,6 +238,14 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     global stimulus
     if strcmp(stimulus.currtask,'done')
         stimulus.currtask = 'initializing new task';
+        task = jumpSegment(task);
+    end
+end
+
+function [task, myscreen] = responseCallback(task, myscreen)
+    global stimulus
+    if task.thistrial.whichButton == 0
+        % go to next segment
         task = jumpSegment(task);
     end
 end

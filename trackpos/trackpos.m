@@ -42,17 +42,27 @@ end
 
 %myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 %myscreen.hideCursor = 1;
+myscreen.displayName    = 'gardnerlab420';
+myscreen.calibType      = 'Specify particular calibration';
+myscreen.calibFilename  = '0001_dn0a22167c_220912.mat';
+myscreen.calibFullFilename = '/Users/JRyu/github/mgl/task/displays/0001_dn0a22167c_220912';
+myscreen.saveData       = 1; % save stimfile to data directory
+myscreen.datadir        = '/Users/JRyu/Dropbox/GardnerLab/data/';
+
 myscreen                = initScreen(myscreen);
+
+% set to argb2101010 pixel format
+mglMetalSetViewColorPixelFormat(4);
 
 %% experiment parameters
 % Experimenter parameters`
 %todo:  check these throughout the code!!
 exp.debug               = 0; % debug code
-exp.trackEye            = 1; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+exp.trackEye            = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
-exp.fixateCenter        = 0; % fixate center
-exp.controlMethod       = 'eye'; %todo: 1: mouse; 2: eye; 3:joystick
+exp.fixateCenter        = 1; % fixate center
+exp.controlMethod       = 'mouse'; %todo: 1: mouse; 2: eye; 3:joystick
 
 exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
 exp.phasescrambleOn     = 0; % load background, if specified by task
@@ -70,23 +80,32 @@ task = {};
 
 % no noise run
 cps = {};
-stimStdList = [1,1.5,2];
-for stimStepStd = [2,1]
+stimStepStdList     = [1];
+stimStdList         = [0.5, 1 ,2];
+stimLums            = [0.1, 0.2, 0.5]; 
+backLum             = 0.4;
+
+for stimStepStd = stimStepStdList
     % 3 learning phase
-    cps{end+1} = brownian(myscreen, 'maxtrials', 3, 'noiseLum', 0, 'backLum', 90, ...
-        'stimLum', 255, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
-        'pointLum',255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', 0, ...
+    cps{end+1} = brownian(myscreen, 'maxtrials', 3, 'noiseLum', 0, 'backLum', backLum, ...
+        'stimLum', 1, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
+        'pointLum',1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
         'bgfile', []);
     
     for stimStd = stimStdList
-        cps{end+1} = brownian(myscreen, 'maxtrials', 16, 'noiseLum', 0, 'backLum', 90, ...
-            'stimLum', [16,32,48,96], 'stimColor', 'k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
-            'pointLum', 255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', 0, ...
+        cps{end+1} = brownian(myscreen, 'maxtrials', 18, 'noiseLum', 0, 'backLum', backLum, ...
+            'stimLum', stimLums, 'stimColor','k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
+            'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
             'bgfile', []);
         
-        cps{end+1} = brownian(myscreen, 'maxtrials', 16, 'noiseLum', 0, 'backLum', 90, ...
-            'stimLum', [16,32,48,96], 'stimColor', 'k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
-            'pointLum', 255, 'pointColor', 'r','pointStd', 0.1, 'pointStepStd', 0, ...
+        cps{end+1} = brownian(myscreen, 'maxtrials', 18, 'noiseLum', 0, 'backLum', backLum, ...
+            'stimLum', stimLums, 'stimColor', 'r', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
+            'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
+            'bgfile', []);
+        
+        cps{end+1} = brownian(myscreen, 'maxtrials', 18, 'noiseLum', 0, 'backLum', backLum, ...
+            'stimLum', stimLums, 'stimColor', 'b', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
+            'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
             'bgfile', []);
     end
 end
@@ -182,19 +201,16 @@ if strcmp(exp.controlMethod,'eye') && ~stimulus.exp.trackEye
     exp.trackEye = true;
 end
 
-[positions_target, positions_eye] = calibrateEye(myscreen, stimulus, true);
-eyecalib = struct();
-eyecalib.target{1}      = positions_target;
-eyecalib.eye{1}         = positions_eye;
-stimulus.eyecalib       = eyecalib;
-        
-% if stimulus.exp.trackEye %% && ~stimulus.exp.debug
-%     disp(' Calibrating Eye ....')
-%     myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
-%     
-%     % let the user know
-%     disp(sprintf('(trackpos) Starting Run...'));
-% end
+if  strcmp(exp.controlMethod,'eye')
+    [positions_target, positions_eye] = calibrateEye(myscreen, stimulus, true);
+    eyecalib = struct();
+    eyecalib.target{1}      = positions_target;
+    eyecalib.eye{1}         = positions_eye;
+    stimulus.eyecalib       = eyecalib;
+elseif stimulus.exp.trackEye
+    disp(' Calibrating Eye ....')
+    myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
+end
 
 if ~strcmp(stimulus.exp.controlMethod, 'mouse') && ...
         ~strcmp(stimulus.exp.controlMethod, 'eye') &&...
@@ -213,10 +229,12 @@ disp(' Running Task....'); stimulus.t0 = mglGetSecs; %
 
 % let the experimentee know too...
 % mglClearScreen(task{1}{1}.parameter.backLum/255);
-mglTextDraw('task starting... ', [0 0.5])
-mglTextDraw('Track the target with the red pointer',[0 -0.5]);
-mglTextDraw('When you are ready, press backtick to go to next trial',[0 -1.5]);
-mglFlush
+%mglFlush;
+
+mglBltTexture(mglText('task starting... '), [0 0.5]);
+mglBltTexture(mglText('Track the target with the red pointer'),[0 -0.5]);
+mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
+mglFlush;
 
 if ~exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
@@ -224,10 +242,13 @@ phaseNum = 1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, newphaseNum] = updateTask(task{1},myscreen,phaseNum); % update the task
     if newphaseNum ~= phaseNum
-        mglClearScreen(90/255);
-        [positions_target, positions_eye] = calibrateEye(myscreen, stimulus, true);
-        stimulus.eyecalib.target{newphaseNum}    = positions_target;
-        stimulus.eyecalib.eye{newphaseNum}       = positions_eye;
+        mglClearScreen(0.5);
+        
+        if strcmp(exp.controlMethod,'eye')
+            [positions_target, positions_eye] = calibrateEye(myscreen, stimulus, true);
+            stimulus.eyecalib.target{newphaseNum}    = positions_target;
+            stimulus.eyecalib.eye{newphaseNum}       = positions_eye;
+        end
         
         mglTextDraw('Press backtick to go to next trial',[0 0]);
         mglFlush;
@@ -329,6 +350,13 @@ end
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
     global stimulus
     phaseNum = task.thistrial.thisphase;
+    
+    % set background luminance
+    if task.thistrial.backLum > 1
+        mglClearScreen(task.thistrial.backLum/255);
+    else
+        mglClearScreen(task.thistrial.backLum);
+    end
 
     % eye tracking
     if stimulus.exp.trackEye && stimulus.task{phaseNum}.doTrack
@@ -397,28 +425,32 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     if ~isempty(stimulus.task{phaseNum}.bgfile) && task.thistrial.noiseLum > 0 && stimulus.exp.phasescrambleOn
         mglBltTexture(...
             stimulus.backnoise{phaseN}{task.thistrial.bgpermute(task.thistrial.framecount)}, ...
-            [0,0,myscreen.imageWidth, myscreen.imageHeight])
+            [0,0,myscreen.imageWidth, myscreen.imageHeight]);
     end
     
     % display target
     if ~isempty(stimulus.target)
-        mglBltTexture(stimulus.target.img, stimulus.target.position)
+        mglBltTexture(stimulus.target.img, stimulus.target.position);
     end
     
     % display pointer
     if ~isempty(stimulus.pointer)
-        mglBltTexture(stimulus.pointer.img, stimulus.pointer.position)
+        if isempty(stimulus.pointer.img)
+            mglGluDisk(stimulus.pointer.position(1), stimulus.pointer.position(2), 0.2, [1,0,0],60,1); 
+        else
+            mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
+        end
     end
     
     % display other objects
     for ij = 1:length(stimulus.otherObjs)
-        mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position)
+        mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
     end
     
     % display fixation
     if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
-        mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
-        mglGluDisk(0,0,0.1,rand(1,3),60,1);
+        mglGluAnnulus(0,0,0.4,0.6,[1 1 1],60,1);
+        mglGluDisk(0,0,0.2,rand(1,3),60,1);
     end
     
     if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor

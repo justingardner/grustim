@@ -195,9 +195,6 @@ methods
     % frame update
     % need to define an update function for the stimulus
     function stimulus  = update(obj, task, myscreen, stimulus)       
-        % background luminance
-        mglClearScreen(task.thistrial.backLum/255);
-        
         % tracking during segment 1
         if task.thistrial.thisseg == 1
             % update stimuli position

@@ -69,12 +69,26 @@ function blob = trackposInitStimulus(obj,myscreen)
             
     % generate blob image
     if blob.lum == 0 || blob.std == 0
-        blob.img = 0;
+        blob.img = [];
     else
-        gaussian    =  mglMakeGaussian(blob.patchsize,blob.patchsize,blob.std,blob.std)*(blob.lum);
-        gaussian_rgb           = 255*repmat([blob.color; 1], 1, size(gaussian,2),size(gaussian,1));
-        gaussian_rgb(4,:,:)    = round(gaussian');
-        gaussian_rgb           = uint8(gaussian_rgb);
-        blob.img = mglCreateTexture(gaussian_rgb);
+        gaussian                = mglMakeGaussian(blob.patchsize,blob.patchsize,blob.std,blob.std)*(blob.lum);
+        tableSize = mglPrivateSetGammaTable;
+        if mglResolution().bitDepth ~= 32 % todo check bits for older systems.
+            gaussian_rgb            = 255*repmat([blob.color; 1], 1, size(gaussian,2),size(gaussian,1));
+            gaussian_rgb(4,:,:)     = round(gaussian'); 
+            gaussian_rgb            = uint8(gaussian_rgb);
+            blob.img                = mglCreateTexture(gaussian_rgb);
+        elseif tableSize == 1024
+            % e.g. argb2101010
+            gaussian_rgb        = repmat([blob.color], 1, size(gaussian,2),size(gaussian,1)); % 3,x,y
+            gaussian_rgb(4,:,:) = gaussian'; % 4,x,y
+            gaussian_rgb        = permute(gaussian_rgb,[3,2,1]); % should be: y,x,4
+            blob.img            = mglMetalCreateTexture(gaussian_rgb);
+        else
+            gaussian_rgb        = repmat([blob.color], 1, size(gaussian,2),size(gaussian,1)); % 3,x,y
+            gaussian_rgb(4,:,:) = gaussian'; % 4,x,y
+            gaussian_rgb        = permute(gaussian_rgb,[3,2,1]); % should be: y,x,4
+            blob.img            = mglMetalCreateTexture(gaussian_rgb);
+        end
     end
 end
