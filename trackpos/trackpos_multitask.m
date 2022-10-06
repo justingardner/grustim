@@ -45,7 +45,7 @@ mglMetalSetViewColorPixelFormat(4);
 
 % Experimenter parameters
 exp                 = struct();
-exp.debug           = false;
+exp.debug           = true;
 exp.noeye           = true;
 exp.eyemousedebug   = false;
 exp.showmouse       = false;
@@ -55,6 +55,8 @@ exp.feedback        = true;
 exp.estim_horiz     = true;  % do hoiztonal estimation
 exp.estim_verti     = false; % do vertical estimation
 exp.colorfix        = false; % colored fixation
+exp.staircase       = '/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
+exp.block_design    = false; % in each block, present all combinations of parameters
 
 %% task parameters
 % stimulus and background
@@ -68,23 +70,59 @@ tasks2run         = {'est', '2c'};
 teststimLum       = [0.1, 0.2]; % [0.1,0.2,0.5] % [16,32,48,96]
 teststimStd       = [1]; % [1,2]
 teststimDur       = [2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-trialpercond      = 6; % 18 total
 
+trialpercond    = 15; % 18 total
 
+if exp.debug, trialpercond = 2; end
 
+nconditions         = length(teststimDur) * length(teststimStd) * length(teststimLum);
+params.trialpercond  = trialpercond; % approximate; due to randomization
 
-posDiff           = logspace(log10(0.05),log10(0.8),7); % in degs; minimum and maximum offset from fixation
-
-if exp.debug, trialpercond = 1; end
-
-task{1}{1}.parameter.currtask   = tasks2run; % forst fixed values
-params.posDiff      = posDiff; % forst fixed values
+task{1}{1}.parameter.currtask   = tasks2run; % for fixed values
 params.stimLum      = teststimLum;
-params.stimDur      = teststimDur; % teststimDur is also saved under stimulus
 params.stimStd      = teststimStd; % teststimDur is also saved under stimulus
 params.stimColor    = 'k';
-params.numTrials = length(tasks2run) * trialpercond*length(teststimDur) * length(teststimStd)*...
-    length(teststimLum)*2*length(posDiff);
+
+if exp.debug
+    params.stimDur      = [2/60, 15/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+else
+    params.stimDur      = teststimDur;
+end
+
+% specify position differences or staircase
+if exist(exp.staircase, 'file') == 0 
+    posDiff         = logspace(log10(0.05),log10(0.8),7); % in degs; minimum and maximum offset from fixation
+    params.posDiff      = posDiff; % forst fixed values
+    params.numTrials    = nconditions * (length(tasks2run) * trialpercond * 2 *length(posDiff)) ;
+else
+    % set up staircase
+    posDiffN        = 4;
+    
+    a               = load(exp.staircase);
+    staircaseTable  = a.staircase;
+    params.numTrials  = nconditions * (length(tasks2run) * trialpercond * 2 *length(posDiffN)) ;
+    
+    y = linspace(0.55, 0.95, posDiffN); % desired probabilities on the psychometric
+    posDiffs = {}; posDiffs_trial_est ={}; posDiffs_trial_2afc = {};
+    for idx =1:size(staircaseTable,1)
+        % fit normCDF
+        sc = staircaseTable.staircase{idx};
+        bestfit_stair = fitNormCDF(sc.testValues,sc.response);
+        vq = norminv(y,bestfit_stair.mean,bestfit_stair.std);
+        posDiffs{idx} = vq;
+        vq_trials = repmat(vq,[trialpercond,1]); %query points
+        vq_trials = vq_trials(:);
+        perm = randperm(length(vq_trials));
+        posDiffs_trial_est{idx} = vq_trials(perm);
+        perm = randperm(length(vq_trials));
+        posDiffs_trial_2afc{idx} = vq_trials(perm);
+    end
+    staircaseTable.posDiffs = posDiffs';
+    staircaseTable.posDiffs_trial_2afc = posDiffs_trial_2afc';
+    staircaseTable.posDiffs_trial_est = posDiffs_trial_est';
+    staircaseTable.trial_idx_2afc = ones(length(posDiffs),1);
+    staircaseTable.trial_idx_est = ones(length(posDiffs),1);
+end
 
 task{1}{1}.segmin           = [inf]; % for running other tasks
 task{1}{1}.segmax           = [inf]; % jumpsegment if the other task is finished
@@ -111,13 +149,11 @@ stimulus.fixColors.stim     = [0 1 0]; % green
 stimulus.fixColors.est      = [1 0 0]; % red
 stimulus.fixColors.afc      = [1 1 1]; % blue
 
-pointer             = struct();
-pointer.std = 0.1; 
-pointer.lum = 1;
-pointer.color = 'r';
-stimulus.pointer            = trackposInitStimulus(pointer,myscreen);
-
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
+
+if exist(exp.staircase, 'file') 
+    stimulus.staircaseTable = staircaseTable;
+end
 
 if stimulus.exp.phasescrambleOn == 1
     disp('Loading phase scrambled background noise...')
@@ -164,7 +200,6 @@ if ~stimulus.exp.noeye && ~ stimulus.exp.debug
     disp(sprintf('(trackpos) Starting Run...'));
 end
 
-
 %% task blocks. 
 % initializing task...
 disp(' Initializing Task....')
@@ -195,13 +230,11 @@ mglFlush
 
 if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 
-
-
 phaseNum = 1;phaseNum2=1;phaseNum3=1;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
-    [task{1}, myscreen, phaseNum] = updateTask(task{1},myscreen,phaseNum);     % update the task
-    [task{2}, myscreen] = updateTask(task{2},myscreen,1);
-    [task{3}, myscreen] = updateTask(task{3},myscreen,1);
+    [task{1}, myscreen, phaseNum]   = updateTask(task{1},myscreen,phaseNum);     % update the task
+    [task{2}, myscreen]             = updateTask(task{2},myscreen,1);
+    [task{3}, myscreen]             = updateTask(task{3},myscreen,1);
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
 
@@ -215,8 +248,8 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     % nan out the parameters so that we don't analyze them (does this work?)
     task.thistrial.posDiff      = nan; % forst fixed values
     task.thistrial.stimLum      = nan;
-    task.thistrial.stimDur      = nan; % teststimDur is also saved under stimulusnan
-    task.thistrial.stimStd      = nan; % teststimDur is also saved under stimulusnan
+    task.thistrial.stimDur      = nan;
+    task.thistrial.stimStd      = nan; 
     
     % print trial number every 5%. 
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
@@ -231,6 +264,7 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
     
     % select which task to run and save it in the stimulus
     stimulus.currtask = task.thistrial.currtask;
+    myscreen.flushMode = 0; % start updating screen for the subtasks to detect in screenupdate.
 end
 
 %% screen update
@@ -248,4 +282,15 @@ function [task, myscreen] = responseCallback(task, myscreen)
         % go to next segment
         task = jumpSegment(task);
     end
+end
+
+   
+function idx = findCondIdx(staircaseTable,backLum,noiseLum,stimLum,stimDur,stimStd,stimColor)
+    idx = (staircaseTable.backLum == backLum);
+    idx = idx & (staircaseTable.noiseLum == noiseLum);
+    idx = idx & (staircaseTable.stimLum == stimLum);
+    idx = idx & (staircaseTable.stimDur == stimDur);
+    idx = idx & (staircaseTable.stimStd == stimStd);
+    idx = idx & (staircaseTable.stimColor == stimColor);
+    idx = find(idx); % turn logical vector to index number
 end

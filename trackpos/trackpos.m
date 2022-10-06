@@ -287,8 +287,7 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     task.thistrial.randomSeed = s.Seed;
     rng(task.thistrial.randomSeed,'twister');
     
-    % noise
-    % permute background and save
+    % noise: permute background and save
     if stimulus.exp.phasescrambleOn == 1 && ~isempty(stimulus.task{phaseNum}.bgfile)
         nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise{1}),nframes,1);

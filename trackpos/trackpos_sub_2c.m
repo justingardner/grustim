@@ -16,30 +16,41 @@ task{1}.random               = 1;
 task{1}.parameter.backLum    = params.backLum; 
 task{1}.parameter.noiseLum   = params.noiseLum;
 task{1}.parameter.stimright  = [0,1];
-task{1}.parameter.posDiff    = params.posDiff; 
 task{1}.parameter.stimLum 	 = params.stimLum;
 task{1}.parameter.stimStd 	 = params.stimStd;
 task{1}.parameter.stimColor	 = params.stimColor;
+task{1}.parameter.stimDur	 = params.stimDur;
 
 % note: seglen are changed later
 if ~exp.feedback 
-    task{1}.segmin           = [inf 0.4 nan inf];
-    task{1}.segmax           = [inf 0.8 nan inf]; 
+    task{1}.segmin           = [inf 0.4 inf inf];
+    task{1}.segmax           = [inf 0.8 inf inf]; 
     task{1}.getResponse      = [0 0 0 1]; %segment to get response.
 else
-    task{1}.segmin           = [inf 0.4 nan inf 1];
-    task{1}.segmax           = [inf 0.8 nan inf 1]; 
+    task{1}.segmin           = [inf 0.4 inf inf 1];
+    task{1}.segmax           = [inf 0.8 inf inf 1]; 
     task{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
 end
 
-task{1}.numTrials        = (params.numTrials)/2 + 100; % (with some overflow)
+global stimulus
+if exist(stimulus.exp.staircase, 'file') 
+    task{1}.randVars.calculated.posDiff      = nan; % save posDiff as random variable
+else
+    task{1}.parameter.posDiff    = params.posDiff; 
+end
+
+if exp.block_design  % with some overflow.
+    task{1}.numBlocks        = trialpercond; % dont count stimright as condition %with some overflow
+else
+    task{1}.numTrials        = params.numTrials; % dont count stimright as condition %with some overflow
+end
 
 % calculated variables
 maxframes = ceil((task{1}.segmax(2)+max(params.stimDur))...
     *myscreen.framesPerSecond)+10; % with some additional overflow
 
 task{1}.randVars.calculated.subjcorrect  = nan; 
-task{1}.randVars.calculated.stimDur      = nan; 
+task{1}.randVars.calculated.stimDur0     = nan; 
 
 task{1}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
 task{1}.randVars.calculated.stimON       = nan(1,maxframes); % nframes x 1 for the stimulus
@@ -49,34 +60,54 @@ task{1}.randVars.calculated.trackEye     = nan(maxframes,2);
 task{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file
 
 %% task blocks. 
-
-% change stimulus duration
-for trialN = 1:task{1}.numTrials
-    fixdur      = rand*(task{1}.segmax(2) - task{1}.segmin(2)) + task{1}.segmin(2);
-    stimdur     = params.stimDur(randi(length(params.stimDur)));
-    if ~exp.feedback
-        task{1}.seglenPrecompute.seglen{trialN} = [inf fixdur stimdur inf];
-    else
-        task{1}.seglenPrecompute.seglen{trialN} = [inf fixdur stimdur inf 1];
-    end
-end
-
 % initializing task...
 disp(' Initializing Task....')
 
 for phaseN = 1:length(task)
     [task{phaseN}, myscreen] = initTask(task{phaseN},myscreen,...
-        @startSegmentCallback,@screenUpdateCallback,@responseCallback,[]);
+        @startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
 end
 
 
 %% Start segment
+function [task, myscreen] = initTrialCallback(task, myscreen)
+
+global stimulus
+
+if exist(stimulus.exp.staircase, 'file') 
+    backLum     = task.thistrial.backLum;
+    noiseLum    = task.thistrial.noiseLum;
+    stimLum     = task.thistrial.stimLum;
+    stimDur     = task.thistrial.stimDur; 
+    stimStd     = task.thistrial.stimStd;
+    stimColor   = task.thistrial.stimColor;
+    idx         = findCondIdx(stimulus.staircaseTable,backLum,noiseLum,stimLum,stimDur,stimStd,stimColor);
+    
+        
+    trial_idx   = stimulus.staircaseTable.trial_idx_2afc(idx);
+    posDiff     = stimulus.staircaseTable.posDiffs_trial_2afc{idx}(trial_idx);
+    
+    task.thistrial.posDiff = posDiff;
+    stimulus.staircaseTable.trial_idx_2afc(idx) = stimulus.staircaseTable.trial_idx_2afc(idx) + 1;
+    
+    task.thistrial.seglen(3) = task.thistrial.stimDur;
+end
+
+
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
+
+% set flushMode based on noiseLum
+if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1 && task.thistrial.noiseLum >0
+    myscreen.flushMode = 0;
+else
+    myscreen.flushMode = 1;
+end
 
 if task.thistrial.thisseg == 1
     % if we come back to beginning, means the previous trial finished. 
     % wait for the next task 
+    myscreen.flushMode = 0; % update screen
     stimulus.currtask = 'done';
     
 elseif task.thistrial.thisseg == 2
@@ -90,15 +121,33 @@ elseif task.thistrial.thisseg == 2
     stimulus.noiseLum   = task.thistrial.noiseLum;
     
     task.thistrial.framecount = 0;
-    task.thistrial.stimdur    = task.thistrial.seglen(3);
+    task.thistrial.stimDur0 = task.thistrial.seglen(3);
     
     stimulus.target = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
     
-    if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1;
+    if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1&& stimulus.noiseLum;
         nframes = length(task.thistrial.bgpermute);
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
+elseif task.thistrial.thisseg == 3
+elseif task.thistrial.thisseg == 4
+    
+    % stimulus length recorded by updateTask; make sure is same as Dur0
+    task.thistrial.stimDur = task.thistrial.seglen(3); 
+    disp(['Segment duration error1: ', num2str(task.thistrial.stimDur - task.thistrial.stimDur0)])
+elseif task.thistrial.thisseg == 5
+end
 
+% blt screen once before screenUpdates loops
+if task.thistrial.thisseg > 1
+    [task, myscreen] = screenUpdateCallback(task, myscreen);
+    mglFlush;
+    if task.thistrial.thisseg == 3
+        stimulus.start = mglGetSecs;
+    elseif task.thistrial.thisseg == 4
+        stimulus.length = mglGetSecs - stimulus.start;
+        disp(['Segment duration error2: ', num2str(stimulus.length - task.thistrial.stimDur)])
+    end
 end
 
 %% screen update
@@ -142,14 +191,14 @@ if any(task.thistrial.thisseg == [2, 3])
     if stimulus.exp.colorfix
         % changing fixation colors
         % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
-        mglGluDisk(0,0,0.2,rand(1,3),60,1);
+        mglGluDisk(0,0,0.1,rand(1,3),60,1);
     else
-        mglGluDisk(0, 0, 0.2, stimulus.fixColors.stim,60,1); 
+        mglGluDisk(0, 0, 0.1, stimulus.fixColors.stim,60,1); 
     end
     
 elseif any(task.thistrial.thisseg == [4,5])
     % fixation indicating estimation task
-    mglGluDisk(0, 0, 0.2, stimulus.fixColors.afc,60,1); 
+    mglGluDisk(0, 0, 0.1, stimulus.fixColors.afc,60,1); 
 end
 
 % draw blob or response feedback
