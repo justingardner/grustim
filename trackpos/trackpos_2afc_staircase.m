@@ -4,12 +4,13 @@
 %       date: 04/13/2021
 %    purpose: 2 choice task for position of one blob against fixation.
 
-% S1: wait time while the main task calls this subtask.
-% S2: random period of fixation (random ~0.5s)
-% S3: stimulus period (stimdur s)
-% S4: mask 
-% S5: repsonse period (inf)
-% S6: feedback (1s)
+% S1 (w): wait time while the main task calls this subtask.
+% S2 (ITI): random period of fixation (random ~0.5s)
+% S3 (s): stimulus period (stimdur s)
+% S4 (md): mask ITI
+% S5 (m): mask
+% S6 (r): repsonse period (inf)
+% S7 (fb): feedback (1s)
 
 % todo: keep track of which segment is which number in a stimulus struct?
 % => change code accordingly
@@ -66,15 +67,22 @@ else
     params.stimDur      = [2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
 end
 
-params.stimStd      = [1]; % [1,1.5]
-params.stimColor    = 'k';
+params.stimStd          = [1]; % [1,1.5]
+params.stimColor        = 'k';
 
+% mask parameters
+params.maskDur          = 3/60; % mask duration
+params.mask_TOff2MOn    = 5/60; % stimulus offset to mask onset (Neisser 1967)
+params.maskLum          = 0.05;
+
+% staircase parameters
 trialpercond        = 40;
 if exp.debug, trialpercond = 2; end
 
 params.initThreshold    = 0.1;
 params.initThresholdSd  = 0.1;
 
+% count conditions
 nconditions             = length(params.stimDur) * length(params.stimStd) * length(params.stimLum);
 params.trialpercond     = trialpercond ;
 params.numTrials        = trialpercond * nconditions;
@@ -92,20 +100,23 @@ task{1}.parameter.stimColor	 = params.stimColor;
 task{1}.parameter.stimDur	 = params.stimDur;
 
 % note: seglen are changed later
+% note: rewrite this
 if ~exp.feedback 
     task{1}.segmin           = [0.1 0.4 inf inf];
     task{1}.segmax           = [0.1 0.8 inf inf]; 
     task{1}.getResponse      = [0 0 0 1]; %segment to get response.
 else
     if mglIsFile(exp.noise_mask)
-        task{1}.segmin           = [0.1 0.4 inf 0.3 inf 1];
-        task{1}.segmax           = [0.1 0.8 inf 0.3 inf 1]; 
-        task{1}.getResponse      = [0 0 0 0 1 0]; %segment to get response.
+        maskDur = params.maskDur;
+        maskDel = params.mask_TOff2MOn;
+        task{1}.segmin           = [0.1 0.4 inf maskDel maskDur inf 1];
+        task{1}.segmax           = [0.1 0.8 inf maskDel maskDur inf 1]; 
+        task{1}.getResponse      = [0 0 0 0 0 1 0]; %segment to get response.
     else
         % basically skip mask period
-        task{1}.segmin           = [0.1 0.4 inf 0.05 inf 1];
-        task{1}.segmax           = [0.1 0.8 inf 0.05 inf 1]; 
-        task{1}.getResponse      = [0 0 0 0 1 0]; %segment to get response.
+        task{1}.segmin           = [0.1 0.4 inf inf 1];
+        task{1}.segmax           = [0.1 0.8 inf inf 1]; 
+        task{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
     end
 end
 
@@ -279,7 +290,7 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
         for idx = 1:nframes
             midx    = stimulus.noise_mask_trial(idx);
             maskimg = stimulus.noise_mask.backgroundnoise_rgb(:,:,:,midx);
-            maskimg(4,:,:) = task.thistrial.backLum + (max(stimulus.params.stimLum)-task.thistrial.backLum)*maskimg(4,:,:);
+            maskimg(4,:,:) = stimulus.params.maskLum * maskimg(4,:,:);
             % maskimg(4,:,:) = 0 * maskimg(4,:,:);
             maskimg = permute(maskimg,[2,3,1]);
             stimulus.noise_mask_texture{idx} = mglMetalCreateTexture(maskimg);
@@ -326,8 +337,6 @@ elseif task.thistrial.thisseg == 4
     % actual stimulus length is updated by updateTask; this should be almost the same as Dur0
     task.thistrial.stimDur = task.thistrial.seglen(3); 
     disp(['Segment duration error1: ', num2str(task.thistrial.stimDur - task.thistrial.stimDur0)]);
-elseif task.thistrial.thisseg == 5
-elseif task.thistrial.thisseg == 6
 end
 
 % blt screen once before screenUpdates loops
@@ -384,9 +393,9 @@ if any(task.thistrial.thisseg == [2, 3])
     else
         mglGluDisk(0, 0, 0.1, stimulus.fixColors.stim,60,1); 
     end
-elseif task.thistrial.thisseg == 4
+elseif task.thistrial.thisseg == 5
     mglMetalBltTexture(stimulus.noise_mask_texture{task.thistrial.framecount},[0 0]);
-elseif any(task.thistrial.thisseg == [5,6])
+elseif any(task.thistrial.thisseg == [6,7])
     % fixation indicating estimation task
     mglGluDisk(0, 0, 0.1, stimulus.fixColors.afc,60,1); 
 end
@@ -396,9 +405,7 @@ if task.thistrial.thisseg == 3 % stimulus
     stim_pos = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
     task.thistrial.stimON(task.thistrial.framecount) = 1;
     mglBltTexture(stimulus.target.img,[stim_pos 0]);
-elseif task.thistrial.thisseg == 5
-    
-elseif task.thistrial.thisseg == 6 %feedback period
+elseif task.thistrial.thisseg == 7 %feedback period
     % no fixation cross until response.
     mglGluAnnulus(0,0,0.2,0.5,stimulus.currfixColor,60,1);
     

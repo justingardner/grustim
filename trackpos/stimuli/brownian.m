@@ -87,8 +87,9 @@ methods
             obj.numTrials = min(p.Results.maxtrials, size(p.Results.pos_start{1},1));
         else
             obj.numTrials = p.Results.maxtrials;
-            x_img = 1/3*myscreen.imageWidth*(2*rand(obj.numTrials,1)-1); 
-            y_img = 1/3*myscreen.imageHeight*(2*rand(obj.numTrials,1)-1);
+            % start somewhere in the middle 1/5 * 2 of the screen
+            x_img = 1/5*myscreen.imageWidth*(2*rand(obj.numTrials,1)-1); 
+            y_img = 1/5*myscreen.imageHeight*(2*rand(obj.numTrials,1)-1);
             obj.pos_start{1} = [x_img, y_img];
         end
 

@@ -8,8 +8,7 @@
 % target, pointer struct and background,
 % fixation and cell of other objects
 % each object struct has fields: position and img. (and other properties
-% native and updated by the dynamics modules)
-
+% native and updated by the dynamics modules
 % tracking variables. (all other variables to keep track of should be
 % defined in the task dynamics)
 % task.thistrial.framecount
@@ -42,12 +41,12 @@ end
 
 %myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
 %myscreen.hideCursor = 1;
-myscreen.displayName    = 'gardnerlab420';
-myscreen.calibType      = 'Specify particular calibration';
-myscreen.calibFilename  = '0001_dn0a22167c_220912.mat';
-myscreen.calibFullFilename = '/Users/JRyu/github/mgl/task/displays/0001_dn0a22167c_220912';
-myscreen.saveData       = 1; % save stimfile to data directory
-myscreen.datadir        = '/Users/JRyu/Dropbox/GardnerLab/data/';
+myscreen.displayName        = 'vpixx';
+myscreen.calibType          = 'Specify particular calibration';
+myscreen.calibFilename      = '0001_dn0a221834_221005.mat';
+myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0001_dn0a221834_221005';
+myscreen.saveData           = 1; % save stimfile to data directory
+myscreen.datadir            = '/Users/gru/data/';
 
 myscreen                = initScreen(myscreen);
 
@@ -81,19 +80,24 @@ task = {};
 % no noise run
 cps = {};
 stimStepStdList     = [1];
-stimStdList         = [0.5, 1 ,2];
-stimLums            = [0.1, 0.2, 0.5]; 
+stimStdList         = [1]; %[0.5, 1 ,2];
+stimLums            = [0.05, 0.1, 0.2, 0.4]; %[0.1, 0.2, 0.5]; 
 backLum             = 0.4;
+
+ntrial_learn        = 3;
+ntrials             = 12; % trials per condition
+
 
 for stimStepStd = stimStepStdList
     % 3 learning phase
-    cps{end+1} = brownian(myscreen, 'maxtrials', 3, 'noiseLum', 0, 'backLum', backLum, ...
+    cps{end+1} = brownian(myscreen, 'maxtrials', ntrial_learn, 'noiseLum', 0, 'backLum', backLum, ...
         'stimLum', 1, 'stimColor', 'k', 'stimStd', [1], 'stimStepStd', stimStepStd, ...
         'pointLum',1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
         'bgfile', []);
     
     for stimStd = stimStdList
-        cps{end+1} = brownian(myscreen, 'maxtrials', 18, 'noiseLum', 0, 'backLum', backLum, ...
+        ntrials_phase = length(stimLums) * ntrials;
+        cps{end+1} = brownian(myscreen, 'maxtrials', ntrials_phase, 'noiseLum', 0, 'backLum', backLum, ...
             'stimLum', stimLums, 'stimColor','k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
             'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
             'bgfile', []);
@@ -448,8 +452,9 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     
     % display fixation
     if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
-        mglGluAnnulus(0,0,0.4,0.6,[1 1 1],60,1);
-        mglGluDisk(0,0,0.2,rand(1,3),60,1);
+        mglGluAnnulus(0,0,0.2,0.4,[1 1 1],60,1);
+        mglGluDisk(0, 0, 0.1,rand(1,3),60,1); 
+
     end
     
     if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
@@ -459,7 +464,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         global frame; frame{task.thistrial.framecount} = mglFrameGrab;
     end
 end
-
 
 %% Get response; do nothing. 
 function [task myscreen] = responseCallback(task, myscreen)
