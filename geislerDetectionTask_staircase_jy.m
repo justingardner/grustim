@@ -62,12 +62,13 @@ task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.rt = nan;
 task{1}{1}.currentTask = 'task1';
 
-stimulus.task1.gabor_contrast = [.05 .15 .3 .7];
-stimulus.task1.nTrial = length(stimulus.task1.gabor_contrast) * 5;
-stimulus.task1.stair = doStaircase('init','fixed',...
-    ['fixedVals=' num2str(stimulus.task1.gabor_contrast)], ...
-    ['nTrials=' stimulus.task1.nTrial]);
-task{1}{1}.numTrials = stimulus.task1.nTrial;
+stimulus.task1.stair = doStaircase('init','updown','nup=1','ndown=3', ...
+    'stepRule=levitt', 'nTrials=50', ...
+    'initialStepsize=.2', 'minStepsize=.01',...
+    'minThreshold=.01', 'maxThreshold=1', ...
+    ['initialThreshold=.5']);
+task{1}{1}.numTrials = stimulus.task1.stair.stopCriterion;
+
 
 %%%% second task setup
 %%%% based on the first task, test with a more fine tuned contrasts
@@ -140,38 +141,28 @@ end
 % after the first task, compute threshold to set the contrast values for the
 % second task
 mglClearScreen(.5)
-% mglTextSet([],32,1);
-% mglTextDraw(['Adjusting the stimulus''s contrast level...'], [0,0])
-% sz = size(stimulus.pink_filter);
 mglFlush;
 
 t = doStaircase('threshold',stimulus.task1.stair);
 threshold = t.threshold;
-if threshold < .01, threshold = .01; end
-% x = t.fit.x;
-% y = t.fit.y;
-% minval = max(x(y<=.55));
-% maxval = min(x(y>=.95));
-% if isempty(minval), minval = .03; end
-% if isempty(maxval), maxval = .08; end
-% 
-% log_contrasts = [logspace(minval, threshold, 4), ...
-%     logspace(threshold, maxval, 4)];
-% log_contrasts(4) = [];
-% contrasts = log10(log_contrasts);
-% 
-% stimulus.task2.gabor_contrast = contrasts;
-% stimulus.task2.nTrial = length(stimulus.task1.gabor_contrast) * 7;
-% stimulus.task2.stair = doStaircase('init','fixed',...
-%     ['fixedVals=' num2str(stimulus.task2.gabor_contrast)], ...
-%     ['nTrials=' stimulus.task2.nTrial]);
+if threshold < .01, threshold = .01; 
+elseif threshold > 1, threshold = 1;
+end
 
-stimulus.task2.stair = doStaircase('init','updown','nup=1','ndown=3', ...
-    'stepRule=levitt', 'nTrials=50', ...
-    'initialStepsize=.3', 'minStepsize=.01',...
-    'minThreshold=.01', 'maxThreshold=.9', ...
-    ['initialThreshold=' num2str(threshold)]);
-task{2}{1}.numTrials = stimulus.task2.stair.stopCriterion;
+% decide on the contrast set for the testing
+pCorrect = [.57, .65, .75, .85, .97];   % targetting pCorrect
+for i = 1:length(pCorrect)    
+    [~, idx] = min(abs(t.weibullFitParams.y - pCorrect(i)));
+    contrast(i) = t.weibullFitParams.x(idx);
+end
+
+stimulus.task2.gabor_contrast = contrast;
+stimulus.task2.nTrial = length(stimulus.task1.gabor_contrast) * 15;
+stimulus.task2.stair = doStaircase('init','fixed',...
+    ['fixedVals=' num2str(stimulus.task2.gabor_contrast)], ...
+    ['nTrials=' stimulus.task2.nTrial]);
+task{2}{1}.numTrials = stimulus.task2.nTrial;
+
 
 %%%% initialize the second task
 [task{2}{1} myscreen] = initTask(task{2}{1},myscreen,...
