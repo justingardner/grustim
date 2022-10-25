@@ -17,32 +17,32 @@ function myscreen = Diana(varargin)
 getArgs(varargin);
 
 % initilaize the screen
-myscreen = initScreen(); mglVisualAngleCoordinates(57,[16 12]); mglClearScreen; task{1}.waitForBacktick = 1;
+myscreen = initScreen();% mglVisualAngleCoordinates(57,[16 12]); mglClearScreen;
+task{1}.waitForBacktick = 1;
 
 % init the stimulus
 global stimulus;
 
 myscreen = initStimulus('stimulus',myscreen)
     
-    % Gabor stimulus %
-    gaussian = mglMakeGaussian(3,3,5,5); 
-    stimulus = mglCreateTexture(gaussian);
-
-    % checkerboard stimulus %
-    %grating1 = mglMakeGrating(10,10,1.5,45,0);
-    %grating2 = mglMakeGrating(10,10,1.5,135,0);
-    %checkerboard = 255*(sign(grating1/2+grating2/2))/2;
-    %stimulus = mglCreateTexture(checkerboard);
+% set where the quad will be
+stimulus.xPosMin = -5;
+stimulus.xPosMax = 5;
+stimulus.yPosMin = -5;
+stimulus.yPosMax = 5;
+% compute location of quad
+stimulus.quadX = [stimulus.xPosMin stimulus.xPosMin stimulus.xPosMax stimulus.xPosMax]';
+stimulus.quadY = [stimulus.yPosMin stimulus.yPosMax stimulus.yPosMax stimulus.yPosMin]';
 
 % set task parameters
-task{1}.segmin = [1 1 1]; task{1}.segmax = [1 1 1]; task{1}.getResponse = [0 0 0]; %length of segments and response segment
+task{1}.segmin = [0.1 0.5];
+task{1}.segmax = [0.1 0.5];
+task{1}.getResponse = [0 0];
 
-task{1}.numTrials = 10;
+task{1}.numTrials = inf;
 
-    % synch to vol
-    task{1}.synchToVol = [1 0 0];
-    task{1}.segmin = task{1}.segmin - [0 0 0];
-    task{1}.segmax = task{1}.segmax - [0 0 0];
+% synch to vol
+task{1}.synchToVol = [1 0];
 
 
 % initialize the task
@@ -71,8 +71,11 @@ myscreen = endTask(myscreen,task);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = startSegmentCallback(task, myscreen)
 
-mglClearScreen(0);
-mglFlush;
+if task.thistrial.thisseg == 1
+    disp(sprintf('(dianaTestTriggers) Starting trial %i',task.trialnum));
+    mglClearScreen(0);
+end
+
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%resp%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -80,16 +83,22 @@ mglFlush;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = screenUpdateCallback(task, myscreen, checkboardBltTex)
 
+global stimulus
+    
+
 if task.thistrial.thisseg == 2
 
-    global stimulus
-    
+    if isodd(myscreen.tick)
+      mglQuad(stimulus.quadX,stimulus.quadY,[1;1;1]);
+    else
+      mglQuad(stimulus.quadX,stimulus.quadY,[0;0;0]);
+    end
+        
+else
     mglClearScreen(0);
-    checkerboardBltTex = mglBltTexture(stimulus,[0 0]);
-
 end
 
-mglFlush;
+
 
 
 
