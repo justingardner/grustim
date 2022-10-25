@@ -26,9 +26,14 @@ triggerTimes = triggerTimes(2:end); %take out first backtick timing (experiment 
 % plot the trigger times
 figure,
 subplot(1,2,1); scatter(1:length(triggerTimes),triggerTimes);
-hold on, plot([1 length(triggerTimes)], [triggerTimes(1) triggerTimes(end)]);
+hold on, plot([1:length(triggerTimes)], [triggerTimes(1):(triggerTimes(end)-triggerTimes(1))/(length(triggerTimes)-1):triggerTimes(end)]);
 xlabel('Trigger number');ylabel('Time (s)');
-
+keyboard
 % plot trigger times as difference from expect timing assuming all are equal
-subplot(1,2,2); scatter(1:length(triggerTimes),triggerTimes-((1:length(triggerTimes))*((triggerTimes(end)-triggerTimes(1))/length(triggerTimes))));
+slope = (triggerTimes(end)-triggerTimes(1))/(length(triggerTimes)-1);
+
+predictions = [triggerTimes(1):(triggerTimes(end)-triggerTimes(1))/(length(triggerTimes)-1):triggerTimes(end)];
+
+subplot(1,2,2); scatter(1:length(triggerTimes), triggerTimes - predictions);
+
 xlabel('Trigger number');ylabel('Difference from expected time (s)');
