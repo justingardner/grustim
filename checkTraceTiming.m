@@ -28,7 +28,7 @@ figure,
 subplot(1,2,1); scatter(1:length(triggerTimes),triggerTimes);
 hold on, plot([1:length(triggerTimes)], [triggerTimes(1):(triggerTimes(end)-triggerTimes(1))/(length(triggerTimes)-1):triggerTimes(end)]);
 xlabel('Trigger number');ylabel('Time (s)');
-keyboard
+
 % plot trigger times as difference from expect timing assuming all are equal
 slope = (triggerTimes(end)-triggerTimes(1))/(length(triggerTimes)-1);
 
