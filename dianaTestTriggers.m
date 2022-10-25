@@ -13,7 +13,8 @@ function myscreen = dianaTestTriggers(varargin)
 getArgs(varargin);
 
 % initilaize the screen
-myscreen = initScreen('debug');
+%myscreen = initScreen('debug');
+myscreen = initScreen('diana');
 
 % clear the screen to gray
 mglClearScreen(0.5);mglFlush
@@ -102,9 +103,9 @@ if task.thistrial.thisseg == 2
   else
     % flashing box from white to black
     if isodd(floor((myscreen.tick-stimulus.startTick)/stimulus.framesPerHalfCycle))
-      mglBltTexture(stimulus.plaid1);
+      mglBltTexture(stimulus.plaid1,[0 0]);
     else
-      mglBltTexture(stimulus.plaid2);
+      mglBltTexture(stimulus.plaid2,[0 0]);
     end
   end
 else
