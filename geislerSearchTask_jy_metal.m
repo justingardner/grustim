@@ -20,8 +20,8 @@ global stimulus
 
 eyetracker = 0;
 % myscreen.screenNumber = 2;
-myscreen.displayname = 'dell-wuTsai';
-% myscreen.saveData = 1;
+myscreen.displayname = 'dell_wuTsai';
+myscreen.saveData = 0;
 myscreen.datadir = '~/proj/jiwon/data/geisler/geislerSearchTask';
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerSearchTask/aborted',1);
 
@@ -51,6 +51,12 @@ stimulus.gabor.cycle = 6;
 % d' = [3, 3.5, 4, 5, 6, 7];    my dprime was around 2.3 for 0.12 contrast
 % level
 stimulus.gabor.contrasts = [.15, .2, .25, .35, .5];
+
+if ~isfield(stimulus, 'noise.noise_frame_pixel')
+    buffer = 3;
+    stimulus.noise.noise_frame_pixel = visualAngleToPixels(stimulus.noise.size+buffer, ...
+        [myscreen.screenWidth, myscreen.screenHeight]);
+end
 defineLocations
 
 %%%%% define task timings and responses
@@ -75,11 +81,19 @@ myscreen = initStimulus('stimulus', myscreen);
 
 %%%%% make stencil
 mglClearScreen(.5);
+mglFlush();
+
 mglStencilCreateBegin(1);
-mglVisualAngleCoordinates(myscreen.displayDistance,myscreen.displaySize);
-mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
+% mglVisualAngleCoordinates(myscreen.displayDistance,myscreen.displaySize);
+% mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
+x = linspace(-7.5, 7.5, 100000);
+y = sqrt(7.5^2 - x.^2);
+x = [x, fliplr(x)];
+y = [y, -fliplr(y)];
+mglPolygon(x,y,[1 1 1]);
 mglStencilCreateEnd;
 mglClearScreen(.5);
+mglFlush();
 
 %%%%% initialize task
 [task{1}{1} myscreen] = initTask(task{1}{1},myscreen,...
@@ -96,7 +110,7 @@ if eyetracker
 end
 
 % hide cursor 
-% mglDisplayCursor(0)
+% mglDisplayCursor(0);
 
 % notify the starting of the task
 mglClearScreen(.5);
@@ -121,7 +135,7 @@ mglClearScreen(0.5);
 mglTextSet([],32,1);
 mglTextDraw('Experiment ends',[0, .7]);
 mglTextDraw('Please wait..', [0, -.7]);
-mglFlush
+mglFlush();
 
 % if we got here, we are at the end of the experiment
 mglWaitSecs(3);
@@ -161,6 +175,8 @@ combinedStimulus(task);
 stimulus.tex_target = mglCreateTexture(stimulus.final_im{1});
 stimulus.tex_nontarget = mglCreateTexture(stimulus.final_im{2});
 
+% reset framecount
+task.thistrial.framecount = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
@@ -171,18 +187,18 @@ global stimulus
 if task.thistrial.thisseg == 1
     % show how many blocks are left 
     if mod(task.trialnum, stimulus.TrialsPerBlock) == 1
-        mglClearScreen(.5)
+        mglClearScreen(.5);
         mglTextSet([],32,1);
         mglTextDraw(sprintf('Starting block %d out of %d blocks', ...
-            stimulus.cBlock, stimulus.nBlocks),[0,0])
-        mglFlush
-        mglWaitSecs(2)
+            stimulus.cBlock, stimulus.nBlocks),[0,0]);
+        mglFlush();
+        mglWaitSecs(2);
     end
     
     % show a fixation cross and wait for the button press
-    mglClearScreen(.5)
-    mglFillOval(0,0,[.2 .2],0)    
-    mglFlush
+    mglClearScreen(.5);
+    mglFillOval(0,0,[.2 .2],0);
+    mglFlush();
     
     % waiting for the subject to start the trial
     while 1
@@ -197,34 +213,45 @@ if task.thistrial.thisseg == 1
     
 elseif task.thistrial.thisseg == 2 
     % present an empty screen
-    mglClearScreen(.5)    
-    mglFlush
+    mglClearScreen(.5);    
+%     mglFlush;
     
 elseif task.thistrial.thisseg == 3
-    % present a stimulus
-    mglClearScreen(stimulus.bg_color{1});
-    mglStencilSelect(1);
-    mglBltTexture(stimulus.tex_target,[0 0])
-    mglStencilSelect(0);    
-    mglFlush
-    
     disp(['current target:' num2str(task.thistrial.gabor_location)])
-    
+
 elseif task.thistrial.thisseg == 4
-    task.thistrial.framecount = 1;
+    % present the mouse cursor at the center
+    mglDisplayCursor(1);
+    mglPostEvent('mousemove',0, myscreen.screenWidth/2, myscreen.screenHeight/2);
+    
+%     mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
+%         myscreen.screenNumber);
+
+    % start response time recording
+    stimulus.t0 = mglGetSecs;
+    
+    % Or present a red disk
+%     task.thistrial.framecount = task.thistrial.framecount + 1;
+%     mInfo = mglGetMouse(myscreen.screenNumber);
+%     x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
+%     y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
+%     mousePos(task.thistrial.framecount,:) = [x,y];
+%     mglGluDisk(mousePos(task.thistrial.framecount,1), mousePos(task.thistrial.framecount,2),.4,'r');
+%     mglSetMousePosition(500,500,1);mglDisplayCursor(1);
+    
     
     
 elseif task.thistrial.thisseg == 5
-    mglClearScreen(stimulus.bg_color{2});
+    mglClearScreen(stimulus.bg_color{2}/255*1);
     mglStencilSelect(1);
-    mglBltTexture(stimulus.tex_nontarget,[0 0])
+    mglBltTexture(stimulus.tex_nontarget,[0 0]);
     mglStencilSelect(0);
     mglFillOval(0,0,[.2 .2],0);     % fixation
     
     % show the target location
     target_location = stimulus.gabor_locations_va(task.thistrial.gabor_location,:);    
-    mglGluAnnulus(target_location(2), target_location(1), .35, .4, ...
-        [1 1 1], 120, 2)
+%     mglMetalArcs([target_location(2), target_location(1), 0], [1 1 1 1], ...
+%         [.8 1], [0 2*pi], 3)
 end
 
 
@@ -233,41 +260,45 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function [task myscreen] = updateScreenCallback(task, myscreen)
 
-if task.thistrial.thisseg==4
-    global stimulus
-    % show mouse cursor at the initial location
-    mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
-        myscreen.screenNumber)
-    
-    % decision prompt
-    mglClearScreen(stimulus.bg_color{2});
+global stimulus
+if task.thistrial.thisseg == 3
+    % present a stimulus
+    mglClearScreen(stimulus.bg_color{1}/255*1);
     mglStencilSelect(1);
-    mglBltTexture(stimulus.tex_nontarget,[0 0])
+    mglBltTexture(stimulus.tex_target,[0 0]);
     mglStencilSelect(0);
-    mglTextDraw('Click on the screen where the target appeared', [0,10])
     
-    % start response time recording
-    stimulus.t0 = mglGetSecs;
+elseif task.thistrial.thisseg==4
+    % update framecount
+    task.thistrial.framecount = task.thistrial.framecount+1;
+
+    % decision prompt
+    mglClearScreen(stimulus.bg_color{2}/255*1);
+    mglStencilSelect(1);
+    mglBltTexture(stimulus.tex_nontarget,[0 0]);
+    mglStencilSelect(0);
+    mglFillOval(0,0,[.2 .2], 0);
+    mglTextDraw('Click on the screen where the target appeared', [0,10]);
     
-    % start recording mouse positions
-    mInfo = mglGetMouse(myscreen.screenNumber);
+    % record mouse positions
+    mInfo = mglGetMouse(myscreen.screenNumber);        
     x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
     y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
     mousePos(task.thistrial.framecount,:) = [x,y];
-    mglGluDisk(mousePos(task.thistrial.framecount,1), mousePos(task.thistrial.framecount,2),1,'r')
-    
-    % keep recording until responding
-    if mInfo.buttons
+    %     mglGluDisk(mousePos(task.thistrial.framecount,1), mousePos(task.thistrial.framecount,2),.4,'r');
+
+    if mInfo.buttons == 1
         % get decision RT
-        task.thistrial.decision_rt = mglGetSecs(stimulus.t0);    
-        
+        task.thistrial.decision_rt = mglGetSecs(stimulus.t0);
+
         % save response info
         task.thistrial.mousePos = mousePos;     % in degrees
         task.thistrial.response_offset = task.thistrial.gabor_location - [mInfo.x, mInfo.y];
-    
-        % jump segment
+
+        % end the segment
         task = jumpSegment(task);
-    end    
+    end
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -315,6 +346,7 @@ global stimulus
 noise_with_buffer = stimulus.noise.size + 3;    % visual angle
 noise_frame_pixel = visualAngleToPixels(noise_with_buffer, ...
     [myscreen.screenWidth, myscreen.screenHeight]);
+stimulus.noise.noise_frame_pixel = noise_frame_pixel;
 % make the size of the image an odd number
 if mod(noise_frame_pixel,2)==0, noise_frame_pixel = noise_frame_pixel+1; end    
 
@@ -322,7 +354,6 @@ filter_sz = size(stimulus.pink_filter);
 pink_filter = stimulus.pink_filter(...
     floor(filter_sz(1)/2)+1-(noise_frame_pixel-1)/2:floor(filter_sz(1)/2)+1+(noise_frame_pixel-1)/2, ...
     floor(filter_sz(2)/2)+1-(noise_frame_pixel-1)/2:floor(filter_sz(2)/2)+1+(noise_frame_pixel-1)/2);
-
 
 % fft on white noise
 white = randn(noise_frame_pixel, noise_frame_pixel);
@@ -379,8 +410,7 @@ inside = sqrt(trigrid(:,1).^2+trigrid(:,2).^2) <= y_lim/2;
 locations_va = trigrid(inside,:);
 
 % convert visual angle of the locations to pixels
-displaySize = max(size(stimulus.pink_filter));
-locations = visualAngleToPixels(locations_va, displaySize);
+locations = visualAngleToPixels(locations_va, stimulus.noise.noise_frame_pixel);
 
 stimulus.gabor_locations_va = locations_va;
 stimulus.gabor_locations = locations;   % in pixels

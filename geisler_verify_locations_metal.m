@@ -5,9 +5,9 @@ clear all, close all, clc
 
 mglSetSID('test')
 % myscreen.screenNumber = 2;
-myscreen.displayName = 'home';
+myscreen.displayName = 'dell_wuTsai';
 myscreen.saveData = 0;
-testing = 'Detection';  % Detection or Search
+testing = 'Search';  % Detection or Search
 disp(['Verify locations of the ' testing ' task'])
 
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerDetectionTask/aborted',1);
@@ -126,7 +126,6 @@ end
 gabor_locations_va = locations;
 gabor_locations_onNoise = visualAngleToPixels(gabor_locations_va, noise_frame_pixel);
 
-% gabor_locations_onNoise(end-1,:) = [273 80];
 
 %% create gabor
 grating = mglMakeGrating(stimulus.gabor.size, stimulus.gabor.size, ...
