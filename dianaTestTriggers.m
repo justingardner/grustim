@@ -26,12 +26,12 @@ task{1}.waitForBacktick = 1;
 global stimulus;
 
 % initStimulus
-myscreen = initStimulus('stimulus',myscreen)
+myscreen = initStimulus('stimulus',myscreen);
 myInitStimulus(myscreen);
 
 % set task parameters
-task{1}.segmin = [0.1 0.5];
-task{1}.segmax = [0.1 0.5];
+task{1}.segmin = [0.1 0.25];
+task{1}.segmax = [0.1 0.25];
 task{1}.getResponse = [0 0];
 
 % set number of trials to infinite
@@ -135,13 +135,13 @@ stimulus.quadX = [stimulus.xPosMin stimulus.xPosMin stimulus.xPosMax stimulus.xP
 stimulus.quadY = [stimulus.yPosMin stimulus.yPosMax stimulus.yPosMax stimulus.yPosMin]';
 
 % ok, now make a checkerboard stimulus
-width = 32;
-height = 32;
+width = 78;
+height = 64;
 sf = 0.5;
 orientation = 90;
 phase = 0;
 contrast = 0.5;
-stimulus.tf = 2;
+stimulus.tf = 4;
 
 % gratings
 g1 = contrast*mglMakeGrating(width,height,sf,orientation,phase);
