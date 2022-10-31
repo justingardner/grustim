@@ -2,7 +2,7 @@
 %
 %       
 %       usage: dianaTestTriggers
-%          by: josh wilson
+%          by: jw + jlg
 %        date: October 2022
 %       
 %       Test stimulus for DIANA imaging.
@@ -20,7 +20,7 @@ global stimulus;
 % actual values that you can expect will be displayed.
 stimulus.onsetDelay = 50;
 % this is in Hz. The stimulus is phase-reversing checkerboard
-stimulus.tf = 4;
+stimulus.tf = 2;
 % number of cycles to display for
 % size in degrees
 stimulus.width = 78;
@@ -31,10 +31,10 @@ stimulus.orientation = 90;
 stimulus.phase = 0;
 stimulus.contrast = 0.5;
 % number of cycles to run stimulus for
-stimulus.numCycles = 3;
+stimulus.numCycles = 1;
 % use fix task (or just draw a fixation cross if not)
-stimulus.useFixTask = true;
-stimulus.fixWidth = 5;
+stimulus.useFixTask = 1;
+stimulus.fixWidth = 1;
 
 % initilaize the screen
 %myscreen = initScreen('debug');
@@ -128,7 +128,10 @@ global stimulus
 % for the secound segment show a stimulus
 if task.thistrial.thisseg == 2
   % flashing box from white to black
-  if isodd(floor((myscreen.tick-stimulus.startTick)/stimulus.framesPerHalfCycle))
+
+  %if isodd(floor((myscreen.tick-stimulus.startTick)/stimulus.framesPerHalfCycle))
+  if floor((myscreen.tick-stimulus.startTick)/stimulus.framesPerHalfCycle) == 0 % edit here - set 0 instead of odd; otherwise flashes back
+      
     mglBltTexture(stimulus.plaid1,[0 0]);
   else
     mglBltTexture(stimulus.plaid2,[0 0]);

@@ -7,7 +7,7 @@
 %       
 %       EPI sequence for comparison with diana imaging. 1 pause segment
 %       (with synchToVol), one stimulus segment, one blank segment.
-%
+%mgl
 %       Adjust lengths as you see fit: the stimulus segment with
 %       stimulus.numcycles and stimulus.tf (hz). Defaults to 8s stim on
 %       (4hz) then 8s stim off.
@@ -39,7 +39,7 @@ stimulus.contrast = 0.5;
 stimulus.numCycles = 32;
 % use fix task (or just draw a fixation cross if not)
 stimulus.useFixTask = 1;
-stimulus.fixWidth = 2;
+stimulus.fixWidth = 1;
 
 % initilaize the screen
 %myscreen = initScreen('debug');
@@ -50,7 +50,7 @@ mglClearScreen(0.5);mglFlush;
 
 % wait for backtick to start experiment (probably not necessary as we
 % wait at the beginning of each segment anyway).
-task{1}.waitForBacktick = 0;
+task{1}.waitForBacktick = 1;
 
 % initStimulus
 myscreen = initStimulus('stimulus',myscreen);
@@ -62,12 +62,12 @@ task{1}.segmax = [0.1 stimulus.stimLen 7.9];
 task{1}.getResponse = [0 0 0];
 
 % set number of trials to infinite (to stop stimulus hit ESC)
-task{1}.numTrials = 12;
+task{1}.numTrials = inf;
 
 % synch to vol (note this will sync *after* the first segment is done in time, so that
 % the stimulus presented in the 2nd segment will start just after the volume acquisition
 % trigger comes.
-task{1}.synchToVol = [1 0 0];
+task{1}.synchToVol = [0 0 0];
 
 % setup fixation task
 if stimulus.useFixTask

@@ -26,7 +26,7 @@ myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
 myscreen.saveData = 0;
 % myscreen.displayName = '3tb';
-% myscreen.displayName = 'laptop';
+myscreen.displayName = 'test';
 myscreen = initScreen(myscreen);
 
 global stimulus;
@@ -161,7 +161,9 @@ else
   for iOri=1:length(stimulus.orientation)
     for iSF=1:length(stimulus.sf);
       for iPhase=1:length(stimulus.phases)
-
+        
+        keyboard
+        
         % make a grating  but now scale it
         grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
 

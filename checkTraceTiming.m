@@ -37,3 +37,4 @@ predictions = [triggerTimes(1):(triggerTimes(end)-triggerTimes(1))/(length(trigg
 subplot(1,2,2); scatter(1:length(triggerTimes), triggerTimes - predictions);
 
 xlabel('Trigger number');ylabel('Difference from expected time (s)');
+keyboard
