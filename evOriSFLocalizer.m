@@ -142,7 +142,12 @@ ringInd = find(task.parameter.ring==task.thistrial.ring);
 
 % draw the texture
 if task.thistrial.thisseg<13
-    mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum,ringInd}, [task.thistrial.location 0 stimulus.height stimulus.height], 0, 0, 0);
+    if ringInd == 2
+        mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum,ringInd}, [task.thistrial.location 0 myscreen.imageWidth myscreen.imageHeight], 0, 0, 0);
+    else
+        
+        mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum,ringInd}, [task.thistrial.location 0 stimulus.height stimulus.height], 0, 0, 0);
+    end
 end
 
 
