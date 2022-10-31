@@ -1,11 +1,16 @@
-%    dianaTestTriggers.m
+%    dianaEPIstim.m
 %
 %       
-%       usage: dianaTestTriggers
-%          by: josh wilson
+%       usage: dianaEPIstim
+%          by: jw + jlg
 %        date: October 2022
 %       
-%       Test stimulus for DIANA imaging.
+%       EPI sequence for comparison with diana imaging. 1 pause segment
+%       (with synchToVol), one stimulus segment, one blank segment.
+%
+%       Adjust lengths as you see fit: the stimulus segment with
+%       stimulus.numcycles and stimulus.tf (hz). Defaults to 8s stim on
+%       (4hz) then 8s stim off.
 %      
 function myscreen = dianaTestTriggers(varargin)
 
@@ -31,10 +36,10 @@ stimulus.orientation = 90;
 stimulus.phase = 0;
 stimulus.contrast = 0.5;
 % number of cycles to run stimulus for
-stimulus.numCycles = 3;
+stimulus.numCycles = 32;
 % use fix task (or just draw a fixation cross if not)
-stimulus.useFixTask = true;
-stimulus.fixWidth = 5;
+stimulus.useFixTask = 1;
+stimulus.fixWidth = 2;
 
 % initilaize the screen
 %myscreen = initScreen('debug');
@@ -52,17 +57,17 @@ myscreen = initStimulus('stimulus',myscreen);
 myInitStimulus(myscreen);
 
 % set task parameters
-task{1}.segmin = [0.1 stimulus.stimLen];
-task{1}.segmax = [0.1 stimulus.stimLen];
-task{1}.getResponse = [0 0];
+task{1}.segmin = [0.1 stimulus.stimLen 7.9];
+task{1}.segmax = [0.1 stimulus.stimLen 7.9];
+task{1}.getResponse = [0 0 0];
 
 % set number of trials to infinite (to stop stimulus hit ESC)
-task{1}.numTrials = inf;
+task{1}.numTrials = 12;
 
 % synch to vol (note this will sync *after* the first segment is done in time, so that
 % the stimulus presented in the 2nd segment will start just after the volume acquisition
 % trigger comes.
-task{1}.synchToVol = [1 0];
+task{1}.synchToVol = [1 0 0];
 
 % setup fixation task
 if stimulus.useFixTask
@@ -116,6 +121,8 @@ elseif task.thistrial.thisseg == 2
   % keep starting tick
   stimulus.startTick = myscreen.tick;
   stimulus.startTime = mglGetSecs;
+elseif task.thistrial.thisseg ==3
+      mglClearScreen(0.5);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%resp%%%%%%%%%%%%%%%%%%%%%%%%%%%%

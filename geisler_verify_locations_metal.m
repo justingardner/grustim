@@ -5,9 +5,9 @@ clear all, close all, clc
 
 mglSetSID('test')
 % myscreen.screenNumber = 2;
-myscreen.displayName = 'dell_wuTsai';
+myscreen.displayName = 'home';
 myscreen.saveData = 0;
-testing = 'Search';  % Detection or Search
+testing = 'Detection';  % Detection or Search
 disp(['Verify locations of the ' testing ' task'])
 
 mglSetParam('abortedStimfilesDir', '~/proj/data/geislerDetectionTask/aborted',1);
