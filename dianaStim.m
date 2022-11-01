@@ -6,7 +6,7 @@
 %        date: October 2022
 %       
 %       Test stimulus for DIANA imaging. Make sure you are setting:
-%           task{1}.offTime and task{1}.onTime (stimulus on/off)
+%           stimulus.offTime and stimulus.onTime (stimulus on/off)
 %           stimulus.x/stimulus.y - location
 %      
 function myscreen = dianaStim(varargin)
@@ -49,9 +49,11 @@ myscreen = initStimulus('stimulus',myscreen);
 myInitStimulus(myscreen);
 
 % set task parameters
-task{1}.offTime = 6/60; task{1}.onTime = 9/60;
-task{1}.segmin = [1/60 task{1}.offTime task{1}.onTime task{1}.offTime task{1}.onTime task{1}.offTime task{1}.onTime];
-task{1}.segmax = [1/60 task{1}.offTime task{1}.onTime task{1}.offTime task{1}.onTime task{1}.offTime task{1}.onTime];
+task{1}.control = 0;
+stimulus.offTime = 6/60; stimulus.onTime = 9/60;
+
+task{1}.segmin = [1/60 stimulus.offTime stimulus.onTime stimulus.offTime stimulus.onTime stimulus.offTime stimulus.onTime];
+task{1}.segmax = [1/60 stimulus.offTime stimulus.onTime stimulus.offTime stimulus.onTime stimulus.offTime stimulus.onTime];
 task{1}.getResponse = [0 0 0 0 0 0 0];
 
 % set number of trials to infinite (to stop stimulus hit ESC)
@@ -103,12 +105,17 @@ myscreen.flushMode = 1;
 
 % for the secound segment show a stimulus
 if ismember(task.thistrial.thisseg, [3 5 7])
-  % flashing box from white to black
-    
-  if task.thistrial.thisseg == 5
-    mglBltTexture(stimulus.plaid2,[stimulus.x stimulus.y]);
+
+  % if not control, flashing box from white to black
+  if ~task.control
+      if task.thistrial.thisseg == 5
+        mglBltTexture(stimulus.plaid2,[stimulus.x stimulus.y]);
+      else
+        mglBltTexture(stimulus.plaid1,[stimulus.x stimulus.y]);
+      end
+  % if control, clear screen
   else
-    mglBltTexture(stimulus.plaid1,[stimulus.x stimulus.y]);
+      mglClearScreen(0.5);
   end
 
   % draw fixation cross, if not using task
@@ -123,7 +130,6 @@ else
     mglFixationCross(stimulus.fixWidth,2,[0 1 1]);
   end
 end
-
 
 % print out what we are doing and clear screen
 % if ismember(task.thistrial.thisseg, [1 3 5 7])
