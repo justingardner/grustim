@@ -20,6 +20,8 @@ getArgs(varargin, [], 'verbose=0');
 if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('recompITI'),recompITI = 0;end
 
+mglSetSID(-1);
+
 % initalize the screen
 myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
@@ -27,6 +29,8 @@ myscreen.allowpause = 1;
 myscreen.saveData = 0;
 % myscreen.displayName = '3tb';
 % myscreen.displayName = 'laptop';
+myscreen.displayName = 'fMRIprojFlex';
+% myscreen.displayName = 'test';`
 myscreen = initScreen(myscreen);
 
 global stimulus;
@@ -179,7 +183,7 @@ else
                         
                         % make a ring
                         grating = grating .*  (mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 0, [1,0]) + ... % outer
-                                               mkDisc(size(grating), (length(grating)/2)-2 - 50, (size(grating)+1)/2, 0, [0,1]) - 1); % inner
+                                               mkDisc(size(grating), (length(grating)/2)-2 - stimulus.pixRes, (size(grating)+1)/2, 0, [0,1]) - 1); % inner
                         
                         % scale to range of display
                         grating = 255*(grating+1)/2;
@@ -195,7 +199,7 @@ else
                         
                         % make an anti-ring
                         rings = (mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 0, [0,1]) + ... % outer
-                                 mkDisc(size(grating), (length(grating)/2)-2 - 50, (size(grating)+1)/2, 0, [1,0])); % inner
+                                 mkDisc(size(grating), (length(grating)/2)-2 - stimulus.pixRes, (size(grating)+1)/2, 0, [1,0])); % inner
                              
                         padrings = padarray(rings,[sizeDiff(1)/2, sizeDiff(2)/2],1,'both');
                         

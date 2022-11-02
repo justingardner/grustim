@@ -20,13 +20,16 @@ getArgs(varargin, [], 'verbose=0');
 if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('recompITI'),recompITI = 0;end
 
+mglSetSID(-1);
+
 % initalize the screen
 myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
 myscreen.saveData = 0;
 % myscreen.displayName = '3tb';
-myscreen.displayName = 'test';
+% myscreen.displayName = 'test';
+myscreen.displayName = 'fMRIprojFlex';
 myscreen = initScreen(myscreen);
 
 global stimulus;
@@ -42,8 +45,8 @@ task{1}{1}.parameter.sf = stimulus.sf;
 % location
 task{1}{1}.parameter.location = 0; 
 % size
-stimulus.height = 5;
-stimulus.width = 5;
+stimulus.height = 10;
+stimulus.width = 10;
 
 
 task{1}{1}.random = 1;
@@ -161,9 +164,7 @@ else
   for iOri=1:length(stimulus.orientation)
     for iSF=1:length(stimulus.sf);
       for iPhase=1:length(stimulus.phases)
-        
-        keyboard
-        
+          
         % make a grating  but now scale it
         grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
 
