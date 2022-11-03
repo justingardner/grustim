@@ -29,48 +29,49 @@ myscreen.allowpause = 1;
 myscreen.saveData = 0;
 % myscreen.displayName = '3tb';
 % myscreen.displayName = 'laptop';
-myscreen.displayName = 'fMRIprojFlex';
+% myscreen.displayName = 'fMRIprojFlex';
 % myscreen.displayName = 'test';`
 myscreen = initScreen(myscreen);
 
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 % orientation
-orientation = linspace(0, 90, 2);
+nOrientations = 8;
+orientation = linspace(0, 180/nOrientations, nOrientations);
 % orientation = orientation(1:end-1);
 stimulus.orientation = orientation;
 task{1}{1}.parameter.orientation = stimulus.orientation;
 % spatial frequency
-stimulus.sf = [0.25 0.5 1 2 4];
+stimulus.sf = logspace(log10(0.5),log10(4),10);
 task{1}{1}.parameter.sf = stimulus.sf;
 % ring/anti-ring
-stimulus.ring = [1 2];
-task{1}{1}.parameter.ring = stimulus.ring;
+% stimulus.ring = [1 2];
+% task{1}{1}.parameter.ring = stimulus.ring;
 % location
 task{1}{1}.parameter.location = 0;
 % size
-stimulus.height = 5.5;
-stimulus.width = 5.5;
+stimulus.height = 13;
+stimulus.width = 13;
 
 
-task{1}{1}.random = 1;
+task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [repmat(0.25, 1, 12) nan];
-task{1}{1}.segmax = [repmat(0.25, 1, 12) nan];
+task{1}{1}.segmin = [repmat(0.25, 1, 36) nan];
+task{1}{1}.segmax = [repmat(0.25, 1, 36) nan];
 % duration of the ISI's
-task{1}{1}.segdur{13} = [1.5:1.5:4.5]-0.1;
-if recompITI
-    n = 10000;
-    probs = 1+exprnd(2,n,1);
-    task{1}{1}.segprob{13} = hist(probs, task{1}{1}.segdur{13})/n;
-else
-    % hard code
-    % probs = [0.4585 0.2862 0.1356 0.0652 0.0309 0.0119 0.0066 0.0028 0.0013 0.001];
-    probs = [0.5 0.25 0.25];
-    task{1}{1}.segprob{13} = probs;
-end
+task{1}{1}.segdur{37} = 9; % [1.5:1.5:4.5]-0.1;
+% if recompITI
+%     n = 10000;
+%     probs = 1+exprnd(2,n,1);
+%     task{1}{1}.segprob{13} = hist(probs, task{1}{1}.segdur{13})/n;
+% else
+%     % hard code
+%     % probs = [0.4585 0.2862 0.1356 0.0652 0.0309 0.0119 0.0066 0.0028 0.0013 0.001];
+% %     probs = [0.5 0.25 0.25];
+% %     task{1}{1}.segprob{13} = probs;
+% end
 % sync to scanner
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 if atScanner
@@ -130,6 +131,20 @@ while stimulus.phaseNum == newPhase;
 end
 stimulus.phaseNum = newPhase;
 
+% randomize the current orientation of the stimulus
+newOrientation = ceil(rand(1)*stimulus.numOrientations);
+while stimulus.orientationNum == newOrientation;
+    newOrientation = ceil(rand(1)*stimulus.numOrientations);
+end
+stimulus.orientationNum = newOrientation;
+
+% randomize the current spatial frequency of the stimulus
+newSF = ceil(rand(1)*stimulus.numSFs);
+while stimulus.phaseNum == newSF;
+    newSF = ceil(rand(1)*stimulus.numSFs);
+end
+stimulus.sfNum = newSF;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
@@ -143,16 +158,11 @@ mglClearScreen;
 
 sfInd = find(task.parameter.sf==task.thistrial.sf);
 oriInd = find(task.parameter.orientation==task.thistrial.orientation);
-ringInd = find(task.parameter.ring==task.thistrial.ring);
 
 % draw the texture
-if task.thistrial.thisseg<13
-    if ringInd == 2
-        mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum,ringInd}, [task.thistrial.location 0 myscreen.imageWidth myscreen.imageHeight], 0, 0, 0);
-    else
-        
-        mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum,ringInd}, [task.thistrial.location 0 stimulus.height stimulus.height], 0, 0, 0);
-    end
+if task.thistrial.thisseg<37
+    mglBltTexture(stimulus.tex{stimulus.orientationNum,stimulus.sfNum,stimulus.phaseNum}, [task.thistrial.location 0 stimulus.height stimulus.height], 0, 0, 0);
+    
 end
 
 
@@ -168,6 +178,16 @@ stimulus.phaseNum = 1;
 stimulus.numPhases = 16;
 stimulus.phases = 0:(360-0)/stimulus.numPhases:360;
 
+% which spatial frequencies we will have
+stimulus.sfNum = 1;
+stimulus.numSFs = 10;
+stimulus.SFs = logspace(log10(0.5),log10(4),10);
+
+% which orientations we will have
+stimulus.orientationNum = 1;
+stimulus.numOrientations = 8;
+stimulus.orientations = 0:(180-0)/stimulus.numOrientations:180;
+
 if isfield(stimulus, 'tex')
     disp(sprintf('(evORISF) Attention: Using precomputed stimulus textures!!'));
 else
@@ -176,8 +196,20 @@ else
         for iSF=1:length(stimulus.sf)
             for iPhase=1:length(stimulus.phases)
                 % make a grating  but now scale it
-                grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
+                grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.SFs(iSF), stimulus.orientations(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
                 
+                % make a ring
+                grating = grating .*  (mkDisc(size(grating), (length(grating)/2)-2 - stimulus.pixRes, (size(grating)+1)/2, stimulus.pixRes/2, [1,0]) + ... % outer
+                    mkDisc(size(grating), (length(grating)/2)-2 - 2*stimulus.pixRes, (size(grating)+1)/2, stimulus.pixRes/2, [0,1]) - 1); % inner
+                
+                % scale to range of display
+                grating = 255*(grating+1)/2;
+                
+                % create a texture
+                stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
+                
+                % ring/anti-ring
+                %{
                 for iRing = 1:length(stimulus.ring) % for ring/antiring
                     if stimulus.ring(iRing) == 1 % make a ring
                         
@@ -213,6 +245,7 @@ else
                         
                     end
                 end
+                %}
             end
         end
         disppercent(iOri/length(stimulus.orientation));

@@ -169,7 +169,7 @@ else
         grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
 
         % make a circular aperture
-        grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2);
+        grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
 
         % scale to range of display
         grating = 255*(grating+1)/2;
