@@ -40,7 +40,7 @@ else
 end
 
 %myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
-%myscreen.hideCursor = 1;
+myscreen.hideCursor = 1;
 myscreen.displayName        = 'vpixx';
 myscreen.calibType          = 'Specify particular calibration';
 myscreen.calibFilename      = '0001_dn0a221834_221005.mat';
@@ -57,14 +57,14 @@ mglMetalSetViewColorPixelFormat(4);
 % Experimenter parameters`
 %todo:  check these throughout the code!!
 exp.debug               = 0; % debug code
-exp.trackEye            = 0; % 1 if no eyetracking (mouse for eye); 0 if there is eye tracking `
+exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.fixateCenter        = 1; % fixate center
 exp.controlMethod       = 'mouse'; %todo: 1: mouse; 2: eye; 3:joystick
 
-exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
 exp.phasescrambleOn     = 0; % load background, if specified by task
+exp.downsample_timeRes  = 1; % downsample temporal resolution of background noise the by this factor.
 
 exp.grabframe           = 0; % capture frames; todo: change. specify save directory
 
@@ -79,14 +79,16 @@ task = {};
 
 % no noise run
 cps = {};
-stimStepStdList     = [1];
+stimStepStdList     = [0.7, 1.3];
 stimStdList         = [1]; %[0.5, 1 ,2];
-stimLums            = [0.05, 0.1, 0.2, 0.4]; %[0.1, 0.2, 0.5]; 
+stimLums            = [0.05, 0.1, 0.4]; %[0.1, 0.2, 0.5]; 
 backLum             = 0.4;
 
-ntrial_learn        = 3;
-ntrials             = 12; % trials per condition
+pointerR            = 0.2; stimulus.pointerR = pointerR;
 
+ntrial_learn        = 3;
+ntrials             = 20; % trials per condition
+nblocks             = 4;  % should divide ntrials
 
 for stimStepStd = stimStepStdList
     % 3 learning phase
@@ -96,21 +98,13 @@ for stimStepStd = stimStepStdList
         'bgfile', []);
     
     for stimStd = stimStdList
-        ntrials_phase = length(stimLums) * ntrials;
-        cps{end+1} = brownian(myscreen, 'maxtrials', ntrials_phase, 'noiseLum', 0, 'backLum', backLum, ...
-            'stimLum', stimLums, 'stimColor','k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
-            'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
-            'bgfile', []);
-        
-        cps{end+1} = brownian(myscreen, 'maxtrials', 18, 'noiseLum', 0, 'backLum', backLum, ...
-            'stimLum', stimLums, 'stimColor', 'r', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
-            'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
-            'bgfile', []);
-        
-        cps{end+1} = brownian(myscreen, 'maxtrials', 18, 'noiseLum', 0, 'backLum', backLum, ...
-            'stimLum', stimLums, 'stimColor', 'b', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
-            'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
-            'bgfile', []);
+        ntrials_phase = length(stimLums) * ntrials/nblocks;
+        for b = 1:nblocks
+            cps{end+1} = brownian(myscreen, 'maxtrials', ntrials_phase, 'noiseLum', 0, 'backLum', backLum, ...
+                'stimLum', stimLums, 'stimColor','k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
+                'pointLum', 1, 'pointColor', 'r','pointStd', 0, 'pointStepStd', 0, ...
+                'bgfile', []);
+        end
     end
 end
   
@@ -144,8 +138,8 @@ task{1} = cell(length(stimulus.task),1);
 for ts = 1:length(stimulus.task)
     task{1}{ts} = stimulus.task{ts}.configureExperiment(task,myscreen,stimulus);
 end
-task{1} = add_calculated_params(task{1}, myscreen);
-totaldur = approximate_total_task_dur(task);
+task{1}     = add_calculated_params(task{1}, myscreen);
+totaldur    = approximate_total_task_dur(task);
 
 %% initialize
 % intiailize task
@@ -235,10 +229,13 @@ disp(' Running Task....'); stimulus.t0 = mglGetSecs; %
 % mglClearScreen(task{1}{1}.parameter.backLum/255);
 %mglFlush;
 
-mglBltTexture(mglText('task starting... '), [0 0.5]);
-mglBltTexture(mglText('Track the target with the red pointer'),[0 -0.5]);
-mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
-mglFlush;
+mglBltTexture(mglText('task starting... '), [0 1.5]);
+mglBltTexture(mglText('1. Track the target with the red pointer'),[0 0.5]);
+if stimulus.exp.fixateCenter
+    mglBltTexture(mglText('2. Fixate in center. You should be able to see the red dot'),[0 -0.5]);    
+end
+mglBltTexture(mglText('When you are ready, press any key to go to next trial'),[0 -1.5]);
+mglFlush(); myscreen.flushMode = -1;
 
 if ~exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
@@ -315,6 +312,7 @@ end
 
 %% Start segment
 function [task myscreen] = startSegmentCallback(task, myscreen)
+    myscreen.flushMode = 0;
     global stimulus 
     phaseNum = task.thistrial.thisphase;
    
@@ -439,7 +437,9 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     % display pointer
     if ~isempty(stimulus.pointer)
         if isempty(stimulus.pointer.img)
-            mglGluDisk(stimulus.pointer.position(1), stimulus.pointer.position(2), 0.2, [1,0,0],60,1); 
+            % mglGluDisk(stimulus.pointer.position(1), stimulus.pointer.position(2), 0.2, [1,0,0],60,1);
+            mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
+                [1;0;0;1], [stimulus.pointerR;stimulus.pointerR], 1, 1);
         else
             mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
         end
@@ -452,9 +452,10 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     
     % display fixation
     if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
-        mglGluAnnulus(0,0,0.2,0.4,[1 1 1],60,1);
-        mglGluDisk(0, 0, 0.1,rand(1,3),60,1); 
-
+        % mglGluAnnulus(0,0,0.3,0.5,[1 1 1],60,1);
+        mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.pointerR+0.1;stimulus.pointerR+0.3],[0;2*pi], 1);
+        %mglGluDisk(0, 0, 0.2, 0.5+0.5*rand(1,3),60,1); 
+        mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR;stimulus.pointerR], 1, 1);
     end
     
     if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor

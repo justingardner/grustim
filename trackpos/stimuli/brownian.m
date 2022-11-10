@@ -115,7 +115,7 @@ methods
             thistask.numTrials          = obj.numTrials;
         end
         
-        thistask.getResponse        = [0,0];
+        thistask.getResponse        = [0, 0];
         if obj.trialpause
             thistask.synchToVol     = [0, 1];
         else

@@ -101,24 +101,19 @@ task{1}.parameter.stimDur	 = params.stimDur;
 
 % note: seglen are changed later
 % note: rewrite this
-if ~exp.feedback 
-    task{1}.segmin           = [0.1 0.4 inf inf];
-    task{1}.segmax           = [0.1 0.8 inf inf]; 
-    task{1}.getResponse      = [0 0 0 1]; %segment to get response.
+if mglIsFile(exp.noise_mask)
+    maskDur = params.maskDur;
+    maskDel = params.mask_TOff2MOn;
+    task{1}.segmin           = [0.1 0.4 inf maskDel maskDur inf 1];
+    task{1}.segmax           = [0.1 0.8 inf maskDel maskDur inf 1]; 
+    task{1}.getResponse      = [0 0 0 0 0 1 0]; %segment to get response.
 else
-    if mglIsFile(exp.noise_mask)
-        maskDur = params.maskDur;
-        maskDel = params.mask_TOff2MOn;
-        task{1}.segmin           = [0.1 0.4 inf maskDel maskDur inf 1];
-        task{1}.segmax           = [0.1 0.8 inf maskDel maskDur inf 1]; 
-        task{1}.getResponse      = [0 0 0 0 0 1 0]; %segment to get response.
-    else
-        % basically skip mask period
-        task{1}.segmin           = [0.1 0.4 inf inf 1];
-        task{1}.segmax           = [0.1 0.8 inf inf 1]; 
-        task{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
-    end
+    % basically skip mask period
+    task{1}.segmin           = [0.1 0.4 inf inf 1];
+    task{1}.segmax           = [0.1 0.8 inf inf 1]; 
+    task{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
 end
+
 
 if exp.block_design
     task{1}.numBlocks        = ceil(trialpercond / 2); % dont count stimright as condition %with some overflow
@@ -148,7 +143,7 @@ task{1}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing e
 
 %% construct staircase 
 tpnames    = ["backLum","noiseLum","stimLum","stimDur", "stimStd", "stimColor", "staircase"];
-tparams      = cell(1,length(tpnames));
+tparams    = cell(1,length(tpnames));
 for backLum     = params.backLum
 for noiseLum    = params.noiseLum
 for stimLum     = params.stimLum
@@ -336,7 +331,7 @@ elseif task.thistrial.thisseg == 4
     task.thistrial.framecount = 0; % restart framecount
     % actual stimulus length is updated by updateTask; this should be almost the same as Dur0
     task.thistrial.stimDur = task.thistrial.seglen(3); 
-    disp(['Segment duration error1: ', num2str(task.thistrial.stimDur - task.thistrial.stimDur0)]);
+    %disp(['Segment duration error1: ', num2str(task.thistrial.stimDur - task.thistrial.stimDur0)]);
 end
 
 % blt screen once before screenUpdates loops
@@ -347,17 +342,12 @@ if task.thistrial.thisseg > 1
         stimulus.start = mglGetSecs;
     elseif task.thistrial.thisseg == 4
         stimulus.length = mglGetSecs - stimulus.start;
-        disp(['Segment duration error2: ', num2str(stimulus.length - task.thistrial.stimDur)]);
+        disp(['Segment duration error: ', num2str(stimulus.length - task.thistrial.stimDur)]);
     end
 end
 
 %% screen update
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
-% S1: wait time while the main task calls this subtask.
-% S2: random period of fixation (random ~0.5s)
-% S3: stimulus period (stimdur s)
-% S4: repsonse period (inf)
-% S5: feedback (1s)
 
 global stimulus % call stimulus
 
@@ -417,7 +407,7 @@ elseif task.thistrial.thisseg == 7 %feedback period
 end
 
 % track eye
-if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[1,2]) 
+if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[2,3]) 
     % mouse version for testing with no eyetracker
     if stimulus.exp.eyemousedebug
         mInfo = mglGetMouse(myscreen.screenNumber);
