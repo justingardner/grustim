@@ -43,91 +43,112 @@ myscreen = initScreen(myscreen);
 mglMetalSetViewColorPixelFormat(4);
 
 % Experimenter parameters
-exp                 = struct();
-exp.debug           = true;
-exp.noeye           = true;
-exp.eyemousedebug   = false;
-exp.showmouse       = false;
-exp.phasescrambleOn = false;
-exp.backprecompute  = false;
-exp.feedback        = true; 
-exp.feedback_center = true;  % feedback about the exact center
+exp                     = struct();
+exp.debug               = false;
+exp.noeye               = true;
+exp.eyemousedebug       = false;
+exp.showmouse           = false;
+exp.phasescrambleOn     = false;
+exp.backprecompute      = false;
+exp.feedback            = false; 
+exp.afc.feedback_center = false;  % feedback about the exact center
+
 exp.estim_horiz     = true;  % do hoiztonal estimation
 exp.estim_verti     = false; % do vertical estimation
 exp.colorfix        = false; % colored fixation
-exp.staircase       = true; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
+
+exp.afc.presSched    = 'staircase'; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
+exp.est.presSched    = 'gaussian';
+
 exp.block_design    = false; % in each block, present all combinations of parameters
-exp.noise_mask      = '/Users/gru/proj/grustim/trackpos/noise/white0.mat'; % in each block, present all combinations of parameters
+exp.noise_mask      = '/Users/gru/proj/grustim/trackpos/noise/grating.mat'; 
 
 %% task parameters
 % stimulus and background
 task{1}{1}.random = 1; 
 
 params            = struct();
-params.backLum    = 0.4; %32;  % background luminance; units: fraction of full luminance 
-params.noiseLum   = 0; % noise luminance, if there is one.
+params.task       = struct();
+params.task.backLum    = 0.7;%0.4; %32;  % background luminance; units: fraction of full luminance 
+params.task.noiseLum   = 0; % noise luminance, if there is one.
 
 % main task parameters
-tasks2run         = {'est', '2c'};
-params.stimLum    = [0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
-if exp.debug
-    params.stimDur      = [2/60, 15/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-else
-    params.stimDur      = [2/60, 3/60, 4/60, 6/60, 10/60, 15/60];
-end
-params.stimStd          = [1]; % [1,1.5]
-params.stimColor        = 'k';
+tasks2run                   = {'2afc'}; %{'est', '2afc'};
+params.task.stimLum         = 0.2; %[0.1, 0.2, 0.4, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
+params.task.stimDur         = [2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
+params.task.stimStd         = [1]; % [1,1.5]
+params.task.stimColor       = 'k';
+params.trialpercond         = 40;
 
 % mask parameters
-params.maskDur          = 3/60; % mask duration
-params.mask_TOff2MOn    = 5/60; % stimulus offset to mask onset (Neisser 1967)
-params.maskLum          = 0.05;
-
-% staircase parameters
-trialpercond        = 40;
-if exp.debug, trialpercond = 2; end
-params.initThreshold    = 0.3;
-params.initThresholdSd  = 0.3;
-
-% count conditions
-nconditions             = length(params.stimDur) * length(params.stimStd) * length(params.stimLum);
-params.trialpercond     = trialpercond ;
-params.numTrials        = trialpercond * nconditions * length(tasks2run);
-
-params.trialpercond     = trialpercond; % approximate; due to randomization
-
-disp(['Number of conditions = ' num2str(nconditions)]);
-
-task{1}{1}.parameter.currtask   = tasks2run; % for fixed values
-
-% specify position differences or staircase
-if exp.staircase
-    tpnames    = ["backLum","noiseLum","stimLum","stimDur", "stimStd", "stimColor", "staircase"];
-    tparams    = cell(1,length(tpnames));
-    for backLum     = params.backLum
-    for noiseLum    = params.noiseLum
-    for stimLum     = params.stimLum
-    for stimDur     = params.stimDur
-    for stimStd     = params.stimStd
-    for stimColor	= params.stimColor
-        staircase = doStaircase('init','quest',...
-            ['initialThreshold=' num2str(params.initThreshold)],['initialThresholdSd=' num2str(params.initThresholdSd)],...
-            'nTrials',trialpercond);
-        tparams{1} = [tparams{1}; backLum];
-        tparams{2} = [tparams{2}; noiseLum];
-        tparams{3} = [tparams{3}; stimLum];
-        tparams{4} = [tparams{4}; stimDur];
-        tparams{5} = [tparams{5}; stimStd];
-        tparams{6} = [tparams{6}; stimColor];
-        tparams{7} = [tparams{7}; {staircase}];
-    end
-    end
-    end
-    end
-    end
-    end
+if mglIsFile(exp.noise_mask)
+    params.task.maskDur          = [3/60]; %3/60; %3/60; % mask duration
+    params.task.mask_TOff2MOn    = [0, 2/60, 5/60]; % 3/60, 5/60]; % stimulus offset to mask onset (Neisser 1967)
+    params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
 
+if exp.debug
+    params.task.stimLum         = [0.05, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
+    params.task.stimDur         = [2/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+    params.task.mask_TOff2MOn   = [1/60]; % stimulus offset to mask onset (Neisser 1967)
+    params.task.maskLum         = [0.2];
+    params.trialpercond         = 2; 
+end
+
+% afc parameters
+params_afc = params;
+params_afc.task.pointerOffset = [0]; % [-10,-5,-2,0,2,5,10];
+if exp.afc.presSched == 'staircase'
+    params_afc.presSched    = 'staircase';
+    params_afc.staircase                    = struct();
+    params_afc.staircase.initThreshold      = 0.3;
+    params_afc.staircase.initThresholdSd    = 0.3;
+end
+
+if exp.debug
+    params_afc.task.pointerOffset   = [0, 5];
+end
+
+% est parameters
+params_est = params;
+if exp.est.presSched    == 'gaussian'
+    params_est.presSched    = 'gaussian';
+    params_est.prior        = struct();
+    params_est.prior.std    = 2;
+    params_est.prior.mean   = 0;
+elseif exp.est.presSched == 'staircase'
+    params_est.staircase                    = struct();
+    params_est.staircase.initThreshold      = 0.3;
+    params_est.staircase.initThresholdSd    = 0.3;
+end
+
+% count conditions - 2AFC
+params.numTrials            = 0; % try to match number of trials
+
+if any(cellfun(@(x) strcmp(x,'2afc'),tasks2run))
+    [afc_fields, afc_vals] = countconditions(params_afc.task);
+    afc_comb = allcomb(afc_vals{:});
+    disp(['Number of conditions (afc) = ' num2str(size(afc_comb,1))])
+    
+    params_afc.numTrials        = params_afc.trialpercond * size(afc_comb,1);
+    params.numTrials  = params.numTrials + params_afc.numTrials; % main task
+else
+    params_afc.numTrials        = 0;
+end
+
+if any(cellfun(@(x) strcmp(x,'est'),tasks2run))
+    [est_fields, est_vals] = countconditions(params_est.task);
+    est_comb = allcomb(est_vals{:});
+    disp(['Number of conditions (est) = ' num2str(size(est_comb,1))])
+
+    params_est.numTrials        = params_afc.trialpercond * size(est_comb,1);
+    params.numTrials            = params.numTrials + params_est.numTrials; % main task
+else
+    params_est.numTrials = 0;
+end
+
+
+task{1}{1}.parameter.currtask   = tasks2run; % for fixed values
 task{1}{1}.segmin           = [inf]; % for running other tasks
 task{1}{1}.segmax           = [inf]; % jumpsegment if the other task is finished
 % task{1}{1}.synchToVol     = [1]; % wait for backtick before going onto next trial
@@ -136,7 +157,9 @@ task{1}{1}.waitForBacktick  = 1;
 
 %tasks * ntrials x stimDur x stimLum x posDiff
 task{1}{1}.numTrials        = params.numTrials; 
-taskdur = (0.5 + 0.2 + 1 + 1) * task{1}{1}.numTrials / 60/60; % approximate duration in hours
+
+trialdur = 1.5 + max(params.task.stimDur) + max(params.task.mask_TOff2MOn) + params.task.maskDur;
+taskdur = trialdur * params.numTrials / 60/60; % approximate duration in hours
 disp(['Approx task duration = ' num2str(taskdur) ' hours']);
 
 %% initialize stimulus
@@ -145,16 +168,16 @@ stimulus = [];
 
 stimulus.exp            = exp;
 stimulus.params         = params; % not saved in the task.
+stimulus.params_afc     = params_afc;
+stimulus.params_est     = params_est;
 stimulus.target         = trackposInitStimulus(stimulus,myscreen);
 
-stimulus.fixColors.response = [1 1 1];
-stimulus.fixColors.stim     = [0 1 0]; % green
-stimulus.fixColors.est      = [1 0 0]; % red
-stimulus.fixColors.afc      = [1 1 1]; % blue
+stimulus.fixColors.stim     = [1 0 0]; % red
+stimulus.fixColors.est      = [0 1 0]; % fixation color at response
+stimulus.fixColors.afc      = [0 0 1]; % afc response period 
+stimulus.fixColors.fb       = [1 1 1]; % position feedback
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
-
-stimulus.staircaseTable = table(tparams{:},'VariableNames', tpnames); % save staircase
 
 myscreen = initStimulus('stimulus',myscreen); % what does this do???
 
@@ -216,40 +239,48 @@ for phaseN = 1:length(task{1})
         @startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
 end
 
-% estimation subtask
-[task{2}, myscreen] = trackpos_sub_est(myscreen,params,exp); 
 % 2AFC subtask
-[task{3}, myscreen] = trackpos_sub_2afc(myscreen,params,exp); 
+[task{2}, myscreen] = trackpos_sub_2afc(myscreen,params_afc,exp); 
+% estimation subtask
+[task{3}, myscreen] = trackpos_sub_est(myscreen,params_est,exp); 
 
 %% run the task
 stimulus.t0 = mglGetSecs; % 
 
 % explain task.
 mglDisplayCursor(0); %hide cursor
-% mglClearScreen(task{1}{1}.parameter.backLum/255);
+mglClearScreen(params.task.backLum);
 mglTextDraw('task (trackpos_multitask) starting... ', [0 3])
-mglTextDraw('After the stimulus is presented, you will be asked to perform one of the two tasks, depending on the fixation color',[0 1]);
-mglTextDraw('Estimation task (red fixation): move the mouse to the center of stimulus. Press 3 when done.',[0 -1]);
-mglTextDraw('2AFC task (blue fixation): press 1 if the stimulus is to the left of fixation. 2 otherwise',[0 -2]);
-mglBltTexture(mglText('When you are ready, press any key to go to next trial'),[0 -4]);
+% mglTextDraw('After the stimulus is presented, you will be asked to perform one of the two tasks, depending on the fixation color',[0 1]);
+if any(cellfun(@(x) strcmp(x,'est'),tasks2run))
+    mglTextDraw('Estimation task (red fixation): move the mouse to the center of stimulus. Press 3 when done.',[0 1]);
+end
+if any(cellfun(@(x) strcmp(x,'2afc'),tasks2run))
+    mglTextDraw('2AFC task (white fixation): press 1 if the stimulus is to the left of red reference. 2 otherwise',[0 -1]);
+end
+mglBltTexture(mglText('When you are ready, press backtick to go to the first trial'),[0 -4]);
 mglFlush(); myscreen.flushMode = -1;
-% w = waitforbuttonpress;
-% disp("keypress detected. starting task")
 
 if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 
-phaseNum = 1;phaseNum2=1;phaseNum3=1;
-while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
-    [task{1}, myscreen, phaseNum]   = updateTask(task{1},myscreen,phaseNum);     % update the task
-    [task{2}, myscreen]             = updateTask(task{2},myscreen,1);
-    [task{3}, myscreen]             = updateTask(task{3},myscreen,1);
+phaseNum{1} = 1; phaseNum{2}=1; phaseNum{3}=1;
+while (phaseNum{1} <= length(task{1})) && ~myscreen.userHitEsc && ...
+        (phaseNum{2} <= length(task{2}) || phaseNum{3} <= length(task{3}))
+    [task{1}, myscreen, phaseNum{1}]   = updateTask(task{1},myscreen,phaseNum{1});     % update the main task
+    
+    if phaseNum{2} <= length(task{2}) % run 2afc
+        [task{2}, myscreen, phaseNum{2}]  = updateTask(task{2},myscreen,phaseNum{2});
+    end
+    if phaseNum{3} <= length(task{3}) % run estimation
+        [task{3}, myscreen, phaseNum{3}]  = updateTask(task{3},myscreen,phaseNum{3});
+    end
     myscreen                        = tickScreen(myscreen,task);     % flip screen
 end
 
 myscreen = endTask(myscreen,task);
 mglClose; endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
-if stimulus.exp.staircase
+if stimulus.exp.afc.presSched    == 'staircase'
     staircase = stimulus.staircaseTable;
     save([myscreen.stimfile(1:end-4),'_staircase.mat'], 'staircase');
 end
@@ -284,6 +315,7 @@ end
 %% screen update
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
     global stimulus
+    % code up a break => set flushMode to -1
     if strcmp(stimulus.currtask,'done')
         stimulus.currtask = 'initializing new task';
         task = jumpSegment(task);
@@ -297,4 +329,3 @@ function [task, myscreen] = responseCallback(task, myscreen)
         task = jumpSegment(task);
     end
 end
-  

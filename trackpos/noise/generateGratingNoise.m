@@ -1,4 +1,4 @@
-function phaseScrambleStim()
+function generateGratingNoise()
     myscreen = initScreen();
     stimulus = struct();
     stimulus.lum        = 1;
@@ -10,30 +10,26 @@ function phaseScrambleStim()
     w = 20;% w: width in degs
     h = w; % h: height in degs
     T = 1; % T: time in seconds
-    savefile = '/Users/gru/proj/grustim/trackpos/noise/phaseScramble_hf.mat';
+    savefile = '/Users/gru/proj/grustim/trackpos/noise/grating.mat';
 
-    generatePhaseScrambleNoise(myscreen, stimulus, w, h,T, savefile);
+    gratingNoise(myscreen, stimulus, w, h,T, savefile);
     mglClose;
 end
 
 
-function a = generatePhaseScrambleNoise(myscreen, stimulus, w, h,T, savefile)
+function gratingNoise(myscreen, stimulus, w, h,T, savefile)
     % w: width in degs
     % h: height in degs
     % T: time in seconds
     T_frame = ceil(T * myscreen.framesPerSecond);
-    
-    backgaussian    = mglMakeGaussian(w,h,stimulus.std,stimulus.std);
-    gaussianFFT     = getHalfFourier(backgaussian);
-    [h_pixel, w_pixel] = size(backgaussian);
+    [h_pixel, w_pixel] = size(mglMakeGrating(w,h,0,0,0));
     
     backgroundnoise_rgb  = ones(4,h_pixel,w_pixel,T_frame); %0.1165 s
     for idx2 = 1:T_frame
-        back                            = gaussianFFT; %0.02s
-        back.phase                      = rand(size(back.mag))*2*pi; % scramble phase % 0.02s
-        backgroundnoise                 = reconstructFromHalfFourier(back);   %0.04s
-        backgroundnoise                 = backgroundnoise - min(backgroundnoise(:));
-        backgroundnoise_rgb(4,:,:,idx2) = backgroundnoise'/max(backgroundnoise(:));  % normalize contrast %0.025s
+        angle  = rand(1)*180;
+        sf     = exp(normrnd(1,1)); % cycles per degree
+        grating = mglMakeGrating(w,h,sf,angle,0);
+        backgroundnoise_rgb(4,:,:,idx2) = grating'/max(grating(:));  % normalize contrast %0.025s
     end
     
     save(savefile, 'backgroundnoise_rgb','-v7.3')

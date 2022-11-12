@@ -46,6 +46,10 @@ function blob = trackposInitStimulus(obj,myscreen)
         if iscell(obj.color)
             obj.color = obj.color{1};
         end
+        if isscalar(obj.color) && obj.color > double('a') && obj.color > double('z') 
+            blob.color = char(obj.color);
+        end
+
         if ischar(obj.color)
             if obj.color == 'k'
                 blob.color = [1;1;1];
@@ -68,6 +72,10 @@ function blob = trackposInitStimulus(obj,myscreen)
     end 
             
     % generate blob image
+    if isfield(blob,'img')
+        mglDeleteTexture(blob.img)
+    end
+
     if blob.lum == 0 || blob.std == 0
         blob.img = [];
     else
