@@ -17,19 +17,20 @@ end
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 0;end
+if ieNotDefined('atScanner'),atScanner = 1;end
 if ieNotDefined('recompITI'),recompITI = 0;end
 
-mglSetSID(-1);
+mglSetSID('s374');
 
 % initalize the screen
 myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
-myscreen.saveData = 0;
+myscreen.saveData = 1;
 % myscreen.displayName = '3tb';
 % myscreen.displayName = 'test';
-myscreen.displayName = 'fMRIprojFlex';
+% myscreen.displayName = 'fMRIprojFlex';
+myscreen.displayName = 'fMRIproj_akuo2';
 myscreen = initScreen(myscreen);
 
 global stimulus;
@@ -75,8 +76,8 @@ end
 
 
 global fixStimulus
-fixStimulus.diskSize = 0.25;
-fixStimulus.fixWidth = 0.4;
+fixStimulus.diskSize = 0.5;
+fixStimulus.fixWidth = 0.8;
 fixStimulus.fixLineWidth = 3;
 [task{2} myscreen] = fixStairInitTask(myscreen);
 
