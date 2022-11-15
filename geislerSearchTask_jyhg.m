@@ -1,6 +1,6 @@
-% geislerSearchTask_jy.m
+% geislerSearchTask.m
 % 
-%      usage: geislerSearchTask_jy.m
+%      usage: geislerSearchTask.m
 %         by: jiwon yeon
 %       date: 
 %  copyright: (c) 2022 Jiwon Yeon
@@ -11,21 +11,25 @@
 %             level) A stimulus screen would be presented briefly and then 
 %             subjects have to indicate with the mouse where the target 
 %             appeared.
-%
 
-function geislerSearchTask_jy
+% # added: red cursor to indicate mouse locations
+% # added: choose between using mouse or fixating to confirm
+% # added: time stamps to help eye-tracker data analysis
+
+function geislerSearchTask
 mglClose        % close MGL if it's open
 clear all, close all, clc
 global stimulus
 
-eyetracker = 0;
+eyetracker = 1;
+stimulus.use_mouse  = true;  % use keyboard(0) or mouse cursor(1) to confirm
 % myscreen.screenNumber = 2;
 myscreen.displayname = 'dell_wuTsai';
 myscreen.saveData = 0;
-myscreen.datadir = '/Users/jyeon/Documents/geisler_jiwon';
-mglSetParam('abortedStimfilesDir', '~/Documetns/geisler_jiwon/aborted',1);
+myscreen.datadir = '~/proj/jiwon/data/geisler/geislerSearchTask';
+mglSetParam('abortedStimfilesDir', '~/proj/data/geislerSearchTask/aborted',1);
 
-myscreen.keyboard.nums = [50]; % respond only with the space bar
+myscreen.keyboard.nums = [50, 48]; % respond only with the space bar (or .>)
 myscreen = initScreen(myscreen);
 
 % load pink_filter
@@ -40,7 +44,8 @@ stimulus.cBlock = 0;    % current block
 stimulus.TrialsPerBlock = 32;    % 32 trials per block
 
 %%%%% set stimulus parameter
-stimulus.responsekeys = [50];   % space bar
+stimulus.responsekey = 50;   % space bar
+stimulus.decisionkey = 48;   % .> (only when we do not use mouse)
 stimulus.noise.size = 15;   % visual angle
 stimulus.noise.contrast = .2;   % two levels of noise contrasts
 
@@ -75,6 +80,8 @@ task{1}{1}.randVars.calculated.decision_rt = nan;
 task{1}{1}.randVars.calculated.framecount = nan;
 task{1}{1}.randVars.calculated.mousePos = [nan nan];
 task{1}{1}.randVars.calculated.response_offset = [nan nan];
+task{1}{1}.randVars.calculated.t_stim_onset  = nan;
+task{1}{1}.randVars.calculated.t_decision_onset = nan;
 
 %%%%% initialize stimulus
 myscreen = initStimulus('stimulus', myscreen);
@@ -84,6 +91,8 @@ mglClearScreen(.5);
 mglFlush();
 
 mglStencilCreateBegin(1);
+% mglVisualAngleCoordinates(myscreen.displayDistance,myscreen.displaySize);
+% mglFillOval(0, 0, [stimulus.noise.size, stimulus.noise.size]);
 x = linspace(-7.5, 7.5, 100000);
 y = sqrt(7.5^2 - x.^2);
 x = [x, fliplr(x)];
@@ -108,7 +117,7 @@ if eyetracker
 end
 
 % hide cursor 
-% mglDisplayCursor(0);
+mglDisplayCursor(0);
 
 % notify the starting of the task
 mglClearScreen(.5);
@@ -163,9 +172,7 @@ createGabor(task);
 if task.trialnum == 1
     % convert visual angle of the locations to pixels
     displaySize = size(stimulus.noise.im);
-    locations_pix = visualAngleToPixels(stimulus.gabor_locations_va, displaySize);
-    locations_pix(:,1) = abs(displaySize(1) - locations_pix(:,1));
-    stimulus.gabor_locations_pix = locations_pix;    
+    stimulus.gabor_locations_pix = visualAngleToPixels(stimulus.gabor_locations_va, displaySize);
 end
 
 % combine noise and gabor
@@ -203,7 +210,7 @@ if task.thistrial.thisseg == 1
     % waiting for the subject to start the trial
     while 1
         keycode = mglGetKeys;
-        if any(keycode(stimulus.responsekeys)==1)
+        if any(keycode(stimulus.responsekey)==1)
             break
         end
     end
@@ -218,34 +225,25 @@ elseif task.thistrial.thisseg == 2
     
 elseif task.thistrial.thisseg == 3
     disp(['current target:' num2str(task.thistrial.gabor_location)])
+    % stimulus-locked time
+    task.thistrial.t_stim_onset = mglGetSecs;
 
 elseif task.thistrial.thisseg == 4
-    % present the mouse cursor at the center
-%     mglDisplayCursor(1);
-%     mglPostEvent('mousemove',myscreen.screenNumber, myscreen.screenWidth/2, myscreen.screenHeight/2);    
-    mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
-        myscreen.screenNumber);
-    mglGluDisk(0,0,.3,[1 0 0]);     % GluDisk accepts x,y positions as the normalized device unit, that spans for [-1 1]
-
+    if stimulus.use_mouse
+        % set the mouse cursor at the center
+        mglSetMousePosition(myscreen.screenWidth/2, myscreen.screenHeight/2, ...
+            myscreen.screenNumber);
+    end
     % start response time recording
     stimulus.t0 = mglGetSecs;
-    
-    % Or present a red disk
-%     task.thistrial.framecount = task.thistrial.framecount + 1;
-%     mInfo = mglGetMouse(myscreen.screenNumber);
-%     x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
-%     y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
-%     mousePos(task.thistrial.framecount,:) = [x,y];
-%     mglGluDisk(mousePos(task.thistrial.framecount,1), mousePos(task.thistrial.framecount,2),.4,'r');
-%     mglSetMousePosition(500,500,1);mglDisplayCursor(1);
-    
-    
+    task.thistrial.t_decision_onset = stimulus.t0;    
     
 elseif task.thistrial.thisseg == 5
     mglClearScreen(stimulus.bg_color{2}/255*1);
     mglStencilSelect(1);
     mglBltTexture(stimulus.tex_nontarget,[0 0]);
     mglStencilSelect(0);
+    mglFillOval(0,0,[.2 .2],0);     % fixation
     
     % show the target location
     target_location = stimulus.gabor_locations_va(task.thistrial.gabor_location,:);    
@@ -276,15 +274,44 @@ elseif task.thistrial.thisseg==4
     mglStencilSelect(1);
     mglBltTexture(stimulus.tex_nontarget,[0 0]);
     mglStencilSelect(0);
-    mglTextDraw('Click on the screen where the target appeared', [0,10]);
+    mglFillOval(0,0,[.2 .2], 0);
     
-    % record mouse positions
-%     mglDisplayCursor(1);l
-    mInfo = mglGetMouse(myscreen.screenNumber);        % mouse position (0,0) is left bottom
-    x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
-    y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
-    mousePos(task.thistrial.framecount,:) = [x,y];    
-    mglGluDisk(x,y,.5,'r');
+    if stimulus.use_mouse
+        mglTextDraw('Click on the screen where the target appeared', [0,10]);
+        
+        % record mouse positions
+        mInfo = mglGetMouse(myscreen.screenNumber);        
+        x = (mInfo.x - myscreen.screenWidth/2) * myscreen.imageWidth/myscreen.screenWidth;
+        y = (mInfo.y - myscreen.screenHeight/2) * myscreen.imageHeight/myscreen.screenHeight;
+        mousePos(task.thistrial.framecount,:) = [x,y];
+    
+        % display a cursor
+        mglMetalDots([x;y;0], [1;0;0;1], [0.2;0.2], 1, 1);
+
+        if mInfo.buttons == 1
+            % get decision RT
+            task.thistrial.decision_rt = mglGetSecs(stimulus.t0);
+    
+            % save response info
+            task.thistrial.mousePos = mousePos;     % in degrees
+            task.thistrial.response_offset = task.thistrial.gabor_location - [mInfo.x, mInfo.y];
+    
+            task = jumpSegment(task);
+        end
+    else
+        % decision prompt
+        mglTextDraw('Press space again when you fixate the target', [0,10]);
+        
+        keycode = mglGetKeys;
+        if any(keycode(stimulus.decisionkey)==1)
+            % get decision RT
+            task.thistrial.decision_rt = mglGetSecs(stimulus.t0);
+
+            task = jumpSegment(task);
+        end
+    end
+
+
 
     if mInfo.buttons == 1
         % get decision RT
@@ -310,7 +337,7 @@ if task.thistrial.thisseg == 3
     % get detection response
     while 1
         keycode = mglGetKeys;
-        if any(keycode(stimulus.responsekeys)==1)
+        if any(keycode(stimulus.responsekey)==1)
             task.thistrial.detection_rt = task.thistrial.reactionTime;
             break
         end

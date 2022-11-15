@@ -1,6 +1,6 @@
-% geislerDetectionTask_staircase_jy.m
+% geislerDetectionTask.m
 % 
-%      usage: geislerDetectionTask_staircase_jy.m
+%      usage: geislerDetectionTask.m
 %         by: jiwon yeon
 %       date: 
 %  copyright: (c) 2022 Jiwon Yeon
@@ -10,9 +10,12 @@
 %             The first section uses a few fixed contrast values and based
 %             on the result, the second section decided more fine-tuned
 %             contrast values for the testing
-%             
 
-function geislerDetectionTask_staircase_jy_metal
+% Change log (HG)
+% # fixed: bugs in indicating target's locations 
+% # added: time stamps to help eye-tracker data analysis
+
+function geislerDetectionTask
 % mglClose        % close MGL if it's open
 % clear all, close all, clc
 global stimulus
@@ -60,6 +63,7 @@ task{1}{1}.randVars.gabor_location = nan;
 task{1}{1}.randVars.calculated.gabor_contrast = nan;
 task{1}{1}.randVars.calculated.correct = nan;
 task{1}{1}.randVars.calculated.rt = nan;
+task{1}{1}.randVars.calculated.t_stim_onset  = nan;
 task{1}{1}.currentTask = 'task1';
 
 stimulus.task1.stair = doStaircase('init','updown','nup=1','ndown=3', ...
@@ -80,6 +84,7 @@ task{2}{1}.randVars.gabor_location = nan;
 task{2}{1}.randVars.calculated.gabor_contrast = nan;
 task{2}{1}.randVars.calculated.correct = nan;
 task{2}{1}.randVars.calculated.rt = nan;
+task{2}{1}.randVars.calculated.t_stim_onset  = nan;
 task{2}{1}.currentTask = 'task2';
 
 %%%%% initialize stimulus
@@ -198,7 +203,7 @@ mglTextDraw(['Resuming the task. Target will be appeared at the marked position'
 mglTextDraw(['Press any response key to resume the task'], [0, 10]);
 sz = size(stimulus.pink_filter);
 target_location = stimulus.gabor_locations_deg(testingLoc,:);
-mglGluAnnulus(target_location(1), target_location(2), 1, 1.2, ...
+mglGluAnnulus(target_location(2), target_location(1), 1, 1.2, ...
     [1 1 1], 120, 2);
 mglFillOval(0,0,[.2 .2],0);
 mglFlush;
@@ -298,10 +303,14 @@ elseif task.thistrial.thisseg == 6
     
     % show the target location
     target_location = stimulus.gabor_locations_deg(task.thistrial.gabor_location,:);    
-    mglGluAnnulus(target_location(1), target_location(2), 1, 1.2, ...
+    mglGluAnnulus(target_location(2), target_location(1), 1, 1.2, ...
         [1 1 1], 120, 2);
     
 elseif task.thistrial.thisseg == task.thistrial.whichseg
+    if task.thistrial.thisseg == 2
+        task.thistrial.t_stim_onset = mglGetSecs;
+    end
+
     % present noise with gabor stimulus
     mglClearScreen(stimulus.bg_color{1}/255);
     mglStencilSelect(1);
