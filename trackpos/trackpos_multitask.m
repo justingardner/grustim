@@ -74,7 +74,7 @@ params.task.noiseLum   = 0; % noise luminance, if there is one.
 
 % main task parameters
 tasks2run                   = {'2afc'}; %{'est', '2afc'};
-params.task.stimLum         = 0.2; %[0.1, 0.2, 0.4, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
+params.task.stimLum         = [0.1, 0.2, 0.4, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
 params.task.stimDur         = [2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
 params.task.stimStd         = [1]; % [1,1.5]
 params.task.stimColor       = 'k';
@@ -82,8 +82,8 @@ params.trialpercond         = 40;
 
 % mask parameters
 if mglIsFile(exp.noise_mask)
-    params.task.maskDur          = [3/60]; %3/60; %3/60; % mask duration
-    params.task.mask_TOff2MOn    = [0, 2/60, 5/60]; % 3/60, 5/60]; % stimulus offset to mask onset (Neisser 1967)
+    params.task.maskDur          = 3/60; %[0]; %4/60, 8/60]; % mask duration
+    params.task.mask_TOff2MOn    = 0; % 0, 4/60, 8/60]; %, 2/60, 5/60]; % 3/60, 5/60]; % stimulus offset to mask onset (Neisser 1967)
     params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
 
@@ -131,7 +131,7 @@ if any(cellfun(@(x) strcmp(x,'2afc'),tasks2run))
     disp(['Number of conditions (afc) = ' num2str(size(afc_comb,1))])
     
     params_afc.numTrials        = params_afc.trialpercond * size(afc_comb,1);
-    params.numTrials  = params.numTrials + params_afc.numTrials; % main task
+    params.numTrials            = params.numTrials + params_afc.numTrials; % main task
 else
     params_afc.numTrials        = 0;
 end
@@ -158,7 +158,7 @@ task{1}{1}.waitForBacktick  = 1;
 %tasks * ntrials x stimDur x stimLum x posDiff
 task{1}{1}.numTrials        = params.numTrials; 
 
-trialdur = 1.5 + max(params.task.stimDur) + max(params.task.mask_TOff2MOn) + params.task.maskDur;
+trialdur = 1.5 + max(params.task.stimDur) + max(params.task.mask_TOff2MOn) + params.task.maskDur + 1;
 taskdur = trialdur * params.numTrials / 60/60; % approximate duration in hours
 disp(['Approx task duration = ' num2str(taskdur) ' hours']);
 

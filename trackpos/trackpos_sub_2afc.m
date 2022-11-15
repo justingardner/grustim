@@ -129,8 +129,8 @@ end
 
 % noise mask
 if mglIsFile(stimulus.exp.noise_mask)     
-    task.thistrial.seglen(5) = task.thistrial.maskDur;
-    task.thistrial.seglen(6) = task.thistrial.mask_TOff2MOn;
+    task.thistrial.seglen(5) = task.thistrial.mask_TOff2MOn;
+    task.thistrial.seglen(6) = task.thistrial.maskDur;
     maskLum = task.thistrial.maskLum;
 
     nframes = myscreen.framesPerSecond*task.thistrial.seglen(6) + 20; %/downsample_timeRes; 
@@ -201,7 +201,7 @@ elseif task.thistrial.thisseg == 6
 end
 
 % blt screen once before screenUpdates loops
-if task.thistrial.thisseg > 1
+if task.thistrial.thisseg > 1 && task.thistrial.seglen(task.thistrial.thisseg) > 0
     [task, myscreen] = screenUpdateCallback(task, myscreen);
     mglFlush;
     if task.thistrial.thisseg == 4

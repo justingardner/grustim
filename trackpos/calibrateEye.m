@@ -1,10 +1,8 @@
 function [positions_target, positions_eye] = calibrateEye(myscreen, stimulus, recalibrateEyelink)
-    %CALIBRATEJOY Summary of this function goes here
-    %   Detailed explanation goes here
     % todo: adaptive calibration
     % check which part of screen has big error and finely sample the area.
     % todo: option to skip calibration point
-    % `
+
 
     % calibration parameters
     r = [0.5, 3, 6, 9, 12];

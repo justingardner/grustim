@@ -39,8 +39,11 @@ else
     myscreen.subjectID  = mglGetSID;
 end
 
+rmpath(genpath('/Users/gru/proj/mgl'))
+addpath(genpath('/Users/gru/proj/mgl_jryu'))
+
 %myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
-myscreen.hideCursor = 1;
+myscreen.hideCursor         = 1;
 myscreen.displayName        = 'vpixx';
 myscreen.calibType          = 'Specify particular calibration';
 myscreen.calibFilename      = '0001_dn0a221834_221005.mat';
@@ -48,7 +51,7 @@ myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0001_dn0a221834
 myscreen.saveData           = 1; % save stimfile to data directory
 myscreen.datadir            = '/Users/gru/data/';
 
-myscreen                = initScreen(myscreen);
+myscreen                    = initScreen(myscreen);
 
 % set to argb2101010 pixel format
 mglMetalSetViewColorPixelFormat(4);
@@ -56,8 +59,8 @@ mglMetalSetViewColorPixelFormat(4);
 %% experiment parameters
 % Experimenter parameters`
 %todo:  check these throughout the code!!
-exp.debug               = 0; % debug code
-exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
+exp.debug               = 1; % debug code
+exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.fixateCenter        = 1; % fixate center
@@ -79,16 +82,18 @@ task = {};
 
 % no noise run
 cps = {};
-stimStepStdList     = [0.7, 1.3];
+stimStepStdList     = [1, 1.3];
 stimStdList         = [1]; %[0.5, 1 ,2];
-stimLums            = [0.05, 0.1, 0.4]; %[0.1, 0.2, 0.5]; 
-backLum             = 0.4;
+stimLums            = [0.1, 0.2, 0.4, 0.8]; %[0.1, 0.2, 0.5]; 
+backLum             = 0.7;
 
 pointerR            = 0.2; stimulus.pointerR = pointerR;
 
 ntrial_learn        = 3;
 ntrials             = 20; % trials per condition
 nblocks             = 4;  % should divide ntrials
+
+if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; end
 
 for stimStepStd = stimStepStdList
     % 3 learning phase
@@ -98,7 +103,7 @@ for stimStepStd = stimStepStdList
         'bgfile', []);
     
     for stimStd = stimStdList
-        ntrials_phase = length(stimLums) * ntrials/nblocks;
+        ntrials_phase = length(stimLums) * ceil(ntrials/nblocks);
         for b = 1:nblocks
             cps{end+1} = brownian(myscreen, 'maxtrials', ntrials_phase, 'noiseLum', 0, 'backLum', backLum, ...
                 'stimLum', stimLums, 'stimColor','k', 'stimStd', stimStd, 'stimStepStd', stimStepStd, ...
@@ -207,7 +212,7 @@ if  strcmp(exp.controlMethod,'eye')
     stimulus.eyecalib       = eyecalib;
 elseif stimulus.exp.trackEye
     disp(' Calibrating Eye ....')
-    myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
+    % myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
 end
 
 if ~strcmp(stimulus.exp.controlMethod, 'mouse') && ...
@@ -234,7 +239,7 @@ mglBltTexture(mglText('1. Track the target with the red pointer'),[0 0.5]);
 if stimulus.exp.fixateCenter
     mglBltTexture(mglText('2. Fixate in center. You should be able to see the red dot'),[0 -0.5]);    
 end
-mglBltTexture(mglText('When you are ready, press any key to go to next trial'),[0 -1.5]);
+mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
 mglFlush(); myscreen.flushMode = -1;
 
 if ~exp.showMouse, mglDisplayCursor(0);, end %hide cursor
@@ -246,13 +251,13 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
         mglClearScreen(0.5);
         
         if strcmp(exp.controlMethod,'eye')
-            [positions_target, positions_eye] = calibrateEye(myscreen, stimulus, true);
-            stimulus.eyecalib.target{newphaseNum}    = positions_target;
+            [positions_target, positions_eye]       = calibrateEye(myscreen, stimulus, true);
+            stimulus.eyecalib.target{newphaseNum}   = positions_target;
             stimulus.eyecalib.eye{newphaseNum}       = positions_eye;
         end
         
-        mglTextDraw('Press backtick to go to next trial',[0 0]);
-        mglFlush;
+        mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
+        mglFlush(); myscreen.flushMode = -1;
     end
     phaseNum = newphaseNum;
     myscreen = tickScreen(myscreen,task);     % flip screen
