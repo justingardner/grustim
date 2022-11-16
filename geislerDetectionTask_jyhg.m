@@ -163,24 +163,26 @@ elseif threshold > 1, threshold = 1;
 end
 
 % decide on the contrast set for the testing
-pCorrect = [.57, .65, .75, .85, .97];   % targetting pCorrect
-for i = [1,3,5]
-    [~, idx] = min(abs(t.weibullFitParams.y - pCorrect(i)));
-    if i == 1 
-        contrast(1) = t.weibullFitParams.x(max(idx));
-        if contrast(1) < .05, contrast(1) = .05; end    % lowest contrast level = .05
-    elseif i == 5
-        contrast(5) = t.weibullFitParams.x(min(idx));
-        if contrast(5) > .8, contrast(5) = .8; end    % highest contrast level = .8
-    else
-        contrast(3) = t.weibullFitParams.x(median(idx));
-    end
-end
-contrast(2) = mean([contrast(1) contrast(3)]);
-contrast(4) = mean([contrast(3) contrast(5)]);
+%%%% decide three contrast levels near threshold
+targetContrast = nan(1,7);
+[~, idx] = min(abs(t.weibullFitParams.y - .5));
+x(1) = t.weibullFitParams.x(idx);
+[~, idx] = min(abs(t.weibullFitParams.y - .98));
+x(2) = t.weibullFitParams.x(idx);
+x = x(1):.0001:x(2);
+expected_y = weibull(x, t.weibullFitParams.fitparams);
+
+targetContrast(4) = round(threshold,2);    % expected threshold
+idx = (expected_y >= .5 | expected_y < .57);
+targetContrast(1) = floor(mean(x(idx))*100)/100;       % expected 50% performance
+idx = expected_y >= .97;
+targetContrast(end) = ceil(mean(x(idx))*100)/100;     % expected100% performance
+
+targetContrast(1:4) = logspace(log10(targetContrast(1)), log10(targetContrast(4)), 4);
+targetContrast(4:end) = logspace(log10(targetContrast(4)), log10(targetContrast(end)), 4);
 
 stimulus.task2.gabor_contrast = contrast;
-stimulus.task2.nTrial = length(stimulus.task2.gabor_contrast) * 16;
+stimulus.task2.nTrial = length(stimulus.task2.gabor_contrast) * 40;
 stimulus.task2.stair = doStaircase('init','fixed',...
     ['fixedVals=' num2str(stimulus.task2.gabor_contrast)], ...
     ['nTrials=' stimulus.task2.nTrial]);
