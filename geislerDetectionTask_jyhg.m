@@ -23,12 +23,12 @@ global stimulus
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
 eyetracker = 0;
-myscreen.displayName = 'dell_wuTsai';
+myscreen.displayName = 'vpixx';
 
 myscreen.saveData = 1;
-myscreen.datadir = '~/Documents/geisler_jiwon';
+myscreen.datadir = '~/proj/jiwon';
 if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
-mglSetParam('abortedStimfilesDir', '~/Documents/giesler_jiwon/aborted',1);
+mglSetParam('abortedStimfilesDir', '~/proj/jiwon/aborted',1);
 
 myscreen.keyboard.nums = [44,48]; % ',<' for 1, '.>' for 2
 myscreen = initScreen(myscreen);  
@@ -157,31 +157,42 @@ mglClearScreen(.5);
 mglFlush;
 
 t = doStaircase('threshold',stimulus.task1.stair);
-threshold = t.threshold;
-if threshold < .01, threshold = .01; 
-elseif threshold > 1, threshold = 1;
-end
+% threshold = t.threshold;
+% if threshold < .01, threshold = .01; 
+% elseif threshold > 1, threshold = 1;
+% end
 
 % decide on the contrast set for the testing
 %%%% decide three contrast levels near threshold
 targetContrast = nan(1,7);
-[~, idx] = min(abs(t.weibullFitParams.y - .5));
-x(1) = t.weibullFitParams.x(idx);
-[~, idx] = min(abs(t.weibullFitParams.y - .98));
-x(2) = t.weibullFitParams.x(idx);
-x = x(1):.0001:x(2);
-expected_y = weibull(x, t.weibullFitParams.fitparams);
+x = 0:.001:1;
+y = weibull(x, t.weibullFitParams.fitparams);
 
-targetContrast(4) = round(threshold,2);    % expected threshold
-idx = (expected_y >= .5 | expected_y < .57);
-targetContrast(1) = floor(mean(x(idx))*100)/100;       % expected 50% performance
-idx = expected_y >= .97;
-targetContrast(end) = ceil(mean(x(idx))*100)/100;     % expected100% performance
+targetContrast(1) = round(mean(x(y < .75)),2);
+if weibull(targetContrast(1), t.weibullFitParams.fitparams) > .05 && targetContrast(1) > .01
+    targetContrast(1) = targetContrast(1) - .02;
+    if targetContrast(1) < .01
+        targetContrast(1) = .01;
+    end
+end        
 
-targetContrast(1:4) = logspace(log10(targetContrast(1)), log10(targetContrast(4)), 4);
-targetContrast(4:end) = logspace(log10(targetContrast(4)), log10(targetContrast(end)), 4);
+targetContrast(end) = round(mean(x(y > .75)),2);
+if weibull(targetContrast(end), t.weibullFitParams.fitparams) < .95
+    targetContrast(end) = targetContrast(end) + .02;
+    if targetContrast(end) > 1
+        targetContrast(end) = 1;
+    end
+end
 
-stimulus.task2.gabor_contrast = contrast;
+targetContrast(4) = round(mean(x(y <= .77 & y >= .73)),2);
+if targetContrast(4) < targetContrast(1) || targetContrast(4) > targetContrast(end)
+    targetContrast(4) = mean([targetContrast(1), targetContrast(end)]);
+end
+targetContrast(4:-1:1) = round(logspace(log10(targetContrast(4)), log10(targetContrast(1)),4),2);
+targetContrast(4:end) = round(logspace(log10(targetContrast(4)), log10(targetContrast(end)), 4),2);
+
+% set other parameters for task2
+stimulus.task2.gabor_contrast = targetContrast;
 stimulus.task2.nTrial = length(stimulus.task2.gabor_contrast) * 40;
 stimulus.task2.stair = doStaircase('init','fixed',...
     ['fixedVals=' num2str(stimulus.task2.gabor_contrast)], ...
