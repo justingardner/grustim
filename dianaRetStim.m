@@ -95,6 +95,17 @@ stimulus.barContrast = 1;
 % direction of stimulus
 %stimulus.direction = direction;
 % the duty cycle of the stimulus.
+% angle size is the size in degrees of the
+% elements of the wedge that slide against each other
+stimulus.elementAngleSize = 5;
+% radius is the radial length of these elements
+stimulus.elementRadiusSize = 2;
+% radial speed of elements moving each other
+stimulus.elementRadialVelocity = 7.5;
+% element size parameters for bars (non-radial pattern)
+stimulus.elementWidth = 3;
+stimulus.elementHeight = 3;
+stimulus.elementVelocity = 6;
 stimulus = initRetinotopyStimulus(stimulus,myscreen);
 stimulus.cycleTime = mglGetSecs;
 % CODE FROM RETINOTOPY END (NEEDS TO BE CLEANED UP)
@@ -111,9 +122,9 @@ myscreen = initStimulus('stimulus',myscreen);
 myInitStimulus(myscreen);
 
 % set task parameters
-task{1}.segmin = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen];
-task{1}.segmax = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen];
-task{1}.getResponse = [0 0];
+task{1}.segmin = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen 0.1];
+task{1}.segmax = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen 0.1];
+task{1}.getResponse = [0 0 0 0 0];
 
 % set number of trials to infinite (to stop stimulus hit ESC)
 task{1}.numTrials = inf;
@@ -121,7 +132,7 @@ task{1}.numTrials = inf;
 % synch to vol (note this will sync *after* the first segment is done in time, so that
 % the stimulus presented in the 2nd segment will start just after the volume acquisition
 % trigger comes.
-task{1}.synchToVol = [1 0 0 0];
+task{1}.synchToVol = [1 0 0 0 0];
 
 % setup fixation task
 if stimulus.useFixTask
@@ -164,7 +175,7 @@ global stimulus;
 % print out what we are doing and clear screen
 if task.thistrial.thisseg == 1
   % calculate how long it took to run last two segment
-  stimulus.endTime = mglGetSecs;
+  %stimulus.endTime = mglGetSecs;
   if ~isnan(stimulus.startTime)
     disp(sprintf('(dianaTestTriggers) Stim segment lasted %0.1f ms: Ready to start trial %i',1000*(stimulus.endTime-stimulus.startTime),task.trialnum));
   else    
@@ -178,6 +189,9 @@ elseif task.thistrial.thisseg == 3
   stimulus.currentMask = 7;
 elseif task.thistrial.thisseg == 4
   stimulus.currentMask = 19;
+elseif task.thistrial.thisseg == 5
+  stimulus.endTime = mglGetSecs;
+  mglClearScreen(0.5);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%resp%%%%%%%%%%%%%%%%%%%%%%%%%%%%
