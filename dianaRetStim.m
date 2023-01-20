@@ -122,8 +122,8 @@ myscreen = initStimulus('stimulus',myscreen);
 myInitStimulus(myscreen);
 
 % set task parameters
-task{1}.segmin = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen 0.1];
-task{1}.segmax = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen 0.1];
+task{1}.segmin = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen 1/60];
+task{1}.segmax = [0.1 stimulus.retinotopyOnsetDelay stimulus.retinotopyStimLen stimulus.retinotopyStimLen 1/60];
 task{1}.getResponse = [0 0 0 0 0];
 
 % set number of trials to infinite (to stop stimulus hit ESC)

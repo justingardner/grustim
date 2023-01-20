@@ -17,16 +17,16 @@ end
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 1;end
+if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('recompITI'),recompITI = 0;end
 
-mglSetSID('s374');
+mglSetSID(-1);
 
 % initalize the screen
 myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
-myscreen.saveData = 1;
+myscreen.saveData = 0;
 % myscreen.displayName = '3tb';
 % myscreen.displayName = 'test';
 % myscreen.displayName = 'fMRIprojFlex';
@@ -153,7 +153,7 @@ function stimulus = myInitStimulus(stimulus,myscreen,task)
 
 stimulus.pixRes = min(myscreen.screenHeight/myscreen.imageHeight, myscreen.screenWidth/myscreen.imageWidth);
 
-% which phases we will have
+% which phases (of the grating) we will have
 stimulus.phaseNum = 1;
 stimulus.numPhases = 16;
 stimulus.phases = 0:(360-0)/stimulus.numPhases:360;
