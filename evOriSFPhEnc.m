@@ -7,11 +7,11 @@
 %
 function retval = evOriSFPhEnc(varargin)
 
-% check arguments
-if ~any(nargin == [0])
-  help evOriSF
-  return
-end
+% % check arguments
+% if ~any(nargin == [0])
+%   help evOriSF
+%   return
+% end
 
 % evaluate the input arguments
 getArgs(varargin, [], 'verbose=0');
@@ -20,6 +20,10 @@ getArgs(varargin, [], 'verbose=0');
 if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('recompITI'),recompITI = 0;end
 
+if ieNotDefined('ori') || ieNotDefined('sfdir')
+    error('Specify a grating orientation and SF direction (e.g. ''ori=0'', ''sfdir=1'')')
+end
+    
 mglSetSID(-1);
 
 % initalize the screen
@@ -36,15 +40,27 @@ myscreen = initScreen(myscreen);
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 phasedur = 0.25;
-nseg = 64;
+nseg = 96;
 % orientation
-orientation = [0 90];
+if ori == 0
+    orientation = 0;
+elseif ori == 90
+    orientation = 90;
+else
+    error('Specify ''ori'' as either a horizontal or vertical orientation (0 or 90)')
+end
 stimulus.orientation = orientation;
 task{1}{1}.parameter.orientation = orientation;
 % ascending, descending sf conditions
-stimulus.nsfs = 16;
+stimulus.nsfs = 24;
 stimulus.sf = 2.^linspace(-3,2,stimulus.nsfs);
-stimulus.sfdirection = [1 -1];
+if sfdir == 1
+    stimulus.sfdirection = 1;
+elseif sfdir == -1
+    stimulus.sfdirection = -1;
+else
+    error('Specify ''sfdir'' as either ''1'' or ''-1'' to indicate SF direction')
+end
 task{1}{1}.parameter.sfdirection = stimulus.sfdirection;
 % size
 stimulus.height = 10;
@@ -54,20 +70,20 @@ task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [repmat(phasedur, 1, nseg) nan];
-task{1}{1}.segmax = [repmat(phasedur, 1, nseg) nan];
+task{1}{1}.segmin = [repmat(phasedur, 1, nseg-1) phasedur-0.1];
+task{1}{1}.segmax = [repmat(phasedur, 1, nseg-1) phasedur-0.1];
 % duration of the ISI's
-task{1}{1}.segdur{nseg+1} = [4] - 0.1;
-if recompITI
-  n = 10000;
-  probs = 1+exprnd(2,n,1);
-  task{1}{1}.segprob{nseg+1} = hist(probs, task{1}{1}.segdur{nseg+1})/n;
-else
-  % hard code
-  % probs = [0.4585 0.2862 0.1356 0.0652 0.0309 0.0119 0.0066 0.0028 0.0013 0.001];
-  probs = [1];
-  task{1}{1}.segprob{nseg+1} = probs; 
-end
+% task{1}{1}.segdur{nseg+1} = 0;
+% if recompITI
+%   n = 10000;
+%   probs = 1+exprnd(2,n,1);
+%   task{1}{1}.segprob{nseg+1} = hist(probs, task{1}{1}.segdur{nseg+1})/n;
+% else
+%   % hard code
+%   % probs = [0.4585 0.2862 0.1356 0.0652 0.0309 0.0119 0.0066 0.0028 0.0013 0.001];
+%   probs = [1];
+%   task{1}{1}.segprob{nseg+1} = probs; 
+% end
 % sync to scanner
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 if atScanner
@@ -126,11 +142,7 @@ end
 stimulus.phaseNum = newPhase;
 
 % set the current segment orientation
-if task.thistrial.orientation == 0
-    stimulus.oriInd = 1;
-elseif task.thistrial.orientation == 90
-    stimulus.oriInd = 2;
-end
+stimulus.oriInd = 1;
 
 % determine what sf we are using based on segnum and sfdirection
 if task.thistrial.sfdirection == 1
@@ -151,7 +163,7 @@ global stimulus;
 mglClearScreen;
 
 % draw the texture
-if task.thistrial.thisseg<65
+if task.thistrial.thisseg<97
   mglBltTexture(stimulus.tex{stimulus.oriInd,stimulus.sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
 end
 
@@ -168,28 +180,54 @@ stimulus.phaseNum = 1;
 stimulus.numPhases = 16;
 stimulus.phases = 0:(360-0)/stimulus.numPhases:360;
 
-if isfield(stimulus, 'tex')
-  disp(sprintf('(evORISF) Attention: Using precomputed stimulus textures!!'));
-else  
-  disppercent(-inf,'Creating the stimulus textures');
-  for iOri=1:length(stimulus.orientation)
+if isfield(stimulus,'tex')
+    stimulus = rmfield(stimulus,'tex');
+end
+
+disppercent(-inf,'Creating the stimulus textures');
+for iOri=1:length(stimulus.orientation)
     for iSF=1:length(stimulus.sf)
-      for iPhase=1:length(stimulus.phases)
-          
-        % make a grating  but now scale it
-        grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
-
-        % make a circular aperture
-        grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
-
-        % scale to range of display
-        grating = 255*(grating+1)/2;
-
-        % create a texture
-        stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
-      end
+        for iPhase=1:length(stimulus.phases)
+            
+            % make a grating  but now scale it
+            grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
+            
+            % make a circular aperture
+            grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
+            
+            % scale to range of display
+            grating = 255*(grating+1)/2;
+            
+            % create a texture
+            stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
+        end
     end
     disppercent(iOri/length(stimulus.orientation));
-  end
-  disppercent(inf);
 end
+disppercent(inf);
+
+% if isfield(stimulus, 'tex')
+%   disp(sprintf('(evORISF) Attention: Using precomputed stimulus textures!!'));
+% else  
+%   disppercent(-inf,'Creating the stimulus textures');
+%   for iOri=1:length(stimulus.orientation)
+%     for iSF=1:length(stimulus.sf)
+%       for iPhase=1:length(stimulus.phases)
+%           
+%         % make a grating  but now scale it
+%         grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
+% 
+%         % make a circular aperture
+%         grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
+% 
+%         % scale to range of display
+%         grating = 255*(grating+1)/2;
+% 
+%         % create a texture
+%         stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
+%       end
+%     end
+%     disppercent(iOri/length(stimulus.orientation));
+%   end
+%   disppercent(inf);
+% end
