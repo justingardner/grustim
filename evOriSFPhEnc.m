@@ -14,7 +14,7 @@ function retval = evOriSFPhEnc(varargin)
 
 % % check arguments
 if ~any(nargin == [2:3])
-  help evOriSF
+  help evOriSFPhEnc
   return
 end
 
@@ -59,16 +59,18 @@ task{1}{1}.parameter.orientation = orientation;
 
 % ascending, descending sf conditions
 stimulus.nsfs = 24;
-stimulus.sf = 2.^linspace(-3,2,stimulus.nsfs);
 if sfdir == 1
     stimulus.sfdirection = 1;
-    task{1}{1}.parameter.sf = stimulus.sf;
+    stimulus.sf = 2.^linspace(-3,2,stimulus.nsfs);
+    
 elseif sfdir == -1
     stimulus.sfdirection = -1;
-    task{1}{1}.parameter.sf = fliplr(stimulus.sf);
+    stimulus.sf = fliplr(2.^linspace(-3,2,stimulus.nsfs));
+    
 else
     error('Specify ''sfdir'' as either ''1'' or ''-1'' to indicate SF direction')
 end
+task{1}{1}.parameter.sf = stimulus.sf;
 
 % size
 stimulus.height = 10;
