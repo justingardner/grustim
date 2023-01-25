@@ -1,24 +1,28 @@
-% evOriSF.m
+% evOriSFPhEnc.m
 %
-%      usage: evOriSF()
-%         by: eli merriam
-%       date: 07/26/22
-%    purpose: 
+%      usage: evOriSFPhEnc(varargin)
+%         by: austin kuo
+%       date: 01/25/23
+%    purpose: display phase encoded spatial frequency stimuli with specified orientation and low-high/high-low SF steps
 %
+%       args: varargin - ori=0: horizontal grating
+%                        ori=90: vertical grating
+%                        sfdir=1: low to high SFs
+%                        sfdir=-1: high to low SFs
+
 function retval = evOriSFPhEnc(varargin)
 
 % % check arguments
-% if ~any(nargin == [0])
-%   help evOriSF
-%   return
-% end
+if ~any(nargin == [2:3])
+  help evOriSF
+  return
+end
 
 % evaluate the input arguments
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
 if ieNotDefined('atScanner'),atScanner = 0;end
-if ieNotDefined('recompITI'),recompITI = 0;end
 
 if ieNotDefined('ori') || ieNotDefined('sfdir')
     error('Specify a grating orientation and SF direction (e.g. ''ori=0'', ''sfdir=1'')')
@@ -40,7 +44,8 @@ myscreen = initScreen(myscreen);
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 phasedur = 0.25;
-nseg = 96;
+nseg = 4;
+
 % orientation
 if ori == 0
     orientation = 0;
@@ -51,17 +56,20 @@ else
 end
 stimulus.orientation = orientation;
 task{1}{1}.parameter.orientation = orientation;
+
 % ascending, descending sf conditions
 stimulus.nsfs = 24;
 stimulus.sf = 2.^linspace(-3,2,stimulus.nsfs);
 if sfdir == 1
     stimulus.sfdirection = 1;
+    task{1}{1}.parameter.sf = stimulus.sf;
 elseif sfdir == -1
     stimulus.sfdirection = -1;
+    task{1}{1}.parameter.sf = fliplr(stimulus.sf);
 else
     error('Specify ''sfdir'' as either ''1'' or ''-1'' to indicate SF direction')
 end
-task{1}{1}.parameter.sfdirection = stimulus.sfdirection;
+
 % size
 stimulus.height = 10;
 stimulus.width = 10;
@@ -70,23 +78,12 @@ task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [repmat(phasedur, 1, nseg-1) phasedur-0.1];
-task{1}{1}.segmax = [repmat(phasedur, 1, nseg-1) phasedur-0.1];
-% duration of the ISI's
-% task{1}{1}.segdur{nseg+1} = 0;
-% if recompITI
-%   n = 10000;
-%   probs = 1+exprnd(2,n,1);
-%   task{1}{1}.segprob{nseg+1} = hist(probs, task{1}{1}.segdur{nseg+1})/n;
-% else
-%   % hard code
-%   % probs = [0.4585 0.2862 0.1356 0.0652 0.0309 0.0119 0.0066 0.0028 0.0013 0.001];
-%   probs = [1];
-%   task{1}{1}.segprob{nseg+1} = probs; 
-% end
+task{1}{1}.seglen = [repmat(0.25, 1, nseg)];
+
 % sync to scanner
-task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
+task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
 if atScanner
+  task{1}{1}.seglen(end) = task{1}{1}.seglen(end)-0.1;
   task{1}{1}.synchToVol(end) = 1;
 end
 
@@ -141,16 +138,6 @@ while stimulus.phaseNum == newPhase;
 end
 stimulus.phaseNum = newPhase;
 
-% set the current segment orientation
-stimulus.oriInd = 1;
-
-% determine what sf we are using based on segnum and sfdirection
-if task.thistrial.sfdirection == 1
-    stimulus.sfInd = ceil(task.thistrial.thisseg/4);
-elseif task.thistrial.sfdirection == -1
-    stimulus.sfInd = (stimulus.nsfs+1) - ceil(task.thistrial.thisseg/4);
-end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
@@ -162,9 +149,12 @@ global stimulus;
 % clear the screen
 mglClearScreen;
 
+oriInd = 1;
+sfInd = find(task.parameter.sf==task.thistrial.sf);
+
 % draw the texture
-if task.thistrial.thisseg<97
-  mglBltTexture(stimulus.tex{stimulus.oriInd,stimulus.sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
+if task.thistrial.thisseg<5
+  mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
 end
 
 
