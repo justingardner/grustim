@@ -6,14 +6,17 @@
 
 function [trialTiming] = createNSDTrialTiming()
 
-mydir = '~/Documents/MATLAB/data/nsddesign';
+mydir = '~/proj/grustim/nsddesign';
 
 filePattern = fullfile(mydir, '*.tsv');
 theFiles = dir(filePattern);
 
+a = [];
+trialTiming = [];
+
 for i = 1:length(theFiles)
-    tdfread(strcat(theFiles(i).folder,'/',theFiles(i).name));
-    trialTiming(:,i) = convertNSDTrialStruct(x0);
+    a = tdfread(strcat(mydir,'/',theFiles(i).name));
+    trialTiming(:,i) = convertNSDTrialStruct(a.x0);
 end
 
     %% %%%%%%%%%%%%%% %%

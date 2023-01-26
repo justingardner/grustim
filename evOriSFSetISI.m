@@ -49,7 +49,10 @@ stimulus.height = 10;
 stimulus.width = 10;
 % presentation and blanks
 stimulus.trialtiming = trialtiming;
+% just keep track of which trial we're on
+stimulus.trialnum = 0;
 
+nseg = 12;
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
@@ -117,6 +120,16 @@ while stimulus.phaseNum == newPhase;
   newPhase = ceil(rand(1)*stimulus.numPhases);
 end
 stimulus.phaseNum = newPhase;
+
+if task.trialnum ~= stimulus.trialnum
+    if stimulus.trialtiming(task.trialnum)
+        trialtype = sprintf('stim');
+    else
+        trialtype = sprintf('blank');
+    end
+    stimulus.trialnum = task.trialnum;
+    fprintf('\nBegin trial %d: %s\n',stimulus.trialnum,trialtype)
+end
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
