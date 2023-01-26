@@ -5,20 +5,19 @@
 %       date: 07/26/22
 %    purpose: 
 %
-function retval = evOriSFSetISI(varargin)
+function retval = evOriSFSetISI(trialtiming,varargin)
 
-% check arguments
-if ~any(nargin == [0])
-  help evOriSF
-  return
-end
+% % check arguments
+% if ~any(nargin == [0])
+%   help evOriSF
+%   return
+% end
 
 % evaluate the input arguments
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
 if ieNotDefined('atScanner'),atScanner = 0;end
-if ieNotDefined('recompITI'),recompITI = 0;end
 
 mglSetSID(-1);
 
@@ -44,33 +43,26 @@ task{1}{1}.parameter.orientation = stimulus.orientation;
 stimulus.sf = [0.25 0.5 1 2 4];
 task{1}{1}.parameter.sf = stimulus.sf;
 % location
-task{1}{1}.parameter.location = 0; 
+stimulus.location = 0; 
 % size
 stimulus.height = 10;
 stimulus.width = 10;
-
+% presentation and blanks
+stimulus.trialtiming = trialtiming;
 
 task{1}{1}.random = 1;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.segmin = [repmat(0.25, 1, 12) nan];
-task{1}{1}.segmax = [repmat(0.25, 1, 12) nan];
+task{1}{1}.seglen = [repmat(0.25, 1, nseg)];
+
 % duration of the ISI's
-task{1}{1}.segdur{13} = [1] - 0.1;
-if recompITI
-  n = 10000;
-  probs = 1+exprnd(2,n,1);
-  task{1}{1}.segprob{13} = hist(probs, task{1}{1}.segdur{13})/n;
-else
-  % hard code
-  % probs = [0.4585 0.2862 0.1356 0.0652 0.0309 0.0119 0.0066 0.0028 0.0013 0.001];
-  probs = [1];
-  task{1}{1}.segprob{13} = probs; 
-end
+task{1}{1}.seglen(nseg+1) = 1;
+
 % sync to scanner
-task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
+task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
 if atScanner
+  task{1}{1}.seglen(end) = task{1}{1}.seglen(end)-0.1;
   task{1}{1}.synchToVol(end) = 1;
 end
 
@@ -141,8 +133,8 @@ sfInd = find(task.parameter.sf==task.thistrial.sf);
 oriInd = find(task.parameter.orientation==task.thistrial.orientation);
 
 % draw the texture
-if task.thistrial.thisseg<13
-  mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum}, [task.thistrial.location 0 stimulus.height stimulus.height], 0, 0, 0);
+if task.thistrial.thisseg<13 && stimulus.trialtiming(task.trialnum)
+  mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum}, [stimulus.location 0 stimulus.height stimulus.height], 0, 0, 0);
 end
 
 
