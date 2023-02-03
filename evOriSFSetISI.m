@@ -19,7 +19,7 @@ getArgs(varargin, [], 'verbose=0');
 % set default parameters
 if ieNotDefined('atScanner'),atScanner = 0;end
 
-mglSetSID(-1);
+% mglSetSID(-1);
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -40,13 +40,13 @@ orientation = linspace(0, 90, 2);
 stimulus.orientation = orientation;
 task{1}{1}.parameter.orientation = stimulus.orientation;
 % spatial frequency
-stimulus.sf = [0.25 0.5 1 2 4];
+stimulus.sf = [0.25 0.5 1 2 4 8];
 task{1}{1}.parameter.sf = stimulus.sf;
 % location
 stimulus.location = 0; 
 % size
-stimulus.height = 10;
-stimulus.width = 10;
+stimulus.height = 20;
+stimulus.width = 20;
 % presentation and blanks
 stimulus.trialtiming = trialtiming;
 % just keep track of which trial we're on

@@ -28,13 +28,13 @@ if ieNotDefined('ori') || ieNotDefined('sfdir')
     error('Specify a grating orientation and SF direction (e.g. ''ori=0'', ''sfdir=1'')')
 end
     
-mglSetSID(-1);
+mglSetSID('s063');
 
 % initalize the screen
 myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
-myscreen.saveData = 0;
+myscreen.saveData = 1;
 % myscreen.displayName = '3tb';
 % myscreen.displayName = 'test';
 % myscreen.displayName = 'fMRIprojFlex';
@@ -61,20 +61,21 @@ task{1}{1}.parameter.orientation = orientation;
 stimulus.nsfs = 24;
 if sfdir == 1
     stimulus.sfdirection = 1;
-    stimulus.sf = 2.^linspace(-3,2,stimulus.nsfs);
+    stimulus.sf = 2.^linspace(-2,3,stimulus.nsfs);
     
 elseif sfdir == -1
     stimulus.sfdirection = -1;
-    stimulus.sf = fliplr(2.^linspace(-3,2,stimulus.nsfs));
+    stimulus.sf = fliplr(2.^linspace(-2,3,stimulus.nsfs));
     
 else
     error('Specify ''sfdir'' as either ''1'' or ''-1'' to indicate SF direction')
 end
+stimulus.sf = [stimulus.sf(stimulus.nsfs/2 + 1:end) stimulus.sf(1:stimulus.nsfs/2)]; % start on half-cycle
 task{1}{1}.parameter.sf = stimulus.sf;
 
 % size
-stimulus.height = 10;
-stimulus.width = 10;
+stimulus.height = 20;
+stimulus.width = 20;
 
 task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
