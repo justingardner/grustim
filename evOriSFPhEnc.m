@@ -13,7 +13,7 @@
 function retval = evOriSFPhEnc(varargin)
 
 % % check arguments
-if ~any(nargin == [2:3])
+if ~any(nargin == [2:4])
   help evOriSFPhEnc
   return
 end
@@ -27,14 +27,12 @@ if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('ori') || ieNotDefined('sfdir')
     error('Specify a grating orientation and SF direction (e.g. ''ori=0'', ''sfdir=1'')')
 end
-    
-mglSetSID(-1);
 
 % initalize the screen
 myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
-myscreen.saveData = 0;
+myscreen.saveData = saveParam;
 myscreen.displayName = 'fMRIproj_akuo2';
 myscreen = initScreen(myscreen);
 

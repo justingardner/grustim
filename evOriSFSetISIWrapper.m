@@ -1,6 +1,6 @@
 % evOriSFSetISIWrapper.m - wrapper script to feed evOriSFSetISI the proper stim/blank structure
 
-clear
+clear all
 
 trialtiming = createNSDTrialTiming();
 
