@@ -28,16 +28,13 @@ if ieNotDefined('ori') || ieNotDefined('sfdir')
     error('Specify a grating orientation and SF direction (e.g. ''ori=0'', ''sfdir=1'')')
 end
     
-mglSetSID('s063');
+mglSetSID(-1);
 
 % initalize the screen
 myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
-myscreen.saveData = 1;
-% myscreen.displayName = '3tb';
-% myscreen.displayName = 'test';
-% myscreen.displayName = 'fMRIprojFlex';
+myscreen.saveData = 0;
 myscreen.displayName = 'fMRIproj_akuo2';
 myscreen = initScreen(myscreen);
 
@@ -49,12 +46,14 @@ nseg = 4;
 % orientation
 if ori == 0
     orientation = 0;
+    stimulus.oriInd = 1;
 elseif ori == 90
     orientation = 90;
+    stimulus.oriInd = 2;
 else
     error('Specify ''ori'' as either a horizontal or vertical orientation (0 or 90)')
 end
-stimulus.orientation = orientation;
+stimulus.orientations = [0 90];
 task{1}{1}.parameter.orientation = orientation;
 
 % ascending, descending sf conditions
@@ -152,12 +151,11 @@ global stimulus;
 % clear the screen
 mglClearScreen;
 
-oriInd = 1;
 sfInd = find(task.parameter.sf==task.thistrial.sf);
 
 % draw the texture
 if task.thistrial.thisseg<5
-  mglBltTexture(stimulus.tex{oriInd,sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
+  mglBltTexture(stimulus.tex{stimulus.oriInd,sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
 end
 
 
@@ -172,55 +170,31 @@ stimulus.pixRes = min(myscreen.screenHeight/myscreen.imageHeight, myscreen.scree
 stimulus.phaseNum = 1;
 stimulus.numPhases = 16;
 stimulus.phases = 0:(360-0)/stimulus.numPhases:360;
+stimulus.phases = stimulus.phases(1:end-1);
 
-if isfield(stimulus,'tex')
-    stimulus = rmfield(stimulus,'tex');
-end
-
-disppercent(-inf,'Creating the stimulus textures');
-for iOri=1:length(stimulus.orientation)
-    for iSF=1:length(stimulus.sf)
-        for iPhase=1:length(stimulus.phases)
-            
-            % make a grating  but now scale it
-            grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
-            
-            % make a circular aperture
-            grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
-            
-            % scale to range of display
-            grating = 255*(grating+1)/2;
-            
-            % create a texture
-            stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
+if isfield(stimulus, 'tex')
+    fprintf('(evOriSFPhEnc) Attention: Using precomputed stimulus textures!!');
+else
+    disppercent(-inf,'Creating the stimulus textures');
+    for iOri=1:length(stimulus.orientations)
+        for iSF=1:length(stimulus.sf)
+            for iPhase=1:length(stimulus.phases)
+                
+                % make a grating  but now scale it
+                grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientations(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
+                
+                % make a circular aperture
+                grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
+                
+                % scale to range of display
+                grating = 255*(grating+1)/2;
+                
+                % create a texture
+                stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
+                
+            end
         end
+        disppercent(iOri/length(stimulus.orientations));
     end
-    disppercent(iOri/length(stimulus.orientation));
+    disppercent(inf);
 end
-disppercent(inf);
-
-% if isfield(stimulus, 'tex')
-%   disp(sprintf('(evORISF) Attention: Using precomputed stimulus textures!!'));
-% else  
-%   disppercent(-inf,'Creating the stimulus textures');
-%   for iOri=1:length(stimulus.orientation)
-%     for iSF=1:length(stimulus.sf)
-%       for iPhase=1:length(stimulus.phases)
-%           
-%         % make a grating  but now scale it
-%         grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientation(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
-% 
-%         % make a circular aperture
-%         grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
-% 
-%         % scale to range of display
-%         grating = 255*(grating+1)/2;
-% 
-%         % create a texture
-%         stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
-%       end
-%     end
-%     disppercent(iOri/length(stimulus.orientation));
-%   end
-%   disppercent(inf);
-% end
