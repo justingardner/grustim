@@ -58,6 +58,7 @@ task{1}{1}.parameter.orientation = orientation;
 
 % ascending, descending sf conditions
 stimulus.nsfs = 24;
+stimulus.reverseIdx = fliplr(1:stimulus.nsfs);
 if sfdir == 1
     stimulus.sfdirection = 1;
     stimulus.sf = 2.^linspace(-2,3,stimulus.nsfs);
@@ -152,10 +153,13 @@ global stimulus;
 mglClearScreen;
 
 sfInd = find(task.parameter.sf==task.thistrial.sf);
+if stimulus.sfdirection == -1
+    sfInd = stimulus.reverseIdx(sfInd);
+end
 
 % draw the texture
-if task.thistrial.thisseg<5
-  mglBltTexture(stimulus.tex{stimulus.oriInd,sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
+if task.thistrial.thisseg<5 
+    mglBltTexture(stimulus.tex{stimulus.oriInd,sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
 end
 
 
