@@ -187,8 +187,11 @@ else
                 % make a grating  but now scale it
                 grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientations(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
                 
-                % make a circular aperture
-                grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
+                % make a elliptical (circular) aperture
+                % grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
+                stimSize = size(grating,1);
+                aperture = circ([stimSize*0.75/2 stimSize/2],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]); % to-do: turn this into dva
+                grating = grating .* aperture;
                 
                 % scale to range of display
                 grating = 255*(grating+1)/2;
