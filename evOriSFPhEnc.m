@@ -23,6 +23,7 @@ getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
 if ieNotDefined('atScanner'),atScanner = 0;end
+if ieNotDefined('saveParam'),saveParam = 0;end
 
 if ieNotDefined('ori') || ieNotDefined('sfdir')
     error('Specify a grating orientation and SF direction (e.g. ''ori=0'', ''sfdir=1'')')
@@ -84,6 +85,7 @@ task{1}{1}.seglen = [repmat(0.25, 1, nseg)];
 % sync to scanner
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
 if atScanner
+  task{1}{1}.fudgeLastVolume = 1;
   task{1}{1}.seglen(end) = task{1}{1}.seglen(end)-0.1;
   task{1}{1}.synchToVol(end) = 1;
 end

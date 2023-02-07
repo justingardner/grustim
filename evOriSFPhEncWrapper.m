@@ -2,9 +2,9 @@
 
 clear all
 
-% add on some safety trials so it won't error out right after 75 trials
+% easy access parameters for scanning/testing
 saveParam = 'saveParam=0';
-scanner = 'atScanner=0';
+scanner = 'atScanner=1';
 mglSetSID(-1);
 setRepeats = 1; % number of repeats of all conditions
 
@@ -20,7 +20,8 @@ for setIdx = 1:setRepeats
             dirParam = strcat('sfdir=',num2str(dir(j)));
             evOriSFPhEnc(oriParam,dirParam,scanner,saveParam);
             
-            nextRunMsg = sprintf('\nRun %d of %d (current set: %d of %d) completed - hit return to continue...\n',runCounter,length(ori)*length(dir),setIdx,setRepeats);
+            nextRunMsg = sprintf('\nRun %d of %d (current set: %d of %d) completed - hit return to continue...\n',...
+                         runCounter,length(ori)*length(dir),setIdx,setRepeats);
             input(nextRunMsg);
             runCounter = runCounter + 1;
         end
