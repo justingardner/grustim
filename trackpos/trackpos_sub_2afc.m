@@ -45,13 +45,22 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
     
     [paramnames, paramvals]     = countconditions(params.task);
     condition_combs             = allcomb(paramvals{:});
-    tparams                     = cell(1,length(paramnames)+1);
-    tpnames = paramnames;
-    tpnames{end+1} = 'staircase';
-
+    allparamnames               = fields(params.task);
+    tparams                     = cell(1,length(allparamnames)+1);
+    tpnames                     = allparamnames;
+    tpnames{end+1}              = 'staircase';
+    
+    %todo: check this.
     for combidx = 1:size(condition_combs,1)
-        for paramidx = 1:size(condition_combs,2)
-            tparams{paramidx} = [tparams{paramidx}; condition_combs(combidx,paramidx)];
+        for aparamidx = 1:length(allparamnames)
+            pname = allparamnames{aparamidx};
+            paramidx = find(strcmp(pname,paramnames));
+            if isempty(paramidx)
+                tparams{aparamidx} = [tparams{aparamidx}; params.task.(pname)];
+            else
+                tparams{aparamidx} = [tparams{aparamidx}; condition_combs(combidx,paramidx)];
+            end
+            
         end
         staircase = doStaircase('init','quest','nTrials',params.trialpercond,...
             ['initialThreshold=' num2str(params.staircase.initThreshold)], ...
@@ -59,9 +68,11 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
             'verbose=0');
         tparams{end} = [tparams{end}; {staircase}];
     end
+    
     if isfield(stimulus,'staircaseTable')
         error('Conflicting staircase -- need to specify which staircase to use')
     end
+
     stimulus.staircaseTable = table(tparams{:},'VariableNames', tpnames); % save staircase to stimulus
 elseif strcmp(stimulus.exp.afc.presSched, 'fixed')
     task{1}.parameter.posDiff            = params.task.posDiff; 
