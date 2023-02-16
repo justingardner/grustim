@@ -275,21 +275,23 @@ else
             % changing fixation colors
             % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
             % mglGluDisk(0,0,0.1,0.5+0.5*rand(1,3),60,1);
-            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [0.1;0.1], 1, 1);
+            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         else
             % mglGluDisk(0, 0, 0.1, stimulus.fixColors.stim,60,1); 
             % white fixation
-            mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [0.1;0.1], 1, 1);
+            mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
         
         % reference
-        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], [0.1;0.1], 1, 1);
+        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], ...
+            [stimulus.pointerR; stimulus.pointerR], 1, 1);
     elseif any(task.thistrial.thisseg == [5,6,7,8])
         % afc response fixation 
         mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [0.1;0.1], 1, 1);
 
         % reference
-        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], [0.1;0.1], 1, 1);
+        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], ...
+            [stimulus.pointerR; stimulus.pointerR], 1, 1);
     end
 
     % feedback
@@ -302,7 +304,7 @@ else
         if stimulus.exp.afc.feedback_center
             stim_pos = task.thistrial.pointerOffset + (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
             %mglGluDisk(stim_pos, 0, 0.1, [0 0 1]) ;    % draw center of blob
-            mglMetalDots([stim_pos;0;0], [stimulus.fixColors.fb';1], [0.1;0.1], 1, 1);
+            mglMetalDots([stim_pos;0;0], [stimulus.fixColors.fb';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
     end
         

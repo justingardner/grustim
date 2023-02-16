@@ -23,12 +23,14 @@ function myscreen = trackpos_multitask(varargin)
 
 %% set up screen and experiment
 % set input arguments
+myscreen = struct();
 if isempty(mglGetSID)
-    myscreen.subjectID  = -1;
-else
-    myscreen.subjectID  = mglGetSID;
-    myscreen.saveData = 1;
+    mglSetSID(-1);
 end
+myscreen.subjectID  = mglGetSID;
+
+rmpath(genpath('/Users/gru/proj/mgl'));
+addpath(genpath('/Users/gru/proj/mgl_jryu'));
 
 % /Users/JRyu/github/mgl/task/displays, 0001_dn0a22167c_220912.mat
 myscreen.displayName    = 'vpixx';
@@ -82,7 +84,7 @@ params.trialpercond         = 40;
 
 % mask parameters
 if mglIsFile(exp.noise_mask)
-    params.task.maskDur          = 3/60; %[0]; %4/60, 8/60]; % mask duration
+    params.task.maskDur          = 15/60; %[0]; %4/60, 8/60]; % mask duration
     params.task.mask_TOff2MOn    = 0; % 0, 4/60, 8/60]; %, 2/60, 5/60]; % 3/60, 5/60]; % stimulus offset to mask onset (Neisser 1967)
     params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
@@ -97,9 +99,9 @@ end
 
 % afc parameters
 params_afc = params;
-params_afc.task.pointerOffset = [0]; % [-10,-5,-2,0,2,5,10];
+params_afc.task.pointerOffset = [10]; % [-10,-5,-2,0,2,5,10];
 if exp.afc.presSched == 'staircase'
-    params_afc.presSched    = 'staircase';
+    params_afc.presSched                    = 'staircase';
     params_afc.staircase                    = struct();
     params_afc.staircase.initThreshold      = 0.3;
     params_afc.staircase.initThresholdSd    = 0.3;
@@ -176,6 +178,8 @@ stimulus.fixColors.stim     = [1 0 0]; % red
 stimulus.fixColors.est      = [0 1 0]; % fixation color at response
 stimulus.fixColors.afc      = [0 0 1]; % afc response period 
 stimulus.fixColors.fb       = [1 1 1]; % position feedback
+
+stimulus.pointerR           = 0.2
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
