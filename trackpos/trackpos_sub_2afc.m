@@ -25,15 +25,17 @@ end
 task{1}.parameter.stimright  = [0,1]; % or polar angle?
 
 % todo: change for no feedback and no mask
+if exp.feedback, fb = 1;, else, fb = 0;,end
 if mglIsFile(exp.noise_mask)
-    task{1}.segmin           = [inf 1 0.5 inf inf inf inf 0];
-    task{1}.segmax           = [inf 1 0.5 inf inf inf inf 0]; 
+                             % wait, cue, fix, stim, del, mask, resp, feedback 
+    task{1}.segmin           = [inf   1   0.5  inf   inf   inf  inf    fb];
+    task{1}.segmax           = [inf 1 0.5 inf inf inf inf fb]; 
     task{1}.getResponse      = [0 0 0 0 0 0 1 0]; %segment to get response.
 else
-    % basically skip mask period
-    task{1}.segmin           = [0.1 0.4 inf inf 1];
-    task{1}.segmax           = [0.1 0.8 inf inf 1]; 
-    task{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
+                             % wait, cue, fix, stim, resp, feedback 
+    task{1}.segmin           = [inf 1 0.4 inf inf fb];
+    task{1}.segmax           = [inf 1 0.8 inf inf fb]; 
+    task{1}.getResponse      = [0 0 0 0 1 0]; %segment to get response.
 end
 
 global stimulus
@@ -135,6 +137,16 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
     idx         = findCondIdx(stimulus.staircaseTable,task.thistrial);
     stimulus.staircaseIdx = idx;
     [s, stimulus.staircaseTable.staircase{idx}] = doStaircase('gettestvalue',stimulus.staircaseTable.staircase{idx});
+       
+     % check for out of bounds
+    if s > (myscreen.imageWidth/2 - stimStd - task.thistrial.pointerOffset)
+        s = max(0.1, (myscreen.imageWidth/2 - 3*stimStd - task.thistrial.pointerOffset));
+    elseif s > (-myscreen.imageWidth/2 + stimStd + task.thistrial.pointerOffset)
+        s = max(0.1,  (-myscreen.imageWidth/2 + 3*stimStd + task.thistrial.pointerOffset));
+    end
+
+    stimulus.staircaseTable.staircase{idx}.lastTestValue = s;
+
     task.thistrial.posDiff = s;    
 end
 
@@ -181,7 +193,7 @@ if task.thistrial.thisseg == 1
     myscreen.flushMode = 0; % update screen
     stimulus.currtask = 'done';
 elseif task.thistrial.thisseg == 2
-    if ~stimulus.exp.noeye, myscreen.flushMode = 0; end
+    if stimulus.exp.trackEye, myscreen.flushMode = 0; end
     if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
     
     % start the task.
@@ -201,7 +213,7 @@ elseif task.thistrial.thisseg == 2
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
 elseif task.thistrial.thisseg == 4
-    if ~stimulus.exp.noeye, myscreen.flushMode = 0; end
+    if stimulus.exp.trackEye, myscreen.flushMode = 0; end
 elseif task.thistrial.thisseg == 5
     task.thistrial.framecount = 0; % restart framecount
     task.thistrial.stimDur = task.thistrial.seglen(4); 
@@ -321,7 +333,7 @@ else
         
     
     % track eye
-    if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[2,3,4]) 
+    if stimulus.exp.trackEye && any(task.thistrial.thisseg==[2,3,4]) 
         % mouse version for testing with no eyetracker
         if stimulus.exp.eyemousedebug
             mInfo = mglGetMouse(myscreen.screenNumber);

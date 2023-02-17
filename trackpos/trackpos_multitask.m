@@ -47,7 +47,7 @@ mglMetalSetViewColorPixelFormat(4);
 % Experimenter parameters
 exp                     = struct();
 exp.debug               = false;
-exp.noeye               = true;
+exp.trackEye            = true;
 exp.eyemousedebug       = false;
 exp.showmouse           = false;
 exp.phasescrambleOn     = false;
@@ -55,15 +55,15 @@ exp.backprecompute      = false;
 exp.feedback            = false; 
 exp.afc.feedback_center = false;  % feedback about the exact center
 
-exp.estim_horiz     = true;  % do hoiztonal estimation
-exp.estim_verti     = false; % do vertical estimation
-exp.colorfix        = false; % colored fixation
+exp.estim_horiz         = true;  % do hoiztonal estimation
+exp.estim_verti         = false; % do vertical estimation
+exp.colorfix            = false; % colored fixation
 
-exp.afc.presSched    = 'staircase'; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
-exp.est.presSched    = 'gaussian';
+exp.afc.presSched       = 'staircase'; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
+exp.est.presSched       = 'gaussian';
 
-exp.block_design    = false; % in each block, present all combinations of parameters
-exp.noise_mask      = '/Users/gru/proj/grustim/trackpos/noise/grating.mat'; 
+exp.block_design        = false; % in each block, present all combinations of parameters
+exp.noise_mask          = '/Users/gru/proj/grustim/trackpos/noise/grating.mat'; 
 
 %% task parameters
 % stimulus and background
@@ -77,10 +77,10 @@ params.task.noiseLum   = 0; % noise luminance, if there is one.
 % main task parameters
 tasks2run                   = {'2afc'}; %{'est', '2afc'};
 params.task.stimLum         = [0.1, 0.2, 0.4, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
-params.task.stimDur         = [2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
+params.task.stimDur         = [2/60, 4/60, 8/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
 params.task.stimStd         = [1]; % [1,1.5]
 params.task.stimColor       = 'k';
-params.trialpercond         = 40;
+params.trialpercond         = 50;
 
 % mask parameters
 if mglIsFile(exp.noise_mask)
@@ -103,8 +103,9 @@ params_afc.task.pointerOffset = [10]; % [-10,-5,-2,0,2,5,10];
 if exp.afc.presSched == 'staircase'
     params_afc.presSched                    = 'staircase';
     params_afc.staircase                    = struct();
-    params_afc.staircase.initThreshold      = 0.3;
-    params_afc.staircase.initThresholdSd    = 0.3;
+    thresh = params_afc.task.pointerOffset(1)*1.7/10 + 0.3;
+    params_afc.staircase.initThreshold      = thresh; %0.3;
+    params_afc.staircase.initThresholdSd    = thresh; %0.3;
 end
 
 if exp.debug
@@ -138,6 +139,7 @@ else
     params_afc.numTrials        = 0;
 end
 
+% count conditions - Est
 if any(cellfun(@(x) strcmp(x,'est'),tasks2run))
     [est_fields, est_vals] = countconditions(params_est.task);
     est_comb = allcomb(est_vals{:});
@@ -226,7 +228,7 @@ if mglIsFile(stimulus.exp.noise_mask)
     stimulus.noise_mask = load(stimulus.exp.noise_mask);
 end
 %% Eye calibration
-if ~stimulus.exp.noeye && ~ stimulus.exp.debug
+if stimulus.exp.trackEye && ~ stimulus.exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
     
@@ -295,7 +297,7 @@ end
 %% Initialize trials;
 function [task, myscreen] = initTrialCallback(task, myscreen)
     % nan out the parameters so that we don't analyze them (does this work?)
-    task.thistrial.posDiff      = nan; % forst fixed values
+    task.thistrial.posDiff      = nan; % for fixed values
     task.thistrial.stimLum      = nan;
     task.thistrial.stimDur      = nan;
     task.thistrial.stimStd      = nan; 
