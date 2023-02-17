@@ -140,9 +140,9 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
        
      % check for out of bounds
     if s > (myscreen.imageWidth/2 - stimStd - task.thistrial.pointerOffset)
-        s = max(0.1, (myscreen.imageWidth/2 - 3*stimStd - task.thistrial.pointerOffset));
+        s = max(0.1, (myscreen.imageWidth/2 - 3 * stimStd - task.thistrial.pointerOffset));
     elseif s > (-myscreen.imageWidth/2 + stimStd + task.thistrial.pointerOffset)
-        s = max(0.1,  (-myscreen.imageWidth/2 + 3*stimStd + task.thistrial.pointerOffset));
+        s = max(0.1,  (-myscreen.imageWidth/2 + 3 * stimStd + task.thistrial.pointerOffset));
     end
 
     stimulus.staircaseTable.staircase{idx}.lastTestValue = s;

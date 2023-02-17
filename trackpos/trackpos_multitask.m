@@ -48,6 +48,7 @@ mglMetalSetViewColorPixelFormat(4);
 exp                     = struct();
 exp.debug               = false;
 exp.trackEye            = true;
+exp.enforceFixThresh    = 2;
 exp.eyemousedebug       = false;
 exp.showmouse           = false;
 exp.phasescrambleOn     = false;
@@ -105,7 +106,7 @@ if exp.afc.presSched == 'staircase'
     params_afc.staircase                    = struct();
     thresh = params_afc.task.pointerOffset(1)*1.7/10 + 0.3;
     params_afc.staircase.initThreshold      = thresh; %0.3;
-    params_afc.staircase.initThresholdSd    = thresh; %0.3;
+    params_afc.staircase.initThresholdSd    = 0.5; %0.3;
 end
 
 if exp.debug
@@ -272,13 +273,13 @@ if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 phaseNum{1} = 1; phaseNum{2}=1; phaseNum{3}=1;
 while (phaseNum{1} <= length(task{1})) && ~myscreen.userHitEsc && ...
         (phaseNum{2} <= length(task{2}) || phaseNum{3} <= length(task{3}))
-    [task{1}, myscreen, phaseNum{1}]   = updateTask(task{1},myscreen,phaseNum{1});     % update the main task
+    [task{1}, myscreen, phaseNum{1}]        = updateTask(task{1},myscreen,phaseNum{1});     % update the main task
     
     if phaseNum{2} <= length(task{2}) % run 2afc
-        [task{2}, myscreen, phaseNum{2}]  = updateTask(task{2},myscreen,phaseNum{2});
+        [task{2}, myscreen, phaseNum{2}]    = updateTask(task{2},myscreen,phaseNum{2});
     end
     if phaseNum{3} <= length(task{3}) % run estimation
-        [task{3}, myscreen, phaseNum{3}]  = updateTask(task{3},myscreen,phaseNum{3});
+        [task{3}, myscreen, phaseNum{3}]    = updateTask(task{3},myscreen,phaseNum{3});
     end
     myscreen                        = tickScreen(myscreen,task);     % flip screen
 end
@@ -306,6 +307,15 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
         disp(['(trackpos_multitask) '  num2str(task.trialnum/task.numTrials) ...
             '% finished: Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
+    end
+
+    if stimulus.exp.trackEye
+        [pos,postime] = mglEyelinkGetCurrentEyePos; 
+        while norm(pos) > normexp.enforceFixThresh
+            mglTextDraw('Please fixate on the middle of the screen !!', [0 0]);
+            mglWaitSecs(0.1);
+            [pos,postime] = mglEyelinkGetCurrentEyePos; 
+        end
     end
 end
 
