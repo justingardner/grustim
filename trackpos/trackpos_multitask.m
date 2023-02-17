@@ -47,7 +47,7 @@ mglMetalSetViewColorPixelFormat(4);
 % Experimenter parameters
 exp                     = struct();
 exp.debug               = false;
-exp.trackEye            = true;
+exp.trackEye            = false;
 exp.enforceFixThresh    = 2;
 exp.eyemousedebug       = false;
 exp.showmouse           = false;
@@ -61,6 +61,7 @@ exp.estim_verti         = false; % do vertical estimation
 exp.colorfix            = false; % colored fixation
 
 exp.afc.presSched       = 'staircase'; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
+exp.afc.staircase_init  = '/Users/gru/data/trackpos_multitask/s412/230217_stim03_staircase.mat';
 exp.est.presSched       = 'gaussian';
 
 exp.block_design        = false; % in each block, present all combinations of parameters
@@ -182,7 +183,7 @@ stimulus.fixColors.est      = [0 1 0]; % fixation color at response
 stimulus.fixColors.afc      = [0 0 1]; % afc response period 
 stimulus.fixColors.fb       = [1 1 1]; % position feedback
 
-stimulus.pointerR           = 0.2
+stimulus.pointerR           = 0.2;
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
@@ -309,6 +310,7 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
             '% finished: Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
     end
 
+    global stimulus
     if stimulus.exp.trackEye
         [pos,postime] = mglEyelinkGetCurrentEyePos; 
         while norm(pos) > normexp.enforceFixThresh

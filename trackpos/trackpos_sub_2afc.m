@@ -44,7 +44,7 @@ global stimulus
 if strcmp(stimulus.exp.afc.presSched, 'staircase')
     % set up staircase
     task{1}.randVars.calculated.posDiff = nan;
-    
+
     [paramnames, paramvals]     = countconditions(params.task);
     condition_combs             = allcomb(paramvals{:});
     allparamnames               = fields(params.task);
@@ -52,20 +52,47 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
     tpnames                     = allparamnames;
     tpnames{end+1}              = 'staircase';
     
+    if isfield(stimulus.exp.afc, 'staircase_init')
+        if isfile(stimulus.exp.afc.staircase_init)
+            disp(["(trackpos_sub_2afc) Initializing staircase with file " stimulus.exp.afc.staircase_init])
+            a = load(stimulus.exp.afc.staircase_init);
+            saved_staircase = a.staircase;
+        else
+            disp('staircase initialization file not found')
+        end
+    end
+
     %todo: check this.
     for combidx = 1:size(condition_combs,1)
+        thistrial = struct();
         for aparamidx = 1:length(allparamnames)
             pname = allparamnames{aparamidx};
             paramidx = find(strcmp(pname,paramnames));
             if isempty(paramidx)
+                thistrial.(pname) = params.task.(pname);
                 tparams{aparamidx} = [tparams{aparamidx}; params.task.(pname)];
             else
+                thistrial.(pname) = condition_combs(combidx,paramidx);
                 tparams{aparamidx} = [tparams{aparamidx}; condition_combs(combidx,paramidx)];
             end
-            
         end
+
+        if isfield(stimulus.exp.afc, 'staircase_init') && isfile(stimulus.exp.afc.staircase_init)
+            saved_idx           = findCondIdx(saved_staircase, thistrial);
+            disp(['saved_idx = ' num2str(saved_idx)])
+            if isempty(saved_idx)
+                disp("(trackpos_sub_2afc) WARNING: the staircase file provided does not have a matching condition")
+                init_thresh = params.staircase.initThreshold;
+            else
+                saved_idx_staircase = saved_staircase.staircase{saved_idx};
+                init_thresh = saved_idx_staircase.s.pThreshold;
+            end
+        else
+            init_thresh = params.staircase.initThreshold;
+        end
+
         staircase = doStaircase('init','quest','nTrials',params.trialpercond,...
-            ['initialThreshold=' num2str(params.staircase.initThreshold)], ...
+            ['initialThreshold=' num2str(init_thresh)], ...
             ['initialThresholdSd=' num2str(params.staircase.initThresholdSd)],...
             'verbose=0');
         tparams{end} = [tparams{end}; {staircase}];
@@ -141,8 +168,6 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
      % check for out of bounds
     if s > (myscreen.imageWidth/2 - stimStd - task.thistrial.pointerOffset)
         s = max(0.1, (myscreen.imageWidth/2 - 3 * stimStd - task.thistrial.pointerOffset));
-    elseif s > (-myscreen.imageWidth/2 + stimStd + task.thistrial.pointerOffset)
-        s = max(0.1,  (-myscreen.imageWidth/2 + 3 * stimStd + task.thistrial.pointerOffset));
     end
 
     stimulus.staircaseTable.staircase{idx}.lastTestValue = s;
