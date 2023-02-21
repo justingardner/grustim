@@ -25,11 +25,11 @@ end
 task{1}.parameter.stimright  = [0,1]; % or polar angle?
 
 % todo: change for no feedback and no mask
-if exp.feedback, fb = 1;, else, fb = 0;,end
+if exp.feedback, fb = 0.1;, else, fb = 0;,end
 if mglIsFile(exp.noise_mask)
                              % wait, cue, fix, stim, del, mask, resp, feedback 
     task{1}.segmin           = [inf   1   0.5  inf   inf   inf  inf    fb];
-    task{1}.segmax           = [inf 1 0.5 inf inf inf inf fb]; 
+    task{1}.segmax           = [inf   1   0.5  inf   inf   inf  inf    fb]; 
     task{1}.getResponse      = [0 0 0 0 0 0 1 0]; %segment to get response.
 else
                              % wait, cue, fix, stim, resp, feedback 
@@ -130,7 +130,7 @@ task{1}.randVars.calculated.stimDur0     = nan;
 task{1}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
 task{1}.randVars.calculated.stimON       = nan(1,maxframes); % nframes x 1 for the stimulus
 
-task{1}.randVars.calculated.segTime     = nan(1,length(task{1}.segmin));
+task{1}.randVars.calculated.segTime      = nan(1,length(task{1}.segmin));
 
 task{1}.randVars.calculated.trackTime    = nan(1,maxframes);
 task{1}.randVars.calculated.trackEye     = nan(maxframes,2);

@@ -47,8 +47,8 @@ mglMetalSetViewColorPixelFormat(4);
 % Experimenter parameters
 exp                     = struct();
 exp.debug               = false;
-exp.trackEye            = false;
-exp.enforceFixThresh    = 2;
+exp.trackEye            = true;
+exp.enforceFixThresh    = inf;
 exp.eyemousedebug       = false;
 exp.showmouse           = false;
 exp.phasescrambleOn     = false;
@@ -61,7 +61,7 @@ exp.estim_verti         = false; % do vertical estimation
 exp.colorfix            = false; % colored fixation
 
 exp.afc.presSched       = 'staircase'; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
-exp.afc.staircase_init  = '/Users/gru/data/trackpos_multitask/s412/230217_stim03_staircase.mat';
+exp.afc.staircase_init  = '/Users/gru/data/trackpos_multitask/s063/230221_stim01_staircase.mat';
 exp.est.presSched       = 'gaussian';
 
 exp.block_design        = false; % in each block, present all combinations of parameters
@@ -82,7 +82,7 @@ params.task.stimLum         = [0.1, 0.2, 0.4, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]
 params.task.stimDur         = [2/60, 4/60, 8/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
 params.task.stimStd         = [1]; % [1,1.5]
 params.task.stimColor       = 'k';
-params.trialpercond         = 50;
+params.trialpercond         = 25;
 
 % mask parameters
 if mglIsFile(exp.noise_mask)
@@ -101,7 +101,7 @@ end
 
 % afc parameters
 params_afc = params;
-params_afc.task.pointerOffset = [10]; % [-10,-5,-2,0,2,5,10];
+params_afc.task.pointerOffset = [0]; % [-10,-5,-2,0,2,5,10];
 if exp.afc.presSched == 'staircase'
     params_afc.presSched                    = 'staircase';
     params_afc.staircase                    = struct();
@@ -313,9 +313,11 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     global stimulus
     if stimulus.exp.trackEye
         [pos,postime] = mglEyelinkGetCurrentEyePos; 
-        while norm(pos) > normexp.enforceFixThresh
-            mglTextDraw('Please fixate on the middle of the screen !!', [0 0]);
-            mglWaitSecs(0.1);
+        while norm(pos) > stimulus.exp.enforceFixThresh  %|| any(isnan(pos))
+            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+            mglTextDraw('Please fixate on the middle of the screen !!', [0 2]);
+            mglTextDraw('Please fixate on the middle of the screen !!', [0 -2]);
+            mglFlush;
             [pos,postime] = mglEyelinkGetCurrentEyePos; 
         end
     end
