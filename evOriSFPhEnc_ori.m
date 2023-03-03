@@ -2,13 +2,13 @@
 %
 %      usage: evOriSFPhEnc(varargin)
 %         by: austin kuo
-%       date: 01/25/23
-%    purpose: display phase encoded spatial frequency stimuli with specified orientation and low-high/high-low SF steps
+%       date: 03/02/23
+%    purpose: display phase encoded orientation stimuli with specified spatial frequency
 %
-%       args: varargin - ori=0: horizontal grating
-%                        ori=90: vertical grating
-%                        sfdir=1: low to high SFs
-%                        sfdir=-1: high to low SFs
+%       args: varargin - oridir=1: horizontal grating
+%                        oridir=-1: vertical grating
+%                        sf=0.95: low to high SFs
+%                        sfdir=1.3: high to low SFs
 
 function retval = evOriSFPhEnc_ori(varargin)
 
@@ -60,17 +60,17 @@ stimulus.noris = 24;
 stimulus.reverseIdx = fliplr(1:stimulus.noris);
 if oridir == 1
     stimulus.oridirection = 1;
-    stimulus.ori = linspace(0,180 - 180/stimulus.noris,stimulus.noris);
+    stimulus.orientations = linspace(0,180 - 180/stimulus.noris,stimulus.noris);
     
 elseif oridir == -1
-    stimulus.sfdirection = -1;
-    stimulus.ori = fliplr(linspace(0,180 - 180/stimulus.noris,stimulus.noris));
+    stimulus.oridirection = -1;
+    stimulus.orientations = fliplr(linspace(0,180 - 180/stimulus.noris,stimulus.noris));
     
 else
     error('Specify ''oridir'' as either ''1'' or ''-1'' to indicate orientation direction')
 end
-stimulus.ori = [stimulus.ori(stimulus.noris/2 + 1:end) stimulus.ori(1:stimulus.noris/2)]; % start on half-cycle
-task{1}{1}.parameter.ori = stimulus.ori;
+stimulus.orientations = [stimulus.orientations(stimulus.noris/2 + 1:end) stimulus.orientations(1:stimulus.noris/2)]; % start on half-cycle
+task{1}{1}.parameter.orientations = stimulus.orientations;
 
 % size
 stimulus.height = 10;
@@ -152,7 +152,7 @@ global stimulus;
 % clear the screen
 mglClearScreen;
 
-oriInd = find(task.parameter.ori==task.thistrial.ori);
+oriInd = find(task.parameter.orientations==task.thistrial.orientations);
 if stimulus.oridirection == -1
     oriInd = stimulus.reverseIdx(oriInd);
 end
