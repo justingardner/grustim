@@ -25,15 +25,17 @@ end
 task{1}.parameter.stimright  = [0,1]; % or polar angle?
 
 % todo: change for no feedback and no mask
+if exp.feedback, fb = 0.1;, else, fb = 0;,end
 if mglIsFile(exp.noise_mask)
-    task{1}.segmin           = [inf 1 0.5 inf inf inf inf 0];
-    task{1}.segmax           = [inf 1 0.5 inf inf inf inf 0]; 
+                             % wait, cue, fix, stim, del, mask, resp, feedback 
+    task{1}.segmin           = [inf   1   0.5  inf   inf   inf  inf    fb];
+    task{1}.segmax           = [inf   1   0.5  inf   inf   inf  inf    fb]; 
     task{1}.getResponse      = [0 0 0 0 0 0 1 0]; %segment to get response.
 else
-    % basically skip mask period
-    task{1}.segmin           = [0.1 0.4 inf inf 1];
-    task{1}.segmax           = [0.1 0.8 inf inf 1]; 
-    task{1}.getResponse      = [0 0 0 1 0]; %segment to get response.
+                             % wait, cue, fix, stim, resp, feedback 
+    task{1}.segmin           = [inf 1 0.4 inf inf fb];
+    task{1}.segmax           = [inf 1 0.8 inf inf fb]; 
+    task{1}.getResponse      = [0 0 0 0 1 0]; %segment to get response.
 end
 
 global stimulus
@@ -42,7 +44,7 @@ global stimulus
 if strcmp(stimulus.exp.afc.presSched, 'staircase')
     % set up staircase
     task{1}.randVars.calculated.posDiff = nan;
-    
+
     [paramnames, paramvals]     = countconditions(params.task);
     condition_combs             = allcomb(paramvals{:});
     allparamnames               = fields(params.task);
@@ -50,20 +52,47 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
     tpnames                     = allparamnames;
     tpnames{end+1}              = 'staircase';
     
+    if isfield(stimulus.exp.afc, 'staircase_init')
+        if isfile(stimulus.exp.afc.staircase_init)
+            disp(["(trackpos_sub_2afc) Initializing staircase with file " stimulus.exp.afc.staircase_init])
+            a = load(stimulus.exp.afc.staircase_init);
+            saved_staircase = a.staircase;
+        else
+            disp('staircase initialization file not found')
+        end
+    end
+
     %todo: check this.
     for combidx = 1:size(condition_combs,1)
+        thistrial = struct();
         for aparamidx = 1:length(allparamnames)
             pname = allparamnames{aparamidx};
             paramidx = find(strcmp(pname,paramnames));
             if isempty(paramidx)
+                thistrial.(pname) = params.task.(pname);
                 tparams{aparamidx} = [tparams{aparamidx}; params.task.(pname)];
             else
+                thistrial.(pname) = condition_combs(combidx,paramidx);
                 tparams{aparamidx} = [tparams{aparamidx}; condition_combs(combidx,paramidx)];
             end
-            
         end
+
+        if isfield(stimulus.exp.afc, 'staircase_init') && isfile(stimulus.exp.afc.staircase_init)
+            saved_idx           = findCondIdx(saved_staircase, thistrial);
+            disp(['saved_idx = ' num2str(saved_idx)])
+            if isempty(saved_idx)
+                disp("(trackpos_sub_2afc) WARNING: the staircase file provided does not have a matching condition")
+                init_thresh = params.staircase.initThreshold;
+            else
+                saved_idx_staircase = saved_staircase.staircase{saved_idx};
+                init_thresh = saved_idx_staircase.s.pThreshold;
+            end
+        else
+            init_thresh = params.staircase.initThreshold;
+        end
+
         staircase = doStaircase('init','quest','nTrials',params.trialpercond,...
-            ['initialThreshold=' num2str(params.staircase.initThreshold)], ...
+            ['initialThreshold=' num2str(init_thresh)], ...
             ['initialThresholdSd=' num2str(params.staircase.initThresholdSd)],...
             'verbose=0');
         tparams{end} = [tparams{end}; {staircase}];
@@ -101,7 +130,7 @@ task{1}.randVars.calculated.stimDur0     = nan;
 task{1}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
 task{1}.randVars.calculated.stimON       = nan(1,maxframes); % nframes x 1 for the stimulus
 
-task{1}.randVars.calculated.segTime     = nan(1,length(task{1}.segmin));
+task{1}.randVars.calculated.segTime      = nan(1,length(task{1}.segmin));
 
 task{1}.randVars.calculated.trackTime    = nan(1,maxframes);
 task{1}.randVars.calculated.trackEye     = nan(maxframes,2);
@@ -135,6 +164,14 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
     idx         = findCondIdx(stimulus.staircaseTable,task.thistrial);
     stimulus.staircaseIdx = idx;
     [s, stimulus.staircaseTable.staircase{idx}] = doStaircase('gettestvalue',stimulus.staircaseTable.staircase{idx});
+       
+     % check for out of bounds
+    if s > (myscreen.imageWidth/2 - stimStd - task.thistrial.pointerOffset)
+        s = max(0.1, (myscreen.imageWidth/2 - 3 * stimStd - task.thistrial.pointerOffset));
+    end
+
+    stimulus.staircaseTable.staircase{idx}.lastTestValue = s;
+
     task.thistrial.posDiff = s;    
 end
 
@@ -181,7 +218,7 @@ if task.thistrial.thisseg == 1
     myscreen.flushMode = 0; % update screen
     stimulus.currtask = 'done';
 elseif task.thistrial.thisseg == 2
-    if ~stimulus.exp.noeye, myscreen.flushMode = 0; end
+    if stimulus.exp.trackEye, myscreen.flushMode = 0; end
     if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
     
     % start the task.
@@ -201,7 +238,7 @@ elseif task.thistrial.thisseg == 2
         task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
     end
 elseif task.thistrial.thisseg == 4
-    if ~stimulus.exp.noeye, myscreen.flushMode = 0; end
+    if stimulus.exp.trackEye, myscreen.flushMode = 0; end
 elseif task.thistrial.thisseg == 5
     task.thistrial.framecount = 0; % restart framecount
     task.thistrial.stimDur = task.thistrial.seglen(4); 
@@ -286,21 +323,23 @@ else
             % changing fixation colors
             % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
             % mglGluDisk(0,0,0.1,0.5+0.5*rand(1,3),60,1);
-            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [0.1;0.1], 1, 1);
+            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         else
             % mglGluDisk(0, 0, 0.1, stimulus.fixColors.stim,60,1); 
             % white fixation
-            mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [0.1;0.1], 1, 1);
+            mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
         
         % reference
-        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], [0.1;0.1], 1, 1);
+        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], ...
+            [stimulus.pointerR; stimulus.pointerR], 1, 1);
     elseif any(task.thistrial.thisseg == [5,6,7,8])
         % afc response fixation 
         mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [0.1;0.1], 1, 1);
 
         % reference
-        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], [0.1;0.1], 1, 1);
+        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], ...
+            [stimulus.pointerR; stimulus.pointerR], 1, 1);
     end
 
     % feedback
@@ -313,13 +352,13 @@ else
         if stimulus.exp.afc.feedback_center
             stim_pos = task.thistrial.pointerOffset + (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
             %mglGluDisk(stim_pos, 0, 0.1, [0 0 1]) ;    % draw center of blob
-            mglMetalDots([stim_pos;0;0], [stimulus.fixColors.fb';1], [0.1;0.1], 1, 1);
+            mglMetalDots([stim_pos;0;0], [stimulus.fixColors.fb';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
     end
         
     
     % track eye
-    if (~stimulus.exp.noeye) && any(task.thistrial.thisseg==[2,3,4]) 
+    if stimulus.exp.trackEye && any(task.thistrial.thisseg==[2,3,4]) 
         % mouse version for testing with no eyetracker
         if stimulus.exp.eyemousedebug
             mInfo = mglGetMouse(myscreen.screenNumber);

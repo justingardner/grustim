@@ -23,12 +23,14 @@ function myscreen = trackpos_multitask(varargin)
 
 %% set up screen and experiment
 % set input arguments
+myscreen = struct();
 if isempty(mglGetSID)
-    myscreen.subjectID  = -1;
-else
-    myscreen.subjectID  = mglGetSID;
-    myscreen.saveData = 1;
+    mglSetSID(-1);
 end
+myscreen.subjectID  = mglGetSID;
+
+rmpath(genpath('/Users/gru/proj/mgl'));
+addpath(genpath('/Users/gru/proj/mgl_jryu'));
 
 % /Users/JRyu/github/mgl/task/displays, 0001_dn0a22167c_220912.mat
 myscreen.displayName    = 'vpixx';
@@ -45,7 +47,8 @@ mglMetalSetViewColorPixelFormat(4);
 % Experimenter parameters
 exp                     = struct();
 exp.debug               = false;
-exp.noeye               = true;
+exp.trackEye            = true;
+exp.enforceFixThresh    = inf;
 exp.eyemousedebug       = false;
 exp.showmouse           = false;
 exp.phasescrambleOn     = false;
@@ -53,15 +56,16 @@ exp.backprecompute      = false;
 exp.feedback            = false; 
 exp.afc.feedback_center = false;  % feedback about the exact center
 
-exp.estim_horiz     = true;  % do hoiztonal estimation
-exp.estim_verti     = false; % do vertical estimation
-exp.colorfix        = false; % colored fixation
+exp.estim_horiz         = true;  % do hoiztonal estimation
+exp.estim_verti         = false; % do vertical estimation
+exp.colorfix            = false; % colored fixation
 
-exp.afc.presSched    = 'staircase'; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
-exp.est.presSched    = 'gaussian';
+exp.afc.presSched       = 'staircase'; %'/Users/JRyu/Dropbox/GardnerLab/data/trackpos_2afc_staircase/s374/220929_stim05_staircase.mat';
+exp.afc.staircase_init  = '/Users/gru/data/trackpos_multitask/s063/230221_stim01_staircase.mat';
+exp.est.presSched       = 'gaussian';
 
-exp.block_design    = false; % in each block, present all combinations of parameters
-exp.noise_mask      = '/Users/gru/proj/grustim/trackpos/noise/grating.mat'; 
+exp.block_design        = false; % in each block, present all combinations of parameters
+exp.noise_mask          = '/Users/gru/proj/grustim/trackpos/noise/grating.mat'; 
 
 %% task parameters
 % stimulus and background
@@ -75,14 +79,14 @@ params.task.noiseLum   = 0; % noise luminance, if there is one.
 % main task parameters
 tasks2run                   = {'2afc'}; %{'est', '2afc'};
 params.task.stimLum         = [0.1, 0.2, 0.4, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
-params.task.stimDur         = [2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
+params.task.stimDur         = [2/60, 4/60, 8/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
 params.task.stimStd         = [1]; % [1,1.5]
 params.task.stimColor       = 'k';
-params.trialpercond         = 40;
+params.trialpercond         = 25;
 
 % mask parameters
 if mglIsFile(exp.noise_mask)
-    params.task.maskDur          = 3/60; %[0]; %4/60, 8/60]; % mask duration
+    params.task.maskDur          = 15/60; %[0]; %4/60, 8/60]; % mask duration
     params.task.mask_TOff2MOn    = 0; % 0, 4/60, 8/60]; %, 2/60, 5/60]; % 3/60, 5/60]; % stimulus offset to mask onset (Neisser 1967)
     params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
@@ -99,10 +103,11 @@ end
 params_afc = params;
 params_afc.task.pointerOffset = [0]; % [-10,-5,-2,0,2,5,10];
 if exp.afc.presSched == 'staircase'
-    params_afc.presSched    = 'staircase';
+    params_afc.presSched                    = 'staircase';
     params_afc.staircase                    = struct();
-    params_afc.staircase.initThreshold      = 0.3;
-    params_afc.staircase.initThresholdSd    = 0.3;
+    thresh = params_afc.task.pointerOffset(1)*1.7/10 + 0.3;
+    params_afc.staircase.initThreshold      = thresh; %0.3;
+    params_afc.staircase.initThresholdSd    = 0.5; %0.3;
 end
 
 if exp.debug
@@ -136,6 +141,7 @@ else
     params_afc.numTrials        = 0;
 end
 
+% count conditions - Est
 if any(cellfun(@(x) strcmp(x,'est'),tasks2run))
     [est_fields, est_vals] = countconditions(params_est.task);
     est_comb = allcomb(est_vals{:});
@@ -176,6 +182,8 @@ stimulus.fixColors.stim     = [1 0 0]; % red
 stimulus.fixColors.est      = [0 1 0]; % fixation color at response
 stimulus.fixColors.afc      = [0 0 1]; % afc response period 
 stimulus.fixColors.fb       = [1 1 1]; % position feedback
+
+stimulus.pointerR           = 0.2;
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
@@ -222,7 +230,7 @@ if mglIsFile(stimulus.exp.noise_mask)
     stimulus.noise_mask = load(stimulus.exp.noise_mask);
 end
 %% Eye calibration
-if ~stimulus.exp.noeye && ~ stimulus.exp.debug
+if stimulus.exp.trackEye && ~ stimulus.exp.debug
     disp(' Calibrating Eye ....')
     myscreen = eyeCalibDisp(myscreen);
     
@@ -266,13 +274,13 @@ if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 phaseNum{1} = 1; phaseNum{2}=1; phaseNum{3}=1;
 while (phaseNum{1} <= length(task{1})) && ~myscreen.userHitEsc && ...
         (phaseNum{2} <= length(task{2}) || phaseNum{3} <= length(task{3}))
-    [task{1}, myscreen, phaseNum{1}]   = updateTask(task{1},myscreen,phaseNum{1});     % update the main task
+    [task{1}, myscreen, phaseNum{1}]        = updateTask(task{1},myscreen,phaseNum{1});     % update the main task
     
     if phaseNum{2} <= length(task{2}) % run 2afc
-        [task{2}, myscreen, phaseNum{2}]  = updateTask(task{2},myscreen,phaseNum{2});
+        [task{2}, myscreen, phaseNum{2}]    = updateTask(task{2},myscreen,phaseNum{2});
     end
     if phaseNum{3} <= length(task{3}) % run estimation
-        [task{3}, myscreen, phaseNum{3}]  = updateTask(task{3},myscreen,phaseNum{3});
+        [task{3}, myscreen, phaseNum{3}]    = updateTask(task{3},myscreen,phaseNum{3});
     end
     myscreen                        = tickScreen(myscreen,task);     % flip screen
 end
@@ -291,7 +299,7 @@ end
 %% Initialize trials;
 function [task, myscreen] = initTrialCallback(task, myscreen)
     % nan out the parameters so that we don't analyze them (does this work?)
-    task.thistrial.posDiff      = nan; % forst fixed values
+    task.thistrial.posDiff      = nan; % for fixed values
     task.thistrial.stimLum      = nan;
     task.thistrial.stimDur      = nan;
     task.thistrial.stimStd      = nan; 
@@ -300,6 +308,18 @@ function [task, myscreen] = initTrialCallback(task, myscreen)
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
         disp(['(trackpos_multitask) '  num2str(task.trialnum/task.numTrials) ...
             '% finished: Trial ' num2str(task.trialnum) ' / ' num2str(task.numTrials)]);
+    end
+
+    global stimulus
+    if stimulus.exp.trackEye
+        [pos,postime] = mglEyelinkGetCurrentEyePos; 
+        while norm(pos) > stimulus.exp.enforceFixThresh  %|| any(isnan(pos))
+            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+            mglTextDraw('Please fixate on the middle of the screen !!', [0 2]);
+            mglTextDraw('Please fixate on the middle of the screen !!', [0 -2]);
+            mglFlush;
+            [pos,postime] = mglEyelinkGetCurrentEyePos; 
+        end
     end
 end
 

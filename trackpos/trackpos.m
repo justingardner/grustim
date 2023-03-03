@@ -34,15 +34,15 @@ function myscreen = trackpos(varargin)
 % set up screen
 myscreen = struct();
 if isempty(mglGetSID)
-    myscreen.subjectID  = -1;
-else
-    myscreen.subjectID  = mglGetSID;
+    mglSetSID(-1);
 end
+
+myscreen.subjectID  = mglGetSID;
 
 rmpath(genpath('/Users/gru/proj/mgl'))
 addpath(genpath('/Users/gru/proj/mgl_jryu'))
 
-%myscreen.screenWidth = 860; myscreen.screenHeight = 600; 
+% myscreen.screenWidth = 860; myscreen.screenHeight = 600;
 myscreen.hideCursor         = 1;
 myscreen.displayName        = 'vpixx';
 myscreen.calibType          = 'Specify particular calibration';
@@ -50,16 +50,16 @@ myscreen.calibFilename      = '0001_dn0a221834_221005.mat';
 myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0001_dn0a221834_221005';
 myscreen.saveData           = 1; % save stimfile to data directory
 myscreen.datadir            = '/Users/gru/data/';
-
 myscreen                    = initScreen(myscreen);
 
 % set to argb2101010 pixel format
 mglMetalSetViewColorPixelFormat(4);
 
+
 %% experiment parameters
-% Experimenter parameters`
-%todo:  check these throughout the code!!
-exp.debug               = 1; % debug code
+% Experimenter parameters
+% todo:  check these throughout the code!!
+exp.debug               = 0; % debug code
 exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
@@ -81,7 +81,7 @@ task = {};
 % phase1  = sb.configureExperiment(stimulus,task,myscreen);
 
 % no noise run
-cps = {};
+cps                 = {};
 stimStepStdList     = [1, 1.3];
 stimStdList         = [1]; %[0.5, 1 ,2];
 stimLums            = [0.1, 0.2, 0.4, 0.8]; %[0.1, 0.2, 0.5]; 
@@ -118,7 +118,7 @@ stimulus.task = cps;
 % cp2     = brownian(myscreen, 'noiseLum', 0, 'stimLum', 96, 'stimStd', stimsize, 'stimStepStd', stimStepStd);
 % cp2     = brownian(myscreen, 'noiseLum', 0, 'stimLum', 96, 'stimStd', stimsize, 'stimStepStd', stimStepStd);
 % cp2     = brownian(myscreen, 'noiseLum', 0, 'stimLum', 96, 'stimStd', stimsize, 'stimStepStd', stimStepStd);
-% 
+ 
 % stimsize = 1; stimStepStd = 1; 
 % cp3     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 96, 'stimStd', 0,  'pointLum', 96, 'pointStd', stimsize);
 % cp4     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 64, 'stimStd', stimsize);
@@ -126,7 +126,7 @@ stimulus.task = cps;
 % cp6     = brownian(myscreen, 'noiseLum', 32, 'stimLum', 0, 'stimStd', 0);
 %stimulus.task = {circ1,circ2};
 %stimulus.task = {cp2, cp3, cp4, cp5}; %, cp3, cp4, cp5, cp6};
-% 
+ 
 % % run the task at multiple radii.
 % stimulus.task = {};
 % thetaStd0_r1 = pi/3; % angular velocity at r=1; 
@@ -212,7 +212,7 @@ if  strcmp(exp.controlMethod,'eye')
     stimulus.eyecalib       = eyecalib;
 elseif stimulus.exp.trackEye
     disp(' Calibrating Eye ....')
-    % myscreen = eyeCalibDisp(myscreen); % calibrate eye every time.
+    myscreen  = eyeCalibDisp(myscreen); % calibrate eye every time.
 end
 
 if ~strcmp(stimulus.exp.controlMethod, 'mouse') && ...
