@@ -2,13 +2,13 @@
 %
 %      usage: evOriSFPhEnc(varargin)
 %         by: austin kuo
-%       date: 03/02/23
+%       date: 03/08/23
 %    purpose: display phase encoded orientation stimuli with specified spatial frequency
 %
-%       args: varargin - oridir=1: horizontal grating
-%                        oridir=-1: vertical grating
-%                        sf=0.95: low to high SFs
-%                        sfdir=1.3: high to low SFs
+%       args: varargin - oridir=1: clockwise
+%                        oridir=-1: counter clockwise
+%                        sf=0.5: low SF
+%                        sf=1.5: high SF
 
 function retval = evOriSFPhEnc_ori(varargin)
 
@@ -26,7 +26,7 @@ if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('saveParam'),saveParam = 0;end
 
 if ieNotDefined('sf') || ieNotDefined('oridir')
-    error('Specify a grating SF and orientation direction (e.g. ''sf=0.95'', ''ori=1'')')
+    error('Specify a grating SF and orientation direction (e.g. ''sf=0.5'', ''oridir=1'')')
 end
 
 % initalize the screen
@@ -43,16 +43,16 @@ phasedur = 0.25;
 nseg = 4;
 
 % spatial frequency
-if sf == 0.95
-    sf = 0.95;
+if sf == 0.5
+    sf = 0.5;
     stimulus.sfInd = 1;
-elseif sf == 1.3
-    sf = 1.3;
+elseif sf == 1
+    sf = 1;
     stimulus.sfInd = 2;
 else
-    error('Specify ''sf'' as either (0.95 or 1.3)')
+    error('Specify ''sf'' as either (0.5 or 1)')
 end
-stimulus.sf = [0.95 1.3];
+stimulus.sf = [0.5 1];
 task{1}{1}.parameter.sf = sf;
 
 % ccw, cw ori conditions
@@ -73,8 +73,17 @@ stimulus.orientations = [stimulus.orientations(stimulus.noris/2 + 1:end) stimulu
 task{1}{1}.parameter.orientations = stimulus.orientations;
 
 % size
-stimulus.height = 10;
-stimulus.width = 10;
+stimulus.height = 20;
+stimulus.width = 20;
+stimulus.aperOuterHeight = 16; % minor axis diameter
+stimulus.aperOuterWidth = 19; % major axis diameter
+stimulus.outerHeightRatio = stimulus.aperOuterHeight/stimulus.height;
+stimulus.outerWidthRatio = stimulus.aperOuterWidth/stimulus.width;
+
+stimulus.aperInnerHeight = 9; % minor axis diameter
+stimulus.aperInnerWidth = 9; % major axis diameter
+stimulus.innerHeightRatio = stimulus.aperInnerHeight/stimulus.height;
+stimulus.innerWidthRatio = stimulus.aperInnerWidth/stimulus.width;
 
 task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
@@ -91,7 +100,7 @@ if atScanner
 end
 
 global fixStimulus
-fixStimulus.diskSize = 0.5;
+fixStimulus.diskSize = 5;
 fixStimulus.fixWidth = 0.8;
 fixStimulus.fixLineWidth = 3;
 [task{2} myscreen] = fixStairInitTask(myscreen);
@@ -190,7 +199,9 @@ else
                 % make a elliptical (circular) aperture
                 % grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
                 stimSize = size(grating,1);
-                aperture = circ([stimSize/2 stimSize/2],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]); % to-do: turn this into dva
+                apertureOuter = circ([stimSize/2*stimulus.outerHeightRatio stimSize/2*stimulus.outerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
+                apertureInner = ~circ([stimSize/2*stimulus.innerHeightRatio stimSize/2*stimulus.innerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
+                aperture = and(apertureOuter,apertureInner);
                 grating = grating .* aperture;
                 
                 % scale to range of display

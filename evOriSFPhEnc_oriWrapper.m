@@ -3,13 +3,13 @@
 clear all
 
 % easy access parameters for scanning/testing
-saveParam = 'saveParam=1';
-scanner = 'atScanner=1';
-mglSetSID('s601');
-setRepeats = 3; % number of repeats of all conditions
+saveParam = 'saveParam=0';
+scanner = 'atScanner=0';
+mglSetSID(-1);
+setRepeats = 6; % number of repeats of all conditions
 
 % loose variables - MAKE SURE THESE MATCH PARAMETERS IN evOriSFPhEnc
-sf = [0.95 1.3];
+sf = [0.5]; % 1];
 dir = [1 -1];
 
 for setIdx = 1:setRepeats
