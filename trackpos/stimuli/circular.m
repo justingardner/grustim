@@ -6,46 +6,44 @@ properties
     % task parameter
     name            = 'circular'
     numTrials       = 0;    % total number of trials
-    pos_start       = cell(2,1);   % mx1 cell {(numTrials x 2), .... } of starting positions of stimuli
     
+    % cells to be initalized
+    stimulus        = cell(1,1);  % mx1 cell of images to blt e.g. (mainstim*, background*, stim2,...)
+    theta           = cell(1,1);   % mx1 cell {(numTrials x T), .... } of starting positions of stimuli
+
     % trial parameters
-    stimulus        = cell(2,1);  % mx1 cell of images to Blt e.g. (mainstim*, background*, stim2,...)
-    positions       = cell(2,1);  % mx1 cell of 4x1 position of stimulus [xpos ypos width height]. 
-    
-    % [r_target, theta_target, dtheta_target, r_pointer, theta_pointer]
-    state;
-    A;
-    W;
-    pidx;
-    cidx = [4,5];
-    
-    movecursor      = 0;    
-    cursor_steady   = 0; % frames for which the cursor is steady
-    t0              = 0; % frames for which the cursor is steady
-    
-    bgfile          = '/Users/gru/data/trackpos/trackpos.mat';
+    t0              = 0; % start time
+
+    movepointer     = false;
+    doTrack         = true;    % indicates whether we should start recording tracking variables
+    displayFix      = true; % display fixation at current segmention
 
     % fixed parameters
-    nonvarparams   = {'steady_thresh_frame' 'steady_thresh_deg' 'waitsecs' 'maxtrialtime', 'maxtrials'};
-    steady_thresh_frame;    % if subject is near the target for this long, go to next trial
-    steady_thresh_deg;      % if the pointer is within this threshold of target, count frame as "steady"
+    nonvarparams    = {'waitsecs', 'maxtrialtime', 'iti', 'trialpause'};
     waitsecs;               % allow movement after this many seconds
     maxtrialtime;           % maximum trial time in seconds
-    maxtrials;
-      
+    iti;
+    trialpause; % need to press backtick after each trial
+
     % variable parameters
-    varparams   = {'backLum' 'noiseLum' 'stimLum' 'stimStd', 'thetaStep', ...
-                    'thetaStd0', 'thetaStd1','thetaStd2','rStd', 'r_logSpace'};
+    varparams   = {'backLum', 
+        'stimLum', 'stimStd', 'stimColor', 'maxorder', ...
+        'pointLum', 'pointStd', 'pointColor', 'maxorder_point'...
+        'ecc_r'};
     backLum;
-    noiseLum;
+    ecc_r;
+
     stimLum;
     stimStd;
-    thetaStep;  % constant angular velocity input
-    thetaStd0;  % angular velocity noise
-    thetaStd1;  % angular acceleration noise 
-    thetaStd2;  % angular jerk noise
-    rStd;       % noise terms for r
-    r_logSpace;
+    stimColor; 
+    stim_dyngroup; 
+    stim_noiseStd;
+    
+    pointLum;
+    pointStd;
+    pointColor;
+    point_dyngroup; 
+    point_noiseStd;
 end
     
     
@@ -53,78 +51,42 @@ methods
     % Constructor
     function obj = circular(myscreen, varargin)
         %% parse inputs
+        % set to vector if you want to randomize parameter
+
+        % initialize other parameters
         p = inputParser;
-        p.KeepUnmatched = true;
-        
-        if any(cellfun(@(x)(strcmp(x,'pos_start')), varargin))
-            % if start_pos exist as a parameter
-            p.addParameter('pos_start', cell(1,1), @()(isnumeric(x)))
-        else
-            % otherwise generate test poitns around circles
-            % radius can't be too big
-            p.addParameter('r', [4], @(x)(isnumeric(x) && all(x < 20))) 
-            p.addParameter('angle', 0:pi/2:(2*pi-pi/2), @(x)(isnumeric(x)))
-        end
-        
-        % time threshold for going into next trial in frames
-        % user needs to be steady for this amount of frames.
-        p.addParameter('steady_thresh_frame', floor(1*myscreen.framesPerSecond), @(x)(isnumeric(x)))
-        p.addParameter('steady_thresh_deg', 0.001, @(x)(isnumeric(x)))
-        p.addParameter('waitsecs', 2, @(x)(isnumeric(x))) 
-        p.addParameter('maxtrialtime', 20, @(x)(isnumeric(x)))
-        p.addParameter('maxtrials', 10, @(x)(isnumeric(x)))
-        
-        p.addParameter('backLum', 90, @(x)(isnumeric(x))) 
-        p.addParameter('noiseLum', 0, @(x)(isnumeric(x))) 
-        p.addParameter('stimLum', 255, @(x)(isnumeric(x))) 
-        p.addParameter('stimStd', 1, @(x)(isnumeric(x))) 
-        
-        p.addParameter('thetaStep', [0], @(x)(isnumeric(x))) 
-        p.addParameter('thetaStd0', 0, @(x)(isnumeric(x))) 
-        p.addParameter('thetaStd1', [0], @(x)(isnumeric(x)))  % (pi/30)^2
-        p.addParameter('thetaStd2', [0], @(x)(isnumeric(x))) 
+        p.KeepUnmatched = true;      
+        p.addParameter('numTrials', 20, @(x)(isnumeric(x)));
+        p.addParameter('waitsecs', 0, @(x)(isnumeric(x)));
+        p.addParameter('maxtrialtime', 25, @(x)(isnumeric(x)));
 
-        p.addParameter('rStd', [0] , @(x)(isnumeric(x))) 
-        p.addParameter('r_logSpace', false, @(x)(islogical(x))) 
+        p.addParameter('iti', 3, @(x)(isnumeric(x)));
+        p.addParameter('trialpause', false);
+
+        p.addParameter('backLum', 0.7, @(x)(isnumeric(x)));
+        p.addParameter('ecc_r', 5, @(x)(isnumeric(x) && all(x < 20))) ;
+
+        p.addParameter('stimLum', 0.8, @(x)(isnumeric(x)));
+        p.addParameter('stimStd', 1, @(x)(isnumeric(x))) ;
+        p.addParameter('stimColor', 'k', @(x)(ischar(x) || iscell(x))) ;
+        p.addParameter('stim_dyngroup', '0', @(x)(ischar(x) || iscell(x))) ;
+        p.addParameter('stim_noiseStd', 1, @(x)(isnumeric(x))) ;
+
+        p.addParameter('pointLum', 1, @(x)(isnumeric(x))) ;
+        p.addParameter('pointStd', 0.2, @(x)(isnumeric(x))) ;
+        p.addParameter('pointColor', 'r', @(x)(ischar(x) || iscell(x))) ;
+        p.addParameter('point_dyngroup', '0', @(x)(ischar(x) || iscell(x))) ;
+        p.addParameter('point_noiseStd', 0, @(x)(isnumeric(x)))
         
-        p.addParameter('randomize_order', true, @(x) (islogical(x)))
         p.parse(varargin{:})
-                
-        %% initialize
-        % initial positions
-        if isfield(p.Results, 'pos_start')
-            obj.pos_start = p.Results.pos_start;
-            obj.numTrials = min(p.Results.maxtrials, size(p.Results.pos_start{1},1));
-        else
-            % define starting position for main stimulus
-            for r = p.Results.r
-                for a = p.Results.angle
-                    obj.pos_start{1} = [obj.pos_start{1}; r* cos(a), r * sin(a)];
-                    obj.numTrials = obj.numTrials + 1;
-                end
-            end
-            obj.numTrials = min(p.Results.maxtrials, obj.numTrials);
-        end
-        
-        if p.Results.randomize_order
-            permidx = randperm(obj.numTrials);
-            obj.pos_start{1} = obj.pos_start{1}(permidx,:);
-        end
-        
         obj.initialize_params(p)
-        
-        % [r_target, theta_target, dtheta_target, r_pointer, theta_pointer]
-        obj.state  = nan(5,1);       % current state vector 
-        obj.A  = [1,0,0,0,0; 0,1,1,0,0; 0,0,1,0,0; 0,0,0,1,0; 0,0,0,0,1]; % dynamics update matrix
-        obj.W  = [1;0;0;0;0];  % dynamics noise
-
     end
-    
+
     % return task object that can be run on trackpos.m
     function thistask = configureExperiment(obj, task, myscreen, stimulus) 
         thistask        = struct();
-        thistask.segmin = [obj.maxtrialtime];
-        thistask.segmax = [obj.maxtrialtime];
+        thistask.segmin = [obj.maxtrialtime, obj.iti];
+        thistask.segmax = [obj.maxtrialtime, obj.iti];
         
         if stimulus.exp.debug
             thistask.numTrials          = 5;
@@ -132,9 +94,16 @@ methods
             thistask.numTrials          = obj.numTrials;
         end
         
-        thistask.getResponse        = [0];
-        thistask.synchToVol         = [0];
+        thistask.getResponse        = [0, 0];
+        if obj.trialpause
+            thistask.synchToVol     = [0, 1];
+        else
+            thistask.synchToVol     = [0, 0];
+        end
         thistask.waitForBacktick    = 1;
+        
+
+        thistask.random             = 1; % randomized parameters by default
         
         for param = obj.varparams
             eval(['thistask.parameter.' param{1} ' = obj.' param{1}  ';'])
@@ -142,159 +111,125 @@ methods
     end
 
     % trial update?
-    function task  = initTrial(obj, task, myscreen, stimulus)
-        trackpos_stim = trackposInitStimulus(obj,myscreen);
-        
-        % initialize stimulus position
-        obj.stimulus{1}    = trackpos_stim.gaussian;
-        obj.positions{1}   = [obj.pos_start{1}(task.trialnum,:), [], []];
-        
-        % initialize background position
-        if ~isempty(obj.bgfile) && task.thistrial.noiseLum > 0
-            nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
-            task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
-            obj.stimulus{2}  = stimulus.backnoise{1}{task.thistrial.bgpermute(1)};
-            obj.positions{2} = [0,0,myscreen.imageWidth, myscreen.imageHeight]; 
-        end
-        
-        % set mouse position to the stimulus position. 
-        x_img = obj.pos_start{1}(task.trialnum,1);  y_img = obj.pos_start{1}(task.trialnum,2);
-        x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
-        y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
+    function [task, stimulus]  = initTrial(obj, task, myscreen, stimulus)
+        dt = 1/myscreen.framesPerSecond;
+        stimulus.ecc_r  = task.thistrial.ecc_r;
 
-        % trial terminal conditions
-        obj.cursor_steady = 0; 
-        obj.t0 = tic; % start trial
-        
-        % initialize state
-        dtheta      = task.thistrial.thetaStep / myscreen.framesPerSecond;
-        pos         = obj.cart2polar(obj.positions{1}(1:2));
-                
-        p0      = task.thistrial.thetaStep / myscreen.framesPerSecond;
-        p_std   = task.thistrial.thetaStd0 / sqrt(myscreen.framesPerSecond);
-        v_std   = task.thistrial.thetaStd1 / sqrt(myscreen.framesPerSecond);
-        a_std   = task.thistrial.thetaStd2 / sqrt(myscreen.framesPerSecond);
-        r_std   = task.thistrial.rStd / sqrt(myscreen.framesPerSecond);
-        
-        [A_theta, W_theta, ns0, ss0]  = NewtonianStateMatrix('p0', p0, 'p_std', p_std, 'v_std', v_std, 'a_std', a_std);
-        [A_r, W_r, ns1, ss1]          = NewtonianStateMatrix('p_std', r_std);
-        
-        obj.A  = blkdiag(A_theta, A_r, eye(2,2)); 
-        obj.W  = [blkdiag(W_theta, W_r); zeros(2, size(W_theta,2)+ size(W_r,2))];
-        obj.W(:, all(obj.W==0,1)) = [];
-        
-        obj.pidx = [1, ss0+1];
-        obj.cidx = [ss0+ss1+1, ss0+ss1+2];
-        
-        if p0==0
-            obj.state   = [pos(1); zeros(ss0-1,1); ...
-                   pos(2); zeros(ss1-1,1); pos'];
-        else
-            obj.state   = [pos(1); zeros(ss0-2,1); p0;...
-                           pos(2); zeros(ss1-1,1); pos'];
+        target = struct();
+        for param = {'stimStd', 'stimLum', 'stimColor'}
+           eval(['target.' lower(param{1}(5:end)) ' = task.thistrial.' param{1} ';'])
         end
-    end
-    
-    function task = startSegment(obj, task, myscreen, stimulus)
-        % set mouse position to the stimulus position. 
-        x_img = obj.pos_start{1}(task.trialnum,1);  y_img = obj.pos_start{1}(task.trialnum,2);
-        x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
-        y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor        
+        stimulus.target     = trackposInitStimulus(target,myscreen);
+        noiseStd            = task.thistrial.stim_noiseStd / sqrt(dt);
+        stim_dynparams      = obj.parameter_group(task.thistrial.stim_dyngroup, noiseStd);
+
+        stimulus.target.dynparams = stim_dynparams;
+        task.thistrial.trackStim = ou_simulate_full(stim_dynparams, obj.maxtrialtime*myscreen.framesPerSecond, 1/myscreen.framesPerSecond);
+        stimulus.target.position = obj.polar2cart(task.thistrial.ecc_r, task.thistrial.trackStim(1));
         
+        % initialize the pointer
+        pointer             = struct();
+        for param = {'pointStd', 'pointLum', 'pointColor'}
+           eval(['pointer.' lower(param{1}(6:end)) ' = task.thistrial.' param{1} ';'])
+        end
+        stimulus.pointer    = pointer; %trackposInitStimulus(pointer,myscreen); 
+
+        if isfield(task.thistrial, 'point_noiseStd')
+            pnoiseStd = task.thistrial.point_noiseStd / sqrt(dt);
+        else
+            pnoiseStd = 0;
+        end
+
+        if isfield(stimulus,'wheel_params') % calibrated.
+            pointer_dynparams   = stimulus;
+            pointer_dynparams.(['thetaStd', num2str(param.maxorder)]) = pnoiseStd;
+        elseif isfield(task.thistrial,'point_dyngroup')
+            pointer_dynparams   = obj.parameter_group(task.thistrial.point_dyngroup, pnoiseStd);
+        else
+            pointer_dynparams   = obj.parameter_group('0', pnoiseStd);
+        end
+
+        stimulus.pointer.dynparams  = pointer_dynparams;
+        stimulus.pointer.position   = obj.polar2cart(task.thistrial.ecc_r, task.thistrial.trackStim{1});
+        stimulus.pointer.state      = [stimulus.pointer.position; zeros(pointer_dynparams.maxorder,1)];
+
+        obj.t0 = tic; % start trial
+    end
+
+    
+    function stimulus = startSegment(obj, task, myscreen, stimulus)        
+        if task.thistrial.thisseg == 1 % tracking
+            % set mouse position to the center of the screen
+            [x_screen,y_screen] = deg2screen(0, 0, myscreen);
+            mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+            if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor        
+
+            obj.movepointer  = true;
+            obj.doTrack     = true;
+            obj.displayFix 	= true;
+        else % ITI
+            obj.movepointer  = false;
+            obj.doTrack     = false;
+            obj.displayFix 	= true;
+            
+            stimulus.target = [];
+            stimulus.pointer = [];
+        end   
+
     end
 
     % frame update
     % need to define an update function for the stimulus
-    function task  = update(obj, task, myscreen, stimulus)       
-        % blt all stimuli (including background)
-        for stimidx = 1:length(obj.stimulus)
-            mglBltTexture(obj.stimulus{stimidx}, obj.positions{stimidx})
-        end
+    function task  = update(obj, task, myscreen, stimulus) 
+        framenum = task.thistrial.framecount;
+        % update stimulus position and pointer position
         
         % pointer updates
         if toc(obj.t0) < obj.waitsecs
-            obj.movecursor = false;
+            obj.movepointer = false;
             
-            % set mouse position to the initial position. 
-            x_img = obj.pos_start{1}(task.trialnum,1);  y_img = obj.pos_start{1}(task.trialnum,2);
-            x_screen = x_img*myscreen.screenWidth/myscreen.imageWidth + myscreen.screenWidth/2;
-            y_screen = y_img*myscreen.screenHeight/myscreen.imageHeight + myscreen.screenHeight/2;
-            mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber); % correct for screen resolution???
-            if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
-
+            % set mouse position to the middle. 
+            [x_screen,y_screen] = deg2screen(0, 0, myscreen);
+            mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
         else
-            obj.movecursor = true;
+            obj.movepointer = true;
         end
         
         % cursorsteady, if the cursor is moving
-        if obj.movecursor
-            r = sqrt(sum((obj.positions{1} - stimulus.pointer).^2));
-            if r < obj.steady_thresh_deg
-                obj.cursor_steady = obj.cursor_steady + 1;
-            else
-                obj.cursor_steady =0;
-            end
-
-            if obj.cursor_steady > obj.steady_thresh_frame
-                task = jumpSegment(task); 
-            end
-        end
-        
-        % update stimuli position
-        obj.updateStimulus(myscreen,stimulus)
-        
-        % update background
-        if ~isempty(obj.bgfile) && task.thistrial.noiseLum > 0
-            obj.stimulus{2}  = stimulus.backnoise{1}{task.thistrial.bgpermute(task.thistrial.framecount+1)};        
-        end
-        
-        % update fixation
-        if stimulus.exp.fixateCenter == 1 % fixation below others.
-            if obj.movecursor
-                mglGluAnnulus(0,0,0.2,0.3,[0 0.7 0],60,1);
-            else
-                mglGluAnnulus(0,0,0.2,0.3,[1 1 1],60,1);
-            end
-            mglGluDisk(0,0,0.1,rand(1,3),60,1);
-        end
-    end
+        if obj.movepointer
+            if strcmp(stimulus.exp.controlMethod, 'wheel')
+                % see how far the mouse as moved
+                mInfo = mglGetMouse(myscreen.screenNumber);
+                [ux,uy] = screen2deg(mInfo.x, mInfo.y, myscreen);
+                
+                stimulus.pointer.state = ou_update_state(stimulus.pointer.state, ux, dynparams, 1/myscreen.framesPerSecond);
+                stimulus.pointer.position = stimulus.pointer.state(1);
     
-    function updateStimulus(obj, myscreen, stimulus)
-        % update state
-        noise       = obj.W * normrnd(0,1,size(obj.W,2),1);
-        newstate    = obj.A * obj.state + noise;
-        newpos      = obj.polar2cart(newstate(obj.pidx));
+                [x_screen,y_screen] = deg2screen(0, 0, myscreen);
+                mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+            elseif strcmp(stimulus.exp.controlMethod, 'mouse')
+                mInfo = mglGetMouse(myscreen.screenNumber);
+                [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
+                stimulus.pointer.position = atan2(y,x);
+            end
+        end
         
-        % subtract back if out of bounds
-        [horz_out, vert_out]    = check_oob(newpos, myscreen, stimulus);    
-        newstate(obj.pidx(1))   = newstate(obj.pidx(1)) - horz_out * noise(obj.pidx(1));
-        newstate(obj.pidx(2))   = newstate(obj.pidx(2)) - vert_out * noise(obj.pidx(2));
-        
-        % update position
-        obj.positions{1}(1:2)   = obj.polar2cart(newstate(obj.pidx)); 
-        obj.state               = newstate;
-        obj.state(obj.cidx)     = obj.cart2polar(stimulus.pointer);
+        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
+
+        stimulus.target.position = task.thistrial.trackStim(framenum);
     end
 
-    function pos_polar = cart2polar(obj, pos_cart)
-        r = sqrt(sum(pos_cart.^2));
-        if obj.r_logSpace
-            r = log(r);
+    function param = parameter_group(obj, groupname, noisestd)
+        if groupname == '0' % white velocity
+            param = ornstein_uhlenbeck(0, noisestd);
+        elseif groupname == '1' % white acceleration
+            param = ornstein_uhlenbeck(1, noisestd);
+        elseif groupname == '2' % white jerk
+            param = ornstein_uhlenbeck(2, noisestd);
         end
-        theta = atan2(pos_cart(2), pos_cart(1));
-        pos_polar = [theta, r];
     end
-    
-    function pos_cart = polar2cart(obj, pos_polar)
-        r = pos_polar(2);
-        if obj.r_logSpace
-            r = exp(r);
-        end
-        theta = pos_polar(1);
+
+    function pos_cart = polar2cart(obj, r, theta)
         pos_cart = [r*cos(theta), r*sin(theta)];
     end
     
