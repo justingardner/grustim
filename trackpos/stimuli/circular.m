@@ -17,6 +17,8 @@ properties
     movepointer     = false;
     doTrack         = true;    % indicates whether we should start recording tracking variables
     displayFix      = true; % display fixation at current segmention
+    
+    mousestate      = [0,0];
 
     % fixed parameters
     nonvarparams    = {'waitsecs', 'maxtrialtime', 'iti', 'trialpause'};
@@ -26,9 +28,9 @@ properties
     trialpause; % need to press backtick after each trial
 
     % variable parameters
-    varparams   = {'backLum', 
-        'stimLum', 'stimStd', 'stimColor', 'maxorder', ...
-        'pointLum', 'pointStd', 'pointColor', 'maxorder_point'...
+    varparams   = {'backLum', ...
+        'stimLum', 'stimStd', 'stimColor', 'stim_dyngroup', 'stim_noiseStd', ...
+        'pointLum', 'pointStd', 'pointColor', 'point_dyngroup', 'point_noiseStd', ...
         'ecc_r'};
     backLum;
     ecc_r;
@@ -80,6 +82,7 @@ methods
         
         p.parse(varargin{:})
         obj.initialize_params(p)
+        
     end
 
     % return task object that can be run on trackpos.m
@@ -112,7 +115,10 @@ methods
 
     % trial update?
     function [task, stimulus]  = initTrial(obj, task, myscreen, stimulus)
-        dt = 1/myscreen.framesPerSecond;
+        dt              = 1/myscreen.framesPerSecond;
+        
+        
+        obj.ecc_r       = task.thistrial.ecc_r;
         stimulus.ecc_r  = task.thistrial.ecc_r;
 
         target = struct();
@@ -120,12 +126,12 @@ methods
            eval(['target.' lower(param{1}(5:end)) ' = task.thistrial.' param{1} ';'])
         end
         stimulus.target     = trackposInitStimulus(target,myscreen);
-        noiseStd            = task.thistrial.stim_noiseStd / sqrt(dt);
+        noiseStd            = task.thistrial.stim_noiseStd / sqrt(dt) / obj.ecc_r; 
         stim_dynparams      = obj.parameter_group(task.thistrial.stim_dyngroup, noiseStd);
 
         stimulus.target.dynparams = stim_dynparams;
-        task.thistrial.trackStim = ou_simulate_full(stim_dynparams, obj.maxtrialtime*myscreen.framesPerSecond, 1/myscreen.framesPerSecond);
-        stimulus.target.position = obj.polar2cart(task.thistrial.ecc_r, task.thistrial.trackStim(1));
+        stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, obj.maxtrialtime*myscreen.framesPerSecond, 1/myscreen.framesPerSecond);
+        stimulus.target.position = obj.polar2cart(obj.ecc_r, stimulus.target.positions_trial(1));
         
         % initialize the pointer
         pointer             = struct();
@@ -135,14 +141,14 @@ methods
         stimulus.pointer    = pointer; %trackposInitStimulus(pointer,myscreen); 
 
         if isfield(task.thistrial, 'point_noiseStd')
-            pnoiseStd = task.thistrial.point_noiseStd / sqrt(dt);
+            pnoiseStd = task.thistrial.point_noiseStd / sqrt(dt)  / obj.ecc_r ;
         else
             pnoiseStd = 0;
         end
 
         if isfield(stimulus,'wheel_params') % calibrated.
-            pointer_dynparams   = stimulus;
-            pointer_dynparams.(['thetaStd', num2str(param.maxorder)]) = pnoiseStd;
+            pointer_dynparams   = stimulus.wheel_params;
+            pointer_dynparams.(['thetaStd', num2str(pointer_dynparams.maxorder)]) = pnoiseStd;
         elseif isfield(task.thistrial,'point_dyngroup')
             pointer_dynparams   = obj.parameter_group(task.thistrial.point_dyngroup, pnoiseStd);
         else
@@ -150,7 +156,7 @@ methods
         end
 
         stimulus.pointer.dynparams  = pointer_dynparams;
-        stimulus.pointer.position   = obj.polar2cart(task.thistrial.ecc_r, task.thistrial.trackStim{1});
+        stimulus.pointer.position   = obj.polar2cart(obj.ecc_r, stimulus.target.positions_trial(1));
         stimulus.pointer.state      = [stimulus.pointer.position; zeros(pointer_dynparams.maxorder,1)];
 
         obj.t0 = tic; % start trial
@@ -162,6 +168,8 @@ methods
             % set mouse position to the center of the screen
             [x_screen,y_screen] = deg2screen(0, 0, myscreen);
             mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+            obj.mousestate = [0,0];
+            
             if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor        
 
             obj.movepointer  = true;
@@ -180,7 +188,7 @@ methods
 
     % frame update
     % need to define an update function for the stimulus
-    function task  = update(obj, task, myscreen, stimulus) 
+    function [task, stimulus]  = update(obj, task, myscreen, stimulus) 
         framenum = task.thistrial.framecount;
         % update stimulus position and pointer position
         
@@ -199,14 +207,12 @@ methods
         if obj.movepointer
             if strcmp(stimulus.exp.controlMethod, 'wheel')
                 % see how far the mouse as moved
-                mInfo = mglGetMouse(myscreen.screenNumber);
-                [ux,uy] = screen2deg(mInfo.x, mInfo.y, myscreen);
+                [dx, dy, obj.mousestate] = cursor_update(myscreen, obj.mousestate);
                 
-                stimulus.pointer.state = ou_update_state(stimulus.pointer.state, ux, dynparams, 1/myscreen.framesPerSecond);
+                stimulus.pointer.state = ou_update_state(stimulus.pointer.state, ...
+                    -1*dx/task.thistrial.ecc_r, dynparams, 1/myscreen.framesPerSecond);
                 stimulus.pointer.position = stimulus.pointer.state(1);
-    
-                [x_screen,y_screen] = deg2screen(0, 0, myscreen);
-                mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+                
             elseif strcmp(stimulus.exp.controlMethod, 'mouse')
                 mInfo = mglGetMouse(myscreen.screenNumber);
                 [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
@@ -216,7 +222,7 @@ methods
         
         if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
-        stimulus.target.position = task.thistrial.trackStim(framenum);
+        stimulus.target.position = stimulus.target.positions_trial(framenum);
     end
 
     function param = parameter_group(obj, groupname, noisestd)

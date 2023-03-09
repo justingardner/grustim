@@ -17,7 +17,7 @@ properties
     tnidx;       % noise index of target
     pnidx;       % noise index of pointer
 
-    movecursor      = false;
+    movepointer      = false;
     doTrack         = true;    % indicates whether we should start recording tracking variables
     displayFix      = true; % display fixation at current segmention
 
@@ -180,11 +180,11 @@ methods
     
     function stimulus = startSegment(obj, task, myscreen, stimulus)
         if task.thistrial.thisseg == 1 % tracking
-            obj.movecursor  = true;
+            obj.movepointer  = true;
             obj.doTrack     = true;
             obj.displayFix 	= true;
         else % ITI
-            obj.movecursor  = false;
+            obj.movepointer  = false;
             obj.doTrack     = false;
             obj.displayFix 	= true;
             

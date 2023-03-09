@@ -12,10 +12,11 @@ function stimulus = calibrateWheel(myscreen, stimulus)
     disp(' (calibrateWheel) calibrating powerwheel ...');
 
     screencleartime = 5; % secs; clear screen every x seconds
-
-    order_init          = 1;
+    use_numeric_keyboard = true;
+    
+    order_init          = 0;
     ecc_r               = 5;
-    pointer_r           = 0.2;
+    pointer_r           = 0.2;    
     
     maxorder                = 4;
     wheel_params            = ornstein_uhlenbeck(maxorder, 0);
@@ -24,6 +25,9 @@ function stimulus = calibrateWheel(myscreen, stimulus)
 
     step    = 0.01;
     dt      = 1/myscreen.framesPerSecond;
+    mouse0  = [0,0];
+    
+
 
     % set mouse position
     [x_screen,y_screen] = deg2screen(0, 0, myscreen);
@@ -31,14 +35,15 @@ function stimulus = calibrateWheel(myscreen, stimulus)
 
     % show instructions
     mglClearScreen;
-    mglTextDraw('Calibrating powerwheel...',[3 0]);
-    mglTextDraw('Press 0/1/2/3/4 to adjust the order of dynamics (0:pos, 1:vel, etc..) ...',[2 0]);
-    mglTextDraw('Press up/down to adjust decay constant...',[1 0]);
+    mglTextDraw('Calibrating powerwheel...',[0 3]);
+    mglTextDraw('Press 0/1/2/3/4 to adjust the order of dynamics (0:pos, 1:vel, etc..) ...',[0 2]);
+    mglTextDraw('Press up/down to adjust decay constant...',[0 1]);
     mglTextDraw('Press left/right to adjust integration constant...',[0 0]);
-    mglTextDraw('Press "<" or ">" to adjust step for the adjustments...',[-1 0]);
-    mglTextDraw('Press <space> to continue...',[-3 0]);
+    mglTextDraw('Press "<" or ">" to adjust step for the adjustments...',[0 -1]);
+    mglTextDraw('Press <space> to continue...',[0 -3]);
      
     mglFlush;
+    [keyCodes keyTimes] = mglGetKeyEvent(0.1,1);
     while ~any(keyCodes==myscreen.keyboard.space)
         if any(keyCodes == myscreen.keyboard.esc)
           mglClearScreen; myscreen = tickScreen(myscreen,[]);
@@ -48,17 +53,27 @@ function stimulus = calibrateWheel(myscreen, stimulus)
     end
 
     % run adjustment until esc
-    mglClearScreen
-    tic
+    mglClearScreen;
+    tic;
     while ~myscreen.userHitEsc  
-        % display trajectory ring
+        
+        % display blue trajectory ring and fixation
         mglMetalArcs([0;0;0], [0; 0; 1; 1], [ecc_r-0.1; ecc_r+0.1], [0;2*pi], 1);
+        mglMetalArcs([0;0;0], [1;1;1; 1], [pointer_r+0.1;pointer_r+0.3],[0;2*pi], 1);
+        mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [pointer_r;pointer_r], 1, 1);
 
         % update parameters
         keystate = mglGetKeys;
-        if any(keystate([30,19:21])) %keys: 0,1,2,3
+        
+        if use_numeric_keyboard
+            codes_0123 = 83:86;
+        else
+            codes_0123 = [30,19:21];
+        end
+
+        if any(keystate(codes_0123)) %keys: 0,1,2,3
             orderarray  = [0,1,2,3];
-            orders_pressed = orderarray(keystate([29,18:20]));
+            orders_pressed = orderarray(keystate(codes_0123));
             newmaxorder = orders_pressed(1);
             if newmaxorder ~= wheel_params.maxorder
                 wheel_params.maxorder = newmaxorder;
@@ -88,23 +103,24 @@ function stimulus = calibrateWheel(myscreen, stimulus)
         end
 
         % move cursor        
-        mInfo = mglGetMouse(myscreen.screenNumber);
-        [ux,uy] = screen2deg(mInfo.x, mInfo.y, myscreen);
-                
-        state = ou_update_state(state, ux, wheel_params, dt);
-        [x_screen,y_screen] = deg2screen(0, 0, myscreen);
-        mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+        [ux, uy, mouse0] = cursor_update(myscreen,mouse0);
+        state = ou_update_state(state, -1*ux/ ecc_r , wheel_params, dt);
 
         % display cursor
-        theta = stimulus.pointer.state(1);
-        mglMetalArcs([ecc_r * cos(theta); ecc_r * sin(theta); 0], ...
-            [0; 0; 1; 1], [ecc_r-0.1; ecc_r+0.1], [0;2*pi], 1);
+        theta = state(1);
+        mglMetalDots([ecc_r * cos(theta); ecc_r * sin(theta); 0], ...
+                     [1;0;0;1], [pointer_r;pointer_r], 1, 1);
+        
+        fprintf('r = %0.3e; ux = %0.5e; ',ecc_r, ux);
+        fprintf('theta = %0.5e; order= %i; decay= %0.3e; int= %0.3e \n',...
+            theta, wheel_params.maxorder,...
+            wheel_params.(['invtaus_decay', num2str(wheel_params.maxorder)]),...
+            wheel_params.(['taus_int', num2str(wheel_params.maxorder)]));
         
         % clear screen
         if toc > screencleartime
-            mglClearScreen
-            tic
-            joy_params;
+            mglClearScreen;
+            tic;
         end
         
         myscreen = tickScreen(myscreen,[]);     % flip screen

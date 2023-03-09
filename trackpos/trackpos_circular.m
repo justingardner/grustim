@@ -7,6 +7,8 @@
 % Tracking task for circular motion around an circle/ellipse
 % Run in mglmetal 
 
+% task.thistrial.trackStim and trackResp is in dva: r * polar_angle 
+
 function myscreen = trackpos_circular(varargin)
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
@@ -34,13 +36,13 @@ myscreen                    = initScreen(myscreen);
 % set to argb2101010 pixel format
 mglMetalSetViewColorPixelFormat(4);
 
-rng(0); % set seed
+rng(0, 'twister'); % set seed
 
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 0; % debug code
-exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
+exp.debug               = 1; % debug code
+exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.fixateCenter        = 1; % fixate center
@@ -115,39 +117,6 @@ for phaseN = 1:length(task{1})
 end
 
 myscreen = initStimulus('stimulus',myscreen); % save the stimulus into stimfile
-
-%% load background
-% todo: make stimulus-specific background?
-% todo: looping over 1 phase right now. do we need more?
-for phaseN = 1:length(task{1})
-    currtask = stimulus.task{phaseN};
-    if ~isempty(currtask.bgfile) && exp.phasescrambleOn
-        disp(['Loading phase scrambled background noise phase ' num2str(phaseN) '...'])
-
-        savefile = currtask.bgfile;
-        % savefile            = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
-        if ~exist(savefile,'file')
-            disp(' THE SPECIFIED BACKGROUND FILE DOES NOT EXIST')
-            someinput = input('press any button to continue');
-            continue
-        end
-
-        load(savefile,'backgroundnoise_rgb');
-
-        % create all background textures and then load them later
-        if stimulus.exp.debug 
-            nnn = 100;
-        else
-            nnn = size(backgroundnoise_rgb,4);
-        end
-        for idx = 1:nnn %too big?? memory?
-            stimulus.backnoise{phaseN}{idx} = mglCreateTexture(backgroundnoise_rgb(:,:,:,idx));
-        end
-
-        clearvars('backgroundnoise_rgb')
-        disp('Finished loading phase scrambled background noise...')
-    end
-end
 
 %% grabframe
 if stimulus.exp.grabframe
@@ -259,12 +228,6 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     task.thistrial.randomSeed = s.Seed;
     rng(task.thistrial.randomSeed,'twister');
     
-    % noise: permute background and save
-    if stimulus.exp.phasescrambleOn == 1 && ~isempty(stimulus.task{phaseNum}.bgfile)
-        nframes = myscreen.framesPerSecond*task.segmax(1) + 20;%/downsample_timeRes; 
-        task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise{1}),nframes,1);
-    end
-    
     % task status report
     if mod(task.trialnum,ceil(task.numTrials/20)) == 1
         disp(['(trackpos) '  num2str(task.trialnum/task.numTrials) ...
@@ -328,22 +291,15 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     end
 
     % update task
-    stimulus  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
+    [task, stimulus]  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
     
     % if we are in the tracking period,  save tracking variables
     if stimulus.task{phaseNum}.doTrack
         % update framecount
-        % task.thistrial.trackStim(task.thistrial.framecount) = stimulus.target.position; 
-        task.thistrial.trackResp(task.thistrial.framecount) = stimulus.pointer.position;
+        task.thistrial.trackStim(task.thistrial.framecount) = task.thistrial.ecc_r * stimulus.target.position; 
+        task.thistrial.trackResp(task.thistrial.framecount) = task.thistrial.ecc_r * stimulus.pointer.position;
         task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0); 
         task.thistrial.framecount = task.thistrial.framecount + 1;
-    end
-
-    % display background
-    if ~isempty(stimulus.task{phaseNum}.bgfile) && task.thistrial.noiseLum > 0 && stimulus.exp.phasescrambleOn
-        mglBltTexture(...
-            stimulus.backnoise{phaseN}{task.thistrial.bgpermute(task.thistrial.framecount)}, ...
-            [0,0,myscreen.imageWidth, myscreen.imageHeight]);
     end
     
     % display target
@@ -355,7 +311,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     if ~isempty(stimulus.pointer)
         if isempty(stimulus.pointer.img)
             mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
-                         [1;0;0;1], [stimulus.pointStd;stimulus.pointStd], 1, 1);
+                         [1;0;0;1], [stimulus.pointStd; stimulus.pointStd], 1, 1);
         else
             mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
         end
@@ -392,8 +348,8 @@ function task = add_calculated_params(task, myscreen)
         task{phaseNum}.randVars.calculated.randomSeed   = nan;
         task{phaseNum}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
         task{phaseNum}.randVars.calculated.initStim     = [nan nan];
-        task{phaseNum}.randVars.calculated.trackStim    = nan(maxframes,1);
-        task{phaseNum}.randVars.calculated.trackResp    = nan(maxframes,1);
+        task{phaseNum}.randVars.calculated.trackStim    = nan(1,maxframes);
+        task{phaseNum}.randVars.calculated.trackResp    = nan(1, maxframes);
         task{phaseNum}.randVars.calculated.trackEye     = nan(maxframes,2);
         task{phaseNum}.randVars.calculated.trackTime    = nan(1,maxframes);
         task{phaseNum}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file

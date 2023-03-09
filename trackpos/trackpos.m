@@ -373,32 +373,22 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     end
     
     % move cursor        
-    if stimulus.task{phaseNum}.movecursor 
+    if stimulus.task{phaseNum}.movepointer 
         % **&display mouse position
         if strcmp(stimulus.exp.controlMethod, 'mouse')
-            % extract how much the mouse moved mouse position
-            mInfo = mglGetMouse(myscreen.screenNumber);
-            [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
-            vx = x - stimulus.pointer.mouse0(1);
-            vy = y - stimulus.pointer.mouse0(2);
+            
+            % extract how much the mouse moved from last mouse position
+            [vx, vy, mousestate] = cursor_update(myscreen,stimulus.pointer.mouse0);
+            stimulus.pointer.mouse0 = mousestate;
 
             if norm([vx, vy]) > 1e-2 && stimulus.exp.debug
                 disp(['mouse vel: ' num2str(vx) ','  num2str(vy)]) % todo: delete this line after checking
                 disp(['pointer pos: ' num2str(stimulus.pointer.position)]) % todo: delete this line after checking
             end
-
-            % reset mouse position
-            if mInfo.x < myscreen.screenWidth * 0.1 || mInfo.x > myscreen.screenWidth *0.9 ...
-                    || mInfo.y <  myscreen.screenHeight*0.1 || mInfo.y > myscreen.screenHeight*0.9
-                mglSetMousePosition(ceil(myscreen.screenWidth/2),...
-                    floor(myscreen.screenHeight/2), myscreen.screenNumber);      
-                stimulus.pointer.mouse0 = [0,0];
-            else
-                stimulus.pointer.mouse0 = [x,y];
-            end
             
             [x,y] = update_pointer(stimulus.pointer, [vx, vy], myscreen);
             stimulus.pointer.position = [x,y];
+            
         elseif strcmp(stimulus.exp.controlMethod, 'joystick')
             [vx, vy] = joy2vel(stimulus.joy, stimulus.joy_params, myscreen);
             [x,y] = update_pointer(stimulus.pointer, [vx, vy], myscreen);

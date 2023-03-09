@@ -7,22 +7,22 @@ classdef (Abstract) trackingTask < handle
         % task parameters
         name;       % name of task
         numTrials;  % number of trials
-        pos_start;  % starting position of stimulus         
+        %pos_start;  % starting position of stimulus         
                         
         % trial parameters        
-        state;      % current state vector 
-        A;          % dynamics update matrix
-        W;          % dynamics noise
-        tpidx;       % position index of target
-        ppidx;       % position index of pointer
-        tnidx;       % noise index of target
-        pnidx;       % noise index of pointer
+        %state;      % current state vector 
+        %A;          % dynamics update matrix
+        %W;          % dynamics noise
+        %tpidx;       % position index of target
+        %ppidx;       % position index of pointer
+        %tnidx;       % noise index of target
+        %pnidx;       % noise index of pointer
         
-        movecursor; % indicates whether we can move cursor during this trial
+        movepointer; % indicates whether we can move cursor during this trial
         doTrack;    % indicates whether we should start recording tracking variables
         displayFix; % display fixation at current segmention
         
-        bgfile;     % background file to preload at task initialization
+        %bgfile;     % background file to preload at task initialization
         
         % task parameters
         nonvarparams;   % cell of parameter names to be included as parameters in mgl task.
@@ -47,7 +47,7 @@ classdef (Abstract) trackingTask < handle
         % update framecount
         % update stimuli position
         % update background image
-        task = update(obj, task, myscreen, stimulus)        
+        task        = update(obj, task, myscreen, stimulus)        
     end
     
     methods

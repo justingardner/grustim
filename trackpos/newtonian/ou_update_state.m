@@ -1,8 +1,18 @@
 function state_t = ou_update_state(state_t, input_t, dynparams, dt)
+% N = (dynparams.maxorder + 1) defines the dimensions of the state
+% state dimension >= N. All dimensions greater than N are ignored, not
+% updated.
+% input dimension >= N
+% if input dimension  = 1, the input is applied to the last dimension
+
+    if numel(input_t) == 1 && numel(input_t) < (dynparams.maxorder+1)
+        input_t = [zeros(dynparams.maxorder,1); input_t];
+    end
+
     % state_t, input_t: array of order x 1
     state_order = 0;
     for revord = 0:dynparams.maxorder
-        ord = int(dynparams.maxorder - revord);
+        ord = dynparams.maxorder - revord;
         noisestd        = dynparams.(['thetaStd', num2str(ord)]);
         invtau_decay    = dynparams.(['invtaus_decay', num2str(ord)]);
         tau_int         = dynparams.(['taus_int', num2str(ord)]);
