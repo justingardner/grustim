@@ -157,7 +157,7 @@ methods
 
         stimulus.pointer.dynparams  = pointer_dynparams;
         stimulus.pointer.position   = obj.polar2cart(obj.ecc_r, stimulus.target.positions_trial(1));
-        stimulus.pointer.state      = [stimulus.pointer.position; zeros(pointer_dynparams.maxorder,1)];
+        stimulus.pointer.state      = [stimulus.target.positions_trial(1); zeros(pointer_dynparams.maxorder,1)];
 
         obj.t0 = tic; % start trial
     end
@@ -192,37 +192,37 @@ methods
         framenum = task.thistrial.framecount;
         % update stimulus position and pointer position
         
-        % pointer updates
-        if toc(obj.t0) < obj.waitsecs
-            obj.movepointer = false;
-            
-            % set mouse position to the middle. 
-            [x_screen,y_screen] = deg2screen(0, 0, myscreen);
-            mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
-        else
-            obj.movepointer = true;
-        end
-        
-        % cursorsteady, if the cursor is moving
-        if obj.movepointer
-            if strcmp(stimulus.exp.controlMethod, 'wheel')
-                % see how far the mouse as moved
-                [dx, dy, obj.mousestate] = cursor_update(myscreen, obj.mousestate);
-                
-                stimulus.pointer.state = ou_update_state(stimulus.pointer.state, ...
-                    -1*dx/task.thistrial.ecc_r, dynparams, 1/myscreen.framesPerSecond);
-                stimulus.pointer.position = stimulus.pointer.state(1);
-                
-            elseif strcmp(stimulus.exp.controlMethod, 'mouse')
-                mInfo = mglGetMouse(myscreen.screenNumber);
-                [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
-                stimulus.pointer.position = atan2(y,x);
-            end
-        end
-        
-        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
+            % pointer updates
+        if obj.doTrack
+            if toc(obj.t0) < obj.waitsecs
+                obj.movepointer = false;
 
-        stimulus.target.position = stimulus.target.positions_trial(framenum);
+                % set mouse position to the middle. 
+                [x_screen,y_screen] = deg2screen(0, 0, myscreen);
+                mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
+            else
+                obj.movepointer = true;
+            end
+
+            if obj.movepointer
+                if strcmp(stimulus.exp.controlMethod, 'wheel')
+                    % see how far the mouse as moved
+                    [dx, dy, obj.mousestate] = cursor_update(myscreen, obj.mousestate);
+
+                    stimulus.pointer.state = ou_update_state(stimulus.pointer.state, ...
+                        -1*dx/task.thistrial.ecc_r, stimulus.pointer.dynparams, 1/myscreen.framesPerSecond);
+                    stimulus.pointer.position = obj.polar2cart(obj.ecc_r, stimulus.pointer.state(1));
+                elseif strcmp(stimulus.exp.controlMethod, 'mouse')
+                    mInfo = mglGetMouse(myscreen.screenNumber);
+                    [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
+                    stimulus.pointer.position = atan2(y,x);
+                end
+            end
+
+            if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
+
+            stimulus.target.position = obj.polar2cart(obj.ecc_r, stimulus.target.positions_trial(framenum));
+        end
     end
 
     function param = parameter_group(obj, groupname, noisestd)

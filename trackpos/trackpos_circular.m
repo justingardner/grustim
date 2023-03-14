@@ -12,30 +12,7 @@
 function myscreen = trackpos_circular(varargin)
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
-%% set up screen
-myscreen = struct();
-if isempty(mglGetSID)
-    mglSetSID(-1);
-end
-
-myscreen.subjectID  = mglGetSID;
-
-rmpath(genpath('/Users/gru/proj/mgl'))
-addpath(genpath('/Users/gru/proj/mgl_jryu'))
-
-% myscreen.screenWidth = 860; myscreen.screenHeight = 600;
-myscreen.hideCursor         = 1;
-myscreen.displayName        = 'vpixx';
-myscreen.calibType          = 'Specify particular calibration';
-myscreen.calibFilename      = '0001_dn0a221834_221005.mat';
-myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0001_dn0a221834_221005';
-myscreen.saveData           = 1; % save stimfile to data directory
-myscreen.datadir            = '/Users/gru/data/';
-myscreen                    = initScreen(myscreen);
-
-% set to argb2101010 pixel format
-mglMetalSetViewColorPixelFormat(4);
-
+myscreen = setup_screen_jryu(); 
 rng(0, 'twister'); % set seed
 
 %% experiment parameters
@@ -45,6 +22,7 @@ exp.debug               = 1; % debug code
 exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
+exp.showRing            = 0; % show ring
 exp.fixateCenter        = 1; % fixate center
 exp.controlMethod       = 'wheel'; % available: wheel
 
@@ -62,7 +40,7 @@ stim_noiseStdList   = [1]; % in dva per second
 stimLums            = [0.1, 0.2, 0.4, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
-ecc_r               = 5; % eccentricity
+ecc_r_list          = [3,5,10]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 
@@ -75,28 +53,31 @@ ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
 ntrials             = 20; % trials per condition
 nblocks             = 4;  % should divide ntrials, divide trial into blocks
 
-if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; end
+maxtrialtime        = 25;
 
+if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
+
+for ecc_r = ecc_r_list
 for s = 1:length(stim_noiseStdList)
     stim_noiseStd = stim_noiseStdList(s);
     stimdyngroup = stim_dyngroup{s};
 
     for stimStd = stimStdList
         % learning phase
-        cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'ecc_r', ecc_r, ...
+        cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
             'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
             'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
     
         % tracking
         ntrials_phase = length(stimLums) * ceil(ntrials/nblocks);
         for b = 1:nblocks
-            cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'ecc_r', ecc_r, ...
+            cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
                 'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
                 'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
         end
     end
 end
-  
+end  
 stimulus.task = cps;
 
 %% configure task
@@ -279,8 +260,9 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     end
 
     % draw blue ring for the trajectory path
-    mglMetalArcs([0;0;0], [0; 0; 1; 1], [task.thistrial.ecc_r-0.1;task.thistrial.ecc_r+0.1], [0;2*pi], 1);
-
+    if stimulus.exp.showRing
+        mglMetalRing_wlines(task.thistrial.ecc_r, stimulus.pointerR/2, [0,0,1,1], 600)
+    end
 
     % eye tracking
     if stimulus.exp.trackEye && stimulus.task{phaseNum}.doTrack
@@ -296,8 +278,10 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     % if we are in the tracking period,  save tracking variables
     if stimulus.task{phaseNum}.doTrack
         % update framecount
-        task.thistrial.trackStim(task.thistrial.framecount) = task.thistrial.ecc_r * stimulus.target.position; 
-        task.thistrial.trackResp(task.thistrial.framecount) = task.thistrial.ecc_r * stimulus.pointer.position;
+        task.thistrial.trackStim(task.thistrial.framecount) = ...
+            task.thistrial.ecc_r * atan2(stimulus.target.position(2), stimulus.target.position(1)); 
+        task.thistrial.trackResp(task.thistrial.framecount) = ...
+            task.thistrial.ecc_r * atan2(stimulus.pointer.position(2), stimulus.pointer.position(1));
         task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0); 
         task.thistrial.framecount = task.thistrial.framecount + 1;
     end
@@ -309,11 +293,11 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     
     % display pointer
     if ~isempty(stimulus.pointer)
-        if isempty(stimulus.pointer.img)
-            mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
-                         [1;0;0;1], [stimulus.pointStd; stimulus.pointStd], 1, 1);
-        else
+        if isfield(stimulus.pointer, 'img') && isempty(stimulus.pointer.img)
             mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
+        else
+            mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
+             [1;0;0;1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
         end
     end
     
@@ -349,7 +333,7 @@ function task = add_calculated_params(task, myscreen)
         task{phaseNum}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
         task{phaseNum}.randVars.calculated.initStim     = [nan nan];
         task{phaseNum}.randVars.calculated.trackStim    = nan(1,maxframes);
-        task{phaseNum}.randVars.calculated.trackResp    = nan(1, maxframes);
+        task{phaseNum}.randVars.calculated.trackResp    = nan(1,maxframes);
         task{phaseNum}.randVars.calculated.trackEye     = nan(maxframes,2);
         task{phaseNum}.randVars.calculated.trackTime    = nan(1,maxframes);
         task{phaseNum}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file

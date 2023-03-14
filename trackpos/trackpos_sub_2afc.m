@@ -26,6 +26,7 @@ task{1}.parameter.stimright  = [0,1]; % or polar angle?
 
 % todo: change for no feedback and no mask
 if exp.feedback, fb = 0.1;, else, fb = 0;,end
+
 if mglIsFile(exp.noise_mask)
                              % wait, cue, fix, stim, del, mask, resp, feedback 
     task{1}.segmin           = [inf   1   0.5  inf   inf   inf  inf    fb];
@@ -103,6 +104,7 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
     end
 
     stimulus.staircaseTable = table(tparams{:},'VariableNames', tpnames); % save staircase to stimulus
+
 elseif strcmp(stimulus.exp.afc.presSched, 'fixed')
     task{1}.parameter.posDiff            = params.task.posDiff; 
 else
@@ -123,9 +125,13 @@ trialdur = task{1}.segmax(2) + task{1}.segmax(3)+max(params.task.stimDur);
 % end
 maxframes = ceil(trialdur)*myscreen.framesPerSecond+10; % with some additional overflow
 
-
 task{1}.randVars.calculated.subjcorrect  = nan; 
 task{1}.randVars.calculated.stimDur0     = nan; 
+
+if ~isfield(params.task, 'polarAngle') && ~isfield(params.task, 'displAngle')
+    task{1}.randVars.calculated.polarAngle   = 0;
+    task{1}.randVars.calculated.displAngle   = 0;
+end
 
 task{1}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
 task{1}.randVars.calculated.stimON       = nan(1,maxframes); % nframes x 1 for the stimulus
@@ -148,23 +154,36 @@ end
 
 %% Start segment
 function [task, myscreen] = initTrialCallback(task, myscreen)
+global stimulus;
 
-global stimulus
 
-backLum     = task.thistrial.backLum;
-noiseLum    = task.thistrial.noiseLum;
-stimLum     = task.thistrial.stimLum;
-stimDur     = task.thistrial.stimDur; 
-stimStd     = task.thistrial.stimStd;
-stimColor   = task.thistrial.stimColor;
+function [task, myscreen] = initTrial_post_wait(task,myscreen)
+global stimulus;
 
-task.thistrial.seglen(4) = task.thistrial.stimDur;
+% start the task.
+stimulus.lum        = task.thistrial.stimLum;
+stimulus.std        = task.thistrial.stimStd;
+stimulus.color      = task.thistrial.stimColor;
+stimulus.backLum    = task.thistrial.backLum;
+stimulus.noiseLum   = task.thistrial.noiseLum;
+
+task.thistrial.framecount   = 0;
+task.thistrial.seglen(4)    = task.thistrial.stimDur;
+task.thistrial.stimDur0     = task.thistrial.seglen(4);
+
+stimulus.reference = struct();
+stimulus.target = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
+
+if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1&& stimulus.noiseLum;
+    nframes = length(task.thistrial.bgpermute);
+    task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
+end
 
 if strcmp(stimulus.exp.afc.presSched, 'staircase')
     idx         = findCondIdx(stimulus.staircaseTable,task.thistrial);
     stimulus.staircaseIdx = idx;
     [s, stimulus.staircaseTable.staircase{idx}] = doStaircase('gettestvalue',stimulus.staircaseTable.staircase{idx});
-       
+
      % check for out of bounds
     if s > (myscreen.imageWidth/2 - stimStd - task.thistrial.pointerOffset)
         s = max(0.1, (myscreen.imageWidth/2 - 3 * stimStd - task.thistrial.pointerOffset));
@@ -183,7 +202,7 @@ if mglIsFile(stimulus.exp.noise_mask)
 
     nframes = myscreen.framesPerSecond*task.thistrial.seglen(6) + 20; %/downsample_timeRes; 
     stimulus.noise_mask_trial = randi(size(stimulus.noise_mask.backgroundnoise_rgb,4),nframes,1); % sample with replacement
-   
+
     % delete texture
     if isfield(stimulus,'noise_mask_texture') 
        for idx = 1:length(stimulus.noise_mask_texture)
@@ -202,6 +221,34 @@ if mglIsFile(stimulus.exp.noise_mask)
     end
 end
 
+% angleSets
+if isfield(task.thistrial, 'angleSet') 
+    [polarAngle, displAngle] = angleSet(task.thistrial.angleSet);
+    task.thistrial.polarAngle = polarAngle;
+    task.thistrial.displAngle = displAngle;
+end    
+
+if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
+    pa = task.thistrial.polarAngle;
+    da = task.thistrial.displAngle;
+    r0 = task.thistrial.pointerOffset;
+    dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
+    
+    x0 = r0 * cos(pa);
+    y0 = r0 * sin(pa);
+
+    x = x0 + dr*cos(da);
+    y = y0 + dr*sin(da);
+    
+    stimulus.target.position = [x,y];
+    stimulus.reference.position = [x0, y0];
+else           
+    stimulus.target.position = [stim_pos 0];
+    stimulus.reference.position = [task.thistrial.pointerOffset, 0];
+end
+
+
+
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
@@ -217,32 +264,21 @@ if task.thistrial.thisseg == 1
     % wait for the next task 
     myscreen.flushMode = 0; % update screen
     stimulus.currtask = 'done';
+
 elseif task.thistrial.thisseg == 2
     if stimulus.exp.trackEye, myscreen.flushMode = 0; end
     if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
     
-    % start the task.
-    stimulus.lum        = task.thistrial.stimLum;
-    stimulus.std        = task.thistrial.stimStd;
-    stimulus.color      = task.thistrial.stimColor;
-    stimulus.backLum    = task.thistrial.backLum;
-    stimulus.noiseLum   = task.thistrial.noiseLum;
+    [task, myscreen] = initTrial_post_wait(task,myscreen);    
     
-    task.thistrial.framecount = 0;
-    task.thistrial.stimDur0 = task.thistrial.seglen(4);
-    
-    stimulus.target = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
-    
-    if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1&& stimulus.noiseLum;
-        nframes = length(task.thistrial.bgpermute);
-        task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
-    end
 elseif task.thistrial.thisseg == 4
     if stimulus.exp.trackEye, myscreen.flushMode = 0; end
+
 elseif task.thistrial.thisseg == 5
     task.thistrial.framecount = 0; % restart framecount
     task.thistrial.stimDur = task.thistrial.seglen(4); 
     % stimulus length recorded by updateTask; make sure is same as Dur0 % disp(['Segment duration error1: ', num2str(task.thistrial.stimDur - task.thistrial.stimDur0)])
+
 elseif task.thistrial.thisseg == 6
     task.thistrial.framecount = 0; % restart framecount
     myscreen.flushMode = 0; % refresh every frame
@@ -296,24 +332,22 @@ else
             mglBltTexture(stimulus.backnoise{idx},...
                 [0 0 myscreen.imageWidth myscreen.imageHeight])
         end
-        
         task.thistrial.trackTime(task.thistrial.framecount) = mglGetSecs(stimulus.t0);
     end
 
     % draw blob, mask
     if task.thistrial.thisseg == 4 % stimulus
-        stim_pos = task.thistrial.pointerOffset + (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
         task.thistrial.stimON(task.thistrial.framecount) = 1;
-        mglMetalBltTexture(stimulus.target.img,[stim_pos 0]);
-        % mglBltTexture(stimulus.target.img,[stim_pos 0]);
+        mglMetalBltTexture(stimulus.target.img, stimulus.target.position);
+        
     elseif task.thistrial.thisseg == 6 % mask
-        mglMetalBltTexture(stimulus.noise_mask_texture{task.thistrial.framecount},[task.thistrial.pointerOffset 0]);
-        % mglBltTexture(stimulus.noise_mask_texture{task.thistrial.framecount},[task.thistrial.pointerOffset 0]);
+         mglMetalBltTexture(stimulus.noise_mask_texture{task.thistrial.framecount},...
+             stimulus.reference.position);
     end
 
     % reference/fixation helper
     if task.thistrial.thisseg == 2
-        mglMetalArcs([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim'; 0.3], [0.4;0.7],[0;2*pi], 1);
+        mglMetalArcs([stimulus.reference.position, 0], [stimulus.fixColors.stim'; 0.3], [0.4;0.7],[0;2*pi], 1);
         mglMetalArcs([0;0;0], [stimulus.fixColors.afc'; 0.3], [0.2;0.4],[0;2*pi], 1);
     end
 
@@ -331,14 +365,14 @@ else
         end
         
         % reference
-        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], ...
+        mglMetalDots([stimulus.reference.position, 0], [stimulus.fixColors.stim';1], ...
             [stimulus.pointerR; stimulus.pointerR], 1, 1);
     elseif any(task.thistrial.thisseg == [5,6,7,8])
         % afc response fixation 
         mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [0.1;0.1], 1, 1);
 
         % reference
-        mglMetalDots([task.thistrial.pointerOffset;0;0], [stimulus.fixColors.stim';1], ...
+        mglMetalDots([stimulus.reference.position, 0], [stimulus.fixColors.stim';1], ...
             [stimulus.pointerR; stimulus.pointerR], 1, 1);
     end
 
@@ -346,13 +380,11 @@ else
     if stimulus.exp.feedback && task.thistrial.thisseg == 8
         % no fixation cross until response.
         % mglGluAnnulus(0,0,0.2,0.5,stimulus.currfixColor,60,1);
-        mglMetalArcs([task.thistrial.pointerOffset;0;0], [stimulus.currfixColor'; 1], [0.3;0.5],[0;2*pi], 1);
+        mglMetalArcs([stimulus.reference.position, 0], [stimulus.currfixColor'; 1], [0.3;0.5],[0;2*pi], 1);
         
         % feedback about presented position
         if stimulus.exp.afc.feedback_center
-            stim_pos = task.thistrial.pointerOffset + (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-            %mglGluDisk(stim_pos, 0, 0.1, [0 0 1]) ;    % draw center of blob
-            mglMetalDots([stim_pos;0;0], [stimulus.fixColors.fb';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+            mglMetalDots([stimulus.target.position,0], [stimulus.fixColors.fb';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
     end
         
@@ -375,7 +407,8 @@ else
     end
 
 end
-%% Get response 
+
+%% Get response
 function [task, myscreen] = responseCallback(task, myscreen)
 
 global stimulus
@@ -421,3 +454,15 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase') && ~isnan(correct)
 end
 
 task = jumpSegment(task); % go to next segment
+
+
+%% predefined angleSet
+function [polarAngle, displAngle] = angleSet(angleSet)
+    % set polar angle based on remainder
+    polarAngle = angleCode2angle(mod(angleSet, 100), 4);
+        
+    if floor(angleSet/100) == 0 % tangential motion
+        displAngle = angleCode2angle(mod(angleSet, 100), 2);
+    end
+    
+    

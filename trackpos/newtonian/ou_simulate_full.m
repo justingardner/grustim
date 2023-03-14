@@ -11,6 +11,9 @@ function state = ou_simulate_full(dynparams, T, dt)
         integrated_noise    = conv(input,integrator, "full");
         state               = integrated_noise(1:T);
     end
+    
+    % add random offset
+    state = state + 2*pi*rand();
 end
 
 

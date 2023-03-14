@@ -1,35 +1,4 @@
-
-function testDotsRing(pointer_r, ring_r, ecc_r, reinit_screen)
-
-if reinit_screen == 1 
-    setup_screen();
-elseif reinit_screen == 2
-    mglOpen;
-    mglScreenCoordinates;
-end
-
-%% plot stuff
-
-mglClearScreen;
-% draw stuff
-mglMetalArcs([0;0;0], [0; 0; 1; 1], ...
-    [ecc_r-0.1; ecc_r+0.1], [0;2*pi], 1);
-
-% mglMetalArcs([0;0;0], [1;1;1; 1], [pointer_r+0.1;pointer_r+0.3],[0;2*pi], 1);
-% mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [pointer_r;pointer_r], 1, 1);
-
-for theta = 0:1:(2*pi)
-%     mglGluDisk(ecc_r * cos(theta), ecc_r * sin(theta), ...
-%         pointer_r, [1,1,0],60,1);
-    mglMetalDots([ecc_r * cos(theta); ecc_r * sin(theta); 0], ...
-        [1;0;0;1], [pointer_r;pointer_r], 1, 1);
-end
-
-mglFlush;
-
-end
-
-function setup_screen()
+function myscreen = setup_screen_jryu()
     myscreen = struct();
     if isempty(mglGetSID)
         mglSetSID(-1);
