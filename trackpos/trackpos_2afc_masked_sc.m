@@ -31,10 +31,11 @@ exp.feedback            = false;  % correct or incorrect in 2afc
 exp.feedback_center     = false;  % feedback about the exact center
 
 exp.colorfix            = false; % colored fixation
+exp.tangential_disp     = true; % otherwise specify polar angle and displacement angle
+exp.respDirArrow        = true;
 
 exp.block_design        = false; % in each block, present all combinations of parameters
 exp.noise_mask          = '/Users/gru/proj/grustim/trackpos/noise/grating.mat'; 
-
 exp.staircase_init      = ''; %'/Users/gru/data/trackpos_multitask/s412/230217_stim03_staircase.mat';
 
 %% task parameters
@@ -43,8 +44,8 @@ task{1}{1}.random = 1;
 
 params                  = struct();
 
-params.trialpercond         = 100;
-params.threshstd_thresh     = 0.1; 
+params.presSched        = 'staircase';
+params.trialpercond     = 100;
 
 params.task             = struct();
 params.task.backLum     = 0.7;%0.4; %32;  % background luminance; units: fraction of full luminance 
@@ -55,7 +56,14 @@ params.task.stimLum         = [0.2, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 
 params.task.stimDur         = [2/60, 4/60, 8/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
 params.task.stimStd         = [1]; % [1,1.5]
 params.task.stimColor       = 'k';
-params.task.angleSet        = [1,2,3,4]; % polar angles
+
+if exp.tangential_disp
+    params.task.angleSet    = 1:8; % polar angles
+else:
+    params.task.polarAngle = 0;
+    params.task.displAngle = pi/2;
+end
+
 
 % mask parameters
 if mglIsFile(exp.noise_mask)
@@ -64,24 +72,18 @@ if mglIsFile(exp.noise_mask)
     params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
 
-if exp.debug
-    params.task.stimLum         = [0.2, 0.8]; % [0.1,0.2,0.5] % [16,32,48,96]
-    params.task.stimDur         = [2/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-    params.task.mask_TOff2MOn   = [0]; % stimulus offset to mask onset (Neisser 1967)
-    params.task.maskLum         = [0.2];
-    params.trialpercond         = 2; 
-end
-
-
 params.task.pointerOffset   = [5]; % [-10,-5,-2,0,2,5,10];
 
+% staircase parameters
 params.staircase                    = struct();
 thresh = params.task.pointerOffset(1)*1.7/10 + 0.3;
 params.staircase.initThreshold      = thresh; %0.3;
 params.staircase.initThresholdSd    = 0.5; %0.3;
+params.staircase.threshstd_thresh   = 0.1; 
+params.staircase.staircase_init     = exp.staircase_init;
 
 if exp.debug
-    params.task.pointerOffset   = [0, 5];
+    params = load_debug_params(params);
 end
 
 [afc_fields, afc_vals] = countconditions(params.task);
@@ -114,8 +116,9 @@ stimulus.pointerR           = 0.2;
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
-myscreen = initStimulus('stimulus',myscreen); % what does this do???
+myscreen = initStimulus('stimulus', myscreen); % what does this do???
 
+% phase Scrambled background
 if stimulus.exp.phasescrambleOn == 1
     disp('Loading phase scrambled background noise...')
 
@@ -157,6 +160,7 @@ if mglIsFile(stimulus.exp.noise_mask)
     stimulus.noise_mask = load(stimulus.exp.noise_mask);
 end
 
+
 %% Eye calibration
 if stimulus.exp.trackEye && ~ stimulus.exp.debug
     disp(' Calibrating Eye ....')
@@ -176,7 +180,7 @@ for phaseN = 1:length(task{1})
 end
 
 % 2AFC subtask
-[task{2}, myscreen] = trackpos_sub_2afc(myscreen,params_afc,exp); 
+[task{2}, myscreen] = trackpos_sub_2afc(myscreen,params,exp); 
 
 %% run the task
 stimulus.t0 = mglGetSecs; % 
@@ -184,15 +188,14 @@ stimulus.t0 = mglGetSecs; %
 % explain task.
 mglDisplayCursor(0); %hide cursor
 mglClearScreen(params.task.backLum);
-mglTextDraw('task (trackpos_multitask) starting... ', [0 3])
-% mglTextDraw('After the stimulus is presented, you will be asked to perform one of the two tasks, depending on the fixation color',[0 1]);
-if any(cellfun(@(x) strcmp(x,'est'),tasks2run))
-    mglTextDraw('Estimation task (red fixation): move the mouse to the center of stimulus. Press 3 when done.',[0 1]);
+mglTextDraw('task (trackpos_2afc_masked_sc) starting... ', [0 3])
+if exp.tangential_disp
+    mglTextDraw('Press 1 if the blob is more counter-clockwise to the left of red reference. 2 otherwise',[0 1]);
+else
+    mglTextDraw('Press 1 if the blob is more counter-clockwise to the left of red reference. 2 otherwise',[0 1]);
 end
-if any(cellfun(@(x) strcmp(x,'2afc'),tasks2run))
-    mglTextDraw('2AFC task (white fixation): press 1 if the stimulus is to the left of red reference. 2 otherwise',[0 -1]);
-end
-mglBltTexture(mglText('When you are ready, press backtick to go to the first trial'),[0 -4]);
+
+mglBltTexture(mglText('When you are ready, press backtick to go to the first trial'),[0 -3]);
 mglFlush(); myscreen.flushMode = -1;
 
 if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
@@ -274,4 +277,15 @@ function [task, myscreen] = responseCallback(task, myscreen)
         % go to next segment
         task = jumpSegment(task);
     end
+end
+
+
+
+function params = load_debug_params(params)
+    params.task.stimLum         = [0.2, 0.8]; % [0.1,0.2,0.5] % [16,32,48,96]
+    params.task.stimDur         = [2/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
+    params.task.mask_TOff2MOn   = [0]; % stimulus offset to mask onset (Neisser 1967)
+    params.task.maskLum         = [0.2];
+    params.trialpercond         = 2; 
+    params.task.pointerOffset   = [0, 5];
 end

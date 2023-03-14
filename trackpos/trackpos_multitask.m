@@ -104,10 +104,16 @@ params_afc = params;
 params_afc.task.pointerOffset   = [5]; % [-10,-5,-2,0,2,5,10];
 if exp.afc.presSched == 'staircase'
     params_afc.presSched                    = 'staircase';
+    params_afc.feedback_center             = exp.afc.feedback_center;
+    
     params_afc.staircase                    = struct();
     thresh = params_afc.task.pointerOffset(1)*1.7/10 + 0.3;
     params_afc.staircase.initThreshold      = thresh; %0.3;
     params_afc.staircase.initThresholdSd    = 0.5; %0.3;
+    
+    if isfield(exp.afc, 'staircase_init')
+        params_afc.staircase.staircase_init = exp.afc.staircase_init;
+    end
 end
 
 if exp.debug
@@ -125,6 +131,9 @@ elseif exp.est.presSched == 'staircase'
     params_est.staircase                    = struct();
     params_est.staircase.initThreshold      = 0.3;
     params_est.staircase.initThresholdSd    = 0.3;
+    if isfield(exp.est, 'staircase_init')
+        params_est.staircase.staircase_init = exp.est.staircase_init;
+    end
 end
 
 % count conditions - 2AFC
@@ -287,11 +296,15 @@ end
 myscreen = endTask(myscreen,task);
 mglClose; endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
-if stimulus.exp.afc.presSched    == 'staircase'
-    staircase = stimulus.staircaseTable;
+if isfield(task{2}.private,'staircaseTable')
+    staircase = task{2}.private.staircaseTable;
     save([myscreen.stimfile(1:end-4),'_staircase.mat'], 'staircase');
 end
 
+if isfield(task{3}.private,'staircaseTable')
+    staircase = task{3}.private.staircaseTable;
+    save([myscreen.stimfile(1:end-4),'_staircase_est.mat'], 'staircase');
+end
 
 end
 

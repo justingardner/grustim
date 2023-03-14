@@ -10,7 +10,10 @@ function idx = findCondIdx(staircaseTable,thistrial)
         if strcmp(pname, 'stimColor')
             idx  = idx & (T.(pname) == double(thistrial.(pname)));
         end
-        idx  = idx & (T.(pname) == thistrial.(pname));
+        
+        if isfield(thistrial,pname)
+            idx  = idx & (T.(pname) == thistrial.(pname));
+        end
     end
     idx = find(idx); % turn logical vector to index number
 end

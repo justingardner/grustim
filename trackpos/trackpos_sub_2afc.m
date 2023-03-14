@@ -42,7 +42,7 @@ end
 global stimulus
 
 % presentation schedule
-if strcmp(stimulus.exp.afc.presSched, 'staircase')
+if strcmp(param.presSched, 'staircase')
     % set up staircase
     task{1}.randVars.calculated.posDiff = nan;
 
@@ -53,10 +53,10 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
     tpnames                     = allparamnames;
     tpnames{end+1}              = 'staircase';
     
-    if isfield(stimulus.exp.afc, 'staircase_init')
-        if isfile(stimulus.exp.afc.staircase_init)
-            disp(["(trackpos_sub_2afc) Initializing staircase with file " stimulus.exp.afc.staircase_init])
-            a = load(stimulus.exp.afc.staircase_init);
+    if isfield(params.staircase, 'staircase_init')
+        if isfile(params.staircase_init)
+            disp(["(trackpos_sub_2afc) Initializing staircase with file " params.staircase.staircase_init])
+            a = load(params.staircase.staircase_init);
             saved_staircase = a.staircase;
         else
             disp('staircase initialization file not found')
@@ -78,7 +78,7 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
             end
         end
 
-        if isfield(stimulus.exp.afc, 'staircase_init') && isfile(stimulus.exp.afc.staircase_init)
+        if isfield(params.staircase, 'staircase_init') && isfile(params.staircase.staircase_init)
             saved_idx           = findCondIdx(saved_staircase, thistrial);
             disp(['saved_idx = ' num2str(saved_idx)])
             if isempty(saved_idx)
@@ -99,16 +99,19 @@ if strcmp(stimulus.exp.afc.presSched, 'staircase')
         tparams{end} = [tparams{end}; {staircase}];
     end
     
-    if isfield(stimulus,'staircaseTable')
-        error('Conflicting staircase -- need to specify which staircase to use')
-    end
+    task{1}.private.staircaseTable = table(tparams{:},'VariableNames', tpnames); % save staircase to stimulus
 
-    stimulus.staircaseTable = table(tparams{:},'VariableNames', tpnames); % save staircase to stimulus
-
-elseif strcmp(stimulus.exp.afc.presSched, 'fixed')
+elseif strcmp(param.presSched, 'fixed')
     task{1}.parameter.posDiff            = params.task.posDiff; 
 else
     task{1}.parameter.posDiff            = params.task.posDiff; 
+end
+
+% privates
+
+task{1}.private.presSched           = param.presSched;
+if isfield(params.staircase, 'threshstd_thresh') 
+    task{1}.private.threshstd_thresh    = params.staircase.threshstd_thresh;
 end
 
 % trial numbers
@@ -171,27 +174,37 @@ task.thistrial.framecount   = 0;
 task.thistrial.seglen(4)    = task.thistrial.stimDur;
 task.thistrial.stimDur0     = task.thistrial.seglen(4);
 
-stimulus.reference = struct();
-stimulus.target = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
+stimulus.reference  = struct();
+stimulus.target     = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
 
 if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1&& stimulus.noiseLum;
     nframes = length(task.thistrial.bgpermute);
     task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
 end
 
-if strcmp(stimulus.exp.afc.presSched, 'staircase')
-    idx         = findCondIdx(stimulus.staircaseTable,task.thistrial);
+if strcmp(task.private.presSched, 'staircase')
+    idx         = findCondIdx(task.private.staircaseTable,task.thistrial);
     stimulus.staircaseIdx = idx;
-    [s, stimulus.staircaseTable.staircase{idx}] = doStaircase('gettestvalue',stimulus.staircaseTable.staircase{idx});
+    [s, task.private.staircaseTable.staircase{idx}] = ...
+        doStaircase('gettestvalue',task.private.staircaseTable.staircase{idx});
 
      % check for out of bounds
     if s > (myscreen.imageWidth/2 - stimStd - task.thistrial.pointerOffset)
         s = max(0.1, (myscreen.imageWidth/2 - 3 * stimStd - task.thistrial.pointerOffset));
     end
 
-    stimulus.staircaseTable.staircase{idx}.lastTestValue = s;
+    task.private.staircaseTable.staircase{idx}.lastTestValue = s;
 
-    task.thistrial.posDiff = s;    
+    task.thistrial.posDiff = s;
+    
+    if isfield(task.private, 'threshstd_thresh')
+        % todo: check quest sd
+        if QuestSd(task.private.staircaseTable.staircase{idx}) < task.private.threshstd_thresh
+            stimulus.skip = true;
+        else
+            stimulus.skip = false;
+        end
+    end
 end
 
 % noise mask
@@ -258,13 +271,13 @@ if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1 && task
 else
     myscreen.flushMode = 0; % default 0 frames
 end
-
+ 
 if task.thistrial.thisseg == 1
     % if we come back to beginning, means the previous trial finished. 
     % wait for the next task 
     myscreen.flushMode = 0; % update screen
-    stimulus.currtask = 'done';
-
+    stimulus.currtask   = 'done';
+    stimulus.skip       = false;
 elseif task.thistrial.thisseg == 2
     if stimulus.exp.trackEye, myscreen.flushMode = 0; end
     if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
@@ -306,13 +319,14 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
 global stimulus % call stimulus
 
-if task.thistrial.thisseg== 1
-    %% waiting for task to start
-    if strcmp(stimulus.currtask,'2afc')
+if task.thistrial.thisseg== 1 % waiting for task to start
+    if strcmp(stimulus.currtask,'2afc') % start task
         stimulus.currtask = 'running 2afc';
         task = jumpSegment(task); 
+        stimulus.skip = false;
     end
-
+elseif stimulus.skip 
+    task = jumpSegment(task);
 else
     %% do the task
     % set background luminance
@@ -375,6 +389,27 @@ else
         mglMetalDots([stimulus.reference.position, 0], [stimulus.fixColors.stim';1], ...
             [stimulus.pointerR; stimulus.pointerR], 1, 1);
     end
+    
+    % response direction arrow
+    if isfield(stimulus.exp, 'respDirArrow') && stimulus.exp.respDirArrow
+        if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
+            pa = task.thistrial.polarAngle;
+            da = task.thistrial.displAngle;
+        else
+            pa = 0;
+            da = 0;
+        end
+        r0 = task.thistrial.pointerOffset;
+
+        dr = 1; % length of arrow
+        arm_ratio = 1/3;
+        arm_angle = pi/6;
+        
+        x0 = r0 * cos(pa);
+        y0 = r0 * sin(pa);
+        
+        mglMetalArrow(x0,y0,da,dr,arm_ratio, arm_angle, 0.1, stimulus.fixColors.stim);
+    end
 
     % feedback
     if stimulus.exp.feedback && task.thistrial.thisseg == 8
@@ -383,7 +418,7 @@ else
         mglMetalArcs([stimulus.reference.position, 0], [stimulus.currfixColor'; 1], [0.3;0.5],[0;2*pi], 1);
         
         % feedback about presented position
-        if stimulus.exp.afc.feedback_center
+        if isfield(params, 'feedback_center') && params.feedback_center
             mglMetalDots([stimulus.target.position,0], [stimulus.fixColors.fb';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
     end
@@ -407,6 +442,7 @@ else
     end
 
 end
+
 
 %% Get response
 function [task, myscreen] = responseCallback(task, myscreen)
@@ -447,10 +483,10 @@ posdiff = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
 disp(['(subtask_2c) Position difference: ' num2str(posdiff) '; ' ...
       'Response: ' respSide '; ' corrString])
 
-if strcmp(stimulus.exp.afc.presSched, 'staircase') && ~isnan(correct)
+if strcmp(task.private.presSched, 'staircase') && ~isnan(correct)
     idx = stimulus.staircaseIdx;
-    stimulus.staircaseTable.staircase{idx} = ...
-        doStaircase('update',stimulus.staircaseTable.staircase{idx},correct);
+    task.private.staircaseTable.staircase{idx} = ...
+        doStaircase('update',task.private.staircaseTable.staircase{idx},correct);
 end
 
 task = jumpSegment(task); % go to next segment
@@ -462,7 +498,13 @@ function [polarAngle, displAngle] = angleSet(angleSet)
     polarAngle = angleCode2angle(mod(angleSet, 100), 4);
         
     if floor(angleSet/100) == 0 % tangential motion
-        displAngle = angleCode2angle(mod(angleSet, 100), 2);
+        displAngle = mod(angleCode2angle(mod(angleSet, 100), 4)+pi/2,2*pi);
     end
     
+    
+function angle = angleCode2angle(code, div)
+    % code: natural number
+    angle = mod((code-1) * 2*pi/div, 2*pi);
+end
+
     
