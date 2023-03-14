@@ -17,6 +17,6 @@ function mglMetalArrow(x0,y0,da,dr,arm_ratio, arm_angle, lineWidth, color)
         y + dr*arm_ratio * sin(da-pi+arm_angle), ...
         y + dr*arm_ratio * sin(da-pi-arm_angle)];
 
-    mglMetalLines(x_from,y_from, x_to, y_to, repmat(lineWidth,1,3), repmat(color(1:3)', 1, 3))
+    mglMetalLines(x_from,y_from, x_to, y_to, repmat(lineWidth,1,3), repmat(color(1:3), 1, 3));
 end
 

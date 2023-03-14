@@ -46,8 +46,8 @@ mglMetalSetViewColorPixelFormat(4);
 
 % Experimenter parameters
 exp                     = struct();
-exp.debug               = false;
-exp.trackEye            = true;
+exp.debug               = true;
+exp.trackEye            = false;
 exp.enforceFixThresh    = Inf;
 exp.eyemousedebug       = false;
 exp.showmouse           = false;
@@ -296,13 +296,13 @@ end
 myscreen = endTask(myscreen,task);
 mglClose; endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
-if isfield(task{2}.private,'staircaseTable')
-    staircase = task{2}.private.staircaseTable;
+if isfield(task{2}{1}, 'private') && isfield(task{2}{1}.private,'staircaseTable')
+    staircase = task{2}{1}.private.staircaseTable;
     save([myscreen.stimfile(1:end-4),'_staircase.mat'], 'staircase');
 end
 
-if isfield(task{3}.private,'staircaseTable')
-    staircase = task{3}.private.staircaseTable;
+if isfield(task{3}{1}, 'private') && isfield(task{3}{1}.private,'staircaseTable')
+    staircase = task{3}{1}.private.staircaseTable;
     save([myscreen.stimfile(1:end-4),'_staircase_est.mat'], 'staircase');
 end
 

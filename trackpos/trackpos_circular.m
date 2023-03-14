@@ -22,7 +22,7 @@ exp.debug               = 1; % debug code
 exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
-exp.showRing            = 0; % show ring
+exp.showRing            = 1; % show ring
 exp.fixateCenter        = 1; % fixate center
 exp.controlMethod       = 'wheel'; % available: wheel
 

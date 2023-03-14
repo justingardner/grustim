@@ -5,13 +5,14 @@
 %    purpose: 2 choice task for position of one blob against fixation.
 
 % S1: wait time while the main task calls this subtask.
-% S2: cue (1s)
-% S3: random period of fixation (random ~0.5s)
-% S4: stimulus period (stimdur s)
-% S5: delay to mask
-% S6: mask
-% S7: repsonse period (inf)
-% S8: feedback (1s)
+% S2: init period
+% S3: cue (1s)
+% S4: random period of fixation (random ~0.5s)
+% S5: stimulus period (stimdur s)
+% S6: delay to mask
+% S7: mask
+% S8: repsonse period (inf)
+% S9: feedback (1s)
 
 function [task, myscreen] = trackpos_sub_2afc(myscreen, params, exp)
 % stimulus and background
@@ -25,24 +26,28 @@ end
 task{1}.parameter.stimright  = [0,1]; % or polar angle?
 
 % todo: change for no feedback and no mask
-if exp.feedback, fb = 0.1;, else, fb = 0;,end
+if exp.feedback, dt_fb = 0.1;, else, dt_fb = 0;,end
+
+dt_init = 2;
+dt_cue = 1;
+dt_fix = 0.5;
 
 if mglIsFile(exp.noise_mask)
-                             % wait, cue, fix, stim, del, mask, resp, feedback 
-    task{1}.segmin           = [inf   1   0.5  inf   inf   inf  inf    fb];
-    task{1}.segmax           = [inf   1   0.5  inf   inf   inf  inf    fb]; 
-    task{1}.getResponse      = [0 0 0 0 0 0 1 0]; %segment to get response.
+                             % wait, init, cue, fix, stim, del, mask, resp, feedback 
+    task{1}.segmin           = [inf   dt_init dt_cue   dt_fix  inf   inf   inf  inf    dt_fb];
+    task{1}.segmax           = [inf   dt_init dt_cue   dt_fix  inf   inf   inf  inf    dt_fb]; 
+    task{1}.getResponse      = [0 0 0 0 0 0 0 1 0]; %segment to get response.
 else
-                             % wait, cue, fix, stim, resp, feedback 
-    task{1}.segmin           = [inf 1 0.4 inf inf fb];
-    task{1}.segmax           = [inf 1 0.8 inf inf fb]; 
-    task{1}.getResponse      = [0 0 0 0 1 0]; %segment to get response.
+                             % wait, int cue, fix, stim, resp, feedback 
+    task{1}.segmin           = [inf dt_init dt_cue dt_fix inf inf dt_fb];
+    task{1}.segmax           = [inf dt_init dt_cue dt_fix inf inf dt_fb]; 
+    task{1}.getResponse      = [0 0 0 0 0 1 0]; %segment to get response.
 end
 
 global stimulus
 
 % presentation schedule
-if strcmp(param.presSched, 'staircase')
+if strcmp(params.presSched, 'staircase')
     % set up staircase
     task{1}.randVars.calculated.posDiff = nan;
 
@@ -54,7 +59,7 @@ if strcmp(param.presSched, 'staircase')
     tpnames{end+1}              = 'staircase';
     
     if isfield(params.staircase, 'staircase_init')
-        if isfile(params.staircase_init)
+        if isfile(params.staircase.staircase_init)
             disp(["(trackpos_sub_2afc) Initializing staircase with file " params.staircase.staircase_init])
             a = load(params.staircase.staircase_init);
             saved_staircase = a.staircase;
@@ -101,7 +106,7 @@ if strcmp(param.presSched, 'staircase')
     
     task{1}.private.staircaseTable = table(tparams{:},'VariableNames', tpnames); % save staircase to stimulus
 
-elseif strcmp(param.presSched, 'fixed')
+elseif strcmp(params.presSched, 'fixed')
     task{1}.parameter.posDiff            = params.task.posDiff; 
 else
     task{1}.parameter.posDiff            = params.task.posDiff; 
@@ -109,7 +114,7 @@ end
 
 % privates
 
-task{1}.private.presSched           = param.presSched;
+task{1}.private.presSched           = params.presSched;
 if isfield(params.staircase, 'threshstd_thresh') 
     task{1}.private.threshstd_thresh    = params.staircase.threshstd_thresh;
 end
@@ -163,6 +168,8 @@ global stimulus;
 function [task, myscreen] = initTrial_post_wait(task,myscreen)
 global stimulus;
 
+t0_init = tic;
+
 % start the task.
 stimulus.lum        = task.thistrial.stimLum;
 stimulus.std        = task.thistrial.stimStd;
@@ -171,13 +178,15 @@ stimulus.backLum    = task.thistrial.backLum;
 stimulus.noiseLum   = task.thistrial.noiseLum;
 
 task.thistrial.framecount   = 0;
-task.thistrial.seglen(4)    = task.thistrial.stimDur;
-task.thistrial.stimDur0     = task.thistrial.seglen(4);
+task.thistrial.seglen(5)    = task.thistrial.stimDur;
+task.thistrial.stimDur0     = task.thistrial.seglen(5);
 
 stimulus.reference  = struct();
 stimulus.target     = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
 
-if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1&& stimulus.noiseLum;
+if isfield(stimulus.exp, 'phasescrambleOn') && ...
+        stimulus.exp.phasescrambleOn == 1 && ...
+        stimulus.exp.backprecompute == 1 && stimulus.noiseLum
     nframes = length(task.thistrial.bgpermute);
     task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
 end
@@ -189,8 +198,8 @@ if strcmp(task.private.presSched, 'staircase')
         doStaircase('gettestvalue',task.private.staircaseTable.staircase{idx});
 
      % check for out of bounds
-    if s > (myscreen.imageWidth/2 - stimStd - task.thistrial.pointerOffset)
-        s = max(0.1, (myscreen.imageWidth/2 - 3 * stimStd - task.thistrial.pointerOffset));
+    if s > (myscreen.imageWidth/2 - stimulus.std - task.thistrial.pointerOffset)
+        s = max(0.1, (myscreen.imageWidth/2 - 3 * stimulus.std - task.thistrial.pointerOffset));
     end
 
     task.private.staircaseTable.staircase{idx}.lastTestValue = s;
@@ -198,22 +207,26 @@ if strcmp(task.private.presSched, 'staircase')
     task.thistrial.posDiff = s;
     
     if isfield(task.private, 'threshstd_thresh')
-        % todo: check quest sd
-        if QuestSd(task.private.staircaseTable.staircase{idx}) < task.private.threshstd_thresh
-            stimulus.skip = true;
-        else
-            stimulus.skip = false;
+        tstd = QuestSd(task.private.staircaseTable.staircase{idx}.s);
+        disp(['threshold posterior std = ' num2str(tstd)]);
+        if task.private.staircaseTable.staircase{idx}.trialNum > 20   
+            % todo: check quest sd
+            if tstd < task.private.threshstd_thresh
+                stimulus.skip = true;
+            else
+                stimulus.skip = false;
+            end
         end
     end
 end
 
-% noise mask
+% noise mask -- takes long time
 if mglIsFile(stimulus.exp.noise_mask)     
-    task.thistrial.seglen(5) = task.thistrial.mask_TOff2MOn;
-    task.thistrial.seglen(6) = task.thistrial.maskDur;
+    task.thistrial.seglen(6) = task.thistrial.mask_TOff2MOn;
+    task.thistrial.seglen(7) = task.thistrial.maskDur;
     maskLum = task.thistrial.maskLum;
 
-    nframes = myscreen.framesPerSecond*task.thistrial.seglen(6) + 20; %/downsample_timeRes; 
+    nframes = myscreen.framesPerSecond*task.thistrial.seglen(7) + 20; %/downsample_timeRes; 
     stimulus.noise_mask_trial = randi(size(stimulus.noise_mask.backgroundnoise_rgb,4),nframes,1); % sample with replacement
 
     % delete texture
@@ -261,12 +274,15 @@ else
 end
 
 
+% disp(['Init Trial took ' num2str(toc(t0_init)) ' s']);
+
+
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
 
 % set flushMode based on noiseLum
-if stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1 && task.thistrial.noiseLum >0
+if isfield(stimulus.exp, 'phasescrambleOn') && stimulus.exp.phasescrambleOn == 1 && stimulus.exp.backprecompute == 1 && task.thistrial.noiseLum >0
     myscreen.flushMode = 0;
 else
     myscreen.flushMode = 0; % default 0 frames
@@ -278,36 +294,39 @@ if task.thistrial.thisseg == 1
     myscreen.flushMode = 0; % update screen
     stimulus.currtask   = 'done';
     stimulus.skip       = false;
+
 elseif task.thistrial.thisseg == 2
+    if stimulus.exp.trackEye, myscreen.flushMode = 0; end
+    [task, myscreen] = initTrial_post_wait(task,myscreen);    
+    
+elseif task.thistrial.thisseg == 3
     if stimulus.exp.trackEye, myscreen.flushMode = 0; end
     if ~stimulus.exp.showmouse, mglDisplayCursor(0);, end 
     
-    [task, myscreen] = initTrial_post_wait(task,myscreen);    
-    
-elseif task.thistrial.thisseg == 4
-    if stimulus.exp.trackEye, myscreen.flushMode = 0; end
-
 elseif task.thistrial.thisseg == 5
-    task.thistrial.framecount = 0; % restart framecount
-    task.thistrial.stimDur = task.thistrial.seglen(4); 
-    % stimulus length recorded by updateTask; make sure is same as Dur0 % disp(['Segment duration error1: ', num2str(task.thistrial.stimDur - task.thistrial.stimDur0)])
+    if stimulus.exp.trackEye, myscreen.flushMode = 0; end
 
 elseif task.thistrial.thisseg == 6
     task.thistrial.framecount = 0; % restart framecount
+    task.thistrial.stimDur = task.thistrial.seglen(5); 
+    % stimulus length recorded by updateTask; make sure is same as Dur0 % disp(['Segment duration error1: ', num2str(task.thistrial.stimDur - task.thistrial.stimDur0)])
+
+elseif task.thistrial.thisseg == 7
+    task.thistrial.framecount = 0; % restart framecount
     myscreen.flushMode = 0; % refresh every frame
 end
-
-% blt screen once before screenUpdates loops
-if task.thistrial.thisseg > 1 && task.thistrial.seglen(task.thistrial.thisseg) > 0
-    [task, myscreen] = screenUpdateCallback(task, myscreen);
-    mglFlush;
-    if task.thistrial.thisseg == 4
-        stimulus.start = mglGetSecs;
-    elseif task.thistrial.thisseg == 5
-        stimulus.length = mglGetSecs - stimulus.start;
-        disp(['Segment duration error: ', num2str(stimulus.length - task.thistrial.stimDur)])
-    end
-end
+% 
+% % blt screen once before screenUpdates loops
+% if task.thistrial.thisseg > 1 && task.thistrial.seglen(task.thistrial.thisseg) > 0
+%     [task, myscreen] = screenUpdateCallback(task, myscreen);
+%     mglFlush;
+%     if task.thistrial.thisseg == 5
+%         stimulus.start = mglGetSecs;
+%     elseif task.thistrial.thisseg == 6
+%         stimulus.length = mglGetSecs - stimulus.start;
+%         disp(['Segment duration error: ', num2str(stimulus.length - task.thistrial.stimDur)])
+%     end
+% end
 
 % task.thistrial.segTime(task.thistrial.thisseg) = mglGetSecs;
 % disp(['segment' num2str(task.thistrial.thisseg)])
@@ -324,10 +343,25 @@ if task.thistrial.thisseg== 1 % waiting for task to start
         stimulus.currtask = 'running 2afc';
         task = jumpSegment(task); 
         stimulus.skip = false;
+        
+        if stimulus.exp.colorfix         % changing fixation colors
+            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+        else % white fixation
+            mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+        end
     end
+    
 elseif stimulus.skip 
+    disp('skipping segment');
+    
     task = jumpSegment(task);
-else
+elseif task.thistrial.thisseg == 2
+    if stimulus.exp.colorfix         % changing fixation colors
+        mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+    else % white fixation
+        mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+    end    
+elseif task.thistrial.thisseg > 2
     %% do the task
     % set background luminance
     if task.thistrial.backLum > 1
@@ -340,8 +374,8 @@ else
     task.thistrial.stimON(task.thistrial.framecount) = 0; %count stimulus
     
     % inject noise, track time
-    if any(task.thistrial.thisseg == [2, 3, 4]) 
-        if stimulus.exp.phasescrambleOn == 1 
+    if any(task.thistrial.thisseg == [3, 4, 5]) 
+        if isfield(stimulus.exp, 'phasescrambleOn') && stimulus.exp.phasescrambleOn == 1 
             idx = task.thistrial.bgpermute(task.thistrial.framecount);
             mglBltTexture(stimulus.backnoise{idx},...
                 [0 0 myscreen.imageWidth myscreen.imageHeight])
@@ -350,82 +384,83 @@ else
     end
 
     % draw blob, mask
-    if task.thistrial.thisseg == 4 % stimulus
+    if task.thistrial.thisseg == 5 % stimulus
         task.thistrial.stimON(task.thistrial.framecount) = 1;
         mglMetalBltTexture(stimulus.target.img, stimulus.target.position);
         
-    elseif task.thistrial.thisseg == 6 % mask
+    elseif task.thistrial.thisseg == 7 % mask
          mglMetalBltTexture(stimulus.noise_mask_texture{task.thistrial.framecount},...
              stimulus.reference.position);
     end
 
-    % reference/fixation helper
-    if task.thistrial.thisseg == 2
-        mglMetalArcs([stimulus.reference.position, 0], [stimulus.fixColors.stim'; 0.3], [0.4;0.7],[0;2*pi], 1);
+    % cues: reference/fixation helpers
+    if task.thistrial.thisseg == 3
+        mglMetalArcs([stimulus.reference.position, 0]', [stimulus.fixColors.stim'; 0.3], [0.4;0.7],[0;2*pi], 1);
         mglMetalArcs([0;0;0], [stimulus.fixColors.afc'; 0.3], [0.2;0.4],[0;2*pi], 1);
     end
 
-    % add fixation
-    if any(task.thistrial.thisseg == [2, 3,4])
+    % add fixation and reference
+    if any(task.thistrial.thisseg == [3,4,5])
         if stimulus.exp.colorfix
             % changing fixation colors
-            % mglGluAnnulus(0,0,0.2,0.3,stimulus.fixColor,60,1);
-            % mglGluDisk(0,0,0.1,0.5+0.5*rand(1,3),60,1);
             mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         else
-            % mglGluDisk(0, 0, 0.1, stimulus.fixColors.stim,60,1); 
             % white fixation
             mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
         
         % reference
-        mglMetalDots([stimulus.reference.position, 0], [stimulus.fixColors.stim';1], ...
+        mglMetalDots([stimulus.reference.position'; 0], [stimulus.fixColors.stim';1], ...
             [stimulus.pointerR; stimulus.pointerR], 1, 1);
-    elseif any(task.thistrial.thisseg == [5,6,7,8])
+    elseif any(task.thistrial.thisseg == [6,7,8,9])
         % afc response fixation 
-        mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [0.1;0.1], 1, 1);
+        mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
 
         % reference
-        mglMetalDots([stimulus.reference.position, 0], [stimulus.fixColors.stim';1], ...
+        mglMetalDots([stimulus.reference.position'; 0], [stimulus.fixColors.stim';1], ...
             [stimulus.pointerR; stimulus.pointerR], 1, 1);
     end
     
-    % response direction arrow
-    if isfield(stimulus.exp, 'respDirArrow') && stimulus.exp.respDirArrow
-        if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
-            pa = task.thistrial.polarAngle;
-            da = task.thistrial.displAngle;
-        else
-            pa = 0;
-            da = 0;
-        end
-        r0 = task.thistrial.pointerOffset;
+    if task.thistrial.thisseg == 8
+        % response direction arrow
+        if isfield(stimulus.exp, 'respDirArrow') && stimulus.exp.respDirArrow
+            if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
+                pa = task.thistrial.polarAngle;
+                da = task.thistrial.displAngle;
+            else
+                pa = 0;
+                da = 0;
+            end
+            r0 = task.thistrial.pointerOffset;
 
-        dr = 1; % length of arrow
-        arm_ratio = 1/3;
-        arm_angle = pi/6;
-        
-        x0 = r0 * cos(pa);
-        y0 = r0 * sin(pa);
-        
-        mglMetalArrow(x0,y0,da,dr,arm_ratio, arm_angle, 0.1, stimulus.fixColors.stim);
+            dr = 1.6; % length of arrow
+            arm_ratio = 1/3;
+            arm_angle = pi/6;
+            arrowidth = 0.1;
+
+            x0 = r0 * cos(pa);
+            y0 = r0 * sin(pa);
+
+            mglMetalArrow(x0,y0,da,dr,arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
+        end
     end
 
     % feedback
-    if stimulus.exp.feedback && task.thistrial.thisseg == 8
-        % no fixation cross until response.
-        % mglGluAnnulus(0,0,0.2,0.5,stimulus.currfixColor,60,1);
-        mglMetalArcs([stimulus.reference.position, 0], [stimulus.currfixColor'; 1], [0.3;0.5],[0;2*pi], 1);
+    if stimulus.exp.feedback && task.thistrial.thisseg == 9
+        % fixation
+        mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [0.1;0.1], 1, 1);
+
+        % reference
+        mglMetalArcs([stimulus.reference.position, 0]', [stimulus.currfixColor'; 1], [0.3;0.5],[0;2*pi], 1);
         
         % feedback about presented position
         if isfield(params, 'feedback_center') && params.feedback_center
-            mglMetalDots([stimulus.target.position,0], [stimulus.fixColors.fb';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+            mglMetalDots([stimulus.target.position';0], [stimulus.fixColors.fb';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
         end
     end
-        
     
     % track eye
-    if stimulus.exp.trackEye && any(task.thistrial.thisseg==[2,3,4]) 
+    if stimulus.exp.trackEye && any(task.thistrial.thisseg==[3,4,5]) 
         % mouse version for testing with no eyetracker
         if stimulus.exp.eyemousedebug
             mInfo = mglGetMouse(myscreen.screenNumber);
@@ -505,6 +540,5 @@ function [polarAngle, displAngle] = angleSet(angleSet)
 function angle = angleCode2angle(code, div)
     % code: natural number
     angle = mod((code-1) * 2*pi/div, 2*pi);
-end
 
     

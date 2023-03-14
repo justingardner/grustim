@@ -22,8 +22,8 @@ rng(0, 'twister'); % set seed
 
 %% Experimenter parameters
 exp                     = struct();
-exp.debug               = false;
-exp.trackEye            = true;
+exp.debug               = true;
+exp.trackEye            = false;
 exp.enforceFixThresh    = Inf;
 exp.showmouse           = false;
 
@@ -59,7 +59,7 @@ params.task.stimColor       = 'k';
 
 if exp.tangential_disp
     params.task.angleSet    = 1:8; % polar angles
-else:
+else
     params.task.polarAngle = 0;
     params.task.displAngle = pi/2;
 end
@@ -87,7 +87,11 @@ if exp.debug
 end
 
 [afc_fields, afc_vals] = countconditions(params.task);
-afc_comb = allcomb(afc_vals{:});
+if isempty(afc_vals)
+    afc_comb = {1};
+else
+    afc_comb = allcomb(afc_vals{:});
+end
 disp(['Number of conditions (afc) = ' num2str(size(afc_comb,1))])
 params.numTrials        = params.trialpercond * size(afc_comb,1);
 
@@ -119,7 +123,7 @@ stimulus.t0 = mglGetSecs; % keeps track of trackTime
 myscreen = initStimulus('stimulus', myscreen); % what does this do???
 
 % phase Scrambled background
-if stimulus.exp.phasescrambleOn == 1
+if isfield(stimulus.exp, 'phasescrambleOn') && (stimulus.exp.phasescrambleOn == 1)
     disp('Loading phase scrambled background noise...')
 
     tic
@@ -208,20 +212,17 @@ while (phaseNum{1} <= length(task{1})) && ~myscreen.userHitEsc && ...
     if phaseNum{2} <= length(task{2}) % run 2afc
         [task{2}, myscreen, phaseNum{2}]    = updateTask(task{2},myscreen,phaseNum{2});
     end
-    if phaseNum{3} <= length(task{3}) % run estimation
-        [task{3}, myscreen, phaseNum{3}]    = updateTask(task{3},myscreen,phaseNum{3});
-    end
+    
     myscreen                        = tickScreen(myscreen,task);     % flip screen
 end
 
 myscreen = endTask(myscreen,task);
 mglClose; endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
-if isfield(stimulus, 'staircaseTable')
-    staircase = stimulus.staircaseTable;
+if isfield(task{2}{1}, 'private') && isfield(task{2}{1}.private,'staircaseTable')
+    staircase = task{2}{1}.private.staircaseTable;
     save([myscreen.stimfile(1:end-4),'_staircase.mat'], 'staircase');
 end
-
 
 end
 
@@ -257,7 +258,7 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
     global stimulus
     
     % select which task to run and save it in the stimulus
-    stimulus.currtask = task.thistrial.currtask;
+    stimulus.currtask = '2afc';
     myscreen.flushMode = 0; % start updating screen for the subtasks to detect in screenupdate.
 end
 
@@ -272,7 +273,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 end
 
 function [task, myscreen] = responseCallback(task, myscreen)
-    global stimulus
+    global stimulus;
     if task.thistrial.whichButton == 0
         % go to next segment
         task = jumpSegment(task);
@@ -286,6 +287,7 @@ function params = load_debug_params(params)
     params.task.stimDur         = [2/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
     params.task.mask_TOff2MOn   = [0]; % stimulus offset to mask onset (Neisser 1967)
     params.task.maskLum         = [0.2];
-    params.trialpercond         = 2; 
-    params.task.pointerOffset   = [0, 5];
+    params.trialpercond         = 20; 
+    params.task.angleSet        = [1]; 
+    params.task.pointerOffset   = [5];
 end
