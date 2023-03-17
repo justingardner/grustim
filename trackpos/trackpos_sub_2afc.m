@@ -191,6 +191,7 @@ if isfield(stimulus.exp, 'phasescrambleOn') && ...
     task.thistrial.bgpermute(1:nframes) = randi(length(stimulus.backnoise),nframes,1);
 end
 
+% get staircase value
 if strcmp(task.private.presSched, 'staircase')
     idx         = findCondIdx(task.private.staircaseTable,task.thistrial);
     stimulus.staircaseIdx = idx;
@@ -200,6 +201,10 @@ if strcmp(task.private.presSched, 'staircase')
      % check for out of bounds
     if s > (myscreen.imageWidth/2 - stimulus.std - task.thistrial.pointerOffset)
         s = max(0.1, (myscreen.imageWidth/2 - 3 * stimulus.std - task.thistrial.pointerOffset));
+    end
+
+    if strcmp(task.thistrial.displ_type{1},'circular')
+        s = min(pi/2 * task.thistrial.pointerOffset, s);
     end
 
     task.private.staircaseTable.staircase{idx}.lastTestValue = s;
@@ -254,23 +259,28 @@ if isfield(task.thistrial, 'angleSet')
     task.thistrial.displAngle = displAngle;
 end    
 
+if isfield(task.thistrial,'displ_type')
+    type = task.thistrial.displ_type{1};
+else
+    type = 'tangential';
+end
+
 if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
+    r0 = task.thistrial.pointerOffset;
     pa = task.thistrial.polarAngle;
     da = task.thistrial.displAngle;
-    r0 = task.thistrial.pointerOffset;
     dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-    
-    x0 = r0 * cos(pa);
-    y0 = r0 * sin(pa);
 
-    x = x0 + dr*cos(da);
-    y = y0 + dr*sin(da);
+    [x0,y0,x,y] = displangles2pos(r0, pa, da, dr, type);
     
-    stimulus.target.position = [x,y];
-    stimulus.reference.position = [x0, y0];
+    stimulus.target.position        = [x,y];
+    stimulus.reference.position     = [x0, y0];
 else           
-    stimulus.target.position = [stim_pos 0];
-    stimulus.reference.position = [task.thistrial.pointerOffset, 0];
+    %% todo: find stim_pos
+    stim_pos = task.thistrial.pointerOffset + (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
+
+    stimulus.target.position        = [stim_pos 0];
+    stimulus.reference.position     = [task.thistrial.pointerOffset, 0];
 end
 
 
@@ -427,21 +437,30 @@ elseif task.thistrial.thisseg > 2
             if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
                 pa = task.thistrial.polarAngle;
                 da = task.thistrial.displAngle;
+                dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
             else
                 pa = 0;
                 da = 0;
+                dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
             end
+
             r0 = task.thistrial.pointerOffset;
 
-            dr = 1.6; % length of arrow
+            arrow_length = 1.6; % length of arrow in deg (visual angle)
             arm_ratio = 1/3;
             arm_angle = pi/6;
             arrowidth = 0.1;
+            
+            if strcmp(task.thistrial.displ_type, 'circular')
+                mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim)
+                mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim)
 
-            x0 = r0 * cos(pa);
-            y0 = r0 * sin(pa);
-
-            mglMetalArrow(x0,y0,da,dr,arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
+            else
+                x0 = r0 * cos(pa);
+                y0 = r0 * sin(pa);
+    
+                mglMetalArrow(x0,y0,da,arrow_length,arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
+            end
         end
     end
 
@@ -542,3 +561,17 @@ function angle = angleCode2angle(code, div)
     angle = mod((code-1) * 2*pi/div, 2*pi);
 
     
+
+function [x0,y0, x,y] = displangles2pos(r0, pa, da, dr, type)
+    x0 = r0 * cos(pa);
+    y0 = r0 * sin(pa);
+
+    if strcmp(type, 'circular')
+        da = 0; % displacement angle is irrelevant, we are just going around the circle. 
+        x = r0 * cos(pa+dr/r0);
+        y = r0 * sin(pa+dr/r0);
+    else
+        x = x0 + dr*cos(da);
+        y = y0 + dr*sin(da);
+    end
+

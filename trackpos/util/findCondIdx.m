@@ -12,7 +12,11 @@ function idx = findCondIdx(staircaseTable,thistrial)
         end
         
         if isfield(thistrial,pname)
-            idx  = idx & (T.(pname) == thistrial.(pname));
+            if iscell(T.(pname))
+                idx  = idx & (cellfun(@(x) strcmp(x,thistrial.(pname){1}), T.(pname)));
+            else
+                idx  = idx & (T.(pname) == thistrial.(pname));
+            end
         end
     end
     idx = find(idx); % turn logical vector to index number

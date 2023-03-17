@@ -13,6 +13,8 @@ function myscreen = trackpos_circular(varargin)
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
 myscreen = setup_screen_jryu(); 
+myscreen = initScreen(myscreen);
+mglMetalSetViewColorPixelFormat(4);     % set to argb2101010 pixel format
 rng(0, 'twister'); % set seed
 
 %% experiment parameters
@@ -40,7 +42,7 @@ stim_noiseStdList   = [1]; % in dva per second
 stimLums            = [0.1, 0.2, 0.4, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
-ecc_r_list          = [3,5,10]; % eccentricity
+ecc_r_list          = [5,10]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 

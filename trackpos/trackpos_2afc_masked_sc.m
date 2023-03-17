@@ -17,7 +17,10 @@ function myscreen = trackpos_2afc_masked_sc(varargin)
 
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
-myscreen = setup_screen_jryu(); 
+myscreen    = setup_screen_jryu(); 
+myscreen = initScreen(myscreen);
+mglMetalSetViewColorPixelFormat(4);     % set to argb2101010 pixel format
+rootdir     = find_root_dir();
 rng(0, 'twister'); % set seed
 
 %% Experimenter parameters
@@ -31,12 +34,12 @@ exp.feedback            = false;  % correct or incorrect in 2afc
 exp.feedback_center     = false;  % feedback about the exact center
 
 exp.colorfix            = false; % colored fixation
-exp.tangential_disp     = true; % otherwise specify polar angle and displacement angle
+exp.displacement_type   = 'circular'; %'tangential'; % otherwise specify polar angle and displacement angle
 exp.respDirArrow        = true;
 
 exp.block_design        = false; % in each block, present all combinations of parameters
-exp.noise_mask          = '/Users/gru/proj/grustim/trackpos/noise/grating.mat'; 
-exp.staircase_init      = ''; %'/Users/gru/data/trackpos_multitask/s412/230217_stim03_staircase.mat';
+exp.noise_mask          = fullfile(rootdir, 'proj/grustim/trackpos/noise/grating.mat'); 
+exp.staircase_init      = ''; % fullfile(rootdir,'data/trackpos_multitask/s412/230217_stim03_staircase.mat');
 
 %% task parameters
 % stimulus and background
@@ -57,8 +60,11 @@ params.task.stimDur         = [2/60, 4/60, 8/60, 15/60, 30/60]; %[2/60, 3/60, 4/
 params.task.stimStd         = [1]; % [1,1.5]
 params.task.stimColor       = 'k';
 
-if exp.tangential_disp
+if strcmp(exp.displacement_type, 'tangential')
     params.task.angleSet    = 1:8; % polar angles
+elseif strcmp(exp.displacement_type, 'circular')
+    params.task.angleSet    = 1:8; % polar angles
+    params.task.displ_type       = {'circular'};
 else
     params.task.polarAngle = 0;
     params.task.displAngle = pi/2;
@@ -128,7 +134,7 @@ if isfield(stimulus.exp, 'phasescrambleOn') && (stimulus.exp.phasescrambleOn == 
 
     tic
     if stimulus.exp.backprecompute == 1
-        savefile = '/Users/gru/proj/grustim/trackpos/trackpos.mat';
+        savefile = fullfile(rootdir, 'proj/grustim/trackpos/trackpos.mat');
         %savefile = '/Users/jryu/data/trackpos/trackpos.mat'; 
         % savefile = '/Users/joshua/data/trackpos_2afc/trackpos.mat'; % just use noise 1 and permute
         if ~exist(savefile,'file')
@@ -193,11 +199,7 @@ stimulus.t0 = mglGetSecs; %
 mglDisplayCursor(0); %hide cursor
 mglClearScreen(params.task.backLum);
 mglTextDraw('task (trackpos_2afc_masked_sc) starting... ', [0 3])
-if exp.tangential_disp
-    mglTextDraw('Press 1 if the blob is more counter-clockwise to the left of red reference. 2 otherwise',[0 1]);
-else
-    mglTextDraw('Press 1 if the blob is more counter-clockwise to the left of red reference. 2 otherwise',[0 1]);
-end
+mglTextDraw('Press 2 if the blob was in the direction of the red arrow from the red reference dot. 1 otherwise',[0 1]);
 
 mglBltTexture(mglText('When you are ready, press backtick to go to the first trial'),[0 -3]);
 mglFlush(); myscreen.flushMode = -1;
@@ -206,7 +208,7 @@ if ~exp.showmouse, mglDisplayCursor(0);, end %hide cursor
 
 phaseNum{1} = 1; phaseNum{2}=1; phaseNum{3}=1;
 while (phaseNum{1} <= length(task{1})) && ~myscreen.userHitEsc && ...
-        (phaseNum{2} <= length(task{2}) || phaseNum{3} <= length(task{3}))
+        (phaseNum{2} <= length(task{2}))
     [task{1}, myscreen, phaseNum{1}]        = updateTask(task{1},myscreen,phaseNum{1});     % update the main task
     
     if phaseNum{2} <= length(task{2}) % run 2afc
@@ -287,7 +289,7 @@ function params = load_debug_params(params)
     params.task.stimDur         = [2/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
     params.task.mask_TOff2MOn   = [0]; % stimulus offset to mask onset (Neisser 1967)
     params.task.maskLum         = [0.2];
-    params.trialpercond         = 20; 
-    params.task.angleSet        = [1]; 
+    params.trialpercond         = 3; 
+    params.task.angleSet        = [1, 2, 3, 4, 5,6,7,8]; 
     params.task.pointerOffset   = [5];
 end

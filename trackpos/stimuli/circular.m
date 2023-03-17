@@ -130,7 +130,8 @@ methods
         stim_dynparams      = obj.parameter_group(task.thistrial.stim_dyngroup, noiseStd);
 
         stimulus.target.dynparams = stim_dynparams;
-        stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, obj.maxtrialtime*myscreen.framesPerSecond, 1/myscreen.framesPerSecond);
+        stimulus.target.positions_trial = ...
+            ou_simulate_full(stim_dynparams, (obj.maxtrialtime + 1)*myscreen.framesPerSecond, 1/myscreen.framesPerSecond);
         stimulus.target.position = obj.polar2cart(obj.ecc_r, stimulus.target.positions_trial(1));
         
         % initialize the pointer
