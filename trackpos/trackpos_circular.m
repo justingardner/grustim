@@ -20,11 +20,11 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 1; % debug code
-exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
+exp.debug               = 0; % debug code
+exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
-exp.showRing            = 1; % show ring
+exp.showRing            = 0; % show ring
 exp.fixateCenter        = 1; % fixate center
 exp.controlMethod       = 'wheel'; % available: wheel
 
@@ -39,10 +39,10 @@ stimulus.exp = exp;
 cps                 = {};
 stimStdList         = [1]; %[0.5, 1 ,2];
 stim_noiseStdList   = [1]; % in dva per second
-stimLums            = [0.1, 0.2, 0.4, 0.8]; %[0.1, 0.2, 0.5]; 
+stimLums            = [0.2, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
-ecc_r_list          = [5,10]; % eccentricity
+ecc_r_list          = [3, 7, 10]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 
@@ -52,10 +52,10 @@ pointStd            = 0.2; stimulus.pointerR = pointStd;
 point_noiseStd      = 0;
 
 ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
-ntrials             = 20; % trials per condition
-nblocks             = 4;  % should divide ntrials, divide trial into blocks
+ntrials             = 15; % trials per condition
+nblocks             = 3;  % should divide ntrials, divide trial into blocks
 
-maxtrialtime        = 25;
+maxtrialtime        = 25; % seconds
 
 if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
 

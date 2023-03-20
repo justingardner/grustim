@@ -25,8 +25,8 @@ rng(0, 'twister'); % set seed
 
 %% Experimenter parameters
 exp                     = struct();
-exp.debug               = true;
-exp.trackEye            = false;
+exp.debug               = false;
+exp.trackEye            = true;
 exp.enforceFixThresh    = Inf;
 exp.showmouse           = false;
 
@@ -39,7 +39,7 @@ exp.respDirArrow        = true;
 
 exp.block_design        = false; % in each block, present all combinations of parameters
 exp.noise_mask          = fullfile(rootdir, 'proj/grustim/trackpos/noise/grating.mat'); 
-exp.staircase_init      = ''; % fullfile(rootdir,'data/trackpos_multitask/s412/230217_stim03_staircase.mat');
+exp.staircase_init      = fullfile(rootdir,'data/trackpos_2afc_masked_sc/s374/temp_staircase.mat');
 
 %% task parameters
 % stimulus and background
@@ -63,7 +63,7 @@ params.task.stimColor       = 'k';
 if strcmp(exp.displacement_type, 'tangential')
     params.task.angleSet    = 1:8; % polar angles
 elseif strcmp(exp.displacement_type, 'circular')
-    params.task.angleSet    = 1:8; % polar angles
+    params.task.angleSet    = [1,2,3]; % polar angles
     params.task.displ_type       = {'circular'};
 else
     params.task.polarAngle = 0;
@@ -78,14 +78,14 @@ if mglIsFile(exp.noise_mask)
     params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
 
-params.task.pointerOffset   = [5]; % [-10,-5,-2,0,2,5,10];
+params.task.pointerOffset       = [3, 7, 10]; %3,7,10 % [-10,-5,-2,0,2,5,10];
 
 % staircase parameters
 params.staircase                    = struct();
-thresh = params.task.pointerOffset(1)*1.7/10 + 0.3;
+thresh = params.task.pointerOffset(1)*1.7/10 + 0.1;
 params.staircase.initThreshold      = thresh; %0.3;
 params.staircase.initThresholdSd    = 0.5; %0.3;
-params.staircase.threshstd_thresh   = 0.1; 
+params.staircase.threshstd_thresh   = 0.05; 
 params.staircase.staircase_init     = exp.staircase_init;
 
 if exp.debug
@@ -218,9 +218,17 @@ while (phaseNum{1} <= length(task{1})) && ~myscreen.userHitEsc && ...
     myscreen                        = tickScreen(myscreen,task);     % flip screen
 end
 
+% save temporary staircase first
+if isfield(task{2}{1}, 'private') && isfield(task{2}{1}.private,'staircaseTable')
+    staircase = task{2}{1}.private.staircaseTable;
+    save(fullfile(myscreen.datadir,'temp_staircase.mat'), 'staircase');
+end
+
+% end task
 myscreen = endTask(myscreen,task);
 mglClose; endScreen(myscreen); mglDisplayCursor(1) %show cursor
 
+% save staircase to the correct stimfile
 if isfield(task{2}{1}, 'private') && isfield(task{2}{1}.private,'staircaseTable')
     staircase = task{2}{1}.private.staircaseTable;
     save([myscreen.stimfile(1:end-4),'_staircase.mat'], 'staircase');

@@ -33,15 +33,15 @@ dt_cue = 1;
 dt_fix = 0.5;
 
 if mglIsFile(exp.noise_mask)
-                             % wait, init, cue, fix, stim, del, mask, resp, feedback 
-    task{1}.segmin           = [inf   dt_init dt_cue   dt_fix  inf   inf   inf  inf    dt_fb];
-    task{1}.segmax           = [inf   dt_init dt_cue   dt_fix  inf   inf   inf  inf    dt_fb]; 
-    task{1}.getResponse      = [0 0 0 0 0 0 0 1 0]; %segment to get response.
+                             % wait, init, cue, fix, stim, del, mask, resp, feedback
+    task{1}.segmin           = [inf   dt_init dt_cue   dt_fix  inf   inf   inf  inf  dt_fb 0];
+    task{1}.segmax           = [inf   dt_init dt_cue   dt_fix  inf   inf   inf  inf  dt_fb 0]; 
+    task{1}.getResponse      = [0 0 0 0 0 0 0 1 0 0]; %segment to get response.
 else
                              % wait, int cue, fix, stim, resp, feedback 
-    task{1}.segmin           = [inf dt_init dt_cue dt_fix inf inf dt_fb];
-    task{1}.segmax           = [inf dt_init dt_cue dt_fix inf inf dt_fb]; 
-    task{1}.getResponse      = [0 0 0 0 0 1 0]; %segment to get response.
+    task{1}.segmin           = [inf dt_init dt_cue dt_fix inf inf dt_fb 0];
+    task{1}.segmax           = [inf dt_init dt_cue dt_fix inf inf dt_fb 0]; 
+    task{1}.getResponse      = [0 0 0 0 0 1 0 0]; %segment to get response.
 end
 
 global stimulus
@@ -85,22 +85,26 @@ if strcmp(params.presSched, 'staircase')
 
         if isfield(params.staircase, 'staircase_init') && isfile(params.staircase.staircase_init)
             saved_idx           = findCondIdx(saved_staircase, thistrial);
-            disp(['saved_idx = ' num2str(saved_idx)])
             if isempty(saved_idx)
-                disp("(trackpos_sub_2afc) WARNING: the staircase file provided does not have a matching condition")
+                disp("(trackpos_sub_2afc) WARNING: the staircase file provided does not have a matching condition. Adding new staircase")
                 init_thresh = params.staircase.initThreshold;
+                staircase = doStaircase('init','quest','nTrials',params.trialpercond,...
+                    ['initialThreshold=' num2str(init_thresh)], ...
+                    ['initialThresholdSd=' num2str(params.staircase.initThresholdSd)],...
+                    'verbose=0');
             else
-                saved_idx_staircase = saved_staircase.staircase{saved_idx};
-                init_thresh = saved_idx_staircase.s.pThreshold;
+                disp(['Loading saved_idx = ' num2str(saved_idx)])
+                staircase = saved_staircase.staircase{saved_idx};
+                % init_thresh = saved_idx_staircase.s.pThreshold;
             end
         else
             init_thresh = params.staircase.initThreshold;
+            staircase = doStaircase('init','quest','nTrials',params.trialpercond,...
+                ['initialThreshold=' num2str(init_thresh)], ...
+                ['initialThresholdSd=' num2str(params.staircase.initThresholdSd)],...
+                'verbose=0');
         end
-
-        staircase = doStaircase('init','quest','nTrials',params.trialpercond,...
-            ['initialThreshold=' num2str(init_thresh)], ...
-            ['initialThresholdSd=' num2str(params.staircase.initThresholdSd)],...
-            'verbose=0');
+        
         tparams{end} = [tparams{end}; {staircase}];
     end
     
@@ -113,11 +117,11 @@ else
 end
 
 % privates
-
 task{1}.private.presSched           = params.presSched;
 if isfield(params.staircase, 'threshstd_thresh') 
     task{1}.private.threshstd_thresh    = params.staircase.threshstd_thresh;
 end
+task{1}.private.staircase_max_ntrials = params.trialpercond;
 
 % trial numbers
 if exp.block_design  % with some overflow.
@@ -164,6 +168,11 @@ end
 function [task, myscreen] = initTrialCallback(task, myscreen)
 global stimulus;
 
+if mod(task.trialnum,100) == 0
+    staircase = task.private.staircaseTable;
+    save(fullfile(myscreen.datadir,'temp_staircase.mat'), 'staircase');
+end
+
 
 function [task, myscreen] = initTrial_post_wait(task,myscreen)
 global stimulus;
@@ -206,6 +215,11 @@ if strcmp(task.private.presSched, 'staircase')
     if strcmp(task.thistrial.displ_type{1},'circular')
         s = min(pi/2 * task.thistrial.pointerOffset, s);
     end
+    
+    if s<0
+        disp('Staircase returned negative value');
+        s = abs(s);
+    end
 
     task.private.staircaseTable.staircase{idx}.lastTestValue = s;
 
@@ -213,13 +227,15 @@ if strcmp(task.private.presSched, 'staircase')
     
     if isfield(task.private, 'threshstd_thresh')
         tstd = QuestSd(task.private.staircaseTable.staircase{idx}.s);
+        tmean = QuestMean(task.private.staircaseTable.staircase{idx}.s);
         disp(['threshold posterior std = ' num2str(tstd)]);
         if task.private.staircaseTable.staircase{idx}.trialNum > 20   
             % todo: check quest sd
-            if tstd < task.private.threshstd_thresh
-                stimulus.skip = true;
-            else
-                stimulus.skip = false;
+            if tstd < task.private.threshstd_thresh || ...
+                    (task.private.staircaseTable.staircase{idx}.trialNum > task.private.staircase_max_ntrials)
+                disp(['Skipping condition ' num2str(idx) ': threshold: ' num2str(tmean) '; threshold std: ' num2str(tstd)])
+                task = jumpSegment(task,inf);
+                return;
             end
         end
     end
@@ -284,9 +300,6 @@ else
 end
 
 
-% disp(['Init Trial took ' num2str(toc(t0_init)) ' s']);
-
-
 
 function [task, myscreen] = startSegmentCallback(task, myscreen)
 global stimulus
@@ -303,7 +316,6 @@ if task.thistrial.thisseg == 1
     % wait for the next task 
     myscreen.flushMode = 0; % update screen
     stimulus.currtask   = 'done';
-    stimulus.skip       = false;
 
 elseif task.thistrial.thisseg == 2
     if stimulus.exp.trackEye, myscreen.flushMode = 0; end
@@ -325,53 +337,24 @@ elseif task.thistrial.thisseg == 7
     task.thistrial.framecount = 0; % restart framecount
     myscreen.flushMode = 0; % refresh every frame
 end
-% 
-% % blt screen once before screenUpdates loops
-% if task.thistrial.thisseg > 1 && task.thistrial.seglen(task.thistrial.thisseg) > 0
-%     [task, myscreen] = screenUpdateCallback(task, myscreen);
-%     mglFlush;
-%     if task.thistrial.thisseg == 5
-%         stimulus.start = mglGetSecs;
-%     elseif task.thistrial.thisseg == 6
-%         stimulus.length = mglGetSecs - stimulus.start;
-%         disp(['Segment duration error: ', num2str(stimulus.length - task.thistrial.stimDur)])
-%     end
-% end
-
-% task.thistrial.segTime(task.thistrial.thisseg) = mglGetSecs;
-% disp(['segment' num2str(task.thistrial.thisseg)])
-% task.thistrial.seglen
-% disp('continuing')
 
 %% screen update
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
 global stimulus % call stimulus
 
+if stimulus.exp.colorfix         % changing fixation colors
+    mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+else % white fixation
+    mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+end
+        
 if task.thistrial.thisseg== 1 % waiting for task to start
     if strcmp(stimulus.currtask,'2afc') % start task
         stimulus.currtask = 'running 2afc';
         task = jumpSegment(task); 
-        stimulus.skip = false;
-        
-        if stimulus.exp.colorfix         % changing fixation colors
-            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
-        else % white fixation
-            mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
-        end
     end
-    
-elseif stimulus.skip 
-    disp('skipping segment');
-    
-    task = jumpSegment(task);
-elseif task.thistrial.thisseg == 2
-    if stimulus.exp.colorfix         % changing fixation colors
-        mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
-    else % white fixation
-        mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
-    end    
-elseif task.thistrial.thisseg > 2
+elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
     %% do the task
     % set background luminance
     if task.thistrial.backLum > 1
@@ -409,58 +392,39 @@ elseif task.thistrial.thisseg > 2
         mglMetalArcs([0;0;0], [stimulus.fixColors.afc'; 0.3], [0.2;0.4],[0;2*pi], 1);
     end
 
-    % add fixation and reference
-    if any(task.thistrial.thisseg == [3,4,5])
-        if stimulus.exp.colorfix
-            % changing fixation colors
-            mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+    % add reference
+    mglMetalDots([stimulus.reference.position'; 0], [stimulus.fixColors.stim';1], ...
+        [stimulus.pointerR; stimulus.pointerR], 1, 1);
+    
+    % response period
+    % add response direction arrow
+    if (task.thistrial.thisseg == 8) && isfield(stimulus.exp, 'respDirArrow') && stimulus.exp.respDirArrow
+        if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
+            pa = task.thistrial.polarAngle;
+            da = task.thistrial.displAngle;
+            dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
         else
-            % white fixation
-            mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+            pa = 0;
+            da = 0;
+            dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
         end
-        
-        % reference
-        mglMetalDots([stimulus.reference.position'; 0], [stimulus.fixColors.stim';1], ...
-            [stimulus.pointerR; stimulus.pointerR], 1, 1);
-    elseif any(task.thistrial.thisseg == [6,7,8,9])
-        % afc response fixation 
-        mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
 
-        % reference
-        mglMetalDots([stimulus.reference.position'; 0], [stimulus.fixColors.stim';1], ...
-            [stimulus.pointerR; stimulus.pointerR], 1, 1);
-    end
-    
-    if task.thistrial.thisseg == 8
-        % response direction arrow
-        if isfield(stimulus.exp, 'respDirArrow') && stimulus.exp.respDirArrow
-            if isfield(task.thistrial, 'polarAngle') && isfield(task.thistrial, 'displAngle')
-                pa = task.thistrial.polarAngle;
-                da = task.thistrial.displAngle;
-                dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-            else
-                pa = 0;
-                da = 0;
-                dr = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-            end
+        r0 = task.thistrial.pointerOffset;
 
-            r0 = task.thistrial.pointerOffset;
+        arrow_length = 0.8; % length of arrow in deg (visual angle)
+        arm_ratio = 1/3;
+        arm_angle = pi/6;
+        arrowidth = 0.13;
 
-            arrow_length = 1.6; % length of arrow in deg (visual angle)
-            arm_ratio = 1/3;
-            arm_angle = pi/6;
-            arrowidth = 0.1;
-            
-            if strcmp(task.thistrial.displ_type, 'circular')
-                mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim)
-                mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim)
+        if strcmp(task.thistrial.displ_type, 'circular')
+            mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim)
+            mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim)
 
-            else
-                x0 = r0 * cos(pa);
-                y0 = r0 * sin(pa);
-    
-                mglMetalArrow(x0,y0,da,arrow_length,arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
-            end
+        else
+            x0 = r0 * cos(pa);
+            y0 = r0 * sin(pa);
+
+            mglMetalArrow(x0,y0,da,arrow_length,arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
         end
     end
 
@@ -481,7 +445,7 @@ elseif task.thistrial.thisseg > 2
     % track eye
     if stimulus.exp.trackEye && any(task.thistrial.thisseg==[3,4,5]) 
         % mouse version for testing with no eyetracker
-        if stimulus.exp.eyemousedebug
+        if isfield(stimulus.exp, 'eyemousedebug') && stimulus.exp.eyemousedebug
             mInfo = mglGetMouse(myscreen.screenNumber);
             degx = (mInfo.x-myscreen.screenWidth/2)*myscreen.imageWidth/myscreen.screenWidth;
             degy = (mInfo.y-myscreen.screenHeight/2)*myscreen.imageHeight/myscreen.screenHeight;
@@ -549,7 +513,7 @@ task = jumpSegment(task); % go to next segment
 %% predefined angleSet
 function [polarAngle, displAngle] = angleSet(angleSet)
     % set polar angle based on remainder
-    polarAngle = angleCode2angle(mod(angleSet, 100), 4);
+    polarAngle = angleCode2angle(mod(angleSet, 100), 8);
         
     if floor(angleSet/100) == 0 % tangential motion
         displAngle = mod(angleCode2angle(mod(angleSet, 100), 4)+pi/2,2*pi);
@@ -558,6 +522,7 @@ function [polarAngle, displAngle] = angleSet(angleSet)
     
 function angle = angleCode2angle(code, div)
     % code: natural number
+    % div: dives 360 degrees into div intervals
     angle = mod((code-1) * 2*pi/div, 2*pi);
 
     

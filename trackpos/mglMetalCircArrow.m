@@ -1,10 +1,11 @@
-function mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, lineWidth, color)
+function mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, lineWidth, color, varargin)
+    getArgs(varargin,'res=10')
     % draws circular arrow
     if isrow(color)
         color = color';
     end
 
-    da_vec = linspace(0,arrow_length/r0,50);
+    da_vec = linspace(0,arrow_length/r0,res);
     x = r0 * cos(pa + da_vec);
     y = r0 * sin(pa + da_vec);
 
