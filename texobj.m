@@ -72,8 +72,8 @@ stimulus.num_samples = 2;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/texture_stimuli/color/texobj';
-stimulus.origDir = '~/proj/texture_stimuli/color/originals';
+stimulus.stimDir = '~/proj/fbottazzini/fbottazzini/TextureSuthesis-master/tensorflow_synthesis/outputs';
+stimulus.origDir = '~/proj/fbottazzini/fbottazzini/TextureSynthesis-master/tensorflow_synthesis/inputs> ';
 
 %% Preload images
 mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
