@@ -20,7 +20,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 0; % debug code
+exp.debug               = 1; % debug code
 exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
@@ -37,8 +37,8 @@ stimulus.exp = exp;
 
 % no noise run
 cps                 = {};
-stimStdList         = [1]; %[0.5, 1 ,2];
-stim_noiseStdList   = [1]; % in dva per second
+stimStdList         = [1]; %[0.5, 1 ,2]; % size of gaussian blob
+stim_noiseStdList   = [0]; % in dva per second
 stimLums            = [0.2, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
@@ -46,7 +46,8 @@ ecc_r_list          = [3, 7, 10]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 
-stim_dyngroup       = {'0'}; % noise order, same size as stimStdList
+stim_dyngroup       = [10]; % noise order, same size as stimStdList % 10: constant velocity
+stim_vel            = [10]; 
 
 pointStd            = 0.2; stimulus.pointerR = pointStd;
 point_noiseStd      = 0;
@@ -62,12 +63,13 @@ if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
 for ecc_r = ecc_r_list
 for s = 1:length(stim_noiseStdList)
     stim_noiseStd = stim_noiseStdList(s);
-    stimdyngroup = stim_dyngroup{s};
+    stimdyngroup = stim_dyngroup(s);
 
     for stimStd = stimStdList
         % learning phase
         cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
             'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
+            'stim_vel', stim_vel,...
             'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
     
         % tracking
@@ -75,6 +77,7 @@ for s = 1:length(stim_noiseStdList)
         for b = 1:nblocks
             cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
                 'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
+                'stim_vel', stim_vel,...
                 'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
         end
     end
@@ -280,19 +283,20 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     % if we are in the tracking period,  save tracking variables
     if stimulus.task{phaseNum}.doTrack
         % update framecount
-        task.thistrial.trackStim(task.thistrial.framecount) = ...
-            task.thistrial.ecc_r * atan2(stimulus.target.position(2), stimulus.target.position(1)); 
-        task.thistrial.trackResp(task.thistrial.framecount) = ...
-            task.thistrial.ecc_r * atan2(stimulus.pointer.position(2), stimulus.pointer.position(1));
-        task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0); 
         task.thistrial.framecount = task.thistrial.framecount + 1;
+
+        % display target
+        if ~isempty(stimulus.target)
+            mglBltTexture(stimulus.target.img, stimulus.target.position);
+        end
+
+        % display other objects
+        for ij = 1:length(stimulus.otherObjs)
+            mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
+        end
     end
-    
-    % display target
-    if ~isempty(stimulus.target)
-        mglBltTexture(stimulus.target.img, stimulus.target.position);
-    end
-    
+
+        
     % display pointer
     if ~isempty(stimulus.pointer)
         if isfield(stimulus.pointer, 'img') && isempty(stimulus.pointer.img)
@@ -301,11 +305,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
             mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
              [1;0;0;1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
         end
-    end
-    
-    % display other objects
-    for ij = 1:length(stimulus.otherObjs)
-        mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
     end
     
     % display fixation

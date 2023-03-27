@@ -1,4 +1,6 @@
 function myscreen = setup_screen_jryu()
+% set hostname: sudo scutil --set HostName NAME
+
     myscreen = struct();
     if isempty(mglGetSID)
         mglSetSID(-1);
@@ -8,7 +10,7 @@ function myscreen = setup_screen_jryu()
 
     [ret, name] = system('hostname');
     
-    if contains(name, 'Joshuas-MacBook-Air.local') ||contains(name, 'DN2t9suv.SUNet')  || contains(name, 'DNa80fac0.SUNet') 
+    if contains(name, 'Joshuas-MacBook-Air.local') ||contains(name, 'Joshuas-MacBook-Air')
         myscreen.hideCursor         = 1;
         myscreen.displayName        = 'fulldisp';
         myscreen.saveData           = 1; % save stimfile to data directory

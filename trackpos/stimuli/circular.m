@@ -1,6 +1,10 @@
 classdef circular < trackingTask
     % The target moves in a circle, with the radius doing a random walk
     % main stimulus and background
+
+    % stim_dyngroup
+        % 0,1,2: indicate which order has
+        % cv: constant velocity stim_noiseStd gets used as velocity instead
     
 properties
     % task parameter
@@ -29,7 +33,7 @@ properties
 
     % variable parameters
     varparams   = {'backLum', ...
-        'stimLum', 'stimStd', 'stimColor', 'stim_dyngroup', 'stim_noiseStd', ...
+        'stimLum', 'stimStd', 'stimColor', 'stim_dyngroup', 'stim_noiseStd', 'stim_vel',...
         'pointLum', 'pointStd', 'pointColor', 'point_dyngroup', 'point_noiseStd', ...
         'ecc_r'};
     backLum;
@@ -40,6 +44,7 @@ properties
     stimColor; 
     stim_dyngroup; 
     stim_noiseStd;
+    stim_vel;
     
     pointLum;
     pointStd;
@@ -71,8 +76,9 @@ methods
         p.addParameter('stimLum', 0.8, @(x)(isnumeric(x)));
         p.addParameter('stimStd', 1, @(x)(isnumeric(x))) ;
         p.addParameter('stimColor', 'k', @(x)(ischar(x) || iscell(x))) ;
-        p.addParameter('stim_dyngroup', '0', @(x)(ischar(x) || iscell(x))) ;
+        p.addParameter('stim_dyngroup', 0, @(x)(isnumeric(x) || iscell(x))) ;
         p.addParameter('stim_noiseStd', 1, @(x)(isnumeric(x))) ;
+        p.addParameter('stim_vel', 0, @(x)(isnumeric(x))) ;
 
         p.addParameter('pointLum', 1, @(x)(isnumeric(x))) ;
         p.addParameter('pointStd', 0.2, @(x)(isnumeric(x))) ;
@@ -88,8 +94,9 @@ methods
     % return task object that can be run on trackpos.m
     function thistask = configureExperiment(obj, task, myscreen, stimulus) 
         thistask        = struct();
-        thistask.segmin = [obj.maxtrialtime, obj.iti];
-        thistask.segmax = [obj.maxtrialtime, obj.iti];
+        inittime = 1;
+        thistask.segmin = [inittime, obj.maxtrialtime, obj.iti-inittime];
+        thistask.segmax = [inittime, obj.maxtrialtime, obj.iti-inittime];
         
         if stimulus.exp.debug
             thistask.numTrials          = 5;
@@ -97,11 +104,11 @@ methods
             thistask.numTrials          = obj.numTrials;
         end
         
-        thistask.getResponse        = [0, 0];
+        thistask.getResponse        = [0, 0, 0];
         if obj.trialpause
-            thistask.synchToVol     = [0, 1];
+            thistask.synchToVol     = [0, 0, 1];
         else
-            thistask.synchToVol     = [0, 0];
+            thistask.synchToVol     = [0, 0, 0];
         end
         thistask.waitForBacktick    = 1;
         
@@ -130,8 +137,15 @@ methods
         stim_dynparams      = obj.parameter_group(task.thistrial.stim_dyngroup, noiseStd);
 
         stimulus.target.dynparams = stim_dynparams;
-        stimulus.target.positions_trial = ...
-            ou_simulate_full(stim_dynparams, (obj.maxtrialtime + 1)*myscreen.framesPerSecond, 1/myscreen.framesPerSecond);
+        T = (obj.maxtrialtime + 1)*myscreen.framesPerSecond;
+        dt = 1/myscreen.framesPerSecond;
+        if task.thistrial.stim_dyngroup == 10
+            state           = zeros(T, 1);
+            state(1,1)      = task.thistrial.stim_vel; % degs/frame linear velocity.
+            stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt,'state', state);
+        else
+            stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt);
+        end
         stimulus.target.position = obj.polar2cart(obj.ecc_r, stimulus.target.positions_trial(1));
         
         % initialize the pointer
@@ -165,7 +179,7 @@ methods
 
     
     function stimulus = startSegment(obj, task, myscreen, stimulus)        
-        if task.thistrial.thisseg == 1 % tracking
+        if task.thistrial.thisseg == 2 % tracking
             % set mouse position to the center of the screen
             [x_screen,y_screen] = deg2screen(0, 0, myscreen);
             mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
@@ -176,13 +190,17 @@ methods
             obj.movepointer  = true;
             obj.doTrack     = true;
             obj.displayFix 	= true;
-        else % ITI
+        elseif task.thistrial.thisseg == task.numsegs % ITI
             obj.movepointer  = false;
             obj.doTrack     = false;
             obj.displayFix 	= true;
             
             stimulus.target = [];
             stimulus.pointer = [];
+        else 
+            obj.movepointer  = false;
+            obj.doTrack     = false;
+            obj.displayFix 	= true;
         end   
 
     end
@@ -191,9 +209,7 @@ methods
     % need to define an update function for the stimulus
     function [task, stimulus]  = update(obj, task, myscreen, stimulus) 
         framenum = task.thistrial.framecount;
-        % update stimulus position and pointer position
-        
-            % pointer updates
+
         if obj.doTrack
             if toc(obj.t0) < obj.waitsecs
                 obj.movepointer = false;
@@ -223,16 +239,32 @@ methods
             if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
             stimulus.target.position = obj.polar2cart(obj.ecc_r, stimulus.target.positions_trial(framenum));
+
+            task.thistrial.trackStim(task.thistrial.framecount) = ...
+                task.thistrial.ecc_r * stimulus.target.positions_trial(framenum); 
+            task.thistrial.trackResp(task.thistrial.framecount) = ...
+                task.thistrial.ecc_r * stimulus.pointer.state(1);
+            task.thistrial.trackTime(task.thistrial.framecount) = mglGetSecs(stimulus.t0); 
         end
     end
 
     function param = parameter_group(obj, groupname, noisestd)
-        if groupname == '0' % white velocity
+        if groupname == 0 % white velocity
             param = ornstein_uhlenbeck(0, noisestd);
-        elseif groupname == '1' % white acceleration
+        elseif groupname == 1 % white acceleration
             param = ornstein_uhlenbeck(1, noisestd);
-        elseif groupname == '2' % white jerk
+        elseif groupname == 2 % white jerk
             param = ornstein_uhlenbeck(2, noisestd);
+        elseif groupname == 10 % constant velocity
+            param = struct();
+            param.maxorder              = 1;
+            param.('thetaStd0')         = noisestd;
+            param.('invtaus_decay0')    = 0;
+            param.('taus_int0')         = 1;
+            
+            param.('thetaStd1')         = 0;
+            param.('invtaus_decay1')    = 0;
+            param.('taus_int1')         = 1;
         end
     end
 

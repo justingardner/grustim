@@ -1,5 +1,7 @@
-function state = ou_simulate_full(dynparams, T, dt)
-    state = zeros(T,1);
+function state = ou_simulate_full(dynparams, T, dt, varargin)
+    % state: is added to the last order
+    
+    getArgs(varargin, {'state', zeros(T,1), 'b_input', zeros(T,dynparams.maxorder+1)});
     for revord = 0:dynparams.maxorder
         ord = dynparams.maxorder - revord;
         noisestd        = dynparams.(['thetaStd', num2str(ord)]);
@@ -8,12 +10,10 @@ function state = ou_simulate_full(dynparams, T, dt)
 
         input               = state + noisestd * randn(T,1);
         integrator          = cumprod([dt/tau_int; (1 - invtau_decay*dt) * ones(T-1,1)]);
-        integrated_noise    = conv(input,integrator, "full");
-        state               = integrated_noise(1:T);
+        integrated_input    = conv(input,integrator, "full");
+        state               = integrated_input(1:T) + b_input(:,ord+1);
     end
     
     % add random offset
-    state = state + 2*pi*rand();
+    % state = state + 2*pi*rand();
 end
-
-
