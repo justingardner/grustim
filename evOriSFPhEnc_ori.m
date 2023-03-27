@@ -46,13 +46,13 @@ nseg = 4;
 if sf == 0.5
     sf = 0.5;
     stimulus.sfInd = 1;
-elseif sf == 1
-    sf = 1;
+elseif sf == 8
+    sf = 8;
     stimulus.sfInd = 2;
 else
-    error('Specify ''sf'' as either (0.5 or 1)')
+    error('Specify ''sf'' as either (0.5 or 8)')
 end
-stimulus.sf = [0.5 1];
+stimulus.sf = [0.5 8];
 task{1}{1}.parameter.sf = sf;
 
 % ccw, cw ori conditions

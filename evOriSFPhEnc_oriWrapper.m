@@ -9,7 +9,7 @@ mglSetSID(-1);
 setRepeats = 6; % number of repeats of all conditions
 
 % loose variables - MAKE SURE THESE MATCH PARAMETERS IN evOriSFPhEnc
-sf = [0.5]; % 1];
+sf = [8]; % 1];
 dir = [1 -1];
 
 for setIdx = 1:setRepeats
