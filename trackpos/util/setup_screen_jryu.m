@@ -17,12 +17,13 @@ function myscreen = setup_screen_jryu()
         myscreen.datadir            = '/Users/jryu/Dropbox/GardnerLab/data/';
         
     else
+        
         rmpath(genpath('/Users/gru/proj/mgl'))
         addpath(genpath('/Users/gru/proj/mgl_jryu'))
 
         % myscreen.screenWidth = 860; myscreen.screenHeight = 600;
         myscreen.hideCursor         = 1;
-        myscreen.displayName        = 'vpixx';
+        myscreen.displayName        = 'vpixx_close';
         myscreen.calibType          = 'Specify particular calibration';
         myscreen.calibFilename      = '0001_dn0a221834_221005.mat';
         myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0001_dn0a221834_221005';

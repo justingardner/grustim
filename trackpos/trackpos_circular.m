@@ -20,7 +20,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
@@ -38,51 +38,50 @@ stimulus.exp = exp;
 % no noise run
 cps                 = {};
 stimStdList         = [1]; %[0.5, 1 ,2]; % size of gaussian blob
-stim_noiseStdList   = [0]; % in dva per second
-stimLums            = [0.2, 0.8]; %[0.1, 0.2, 0.5]; 
+stim_noiseStdList   = [1]; % in dva per second (linear velocity) 
+stimLums            = 0.4; %[0.2, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
-ecc_r_list          = [3, 7, 10]; % eccentricity
+ecc_r_list          = [3, 5, 10, 15, 20]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 
-stim_dyngroup       = [10]; % noise order, same size as stimStdList % 10: constant velocity
-stim_vel            = [10]; 
+stim_dyngroup       = [0]; % noise order, same size as stimStdList % 10: constant velocity
+stim_vel            = [0]; 
 
-pointStd            = 0.2; stimulus.pointerR = pointStd;
+pointStd            = 0.4; stimulus.pointerR = pointStd;
 point_noiseStd      = 0;
 
-ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
-ntrials             = 15; % trials per condition
-nblocks             = 3;  % should divide ntrials, divide trial into blocks
+ntrial_learn        = 0;  % learning phase at full luminance, not analyzed
+ntrials             = 10; % trials per condition
+nblocks             = 5;  % should divide ntrials, divide trial into blocks
 
-maxtrialtime        = 25; % seconds
+maxtrialtime        = 15; % seconds
 
 if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
 
-for ecc_r = ecc_r_list
-for s = 1:length(stim_noiseStdList)
-    stim_noiseStd = stim_noiseStdList(s);
-    stimdyngroup = stim_dyngroup(s);
+Nconds = length(ecc_r_list);
 
-    for stimStd = stimStdList
-        % learning phase
-        cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
-            'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
-            'stim_vel', stim_vel,...
-            'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
-    
-        % tracking
-        ntrials_phase = length(stimLums) * ceil(ntrials/nblocks);
-        for b = 1:nblocks
-            cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
-                'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
-                'stim_vel', stim_vel,...
-                'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
-        end
-    end
+stim_noiseStd   = stim_noiseStdList(1);
+stimdyngroup    = stim_dyngroup(1);
+stimStd         = stimStdList(1);
+ecc_r           = ecc_r_list;
+
+% learning phase -- max luminance, not analyzed
+cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
+    'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
+    'stim_vel', stim_vel,...
+    'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
+
+% tracking
+ntrials_phase = Nconds * ceil(ntrials/nblocks);
+for b = 1:nblocks
+    cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
+        'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
+        'stim_vel', stim_vel,...
+        'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
 end
-end  
+
 stimulus.task = cps;
 
 %% configure task
@@ -125,6 +124,7 @@ if strcmp(exp.controlMethod,'eye')
     stimulus.eyecalib       = eyecalib;
 elseif stimulus.exp.trackEye
     disp(' Calibrating Eye ....')
+    % http://sr-research.jp/support/manual/EyeLink%20Programmers%20Guide.pdf
     myscreen  = eyeCalibDisp(myscreen); % calibrate eye every time.
 end
 

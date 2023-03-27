@@ -16,7 +16,12 @@ function stimulus = calibrateWheel(myscreen, stimulus)
     
     order_init          = 0;
     ecc_r               = 5;
-    pointer_r           = 0.2;    
+    
+    if isfield(stimulus, 'pointerR')
+        pointer_r = stimulus.pointerR;
+    else
+        pointer_r           = 0.4;
+    end
     
     wordy = false;
     

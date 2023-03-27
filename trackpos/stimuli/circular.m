@@ -71,7 +71,7 @@ methods
         p.addParameter('trialpause', false);
 
         p.addParameter('backLum', 0.7, @(x)(isnumeric(x)));
-        p.addParameter('ecc_r', 5, @(x)(isnumeric(x) && all(x < 20))) ;
+        p.addParameter('ecc_r', 5, @(x)(isnumeric(x) && all(x < 50))) ;
 
         p.addParameter('stimLum', 0.8, @(x)(isnumeric(x)));
         p.addParameter('stimStd', 1, @(x)(isnumeric(x))) ;
@@ -133,7 +133,7 @@ methods
            eval(['target.' lower(param{1}(5:end)) ' = task.thistrial.' param{1} ';'])
         end
         stimulus.target     = trackposInitStimulus(target,myscreen);
-        noiseStd            = task.thistrial.stim_noiseStd / sqrt(dt) / obj.ecc_r; 
+        noiseStd            = task.thistrial.stim_noiseStd / sqrt(dt) / obj.ecc_r; % angular noise
         stim_dynparams      = obj.parameter_group(task.thistrial.stim_dyngroup, noiseStd);
 
         stimulus.target.dynparams = stim_dynparams;
@@ -141,7 +141,7 @@ methods
         dt = 1/myscreen.framesPerSecond;
         if task.thistrial.stim_dyngroup == 10
             state           = zeros(T, 1);
-            state(1,1)      = task.thistrial.stim_vel; % degs/frame linear velocity.
+            state(1,1)      = task.thistrial.stim_vel / task.thistrial.ecc_r; % degs/frame linear velocity.
             stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt,'state', state);
         else
             stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt);

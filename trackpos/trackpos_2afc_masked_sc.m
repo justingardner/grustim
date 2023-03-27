@@ -39,7 +39,7 @@ exp.respDirArrow        = true;
 
 exp.block_design        = false; % in each block, present all combinations of parameters
 exp.noise_mask          = fullfile(rootdir, 'proj/grustim/trackpos/noise/grating.mat'); 
-exp.staircase_init      = fullfile(rootdir,'data/trackpos_2afc_masked_sc/s374/temp_staircase.mat');
+exp.staircase_init      = fullfile(rootdir,'data/trackpos_2afc_masked_sc/s374/230320_stim01_staircase.mat');
 
 %% task parameters
 % stimulus and background
@@ -55,21 +55,20 @@ params.task.backLum     = 0.7;%0.4; %32;  % background luminance; units: fractio
 params.task.noiseLum    = 0; % noise luminance, if there is one.
 
 % main task parameters
-params.task.stimLum         = [0.2, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
-params.task.stimDur         = [2/60, 4/60, 8/60, 15/60, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
+params.task.stimLum         = 0.4; %[0.2, 0.8]; %, 0.1, 0.2, 0.4]; %[0.1, 1]; %[0.05, 0.1, 0.2, 0.4]; % [0.1,0.2,0.5] % [16,32,48,96]
+params.task.stimDur         = [2/60, 4/60, 10/60, 20/60]; %, 30/60]; %[2/60, 3/60, 4/60, 6/60, 10/60, 15/60]; %[2/60, 4/60, 6/60, 10/60, 15/60, 30/60]; 
 params.task.stimStd         = [1]; % [1,1.5]
 params.task.stimColor       = 'k';
 
 if strcmp(exp.displacement_type, 'tangential')
     params.task.angleSet    = 1:8; % polar angles
 elseif strcmp(exp.displacement_type, 'circular')
-    params.task.angleSet    = [1,2,3]; % polar angles
+    params.task.angleSet    = 1; %[1,2,3]; % polar angles
     params.task.displ_type       = {'circular'};
 else
     params.task.polarAngle = 0;
     params.task.displAngle = pi/2;
 end
-
 
 % mask parameters
 if mglIsFile(exp.noise_mask)
@@ -78,14 +77,14 @@ if mglIsFile(exp.noise_mask)
     params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
 
-params.task.pointerOffset       = [3, 7, 10]; %3,7,10 % [-10,-5,-2,0,2,5,10];
+params.task.pointerOffset       = [3, 5, 10, 15, 20]; %[3, 7, 10]; %3,7,10 % [-10,-5,-2,0,2,5,10];
 
 % staircase parameters
 params.staircase                    = struct();
 thresh = params.task.pointerOffset(1)*1.7/10 + 0.1;
 params.staircase.initThreshold      = thresh; %0.3;
 params.staircase.initThresholdSd    = 0.5; %0.3;
-params.staircase.threshstd_thresh   = 0.05; 
+params.staircase.threshstd_thresh   = 0.1; 
 params.staircase.staircase_init     = exp.staircase_init;
 
 if exp.debug
@@ -231,6 +230,10 @@ mglClose; endScreen(myscreen); mglDisplayCursor(1) %show cursor
 % save staircase to the correct stimfile
 if isfield(task{2}{1}, 'private') && isfield(task{2}{1}.private,'staircaseTable')
     staircase = task{2}{1}.private.staircaseTable;
+    for idx = 1:size(staircase,1)
+        staircase.trialnum(idx) = staircase.staircase{idx,1}.trialNum;
+        staircase.quest_thresh_std(idx) = QuestSd(staircase.staircase{idx,1}.s);
+    end
     save([myscreen.stimfile(1:end-4),'_staircase.mat'], 'staircase');
 end
 
