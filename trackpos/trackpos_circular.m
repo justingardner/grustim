@@ -37,49 +37,51 @@ stimulus.exp = exp;
 
 % no noise run
 cps                 = {};
-stimStdList         = [1]; %[0.5, 1 ,2];
-stim_noiseStdList   = [1]; % in dva per second
-stimLums            = [0.2, 0.8]; %[0.1, 0.2, 0.5]; 
+stimStdList         = [1]; %[0.5, 1 ,2]; % size of gaussian blob
+stim_noiseStdList   = [1]; % in dva per second (linear velocity) 
+stimLums            = 0.4; %[0.2, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
-ecc_r_list          = [3, 7, 10]; % eccentricity
+ecc_r_list          = [3, 5, 10, 15, 20]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 
-stim_dyngroup       = {'0'}; % noise order, same size as stimStdList
+stim_dyngroup       = [0]; % noise order, same size as stimStdList % 10: constant velocity
+stim_vel            = [0]; 
 
-pointStd            = 0.2; stimulus.pointerR = pointStd;
+pointStd            = 0.4; stimulus.pointerR = pointStd;
 point_noiseStd      = 0;
 
-ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
-ntrials             = 15; % trials per condition
-nblocks             = 3;  % should divide ntrials, divide trial into blocks
+ntrial_learn        = 0;  % learning phase at full luminance, not analyzed
+ntrials             = 10; % trials per condition
+nblocks             = 5;  % should divide ntrials, divide trial into blocks
 
-maxtrialtime        = 25; % seconds
+maxtrialtime        = 15; % seconds
 
 if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
 
-for ecc_r = ecc_r_list
-for s = 1:length(stim_noiseStdList)
-    stim_noiseStd = stim_noiseStdList(s);
-    stimdyngroup = stim_dyngroup{s};
+Nconds = length(ecc_r_list);
 
-    for stimStd = stimStdList
-        % learning phase
-        cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
-            'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
-            'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
-    
-        % tracking
-        ntrials_phase = length(stimLums) * ceil(ntrials/nblocks);
-        for b = 1:nblocks
-            cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
-                'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
-                'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
-        end
-    end
+stim_noiseStd   = stim_noiseStdList(1);
+stimdyngroup    = stim_dyngroup(1);
+stimStd         = stimStdList(1);
+ecc_r           = ecc_r_list;
+
+% learning phase -- max luminance, not analyzed
+cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
+    'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
+    'stim_vel', stim_vel,...
+    'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
+
+% tracking
+ntrials_phase = Nconds * ceil(ntrials/nblocks);
+for b = 1:nblocks
+    cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
+        'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
+        'stim_vel', stim_vel,...
+        'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
 end
-end  
+
 stimulus.task = cps;
 
 %% configure task
@@ -122,6 +124,7 @@ if strcmp(exp.controlMethod,'eye')
     stimulus.eyecalib       = eyecalib;
 elseif stimulus.exp.trackEye
     disp(' Calibrating Eye ....')
+    % http://sr-research.jp/support/manual/EyeLink%20Programmers%20Guide.pdf
     myscreen  = eyeCalibDisp(myscreen); % calibrate eye every time.
 end
 
@@ -280,19 +283,20 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     % if we are in the tracking period,  save tracking variables
     if stimulus.task{phaseNum}.doTrack
         % update framecount
-        task.thistrial.trackStim(task.thistrial.framecount) = ...
-            task.thistrial.ecc_r * atan2(stimulus.target.position(2), stimulus.target.position(1)); 
-        task.thistrial.trackResp(task.thistrial.framecount) = ...
-            task.thistrial.ecc_r * atan2(stimulus.pointer.position(2), stimulus.pointer.position(1));
-        task.thistrial.trackTime(task.thistrial.framecount)   = mglGetSecs(stimulus.t0); 
         task.thistrial.framecount = task.thistrial.framecount + 1;
+
+        % display target
+        if ~isempty(stimulus.target)
+            mglBltTexture(stimulus.target.img, stimulus.target.position);
+        end
+
+        % display other objects
+        for ij = 1:length(stimulus.otherObjs)
+            mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
+        end
     end
-    
-    % display target
-    if ~isempty(stimulus.target)
-        mglBltTexture(stimulus.target.img, stimulus.target.position);
-    end
-    
+
+        
     % display pointer
     if ~isempty(stimulus.pointer)
         if isfield(stimulus.pointer, 'img') && isempty(stimulus.pointer.img)
@@ -301,11 +305,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
             mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
              [1;0;0;1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
         end
-    end
-    
-    % display other objects
-    for ij = 1:length(stimulus.otherObjs)
-        mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
     end
     
     % display fixation
