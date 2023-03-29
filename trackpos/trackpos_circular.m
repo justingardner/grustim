@@ -21,7 +21,7 @@ rng(0, 'twister'); % set seed
 % Experimenter parameters
 
 exp.debug               = 0; % debug code
-exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
+exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.showRing            = 0; % show ring
@@ -29,6 +29,8 @@ exp.fixateCenter        = 1; % fixate center
 exp.controlMethod       = 'wheel'; % available: wheel
 
 exp.grabframe           = 0; % capture frames. specify save directory
+
+exp.lastStimFile        = '/Users/jryu/Dropbox/GardnerLab/data/trackpos_circular/test/230329_stim01.mat';
 
 global stimulus; stimulus = struct;
 stimulus.exp = exp;
@@ -38,7 +40,7 @@ stimulus.exp = exp;
 % no noise run
 cps                 = {};
 stimStdList         = [1]; %[0.5, 1 ,2]; % size of gaussian blob
-stim_noiseStdList   = [1]; % in dva per second (linear velocity) 
+stim_noiseStdList   = [0]; % in dva per second (linear velocity) 
 stimLums            = 0.4; %[0.2, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
@@ -46,11 +48,11 @@ ecc_r_list          = [3, 5, 10, 15, 20]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 
-stim_dyngroup       = [0]; % noise order, same size as stimStdList % 10: constant velocity
-stim_vel            = [0]; 
+stim_dyngroup       = [10]; % noise order, same size as stimStdList % 10: constant velocity
+stim_vel            = [10]; 
 
 pointStd            = 0.4; stimulus.pointerR = pointStd;
-point_noiseStd      = 0;
+point_noiseStd      = [0, 0.5, 1];
 
 ntrial_learn        = 0;  % learning phase at full luminance, not analyzed
 ntrials             = 10; % trials per condition
@@ -129,6 +131,10 @@ elseif stimulus.exp.trackEye
 end
 
 if strcmp(stimulus.exp.controlMethod, 'wheel')
+    a = load(exp.lastStimFile);
+    if isfield(a.stimulus,'wheel_params')
+        stimulus.wheel_params = a.stimulus.wheel_params;
+    end
     stimulus = calibrateWheel(myscreen, stimulus);
 end
 

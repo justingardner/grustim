@@ -28,12 +28,18 @@ function stimulus = calibrateWheel(myscreen, stimulus)
     maxorder                = 4;
     wheel_params            = ornstein_uhlenbeck(maxorder, 0);
     wheel_params.maxorder   = order_init;
+    
     state                   = zeros(maxorder,1);
 
     step    = 0.01;
     dt      = 1/myscreen.framesPerSecond;
     wheel_params.taus_int0 = dt;
     mouse0  = [0,0];
+
+    % reset if wheel_params is specified
+    if isfield(stimulus,'wheel_params')
+        wheel_params = stimulus.wheel_params;
+    end
 
     % set mouse position
     [x_screen,y_screen] = deg2screen(0, 0, myscreen);

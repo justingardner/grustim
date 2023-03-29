@@ -341,6 +341,8 @@ end
 %% screen update
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
+disp(num2str(task.thistrial.thisseg));
+
 global stimulus % call stimulus
 
 if stimulus.exp.colorfix         % changing fixation colors
@@ -371,7 +373,7 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
         if isfield(stimulus.exp, 'phasescrambleOn') && stimulus.exp.phasescrambleOn == 1 
             idx = task.thistrial.bgpermute(task.thistrial.framecount);
             mglBltTexture(stimulus.backnoise{idx},...
-                [0 0 myscreen.imageWidth myscreen.imageHeight])
+                [0 0 myscreen.imageWidth myscreen.imageHeight]);
         end
         task.thistrial.trackTime(task.thistrial.framecount) = mglGetSecs(stimulus.t0);
     end
@@ -388,8 +390,9 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
 
     % cues: reference/fixation helpers
     if task.thistrial.thisseg == 3
-        mglMetalArcs([stimulus.reference.position, 0]', [stimulus.fixColors.stim'; 0.3], [0.4;0.7],[0;2*pi], 1);
-        mglMetalArcs([0;0;0], [stimulus.fixColors.afc'; 0.3], [0.2;0.4],[0;2*pi], 1);
+        r0 = stimulus.pointerR;
+        mglMetalArcs([stimulus.reference.position, 0]', [stimulus.fixColors.stim'; 0.3], [r0*2;r0*3.5],[0;2*pi], 1);
+        mglMetalArcs([0;0;0], [stimulus.fixColors.afc'; 0.3], [r0;r0*2],[0;2*pi], 1);
     end
 
     % add reference
@@ -417,8 +420,8 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
         arrowidth = 0.13;
 
         if strcmp(task.thistrial.displ_type, 'circular')
-            mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim)
-            mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim)
+            mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
+            mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim);
 
         else
             x0 = r0 * cos(pa);

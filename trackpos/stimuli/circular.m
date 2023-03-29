@@ -51,6 +51,9 @@ properties
     pointColor;
     point_dyngroup; 
     point_noiseStd;
+
+    % define segments
+    segments = {'init', 'cue', 'fix', 'track', 'iti'};
 end
     
     
@@ -95,8 +98,12 @@ methods
     function thistask = configureExperiment(obj, task, myscreen, stimulus) 
         thistask        = struct();
         inittime = 1;
-        thistask.segmin = [inittime, obj.maxtrialtime, obj.iti-inittime];
-        thistask.segmax = [inittime, obj.maxtrialtime, obj.iti-inittime];
+        cue = 1;
+        fix = 0.5;
+        iti = max(0, obj.iti-inittime-fix-cue);
+        
+        thistask.segmin = [inittime, cue, fix, obj.maxtrialtime, iti];
+        thistask.segmax = [inittime, cue, fix, obj.maxtrialtime, iti];
         
         if stimulus.exp.debug
             thistask.numTrials          = 5;
@@ -141,7 +148,7 @@ methods
         dt = 1/myscreen.framesPerSecond;
         if task.thistrial.stim_dyngroup == 10
             state           = zeros(T, 1);
-            state(1,1)      = task.thistrial.stim_vel / task.thistrial.ecc_r; % degs/frame linear velocity.
+            state(1,1)      = task.thistrial.stim_vel / task.thistrial.ecc_r / dt; % linear velocity to angular velocity input (deg/s^2)
             stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt,'state', state);
         else
             stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt);
@@ -163,7 +170,8 @@ methods
 
         if isfield(stimulus,'wheel_params') % calibrated.
             pointer_dynparams   = stimulus.wheel_params;
-            pointer_dynparams.(['thetaStd', num2str(pointer_dynparams.maxorder)]) = pnoiseStd;
+            tau_noise = pointer_dynparams.(['taus_int', num2str(pointer_dynparams.maxorder)]);
+            pointer_dynparams.(['thetaStd', num2str(pointer_dynparams.maxorder)]) = pnoiseStd * tau_noise;
         elseif isfield(task.thistrial,'point_dyngroup')
             pointer_dynparams   = obj.parameter_group(task.thistrial.point_dyngroup, pnoiseStd);
         else
@@ -178,8 +186,10 @@ methods
     end
 
     
-    function stimulus = startSegment(obj, task, myscreen, stimulus)        
-        if task.thistrial.thisseg == 2 % tracking
+    function stimulus = startSegment(obj, task, myscreen, stimulus)       
+        if strcmp(obj.segments{task.thistrial.thisseg}, 'tracking')
+            disp('starting tracking segment')
+            % task.thistrial.thisseg == 2 % tracking
             % set mouse position to the center of the screen
             [x_screen,y_screen] = deg2screen(0, 0, myscreen);
             mglSetMousePosition(ceil(x_screen),floor(y_screen), myscreen.screenNumber);
@@ -190,7 +200,7 @@ methods
             obj.movepointer  = true;
             obj.doTrack     = true;
             obj.displayFix 	= true;
-        elseif task.thistrial.thisseg == task.numsegs % ITI
+        elseif task.thistrial.thisseg == task.numsegs % ITI or strcmp(obj.segments(task.thistrial.thisseg), 'tracking')
             obj.movepointer  = false;
             obj.doTrack     = false;
             obj.displayFix 	= true;
@@ -245,6 +255,11 @@ methods
             task.thistrial.trackResp(task.thistrial.framecount) = ...
                 task.thistrial.ecc_r * stimulus.pointer.state(1);
             task.thistrial.trackTime(task.thistrial.framecount) = mglGetSecs(stimulus.t0); 
+        end
+
+        if strcmp(obj.segments{task.thistrial.thisseg}, 'cue')
+            r0 = stimulus.pointerR;
+            mglMetalArcs([stimulus.pointer.position, 0]', [1;0;0; 0.3], [2*r0; 3.5*r0],[0;2*pi], 1);
         end
     end
 

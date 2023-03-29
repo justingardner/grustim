@@ -121,7 +121,7 @@ stimulus.fixColors.est      = [0 1 0]; % fixation color at response
 stimulus.fixColors.afc      = [0 0 1]; % afc response period 
 stimulus.fixColors.fb       = [1 1 1]; % position feedback
 
-stimulus.pointerR           = 0.2;
+stimulus.pointerR           = 0.4;
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
