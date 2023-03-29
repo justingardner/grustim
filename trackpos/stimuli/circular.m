@@ -131,7 +131,6 @@ methods
     function [task, stimulus]  = initTrial(obj, task, myscreen, stimulus)
         dt              = 1/myscreen.framesPerSecond;
         
-        
         obj.ecc_r       = task.thistrial.ecc_r;
         stimulus.ecc_r  = task.thistrial.ecc_r;
 
