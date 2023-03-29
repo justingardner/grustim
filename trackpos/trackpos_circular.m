@@ -38,7 +38,7 @@ stimulus.exp = exp;
 % no noise run
 cps                 = {};
 stimStdList         = [1]; %[0.5, 1 ,2]; % size of gaussian blob
-stim_noiseStdList   = [1]; % in dva per second (linear velocity) 
+stim_noiseStdList   = [0]; % in dva per second (linear velocity) 
 stimLums            = 0.4; %[0.2, 0.8]; %[0.1, 0.2, 0.5]; 
 % backLum             = 0.7;
 
@@ -46,13 +46,13 @@ ecc_r_list          = [3, 5, 10, 15, 20]; % eccentricity
 % ecc_a             = 1; % major axis
 % ecc_b             = 1; % minor axis
 
-stim_dyngroup       = [0]; % noise order, same size as stimStdList % 10: constant velocity
-stim_vel            = [0]; 
+stim_dyngroup       = [10]; % noise order, same size as stimStdList % 10: constant velocity
+stim_vel_list       = [1, 3, 5]; 
 
 pointStd            = 0.4; stimulus.pointerR = pointStd;
 point_noiseStd      = 0;
 
-ntrial_learn        = 0;  % learning phase at full luminance, not analyzed
+ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
 ntrials             = 10; % trials per condition
 nblocks             = 5;  % should divide ntrials, divide trial into blocks
 
@@ -67,6 +67,7 @@ stimdyngroup    = stim_dyngroup(1);
 stimStd         = stimStdList(1);
 ecc_r           = ecc_r_list;
 
+for stim_vel = stim_vel_list
 % learning phase -- max luminance, not analyzed
 cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
     'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
@@ -80,6 +81,7 @@ for b = 1:nblocks
         'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
         'stim_vel', stim_vel,...
         'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
+end
 end
 
 stimulus.task = cps;

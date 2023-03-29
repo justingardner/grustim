@@ -44,7 +44,7 @@ else
     task{1}.getResponse      = [0 0 0 0 0 1 0 0]; %segment to get response.
 end
 
-global stimulus
+global stimulus;
 
 % presentation schedule
 if strcmp(params.presSched, 'staircase')
@@ -137,6 +137,7 @@ trialdur = task{1}.segmax(2) + task{1}.segmax(3)+max(params.task.stimDur);
 % end
 maxframes = ceil(trialdur)*myscreen.framesPerSecond+10; % with some additional overflow
 
+task{1}.randVars.calculated.subjcorrect  = nan; 
 task{1}.randVars.calculated.subjcorrect  = nan; 
 task{1}.randVars.calculated.stimDur0     = nan; 
 
@@ -371,7 +372,7 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
         if isfield(stimulus.exp, 'phasescrambleOn') && stimulus.exp.phasescrambleOn == 1 
             idx = task.thistrial.bgpermute(task.thistrial.framecount);
             mglBltTexture(stimulus.backnoise{idx},...
-                [0 0 myscreen.imageWidth myscreen.imageHeight])
+                [0 0 myscreen.imageWidth myscreen.imageHeight]);
         end
         task.thistrial.trackTime(task.thistrial.framecount) = mglGetSecs(stimulus.t0);
     end
@@ -411,14 +412,14 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
 
         r0 = task.thistrial.pointerOffset;
 
-        arrow_length = 0.8; % length of arrow in deg (visual angle)
+        arrow_length = 1.5; % length of arrow in deg (visual angle)
         arm_ratio = 1/3;
         arm_angle = pi/6;
-        arrowidth = 0.13;
+        arrowidth = 0.2;
 
         if strcmp(task.thistrial.displ_type, 'circular')
-            mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim)
-            mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim)
+            mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
+            mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim);
 
         else
             x0 = r0 * cos(pa);
@@ -512,6 +513,12 @@ task = jumpSegment(task); % go to next segment
 
 %% predefined angleSet
 function [polarAngle, displAngle] = angleSet(angleSet)
+    if angleSet == -1
+        polarAngle = rand()*2*pi;
+        displAngle = mod(polarAngle+pi/2,2*pi);
+        return;
+    end
+
     % set polar angle based on remainder
     polarAngle = angleCode2angle(mod(angleSet, 100), 8);
         

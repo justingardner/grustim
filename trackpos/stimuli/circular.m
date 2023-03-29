@@ -124,7 +124,6 @@ methods
     function [task, stimulus]  = initTrial(obj, task, myscreen, stimulus)
         dt              = 1/myscreen.framesPerSecond;
         
-        
         obj.ecc_r       = task.thistrial.ecc_r;
         stimulus.ecc_r  = task.thistrial.ecc_r;
 
@@ -141,7 +140,7 @@ methods
         dt = 1/myscreen.framesPerSecond;
         if task.thistrial.stim_dyngroup == 10
             state           = zeros(T, 1);
-            state(1,1)      = task.thistrial.stim_vel / task.thistrial.ecc_r; % degs/frame linear velocity.
+            state(1,1)      = task.thistrial.stim_vel / task.thistrial.ecc_r /dt; % degs/frame linear velocity.
             stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt,'state', state);
         else
             stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt);
