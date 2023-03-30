@@ -342,8 +342,6 @@ end
 %% screen update
 function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
-disp(num2str(task.thistrial.thisseg));
-
 global stimulus % call stimulus
 
 if stimulus.exp.colorfix         % changing fixation colors

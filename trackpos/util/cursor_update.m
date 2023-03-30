@@ -1,4 +1,4 @@
-function [dx, dy, mousestate] = cursor_update(myscreen,mousestate)
+function [dx, dy, mousestate] = cursor_update(myscreen, mousestate, varargin)
 % calculate how much the mouse moved
 % if the mouse went too far from center, then set it to the center again
 
@@ -14,7 +14,7 @@ function [dx, dy, mousestate] = cursor_update(myscreen,mousestate)
     dx = x - mousestate(1);
     dy = y - mousestate(2);
         
-    % reset mouse position
+    % reset mouse position        
     if mInfo.x < myscreen.screenWidth * thresh || mInfo.x > myscreen.screenWidth * (1-thresh) ...
             || mInfo.y <  myscreen.screenHeight * thresh || mInfo.y > myscreen.screenHeight *(1-thresh)
         
@@ -25,6 +25,5 @@ function [dx, dy, mousestate] = cursor_update(myscreen,mousestate)
     else
         mousestate = [x,y];
     end
-
 end
 

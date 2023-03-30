@@ -125,7 +125,15 @@ function stimulus = calibrateWheel(myscreen, stimulus)
 
         % move cursor        
         [ux, uy, mouse0] = cursor_update(myscreen,mouse0);
-        state = ou_update_state(state, -1*ux/ ecc_r , wheel_params, dt);
+        if isfield(stimulus, 'exp') && isfield(stimulus.exp, 'controlMethod') && strcmp(stimulus.exp.controlMethod, 'mouse_circ')
+            tangent_vec_angle = atan2(uy,ux);
+            theta = state(1); % current angle
+            dtheta = (tangent_vec_angle-pi/2) - theta; % assume polar angle from tangent vector angle
+            state = ou_update_state(state, dtheta , wheel_params, dt);
+        else
+            % use wheel
+            state = ou_update_state(state, -1*ux/ ecc_r , wheel_params, dt);
+        end
 
         % display cursor
         theta = state(1);
