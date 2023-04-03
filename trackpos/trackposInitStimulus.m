@@ -1,11 +1,21 @@
 %% Initialize blob, initialize blob
-function blob = trackposInitStimulus(obj,myscreen)    
+function blob = trackposInitStimulus(obj,myscreen, varargin)    
+
+getArgs(varargin, {'reinit_img', 0});
+
 % todo: make this only about generating blob image
     if isempty(obj)
         obj = struct();
     end
     
     blob = struct();
+
+    if ~isfield(obj,'type') && ~isprop(obj,'type') 
+        blob.type = 'gaussian';
+    else
+        blob.type = obj.type;
+    end
+
     % blob size
     if ~isfield(obj,'std') && ~isprop(obj,'std')
         blob.std = 1;
@@ -70,33 +80,34 @@ function blob = trackposInitStimulus(obj,myscreen)
             blob.color = [1;1;1];
         end
     end 
-            
+        
     % generate blob image
-    if isfield(blob,'img')
-        mglDeleteTexture(blob.img)
-    end
-
-    if blob.lum == 0 || blob.std == 0
-        blob.img = [];
-    else
-        gaussian                = mglMakeGaussian(blob.patchsize,blob.patchsize,blob.std,blob.std)*(blob.lum);
-        tableSize = mglPrivateSetGammaTable;
-        if mglResolution().bitDepth ~= 32 % todo check bits for older systems.
-            gaussian_rgb            = 255*repmat([blob.color; 1], 1, size(gaussian,2),size(gaussian,1));
-            gaussian_rgb(4,:,:)     = round(gaussian'); 
-            gaussian_rgb            = uint8(gaussian_rgb);
-            blob.img                = mglCreateTexture(gaussian_rgb);
-        elseif tableSize == 1024
-            % e.g. argb2101010
-            gaussian_rgb        = repmat([blob.color], 1, size(gaussian,2),size(gaussian,1)); % 3,x,y
-            gaussian_rgb(4,:,:) = gaussian'; % 4,x,y
-            gaussian_rgb        = permute(gaussian_rgb,[3,2,1]); % should be: y,x,4
-            blob.img            = mglMetalCreateTexture(gaussian_rgb);
+    if ~isfield(blob,'img') && reinit_img && isfield(blob, 'type') && strcmp(blob.type,'gaussian')
+        if isfield(blob,'img')
+            mglDeleteTexture(blob.img)
+        end
+        if blob.lum == 0 || blob.std == 0
+            blob.img = [];
         else
-            gaussian_rgb        = repmat([blob.color], 1, size(gaussian,2),size(gaussian,1)); % 3,x,y
-            gaussian_rgb(4,:,:) = gaussian'; % 4,x,y
-            gaussian_rgb        = permute(gaussian_rgb,[3,2,1]); % should be: y,x,4
-            blob.img            = mglMetalCreateTexture(gaussian_rgb);
+            gaussian                = mglMakeGaussian(blob.patchsize,blob.patchsize,blob.std,blob.std)*(blob.lum);
+            tableSize = mglPrivateSetGammaTable;
+            if mglResolution().bitDepth ~= 32 % todo check bits for older systems.
+                gaussian_rgb            = 255*repmat([blob.color; 1], 1, size(gaussian,2),size(gaussian,1));
+                gaussian_rgb(4,:,:)     = round(gaussian'); 
+                gaussian_rgb            = uint8(gaussian_rgb);
+                blob.img                = mglCreateTexture(gaussian_rgb);
+            elseif tableSize == 1024
+                % e.g. argb2101010
+                gaussian_rgb        = repmat([blob.color], 1, size(gaussian,2),size(gaussian,1)); % 3,x,y
+                gaussian_rgb(4,:,:) = gaussian'; % 4,x,y
+                gaussian_rgb        = permute(gaussian_rgb,[3,2,1]); % should be: y,x,4
+                blob.img            = mglMetalCreateTexture(gaussian_rgb);
+            else
+                gaussian_rgb        = repmat([blob.color], 1, size(gaussian,2),size(gaussian,1)); % 3,x,y
+                gaussian_rgb(4,:,:) = gaussian'; % 4,x,y
+                gaussian_rgb        = permute(gaussian_rgb,[3,2,1]); % should be: y,x,4
+                blob.img            = mglMetalCreateTexture(gaussian_rgb);
+            end
         end
     end
 end

@@ -20,15 +20,17 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 0; % debug code
-exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
+exp.debug               = 1; % debug code
+exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.showRing            = 0; % show ring
 exp.fixateCenter        = 1; % fixate center
-exp.controlMethod       = 'wheel'; % available: wheel
+exp.controlMethod       = 'wheel'; %'wheel'; % available: wheel
 
 exp.grabframe           = 0; % capture frames. specify save directory
+
+exp.lastStimFile        = '/Users/jryu/Dropbox/GardnerLab/data/trackpos_circular/test/230329_stim01.mat';
 
 global stimulus; stimulus = struct;
 stimulus.exp = exp;
@@ -37,22 +39,14 @@ stimulus.exp = exp;
 
 % no noise run
 cps                 = {};
-stimStdList         = [1]; %[0.5, 1 ,2]; % size of gaussian blob
-stim_noiseStdList   = [1]; % in dva per second (linear velocity) 
-stimLums            = 0.4; %[0.2, 0.8]; %[0.1, 0.2, 0.5]; 
-% backLum             = 0.7;
 
-ecc_r_list          = [3, 5, 10, 15, 20]; % eccentricity
-% ecc_a             = 1; % major axis
-% ecc_b             = 1; % minor axis
+% experiment          = {'ecc'};
+% experiment_paramset = 1:4;
 
-stim_dyngroup       = [0]; % noise order, same size as stimStdList % 10: constant velocity
-stim_vel            = [0]; 
+experiment          = {'mn'};
+experiment_paramset = 1:12;
 
-pointStd            = 0.4; stimulus.pointerR = pointStd;
-point_noiseStd      = 0;
-
-ntrial_learn        = 0;  % learning phase at full luminance, not analyzed
+ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
 ntrials             = 10; % trials per condition
 nblocks             = 5;  % should divide ntrials, divide trial into blocks
 
@@ -60,29 +54,21 @@ maxtrialtime        = 15; % seconds
 
 if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
 
-Nconds = length(ecc_r_list);
-
-stim_noiseStd   = stim_noiseStdList(1);
-stimdyngroup    = stim_dyngroup(1);
-stimStd         = stimStdList(1);
-ecc_r           = ecc_r_list;
+Nconds = length(experiment_paramset);
 
 % learning phase -- max luminance, not analyzed
-cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
-    'stimLum', 1, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
-    'stim_vel', stim_vel,...
-    'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
+cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+    'experiment', experiment, 'experiment_paramset', experiment_paramset);
 
 % tracking
 ntrials_phase = Nconds * ceil(ntrials/nblocks);
 for b = 1:nblocks
-    cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, 'ecc_r', ecc_r, ...
-        'stimLum', stimLums, 'stimStd', stimStd, 'stim_dyngroup', stimdyngroup, 'stim_noiseStd', stim_noiseStd, ...
-        'stim_vel', stim_vel,...
-        'pointLum',1, 'pointStd', pointStd, 'point_noiseStd', point_noiseStd);
+    cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+        'experiment', experiment, 'experiment_paramset', experiment_paramset);
 end
 
 stimulus.task = cps;
+stimulus.fixation_size = 0.4;
 
 %% configure task
 task{1} = cell(length(stimulus.task),1);
@@ -126,9 +112,17 @@ elseif stimulus.exp.trackEye
     disp(' Calibrating Eye ....')
     % http://sr-research.jp/support/manual/EyeLink%20Programmers%20Guide.pdf
     myscreen  = eyeCalibDisp(myscreen); % calibrate eye every time.
-end
+end 
 
-if strcmp(stimulus.exp.controlMethod, 'wheel')
+if strcmp(stimulus.exp.controlMethod, 'wheel') || strcmp(stimulus.exp.controlMethod, 'mouse_circ')
+    if mglIsFile(exp.lastStimFile)
+        a = load(exp.lastStimFile);
+        if isfield(a.stimulus,'wheel_params')
+            stimulus.wheel_params = a.stimulus.wheel_params;
+        end
+    else
+        disp('Wheel calibration information not found. Reinitializing... ')
+    end
     stimulus = calibrateWheel(myscreen, stimulus);
 end
 
@@ -266,7 +260,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
     % draw blue ring for the trajectory path
     if stimulus.exp.showRing
-        mglMetalRing_wlines(task.thistrial.ecc_r, stimulus.pointerR/2, [0,0,1,1], 600)
+        mglMetalRing_wlines(task.thistrial.ecc_r, stimulus.pointer.std/2, [0,0,1,1], 600)
     end
 
     % eye tracking
@@ -286,8 +280,13 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         task.thistrial.framecount = task.thistrial.framecount + 1;
 
         % display target
-        if ~isempty(stimulus.target)
-            mglBltTexture(stimulus.target.img, stimulus.target.position);
+        if ~isempty(stimulus.target) 
+            if isfield(stimulus.target, 'img') && ~isempty(stimulus.target.img)
+                mglBltTexture(stimulus.target.img, stimulus.target.position);
+            else
+                mglMetalDots([stimulus.target.position(1);stimulus.target.position(2);0], ...
+                    [stimulus.target.color;1], [stimulus.target.std; stimulus.target.std], 1, 1);
+            end
         end
 
         % display other objects
@@ -299,18 +298,18 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         
     % display pointer
     if ~isempty(stimulus.pointer)
-        if isfield(stimulus.pointer, 'img') && isempty(stimulus.pointer.img)
+        if isfield(stimulus.pointer, 'img') && ~isempty(stimulus.pointer.img)
             mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
         else
             mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
-             [1;0;0;1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
+             [stimulus.pointer.color;1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
         end
     end
     
     % display fixation
     if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
-        mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.pointerR+0.1;stimulus.pointerR+0.3],[0;2*pi], 1);
-        mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR;stimulus.pointerR], 1, 1);
+        mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.3],[0;2*pi], 1);
+        mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.fixation_size;stimulus.fixation_size], 1, 1);
     end
     
     if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor

@@ -1,5 +1,6 @@
 function mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, lineWidth, color, varargin)
-    getArgs(varargin,'res=10')
+    getArgs(varargin,'res=10');
+    
     % draws circular arrow
     if isrow(color)
         color = color';

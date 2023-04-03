@@ -39,7 +39,7 @@ exp.respDirArrow        = true;
 
 exp.block_design        = false; % in each block, present all combinations of parameters
 exp.noise_mask          = fullfile(rootdir, 'proj/grustim/trackpos/noise/grating.mat'); 
-exp.staircase_init      = fullfile(rootdir,'data/trackpos_2afc_masked_sc/s374/230320_stim01_staircase.mat');
+exp.staircase_init      = ''; %fullfile(rootdir,'data/trackpos_2afc_masked_sc/s374/230320_stim01_staircase.mat');
 
 %% task parameters
 % stimulus and background
@@ -63,8 +63,8 @@ params.task.stimColor       = 'k';
 if strcmp(exp.displacement_type, 'tangential')
     params.task.angleSet    = 1:8; % polar angles
 elseif strcmp(exp.displacement_type, 'circular')
-    params.task.angleSet    = 1; %[1,2,3]; % polar angles
-    params.task.displ_type       = {'circular'};
+    params.task.angleSet        = -1; %[1,2,3]; % polar angles
+    params.task.displ_type      = {'circular'};
 else
     params.task.polarAngle = 0;
     params.task.displAngle = pi/2;
@@ -121,7 +121,7 @@ stimulus.fixColors.est      = [0 1 0]; % fixation color at response
 stimulus.fixColors.afc      = [0 0 1]; % afc response period 
 stimulus.fixColors.fb       = [1 1 1]; % position feedback
 
-stimulus.pointerR           = 0.2;
+stimulus.pointerR           = 0.4;
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
