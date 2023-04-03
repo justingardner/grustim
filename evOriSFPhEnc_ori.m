@@ -13,7 +13,7 @@
 function retval = evOriSFPhEnc_ori(varargin)
 
 % % check arguments
-if ~any(nargin == [2:4])
+if ~any(nargin == [2:5])
   help evOriSFPhEnc_ori
   return
 end
@@ -24,9 +24,14 @@ getArgs(varargin, [], 'verbose=0');
 % set default parameters
 if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('saveParam'),saveParam = 0;end
+if ieNotDefined('screenParam')
+    myscreen.displayName = 'fMRIproj_akuo2';
+else
+    myscreen.displayName = screenParam;
+end
 
-if ieNotDefined('sf') || ieNotDefined('oridir')
-    error('Specify a grating SF and orientation direction (e.g. ''sf=0.5'', ''oridir=1'')')
+if ieNotDefined('sfq') || ieNotDefined('oridir')
+    error('Specify a grating SF and orientation direction (e.g. ''sfq=0.5'', ''oridir=1'')')
 end
 
 % initalize the screen
@@ -34,7 +39,6 @@ myscreen.background = 'gray';
 myscreen.autoCloseScreen = 0;
 myscreen.allowpause = 1;
 myscreen.saveData = saveParam;
-myscreen.displayName = 'fMRIproj_akuo2';
 myscreen = initScreen(myscreen);
 
 global stimulus;
@@ -43,17 +47,15 @@ phasedur = 0.25;
 nseg = 4;
 
 % spatial frequency
-if sf == 0.5
-    sf = 0.5;
+stimulus.sf = [0.5 4];
+if sfq == stimulus.sf(1)
     stimulus.sfInd = 1;
-elseif sf == 8
-    sf = 8;
+elseif sfq == stimulus.sf(2)
     stimulus.sfInd = 2;
 else
-    error('Specify ''sf'' as either (0.5 or 8)')
+    error('Specify ''sfq'' as either (%0.1f or %0.1f)',stimulus.sf(1),stimulus.sf(2))
 end
-stimulus.sf = [0.5 8];
-task{1}{1}.parameter.sf = sf;
+task{1}{1}.parameter.sf = stimulus.sf(stimulus.sfInd);
 
 % ccw, cw ori conditions
 stimulus.noris = 24;
@@ -89,13 +91,13 @@ task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.seglen = [repmat(0.25, 1, nseg)];
+task{1}{1}.seglen = [0.25 0.25 0.25 0.15 0.1]; % [repmat(0.25, 1, nseg)];
 
 % sync to scanner
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
 if atScanner
   task{1}{1}.fudgeLastVolume = 1;
-  task{1}{1}.seglen(end) = task{1}{1}.seglen(end)-0.1;
+  task{1}{1}.seglen(end) = task{1}{1}.seglen(end)-0.06;
   task{1}{1}.synchToVol(end) = 1;
 end
 
@@ -167,7 +169,7 @@ if stimulus.oridirection == -1
 end
 
 % draw the texture
-if task.thistrial.thisseg<5 
+if task.thistrial.thisseg<5
     mglBltTexture(stimulus.tex{oriInd,stimulus.sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
 end
 
@@ -181,9 +183,13 @@ stimulus.pixRes = min(myscreen.screenHeight/myscreen.imageHeight, myscreen.scree
 
 % which phases (of the grating) we will have
 stimulus.phaseNum = 1;
-stimulus.numPhases = 16;
+stimulus.numPhases = 8;
 stimulus.phases = 0:(360-0)/stimulus.numPhases:360;
 stimulus.phases = stimulus.phases(1:end-1);
+
+% test - remove later
+% stimulus.numPhases = 2;
+% stimulus.phases = [0 0];
 
 if isfield(stimulus, 'tex')
     fprintf('(evOriSFPhEnc) Attention: Using precomputed stimulus textures!!');
