@@ -39,7 +39,8 @@ exp.respDirArrow        = true;
 
 exp.block_design        = false; % in each block, present all combinations of parameters
 exp.noise_mask          = fullfile(rootdir, 'proj/grustim/trackpos/noise/grating.mat'); 
-exp.staircase_init      = ''; %fullfile(rootdir,'data/trackpos_2afc_masked_sc/s374/230320_stim01_staircase.mat');
+exp.staircase_init      = fullfile(rootdir,'data/trackpos_2afc_masked_sc/', mglGetSID, ...
+                                   '230330_stim03_staircase.mat');
 
 %% task parameters
 % stimulus and background
@@ -84,7 +85,7 @@ params.staircase                    = struct();
 thresh = params.task.pointerOffset(1)*1.7/10 + 0.1;
 params.staircase.initThreshold      = thresh; %0.3;
 params.staircase.initThresholdSd    = 0.5; %0.3;
-params.staircase.threshstd_thresh   = 0.1; 
+params.staircase.threshstd_thresh   = 0.01; 
 params.staircase.staircase_init     = exp.staircase_init;
 
 if exp.debug

@@ -1,7 +1,7 @@
 %% Initialize blob, initialize blob
 function blob = trackposInitStimulus(obj,myscreen, varargin)    
 
-getArgs(varargin, {'reinit_img', 0});
+getArgs(varargin, {'reinit_img', 1});
 
 % todo: make this only about generating blob image
     if isempty(obj)

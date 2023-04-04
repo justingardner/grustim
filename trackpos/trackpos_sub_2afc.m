@@ -419,8 +419,8 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
         arrowidth = 0.2;
 
         if strcmp(task.thistrial.displ_type, 'circular')
-            mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
-            mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim);
+            mglMetalCircArrow(r0, pa, arrow_length, arm_ratio, arm_angle, arrowidth, 1-stimulus.fixColors.stim);
+            mglMetalCircArrow(r0, pa, -1*arrow_length, arm_ratio, arm_angle, arrowidth, stimulus.fixColors.stim);
 
         else
             x0 = r0 * cos(pa);
@@ -471,7 +471,7 @@ global stimulus
 
 % record responses. correct/incorrect
 if any(task.thistrial.whichButton == [1 2])
-    respIsRight = (task.thistrial.whichButton == 2);
+    respIsRight = (task.thistrial.whichButton == 1);
     correct = (task.thistrial.stimright == respIsRight); % correct if first is right and response is 2.
     task.thistrial.subjcorrect = correct;
     

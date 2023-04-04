@@ -20,8 +20,8 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 1; % debug code
-exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
+exp.debug               = 0; % debug code
+exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
 exp.showRing            = 0; % show ring
@@ -30,6 +30,7 @@ exp.controlMethod       = 'wheel'; %'wheel'; % available: wheel
 
 exp.grabframe           = 0; % capture frames. specify save directory
 
+% for loading wheel
 exp.lastStimFile        = '/Users/jryu/Dropbox/GardnerLab/data/trackpos_circular/test/230329_stim01.mat';
 
 global stimulus; stimulus = struct;
@@ -37,36 +38,7 @@ stimulus.exp = exp;
 
 %% specify task design
 
-% no noise run
-cps                 = {};
-
-% experiment          = {'ecc'};
-% experiment_paramset = 1:4;
-
-experiment          = {'mn'};
-experiment_paramset = 1:12;
-
-ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
-ntrials             = 10; % trials per condition
-nblocks             = 5;  % should divide ntrials, divide trial into blocks
-
-maxtrialtime        = 15; % seconds
-
-if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
-
-Nconds = length(experiment_paramset);
-
-% learning phase -- max luminance, not analyzed
-cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
-    'experiment', experiment, 'experiment_paramset', experiment_paramset);
-
-% tracking
-ntrials_phase = Nconds * ceil(ntrials/nblocks);
-for b = 1:nblocks
-    cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
-        'experiment', experiment, 'experiment_paramset', experiment_paramset);
-end
-
+cps = load_mn_experiment(myscreen, exp, 1);
 stimulus.task = cps;
 stimulus.fixation_size = 0.4;
 
@@ -337,5 +309,111 @@ function task = add_calculated_params(task, myscreen)
         task{phaseNum}.randVars.calculated.trackEye     = nan(maxframes,2);
         task{phaseNum}.randVars.calculated.trackTime    = nan(1,maxframes);
         task{phaseNum}.randVars.calculated.trackEyeTime = nan(1,maxframes); % for referencing edf file
+    end
+end
+
+function cps = load_ecc_experiment(myscreen, exp,exp_num)
+    cps         = {};
+    experiment  = {'ecc'};
+
+    if exp_num == 1
+        experiment_paramset = 1:4;
+
+        ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
+        ntrials             = 10; % trials per condition
+        nblocks             = 5;  % should divide ntrials, divide trial into blocks
+
+        maxtrialtime        = 15; % seconds
+
+        if exp.debug, ntrial_learn= 1; ntrials = 1; nblocks = 1; maxtrialtime=5; end
+
+        Nconds = length(experiment_paramset);
+
+        % learning phase -- max luminance, not analyzed
+        cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+            'experiment', experiment, 'experiment_paramset', experiment_paramset);
+
+        % tracking
+        ntrials_phase = Nconds * ceil(ntrials/nblocks);
+        for b = 1:nblocks
+            cps{end+1} = circular(myscreen, 'numTrials', ntrials_phase, 'maxtrialtime', maxtrialtime, ...
+                'experiment', experiment, 'experiment_paramset', experiment_paramset);
+        end
+    end
+end
+
+function cps = load_mn_experiment(myscreen, exp, exp_num)
+    cps = {};
+    experiment          = {'mn'};
+    ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
+    ntrials             = 10; % trials per condition
+    trials_per_block    = 5;  % should divide ntrials, divide trial into blocks
+    maxtrialtime        = 15; % seconds
+
+    if exp.debug, ntrial_learn= 1; ntrials = 1; trials_per_block = 1; maxtrialtime=5; end
+
+    if exp_num == 1 % effect of pointer dynamics
+        experiment_paramset = 1:12;
+        Nconds = length(experiment_paramset);
+
+        for epset = experiment_paramset
+            % learning phase -- not analyzed
+            cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+                'experiment', experiment, 'experiment_paramset', epset);
+
+            % tracking
+            nblocks = ceil(ntrials/trials_per_block);
+            for b = 1:nblocks
+                cps{end+1} = circular(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
+                    'experiment', experiment, 'experiment_paramset', epset);
+            end
+        end
+    elseif exp_num == 2 % stabilization task
+        experiment_paramset = 13:18;
+        Nconds = length(experiment_paramset);
+
+        for epset = experiment_paramset
+            % learning phase -- not analyzed
+            cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+                'experiment', experiment, 'experiment_paramset', epset);
+
+            % tracking
+            nblocks = ceil(ntrials/trials_per_block);
+            for b = 1:nblocks
+                cps{end+1} = circular(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
+                    'experiment', experiment, 'experiment_paramset', epset);
+            end
+        end
+    end
+end
+
+function cps = load_cv_experiment(myscreen, exp, exp_num)
+    cps = {};
+    experiment          = {'cv'};
+    ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
+    ntrials             = 10; % trials per condition
+    trials_per_block    = 5;  % should divide ntrials, divide trial into blocks
+    maxtrialtime        = 15; % seconds
+
+    if exp.debug, ntrial_learn= 1; ntrials = 1; trials_per_block = 1; maxtrialtime=5; end
+    
+    experiment_paramset = 1:9;
+
+    if exp_num == 1 
+        experiment_paramset = 1:12;
+        Nconds = length(experiment_paramset);
+
+        for epset = experiment_paramset
+            % learning phase -- not analyzed
+            cps{end+1} = circular(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+                'experiment', experiment, 'experiment_paramset', epset);
+
+            % tracking
+            nblocks = ceil(ntrials/trials_per_block);
+            for b = 1:nblocks
+                cps{end+1} = circular(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
+                    'experiment', experiment, 'experiment_paramset', epset);
+            end
+        end
     end
 end

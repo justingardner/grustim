@@ -410,6 +410,68 @@ methods
                 elseif mod(setnum,2) == 0
                     params.stim_noiseStd = 2;
                 end
+            elseif (setnum > 12) && (setnum <= 18) 
+                % stabilization task - no stimulus dynamics noise
+                params.stim_noiseStd = 0;
+                
+                if setnum <= 15
+                    % stimulus: low luminance
+                    % pointer: high luminance
+                    [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_lowlum{:});
+                    [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_highlum{:});
+                else
+                    % stimulus: low luminance
+                    % pointer: high luminance
+                    [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_highlum{:});
+                    [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_lowlum{:});
+                end
+                
+                % change only pointer noise -- 3 pointer noise conditions
+                if mod(setnum,3) == 1
+                    params.point_noiseStd = 1;
+                elseif mod(setnum,3) == 2
+                    params.point_noiseStd = 2;
+                elseif mod(setnum,3) == 0
+                    params.point_noiseStd = 10;
+                end
+            end
+        elseif strcmp(setname, 'cv')
+             % moving stimulus, change stimulus velocity
+             params.point_noiseStd = 0;
+             
+             vel_list               = [1,2,3];
+             ecc_r_list             = [5, 10, 15, 20]; % eccentricity
+             stimLum_list           = [0.2, 0.5, 0.8];
+             if setnum <=9
+                 start = 0;
+                 params.ecc_r = ecc_r_list(1);
+             elseif setnum <= 18
+                 start = 10;
+                 params.ecc_r = ecc_r_list(2);
+             elseif setnum <= 27
+                 start = 19;
+                 params.ecc_r = ecc_r_list(3);
+             elseif setnum <= 36
+                 start = 28;
+                 params.ecc_r = ecc_r_list(4);
+             end
+                 
+             % change velocity 
+            if (setnum > start+0) && (setunm <= start+3)
+                params.stim_vel = 1;
+            elseif (setnum > start+3) && (setunm <= start+6)
+                params.stim_vel = 2;
+            elseif (setnum > start+6) && (setunm <= start+9)
+                params.stim_vel = 3;
+            end
+
+            % change luminance
+            if mod(setnum,3) == 1
+                params.stimLum = stimLum_list(1);
+            elseif mod(setnum,3) == 2
+                params.stimLum = stimLum_list(2);
+            elseif mod(setnum,3) == 3
+                params.stimLum = stimLum_list(3);
             end
         end
     end
