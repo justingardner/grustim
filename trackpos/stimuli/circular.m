@@ -279,17 +279,21 @@ methods
                     % see how far the mouse as moved
                     [dx, dy, obj.mousestate] = cursor_update(myscreen, obj.mousestate);
 
-                    stimulus.pointer.state = ou_update_state(stimulus.pointer.state, ...
+                    [stimulus.pointer.state, noise] = ou_update_state(stimulus.pointer.state, ...
                         -1*dx/task.thistrial.ecc_r, stimulus.pointer.dynparams, 1/myscreen.framesPerSecond);
                     
                     stimulus.pointer.position = obj.polar2cart(task.thistrial.ecc_r, stimulus.pointer.state(1));
+
+                    task.thistrial.trackPNoise(task.thistrial.framecount,1:length(noise)) = noise;
                 elseif strcmp(stimulus.exp.controlMethod, 'mouse_circ')
                     [ux, uy, obj.mousestate] = cursor_update(myscreen,obj.mousestate);
                     dtheta  = atan2(uy,ux);
-                    stimulus.pointer.state = ou_update_state(stimulus.pointer.state, ...
+                    [stimulus.pointer.state, noise] = ou_update_state(stimulus.pointer.state, ...
                         dtheta, stimulus.pointer.dynparams, 1/myscreen.framesPerSecond);
 
                     stimulus.pointer.position = obj.polar2cart(task.thistrial.ecc_r, stimulus.pointer.state(1));
+
+                    task.thistrial.trackPNoise(task.thistrial.framecount,1:length(noise)) = noise;
                 elseif strcmp(stimulus.exp.controlMethod, 'mouse')
                     mInfo = mglGetMouse(myscreen.screenNumber);
                     [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
@@ -306,6 +310,15 @@ methods
             task.thistrial.trackResp(task.thistrial.framecount) = ...
                 task.thistrial.ecc_r * stimulus.pointer.state(1);
             task.thistrial.trackTime(task.thistrial.framecount) = mglGetSecs(stimulus.t0); 
+            
+            % eye tracking
+            if stimulus.exp.trackEye
+                % mouse version for testing with no eyetracker
+                [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
+                task.thistrial.trackEye(task.thistrial.framecount,:)    = pos;
+                task.thistrial.trackEyeTime(task.thistrial.framecount)  = postime;
+            end
+
         end
 
         if strcmp(obj.segments{task.thistrial.thisseg}, 'cue')
@@ -385,30 +398,42 @@ methods
             stim_lowlum     = {'gaussian', 0.4, 1,'k'}; % lum, size, color
 
             if setnum <= 12
+                if mod(setnum,6) == 1
+                    noisestd1 = 0;
+                    noisestd2 = 1;
+                elseif mod(setnum,6) == 2
+                    noisestd1 = 0;
+                    noisestd2 = 2;
+                elseif mod(setnum,6) == 3
+                    noisestd1 = 0;
+                    noisestd2 = 3;
+                elseif mod(setnum,6) == 4
+                    noisestd1 = 1;
+                    noisestd2 = 1;
+                elseif mod(setnum,6) == 5
+                    noisestd1 = 1;
+                    noisestd2 = 2;
+                elseif mod(setnum,6) == 0
+                    noisestd1 = 1;
+                    noisestd2 = 3;
+                end
+
                 if setnum <= 6
                     % stimulus: low luminance
                     % pointer: high luminance
                     [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_lowlum{:});
                     [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_highlum{:});
+
+                    params.stim_noiseStd    = noisestd2;
+                    params.point_noiseStd   = noisestd1;
                 else
                     % stimulus: low luminance
                     % pointer: high luminance
                     [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_highlum{:});
                     [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_lowlum{:});
-                end
-                
-                if mod(setnum,3) == 1
-                    params.point_noiseStd = 0;
-                elseif mod(setnum,3) == 2
-                    params.point_noiseStd = 1;
-                elseif mod(setnum,3) == 0
-                    params.point_noiseStd = 2;
-                end
-
-                if mod(setnum,2) == 1
-                    params.stim_noiseStd = 1;
-                elseif mod(setnum,2) == 0
-                    params.stim_noiseStd = 2;
+                    
+                    params.stim_noiseStd    = noisestd1;
+                    params.point_noiseStd   = noisestd2;
                 end
             elseif (setnum > 12) && (setnum <= 18) 
                 % stabilization task - no stimulus dynamics noise

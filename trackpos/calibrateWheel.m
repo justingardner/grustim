@@ -129,10 +129,10 @@ function stimulus = calibrateWheel(myscreen, stimulus)
             tangent_vec_angle = atan2(uy,ux);
             theta = state(1); % current angle
             dtheta = (tangent_vec_angle-pi/2) - theta; % assume polar angle from tangent vector angle
-            state = ou_update_state(state, dtheta , wheel_params, dt);
+            [state, noise] = ou_update_state(state, dtheta , wheel_params, dt);
         else
             % use wheel
-            state = ou_update_state(state, -1*ux/ ecc_r , wheel_params, dt);
+            [state, noise] = ou_update_state(state, -1*ux/ ecc_r , wheel_params, dt);
         end
 
         % display cursor

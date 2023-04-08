@@ -42,25 +42,6 @@ cps = load_mn_experiment(myscreen, exp, 1);
 stimulus.task = cps;
 stimulus.fixation_size = 0.4;
 
-%% configure task
-task{1} = cell(length(stimulus.task),1);
-for ts = 1:length(stimulus.task)
-    task{1}{ts} = stimulus.task{ts}.configureExperiment(task,myscreen,stimulus);
-end
-task{1}     = add_calculated_params(task{1}, myscreen);
-totaldur    = approximate_total_task_dur(task);
-
-%% initialize
-% intiailize task
-disp(' Initializing Task....')
-
-for phaseN = 1:length(task{1})
-    [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,...
-        @startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
-end
-
-myscreen = initStimulus('stimulus',myscreen); % save the stimulus into stimfile
-
 %% grabframe
 if stimulus.exp.grabframe
     global frame
@@ -113,6 +94,25 @@ end
 
 exp = stimulus.exp;
 
+%% configure task
+task{1} = cell(length(stimulus.task),1);
+for ts = 1:length(stimulus.task)
+    task{1}{ts} = stimulus.task{ts}.configureExperiment(task,myscreen,stimulus);
+end
+task{1}     = add_calculated_params(task{1}, myscreen, stimulus);
+totaldur    = approximate_total_task_dur(task);
+
+%% initialize
+% intiailize task
+disp(' Initializing Task....')
+
+for phaseN = 1:length(task{1})
+    [task{1}{phaseN} myscreen] = initTask(task{1}{phaseN},myscreen,...
+        @startSegmentCallback,@screenUpdateCallback,@responseCallback,@initTrialCallback);
+end
+
+myscreen = initStimulus('stimulus',myscreen); % save the stimulus into stimfile
+
 %% run the task
 disp(' Running Task....'); stimulus.t0 = mglGetSecs; % 
 
@@ -136,14 +136,15 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     if newphaseNum ~= phaseNum
         mglClearScreen(0.5);
         
-        if strcmp(exp.controlMethod,'eye')
-            [positions_target, positions_eye]       = calibrateEye(myscreen, stimulus, true);
-            stimulus.eyecalib.target{newphaseNum}   = positions_target;
-            stimulus.eyecalib.eye{newphaseNum}       = positions_eye;
-        end
-        
         mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
         mglFlush(); myscreen.flushMode = -1;
+
+        % todo make this work
+%         if myscreen.userHitSpace
+%             disp(' Calibrating Eye ....')
+%             myscreen  = eyeCalibDisp(myscreen); % calibrate eye again
+%         end
+
     end
     phaseNum = newphaseNum;
     myscreen = tickScreen(myscreen,task);     % flip screen
@@ -235,14 +236,6 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         mglMetalRing_wlines(task.thistrial.ecc_r, stimulus.pointer.std/2, [0,0,1,1], 600)
     end
 
-    % eye tracking
-    if stimulus.exp.trackEye && stimulus.task{phaseNum}.doTrack
-        % mouse version for testing with no eyetracker
-        [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
-        task.thistrial.trackEye(task.thistrial.framecount,:)    = pos;
-        task.thistrial.trackEyeTime(task.thistrial.framecount)  = postime;
-    end
-
     % update task
     [task, stimulus]  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
     
@@ -298,12 +291,18 @@ function [task myscreen] = responseCallback(task, myscreen)
  
 end
 
-function task = add_calculated_params(task, myscreen)
+function task = add_calculated_params(task, myscreen, stimulus)
+    if strcmp(stimulus.exp.controlMethod, 'wheel')
+        maxorder = stimulus.wheel_params.maxorder;
+    else
+        maxorder = 1;
+    end
     for phaseNum = 1:length(task)
         maxframes = ceil(task{phaseNum}.segmax(1)*myscreen.framesPerSecond) + 20;
         task{phaseNum}.randVars.calculated.randomSeed   = nan;
         task{phaseNum}.randVars.calculated.bgpermute    = nan(1,maxframes); % nframes x 1 for the background
         task{phaseNum}.randVars.calculated.initStim     = [nan nan];
+        task{phaseNum}.randVars.calculated.trackPNoise  = nan(maxframes,maxorder+1);
         task{phaseNum}.randVars.calculated.trackStim    = nan(1,maxframes);
         task{phaseNum}.randVars.calculated.trackResp    = nan(1,maxframes);
         task{phaseNum}.randVars.calculated.trackEye     = nan(maxframes,2);
@@ -345,10 +344,10 @@ end
 function cps = load_mn_experiment(myscreen, exp, exp_num)
     cps = {};
     experiment          = {'mn'};
-    ntrial_learn        = 3;  % learning phase at full luminance, not analyzed
-    ntrials             = 10; % trials per condition
+    ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
+    ntrials             = 20; % trials per condition
     trials_per_block    = 5;  % should divide ntrials, divide trial into blocks
-    maxtrialtime        = 15; % seconds
+    maxtrialtime        = 20; % seconds
 
     if exp.debug, ntrial_learn= 1; ntrials = 1; trials_per_block = 1; maxtrialtime=5; end
 
