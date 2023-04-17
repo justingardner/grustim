@@ -135,12 +135,8 @@ methods
         
         thistask.segmin = [inittime, cue, fix, obj.maxtrialtime, iti];
         thistask.segmax = [inittime, cue, fix, obj.maxtrialtime, iti];
-        
-        if stimulus.exp.debug
-            thistask.numTrials          = 5;
-        else
-            thistask.numTrials          = obj.numTrials;
-        end
+
+        thistask.numTrials          = obj.numTrials;
         
         thistask.getResponse        = [0, 0, 0, 0,0];
         if obj.trialpause
@@ -280,6 +276,9 @@ methods
     % frame update
     % need to define an update function for the stimulus
     function [task, stimulus]  = update(obj, task, myscreen, stimulus) 
+        
+        if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
+
         framenum = task.thistrial.framecount;
 
         if obj.doTrack
@@ -380,7 +379,7 @@ methods
             elseif mod(setnum,3) == 2
                 ar1 = 0.5;
                 ar2 = 0;
-            elseif mod(setnum,6) == 3
+            elseif mod(setnum,3) == 0
                 ar1 = 0;
                 ar2 = 0;
             end

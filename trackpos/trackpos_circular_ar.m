@@ -20,7 +20,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.showMouse           = 0; % show mouse during everything
 
@@ -298,10 +298,10 @@ function cps = load_mn_experiment(myscreen, exp, exp_num)
     trials_per_block    = 5;  % should divide ntrials, divide trial into blocks
     maxtrialtime        = 20; % seconds
 
-    if exp.debug, ntrial_learn= 1; ntrials = 1; trials_per_block = 1; maxtrialtime=10; end
+    if exp.debug, ntrial_learn= 0; ntrials = 1; trials_per_block = 1; maxtrialtime=10; end
 
     if exp_num == 1 % effect of pointer dynamics
-        experiment_paramset = [6, 5, 4, 3, 2, 1, 9, 8, 7, 12,11,10];
+        experiment_paramset = [6, 5, 4, 3, 2, 1]; %., 9, 8, 7, 12,11,10];
         Nconds = length(experiment_paramset);
 
         for epset = experiment_paramset

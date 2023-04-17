@@ -120,8 +120,9 @@ disp(' Running Task....'); stimulus.t0 = mglGetSecs; %
 % mglClearScreen(task{1}{1}.parameter.backLum/255);
 %mglFlush;
 
-mglBltTexture(mglText('task starting... '), [0 1.5]);
-mglBltTexture(mglText('1. Track the target with the red pointer'),[0 0.5]);
+mglBltTexture(mglText('task starting... '), [0 2.5]);
+mglBltTexture(mglText('A pointer object will appear on the screen and will be cued with an outline.'),[0 1.5]);
+mglBltTexture(mglText('The target will appear after a few seconds. Use the pointer object to track the target.'),[0 0.5]);
 if stimulus.exp.fixateCenter
     mglBltTexture(mglText('2. Fixate in center. You should be able to see the dot changing colors'),[0 -0.5]);    
 end
@@ -136,15 +137,19 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     if newphaseNum ~= phaseNum
         mglClearScreen(0.5);
         
-        mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
+        mglBltTexture(mglText(['Phase ' num2str(newphaseNum)]),[0 1.5]);
+        mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 0.5]);
         mglFlush(); myscreen.flushMode = -1;
 
-        % todo make this work
-%         if myscreen.userHitSpace
-%             disp(' Calibrating Eye ....')
-%             myscreen  = eyeCalibDisp(myscreen); % calibrate eye again
-%         end
+        [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
+        mglBltTexture(mglText(['Current eye position: [' num2str(pos) ']']),[0 -0.5]);
 
+        keystate = mglGetKeys;
+        tic; str2print = '';
+        if keystate(9) % if c is pressed. recalibrate
+            disp(' Calibrating Eye ....')
+            myscreen  = eyeCalibDisp(myscreen); % calibrate eye again
+        end
     end
     phaseNum = newphaseNum;
     myscreen = tickScreen(myscreen,task);     % flip screen
@@ -352,7 +357,7 @@ function cps = load_mn_experiment(myscreen, exp, exp_num)
     if exp.debug, ntrial_learn= 1; ntrials = 1; trials_per_block = 1; maxtrialtime=5; end
 
     if exp_num == 1 % effect of pointer dynamics
-        experiment_paramset = 1:12;
+        experiment_paramset = [1, 7, 2, 8, 3, 9, 4, 10] ; % 5, 11, 6, 12
         Nconds = length(experiment_paramset);
 
         for epset = experiment_paramset
