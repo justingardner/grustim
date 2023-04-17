@@ -1,4 +1,4 @@
-classdef circular < trackingTask
+classdef circular_ar < trackingTask
     % The target moves in a circle, with the radius doing a random walk
     % main stimulus and background
 
@@ -8,7 +8,7 @@ classdef circular < trackingTask
     
 properties
     % task parameter
-    name            = 'circular'
+    name            = 'circular_ar'
     numTrials       = 0;    % total number of trials
     
     % cells to be initalized
@@ -34,8 +34,8 @@ properties
     % variable parameters
     varparams0  = {}; % parameters to move to randvars
     varparams   = {'backLum', ...
-        'stimType', 'stimLum', 'stimStd', 'stimColor', 'stim_dyngroup', 'stim_noiseStd', 'stim_vel',...
-        'pointType', 'pointLum', 'pointStd', 'pointColor', 'point_dyngroup', 'point_noiseStd', 'point_vel', ...
+        'stimType', 'stimLum', 'stimStd', 'stimColor', 'stim_noiseStd', 'stim_noiseAR', 'stim_vel',...
+        'pointType', 'pointLum', 'pointStd', 'pointColor', 'point_noiseStd', 'point_noiseAR', 'point_vel', ...
         'ecc_r'};
     
     backLum;
@@ -45,16 +45,16 @@ properties
     stimLum;
     stimStd;
     stimColor; 
-    stim_dyngroup; 
     stim_noiseStd;
+    stim_noiseAR;
     stim_vel;
     
     pointType;
     pointLum;
     pointStd;
     pointColor;
-    point_dyngroup; 
     point_noiseStd;
+    point_noiseAR; 
     point_vel;
 
     experiment; % for grouping parameters. defaults to ''  if not used
@@ -67,7 +67,7 @@ end
     
 methods
     % Constructor
-    function obj = circular(myscreen, varargin)
+    function obj = circular_ar(myscreen, varargin)
         %% parse inputs
         % set to vector if you want to randomize parameter
 
@@ -88,16 +88,16 @@ methods
         p.addParameter('stimLum', 0.8, @(x)(isnumeric(x)));
         p.addParameter('stimStd', 1, @(x)(isnumeric(x))) ;
         p.addParameter('stimColor', 'k', @(x)(ischar(x) || iscell(x))) ;
-        p.addParameter('stim_dyngroup', 0, @(x)(isnumeric(x) || iscell(x))) ;
         p.addParameter('stim_noiseStd', 1, @(x)(isnumeric(x)));
+        p.addParameter('stim_noiseAR', 0.2, @(x)(isnumeric(x)))
         p.addParameter('stim_vel', 0, @(x)(isnumeric(x))) ;
 
         p.addParameter('pointType', 'dot', @(x)(ischar(x)));
         p.addParameter('pointLum', 1, @(x)(isnumeric(x))) ;
         p.addParameter('pointStd', 0.2, @(x)(isnumeric(x))) ;
         p.addParameter('pointColor', 'r', @(x)(ischar(x) || iscell(x))) ;
-        p.addParameter('point_dyngroup', 0, @(x)(ischar(x) || iscell(x))) ;
         p.addParameter('point_noiseStd', 0, @(x)(isnumeric(x)))
+        p.addParameter('point_noiseAR', 0.2, @(x)(isnumeric(x)))
         p.addParameter('point_vel', 0, @(x)(isnumeric(x)))
 
         p.addParameter('experiment', '', @(x)(ischar(x) || iscell(x)))
@@ -114,12 +114,15 @@ methods
             obj.varparams0 = obj.varparams;
             obj.varparams = {'experiment', 'experiment_paramset'};
             for param = p.Parameters
-                if ~any(strcmp(param{1}, obj.varparams0)) % do not add variable parameters to the object -- this is now defined by experiment/experiment_paramset
+                % do not add variable parameters to the object
+                % this is now defined by experiment/experiment_paramset
+                if ~any(strcmp(param{1}, obj.varparams0)) 
                     eval(['obj.' param{1} ' = p.Results.' param{1} ';'])
                 end
             end
         end
     end
+
 
     % return task object that can be run on trackpos.m
     function thistask = configureExperiment(obj, task, myscreen, stimulus) 
@@ -160,16 +163,36 @@ methods
                 eval(['thistask.randVars.calculated.' param{1} '= nan;'])
             end
         end
+
+        max_seg_frames = ceil(thistask.segmax(1)*myscreen.framesPerSecond) + 20;
+        thistask.randVars.calculated.randomSeed   = nan;
+        thistask.randVars.calculated.initStim     = [nan nan];
+        
+        thistask.randVars.calculated.trackTNoiseAR  = nan(1, max_seg_frames);
+        thistask.randVars.calculated.trackTNoiseW   = nan(1, max_seg_frames);
+        thistask.randVars.calculated.trackPNoiseAR  = nan(1, max_seg_frames);
+        thistask.randVars.calculated.trackPNoiseW   = nan(1, max_seg_frames);
+        
+        thistask.randVars.calculated.trackStim      = nan(1,max_seg_frames);
+        thistask.randVars.calculated.trackResp      = nan(1,max_seg_frames);
+        thistask.randVars.calculated.trackEye     = nan(max_seg_frames,2);
+        thistask.randVars.calculated.trackTime    = nan(1,max_seg_frames);
+        thistask.randVars.calculated.trackEyeTime = nan(1,max_seg_frames); % for referencing edf file
+
     end
 
 
     % trial update?
     function [task, stimulus]  = initTrial(obj, task, myscreen, stimulus)
-        dt              = 1/myscreen.framesPerSecond;
+        dt                          = 1/myscreen.framesPerSecond;
         
-        task.thistrial.ecc_r       = task.thistrial.ecc_r;
-        stimulus.ecc_r  = task.thistrial.ecc_r;
+        task.thistrial.ecc_r        = task.thistrial.ecc_r;
+        stimulus.ecc_r              = task.thistrial.ecc_r;
 
+        T = (obj.maxtrialtime + 1)*myscreen.framesPerSecond;
+        dt = 1/myscreen.framesPerSecond;
+
+        % load parameters from set
         if ~isempty(task.thistrial.experiment) && ~isempty(obj.varparams0)
             paramset = obj.parameter_set(task.thistrial.experiment, task.thistrial.experiment_paramset);
             for param = obj.varparams0
@@ -177,6 +200,7 @@ methods
             end
         end
 
+        % set up target
         target = stimulus.target;
         reinit = 0;
         for param = {'stimType', 'stimStd', 'stimLum', 'stimColor'}
@@ -186,26 +210,15 @@ methods
             end
         end
         stimulus.target     = trackposInitStimulus(target,myscreen, 'reinit_img', reinit);
-        noiseStd            = task.thistrial.stim_noiseStd / sqrt(dt) / task.thistrial.ecc_r; % angular noise
-        % divide noiseStd by dt since the ou_simulate_full multiplies the noise by dt/tau_int. 
-        % sigma_{deg/sec} * sqrt(dt) = sigma_{deg/frame}
-        % sigma_{deg/sec} * sqrt(dt)/dt = sigma_{deg/frame} /d t
-        % sigma_{deg/sec} / sqrt(dt) = sigma_{deg/frame} / dt
-        stim_dynparams      = obj.dynparam_group(task.thistrial.stim_dyngroup, noiseStd);
+        
+        stimulu.target.ar   = task.thistrial.stim_noiseAR;
+        noiseStd            = task.thistrial.stim_noiseStd * sqrt(dt) / task.thistrial.ecc_r * sqrt(prod(1-stimulu.target.ar.^2)); % angular noise
+        [noise, wnoise]     = ar(T, noiseStd, stimulu.target.ar, 'plotfigs', false);
+        task.thistrial.trackTNoiseAR    = task.thistrial.ecc_r * noise;
+        task.thistrial.trackTNoiseW     = task.thistrial.ecc_r * wnoise;
 
-
-        T = (obj.maxtrialtime + 1)*myscreen.framesPerSecond;
-        dt = 1/myscreen.framesPerSecond;
-
-        stimulus.target.dynparams = stim_dynparams;
-        if task.thistrial.stim_dyngroup == 10
-            state           = zeros(T, 1);
-            state(1,1)      = task.thistrial.stim_vel / task.thistrial.ecc_r / dt; % linear velocity to angular velocity input (deg/s^2)
-            stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt,'state', state);
-        else
-            stimulus.target.positions_trial = ou_simulate_full(stim_dynparams, T, dt);
-        end
-
+        vel = noise + task.thistrial.stim_vel;
+        stimulus.target.positions_trial = cumsum(vel) + 2*pi*rand();
         stimulus.target.position = obj.polar2cart(task.thistrial.ecc_r, stimulus.target.positions_trial(1));
         
         % initialize the pointer
@@ -219,25 +232,24 @@ methods
         end
         stimulus.pointer    = trackposInitStimulus(pointer, myscreen, 'reinit_img', reinit); 
 
-        % point noise, pointer noise kernel
-        if isfield(task.thistrial, 'point_noiseStd')
-            pnoiseStd = task.thistrial.point_noiseStd / sqrt(dt)  / task.thistrial.ecc_r ;
-        else
-            pnoiseStd = 0;
-        end
+        stimulu.pointer.ar   = task.thistrial.point_noiseAR;
+        pnoiseStd            = task.thistrial.point_noiseStd * sqrt(dt) / task.thistrial.ecc_r * sqrt(prod(1-stimulu.pointer.ar .^2)); % angular noise
+
+        [noise, wnoise]      = ar(T, pnoiseStd, stimulu.pointer.ar, 'plotfigs', false);
+        task.thistrial.trackPNoiseAR    = task.thistrial.ecc_r * noise;
+        task.thistrial.trackPNoiseW     = task.thistrial.ecc_r * wnoise;
+
+        vel = noise + task.thistrial.point_vel;
+        stimulus.pointer.inputs_trial = vel;
+        stimulus.pointer.position = stimulus.target.position;
 
         if isfield(stimulus,'wheel_params') % calibrated.
             pointer_dynparams   = stimulus.wheel_params;
-            tau_noise = pointer_dynparams.(['taus_int', num2str(pointer_dynparams.maxorder)]);
-            pointer_dynparams.(['thetaStd', num2str(pointer_dynparams.maxorder)]) = pnoiseStd * tau_noise;
-        elseif isfield(task.thistrial,'point_dyngroup')
-            pointer_dynparams   = obj.dynparam_group(task.thistrial.point_dyngroup, pnoiseStd);
+            pointer_dynparams.(['thetaStd', num2str(pointer_dynparams.maxorder)]) = 0;
         else
-            pointer_dynparams   = obj.dynparam_group(0, pnoiseStd);
+            pointer_dynparams   = ornstein_uhlenbeck(0, 0);
         end
-
         stimulus.pointer.dynparams  = pointer_dynparams;
-        stimulus.pointer.position   = obj.polar2cart(task.thistrial.ecc_r, stimulus.target.positions_trial(1));
         stimulus.pointer.state      = [stimulus.target.positions_trial(1); zeros(pointer_dynparams.maxorder,1)];
 
         obj.t0 = tic; % start trial
@@ -289,9 +301,9 @@ methods
                     [stimulus.pointer.state, noise] = ou_update_state(stimulus.pointer.state, ...
                         -1*dx/task.thistrial.ecc_r, stimulus.pointer.dynparams, 1/myscreen.framesPerSecond);
                     
+                    stimulus.pointer.state(1) = stimulus.pointer.state(1) + stimulus.pointer.inputs_trial(framenum);
                     stimulus.pointer.position = obj.polar2cart(task.thistrial.ecc_r, stimulus.pointer.state(1));
 
-                    task.thistrial.trackPNoise(task.thistrial.framecount,1:length(noise)) = noise;
                 elseif strcmp(stimulus.exp.controlMethod, 'mouse_circ')
                     [ux, uy, obj.mousestate] = cursor_update(myscreen,obj.mousestate);
                     dtheta  = atan2(uy,ux);
@@ -300,7 +312,6 @@ methods
 
                     stimulus.pointer.position = obj.polar2cart(task.thistrial.ecc_r, stimulus.pointer.state(1));
 
-                    task.thistrial.trackPNoise(task.thistrial.framecount,1:length(noise)) = noise;
                 elseif strcmp(stimulus.exp.controlMethod, 'mouse')
                     mInfo = mglGetMouse(myscreen.screenNumber);
                     [x,y] = screen2deg(mInfo.x, mInfo.y, myscreen);
@@ -335,26 +346,6 @@ methods
         end
     end
 
-    function param = dynparam_group(obj, groupname, noisestd)
-        if groupname == 0 % white velocity
-            param = ornstein_uhlenbeck(0, noisestd);
-        elseif groupname == 1 % white acceleration
-            param = ornstein_uhlenbeck(1, noisestd);
-        elseif groupname == 2 % white jerk
-            param = ornstein_uhlenbeck(2, noisestd);
-        elseif groupname == 10 % constant velocity
-            param = struct();
-            param.maxorder              = 1;
-            param.('thetaStd0')         = noisestd;
-            param.('invtaus_decay0')    = 0;
-            param.('taus_int0')         = 1;
-            
-            param.('thetaStd1')         = 0;
-            param.('invtaus_decay1')    = 0;
-            param.('taus_int1')         = 1;
-        end
-    end
-
     
     function pos_cart = polar2cart(obj, r, theta)
         pos_cart = [r*cos(theta), r*sin(theta)];
@@ -366,145 +357,64 @@ methods
         params.backLum = 0.7;
         params.ecc_r = 10;
 
-        params.stimType = {'gaussian'};
-        params.stimLum = 0.4;
-        params.stimStd = 1;
-        params.stimColor = 'k'; 
-        params.stim_dyngroup = 0; 
-        params.stim_noiseStd = 1;
-        params.stim_vel = 0;
-    
-        params.pointType = {'dot'};
-        params.pointLum = 1;   
-        params.pointStd = 0.4;
-        params.pointColor ='r';
-        params.point_dyngroup = 0; 
-        params.point_noiseStd = 0;
+        stim_highlum    = {'dot', 1, 0.4,'r'}; % lum, size, color
+        stim_lowlum     = {'gaussian', 0.4, 1,'k'}; % lum, size, color
+        
+        [params.stimType, params.stimLum, params.stimStd, params.stimColor]      ...
+            = deal(stim_lowlum{:});
+
+        params.stim_noiseStd    = 1;
+        params.stim_noiseAR     = 0;
+        params.stim_vel         = 0;
+
+        [params.pointType, params.pointLum, params.pointStd, params.pointColor]  ...
+            = deal(stim_highlum{:});
+        params.point_noiseStd = 1;
+        params.point_noiseAR = 0;
         params.point_vel = 0;
 
-        if strcmp(setname, 'ecc') % effect of eccentricity
-            ecc_r_list               = [5, 10, 15, 20]; % eccentricity
-
-            if setnum < 10 % brownian motion
-                params.stim_noiseStd       = 1; % in dva per second (linear velocity) 
-                params.stim_dyngroup       = 0; % noise order, same size as stimStdList % 10: constant velocity
-                params.stim_vel            = 0; 
-            elseif setnum >= 10 % constant velocity, no brownain
-                params.stim_noiseStd       = 0; % in dva per second (linear velocity) 
-                params.stim_dyngroup       = 10; % noise order, same size as stimStdList % 10: constant velocity
-                params.stim_vel            = 1; 
-            end
-
-            setorder = mod(setnum,length(ecc_r_list));
-            if setorder == 0
-                setorder = length(ecc_r_list);
-            end
-            params.ecc_r = ecc_r_list(setorder);
-
-        elseif strcmp(setname,'mn') % effect of motor noise            
-            stim_highlum    = {'dot', 1, 0.4,'r'}; % lum, size, color
-            stim_lowlum     = {'gaussian', 0.4, 1,'k'}; % lum, size, color
-
-            if setnum <= 12
-                if mod(setnum,6) == 1
-                    noisestd1 = 0;
-                    noisestd2 = 1;
-                elseif mod(setnum,6) == 2
-                    noisestd1 = 0;
-                    noisestd2 = 2;
-                elseif mod(setnum,6) == 3
-                    noisestd1 = 0;
-                    noisestd2 = 3;
-                elseif mod(setnum,6) == 4
-                    noisestd1 = 1;
-                    noisestd2 = 1;
-                elseif mod(setnum,6) == 5
-                    noisestd1 = 1;
-                    noisestd2 = 2;
-                elseif mod(setnum,6) == 0
-                    noisestd1 = 1;
-                    noisestd2 = 3;
-                end
-
-                if setnum <= 6
-                    % stimulus: low luminance
-                    % pointer: high luminance
-                    [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_lowlum{:});
-                    [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_highlum{:});
-
-                    params.stim_noiseStd    = noisestd2;
-                    params.point_noiseStd   = noisestd1;
-                else
-                    % stimulus: low luminance
-                    % pointer: high luminance
-                    [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_highlum{:});
-                    [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_lowlum{:});
-                    
-                    params.stim_noiseStd    = noisestd1;
-                    params.point_noiseStd   = noisestd2;
-                end
-            elseif (setnum > 12) && (setnum <= 18) 
-                % stabilization task - no stimulus dynamics noise
-                params.stim_noiseStd = 0;
-                
-                if setnum <= 15
-                    % stimulus: low luminance
-                    % pointer: high luminance
-                    [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_lowlum{:});
-                    [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_highlum{:});
-                else
-                    % stimulus: low luminance
-                    % pointer: high luminance
-                    [params.stimType, params.stimLum, params.stimStd, params.stimColor]      = deal(stim_highlum{:});
-                    [params.pointType, params.pointLum, params.pointStd, params.pointColor]   = deal(stim_lowlum{:});
-                end
-                
-                % change only pointer noise -- 3 pointer noise conditions
-                if mod(setnum,3) == 1
-                    params.point_noiseStd = 1;
-                elseif mod(setnum,3) == 2
-                    params.point_noiseStd = 2;
-                elseif mod(setnum,3) == 0
-                    params.point_noiseStd = 10;
-                end
-            end
-        elseif strcmp(setname, 'cv')
-             % moving stimulus, change stimulus velocity
-             params.point_noiseStd = 0;
-             
-             vel_list               = [1,2,3];
-             ecc_r_list             = [5, 10, 15, 20]; % eccentricity
-             stimLum_list           = [0.2, 0.5, 0.8];
-             if setnum <=9
-                 start = 0;
-                 params.ecc_r = ecc_r_list(1);
-             elseif setnum <= 18
-                 start = 10;
-                 params.ecc_r = ecc_r_list(2);
-             elseif setnum <= 27
-                 start = 19;
-                 params.ecc_r = ecc_r_list(3);
-             elseif setnum <= 36
-                 start = 28;
-                 params.ecc_r = ecc_r_list(4);
-             end
-                 
-             % change velocity 
-            if (setnum > start+0) && (setunm <= start+3)
-                params.stim_vel = 1;
-            elseif (setnum > start+3) && (setunm <= start+6)
-                params.stim_vel = 2;
-            elseif (setnum > start+6) && (setunm <= start+9)
-                params.stim_vel = 3;
-            end
-
-            % change luminance
+        if strcmp(setname,'mn') % effect of motor noise 
             if mod(setnum,3) == 1
-                params.stimLum = stimLum_list(1);
+                ar1 = 0.9;
+                ar2 = 0;
             elseif mod(setnum,3) == 2
-                params.stimLum = stimLum_list(2);
-            elseif mod(setnum,3) == 3
-                params.stimLum = stimLum_list(3);
+                ar1 = 0.5;
+                ar2 = 0;
+            elseif mod(setnum,6) == 3
+                ar1 = 0;
+                ar2 = 0;
+            end
+
+            if setnum <= 6
+                noisestd1 = 1;
+                noisestd2 = 0;
+            elseif setnum <=12
+                noisestd1 = 1;
+                noisestd2 = 1;
+            end
+
+            if setnum <= 3 || (setnum > 6 &  setnum <=9)
+                % stimulus: high luminance
+                % pointer: low luminance,
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_highlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
+
+                params.stim_noiseStd    = noisestd2;
+                params.point_noiseStd   = noisestd1;
+
+                params.stim_noiseAR     = ar2;
+                params.point_noiseAR    = ar1;
+            elseif setnum <= 6 || (setnum > 9 &  setnum <=12)
+                % stimulus: low luminance, moving
+                % pointer: high luminance
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_lowlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_highlum{:});
+                
+                params.stim_noiseStd    = noisestd1;
+                params.point_noiseStd   = noisestd2;
+
+                params.stim_noiseAR     = ar1;
+                params.point_noiseAR    = ar2;
             end
         end
     end
