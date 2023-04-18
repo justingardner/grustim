@@ -1,4 +1,4 @@
-function A = circ(r, dim, centerCoord)
+function A = circStim(r, dim, centerCoord)
 % Matlab function to return a generalized circular/elliptical mask for a 
 %   desired radius (or radii for an ellipse), array size, an center 
 %   location.
