@@ -415,6 +415,48 @@ methods
                 params.stim_noiseAR     = ar1;
                 params.point_noiseAR    = ar2;
             end
+        elseif strcmp(setname,'ecc') % effect of eccentricity
+            ar1 = 0.9;
+            ar2 = 0;
+            if mod(setnum,3) == 1
+                params.ecc_r = 10;
+            elseif mod(setnum,3) == 2
+                params.ecc_r = 15;
+            elseif mod(setnum,3) == 0
+                params.ecc_r = 20;
+            end
+
+            if setnum <= 6
+                noisestd1 = 1;
+                noisestd2 = 0;
+            elseif setnum <=12
+                noisestd1 = 1;
+                noisestd2 = 1;
+            end
+
+            if setnum <= 3 || (setnum > 6 &  setnum <=9)
+                % stimulus: high luminance
+                % pointer: low luminance,
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_highlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
+
+                params.stim_noiseStd    = noisestd2;
+                params.point_noiseStd   = noisestd1;
+
+                params.stim_noiseAR     = ar2;
+                params.point_noiseAR    = ar1;
+            elseif setnum <= 6 || (setnum > 9 &  setnum <=12)
+                % stimulus: low luminance, moving
+                % pointer: high luminance
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_lowlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_highlum{:});
+                
+                params.stim_noiseStd    = noisestd1;
+                params.point_noiseStd   = noisestd2;
+
+                params.stim_noiseAR     = ar1;
+                params.point_noiseAR    = ar2;
+            end
         end
     end
     

@@ -38,7 +38,8 @@ stimulus.exp = exp;
 
 %% specify task design
 
-cps = load_mn_experiment(myscreen, exp, 1);
+% cps = load_experiment(myscreen, exp, 1); % AR structure
+cps = load_experiment(myscreen, exp, 2); % eccentricity
 stimulus.task = cps;
 stimulus.fixation_size = 0.4;
 
@@ -290,9 +291,8 @@ function [task myscreen] = responseCallback(task, myscreen)
  
 end
 
-function cps = load_mn_experiment(myscreen, exp, exp_num)
+function cps = load_experiment(myscreen, exp, exp_num)
     cps = {};
-    experiment          = {'mn'};
     ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
     ntrials             = 15; % trials per condition
     trials_per_block    = 5;  % should divide ntrials, divide trial into blocks
@@ -301,9 +301,28 @@ function cps = load_mn_experiment(myscreen, exp, exp_num)
     if exp.debug, ntrial_learn= 0; ntrials = 1; trials_per_block = 1; maxtrialtime=10; end
 
     if exp_num == 1 % effect of pointer dynamics
+        experiment          = {'mn'};
         experiment_paramset = [6, 5, 4, 3, 2, 1]; %., 9, 8, 7, 12,11,10];
         Nconds = length(experiment_paramset);
 
+        for epset = experiment_paramset
+            % learning phase -- not analyzed
+            cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+                'experiment', experiment, 'experiment_paramset', epset);
+
+            % tracking
+            nblocks = ceil(ntrials/trials_per_block);
+            for b = 1:nblocks
+                cps{end+1} = circular_ar(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
+                    'experiment', experiment, 'experiment_paramset', epset);
+            end
+        end
+    elseif exp_num == 2 % effect of eccentricity
+        experiment          = {'ecc'};
+        
+        experiment_paramset = [4,1,5,2,6,3]; %., 9, 8, 7, 12,11,10];
+        Nconds = length(experiment_paramset);
+        
         for epset = experiment_paramset
             % learning phase -- not analyzed
             cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
