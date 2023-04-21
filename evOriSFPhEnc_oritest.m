@@ -10,7 +10,7 @@
 %                        sf=0.5: low SF
 %                        sf=1.5: high SF
 
-function retval = evOriSFPhEnc_ori(varargin)
+function retval = evOriSFPhEnc_oritest(varargin)
 
 % % check arguments
 if ~any(nargin == [2:5])
@@ -43,21 +43,22 @@ myscreen = initScreen(myscreen);
 
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
-
+phasedur = 0.25;
+nseg = 4;
 
 % spatial frequency
-stimulus.sf = sfq;
-task{1}{1}.parameter.sf = stimulus.sf;
+stimulus.sf = [0.5 4];
+if sfq == stimulus.sf(1)
+    stimulus.sfInd = 1;
+elseif sfq == stimulus.sf(2)
+    stimulus.sfInd = 2;
+else
+    error('Specify ''sfq'' as either (%0.1f or %0.1f)',stimulus.sf(1),stimulus.sf(2))
+end
+task{1}{1}.parameter.sf = stimulus.sf(stimulus.sfInd);
 
 % ccw, cw ori conditions
-stimulus.segdur = 0.25;
-if ieNotDefined('noris')
-    stimulus.noris = 8;
-else
-    stimulus.noris = noris;
-end
-stimulus.trialdur = 24/stimulus.noris;
-stimulus.nseg = stimulus.trialdur/stimulus.segdur;
+stimulus.noris = 24;
 stimulus.reverseIdx = fliplr(1:stimulus.noris);
 if oridir == 1
     stimulus.oridirection = 1;
@@ -72,16 +73,6 @@ else
 end
 stimulus.orientations = [stimulus.orientations(stimulus.noris/2 + 1:end) stimulus.orientations(1:stimulus.noris/2)]; % start on half-cycle
 task{1}{1}.parameter.orientations = stimulus.orientations;
-
-% gradient timings
-% the total time of the gradient is stimulus.nGradSteps * 1/frameUpdateFreq * 2 (e.g., 1/60); keep this value < 14 (or 0.467 seconds) so that we don't run out of single seg boundary
-if ieNotDefined('gradsteps')
-    stimulus.nGradSteps = 6;
-else
-    stimulus.nGradSteps = gradsteps;
-end
-stimulus.gradientTimesForward = linspace(1/60,(stimulus.nGradSteps+1)/60,stimulus.nGradSteps+1)';
-stimulus.gradientTimesBackward = stimulus.segdur - linspace(1/60,(stimulus.nGradSteps+1)/60,stimulus.nGradSteps+1)';
 
 % size
 stimulus.height = 20;
@@ -100,7 +91,7 @@ task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.seglen = stimulus.segdur*ones(1,4*stimulus.trialdur); % [repmat(0.25, 1, nseg)];
+task{1}{1}.seglen = [0.25 0.25 0.25 0.15 0.1]; % [repmat(0.25, 1, nseg)];
 
 % sync to scanner
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
@@ -161,11 +152,6 @@ while stimulus.phaseNum == newPhase;
 end
 stimulus.phaseNum = newPhase;
 
-if task.thistrial.thisseg == stimulus.nseg || task.thistrial.thisseg == 1
-    stimulus.segStart = mglGetSecs;
-    myscreen = writeTrace(stimulus.segStart,myscreen.stimtrace+1,myscreen,1);
-end
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called to draw the stimulus each frame
@@ -183,28 +169,8 @@ if stimulus.oridirection == -1
 end
 
 % draw the texture
-if isfield(stimulus.tex,'gradient')
-    if task.thistrial.thisseg < stimulus.nseg && task.thistrial.thisseg > 1
-        mglBltTexture([stimulus.tex.grating{stimulus.phaseNum} stimulus.tex.aperture], [0 0 stimulus.height stimulus.height; 0 0 stimulus.height*2 stimulus.height*2], 0, 0, [stimulus.orientations(oriInd) 0]);
-    elseif task.thistrial.thisseg == 1 % if we are starting the trial, make the contrast ramp up
-        frameTime = mglGetSecs(stimulus.segStart);
-        [~,gIdx] = pdist2(stimulus.gradientTimesForward,frameTime,'euclidean','Smallest',1);
-        if gIdx <= stimulus.nGradSteps
-            mglBltTexture([stimulus.tex.gradient{gIdx,stimulus.phaseNum} stimulus.tex.aperture], [0 0 stimulus.height stimulus.height; 0 0 stimulus.height*2 stimulus.height*2], 0, 0, [stimulus.orientations(oriInd) 0]);
-        else
-            mglBltTexture([stimulus.tex.grating{stimulus.phaseNum} stimulus.tex.aperture], [0 0 stimulus.height stimulus.height; 0 0 stimulus.height*2 stimulus.height*2], 0, 0, [stimulus.orientations(oriInd) 0]);
-        end
-    elseif task.thistrial.thisseg == stimulus.nseg % if we are ending the trial, make the contrast ramp down
-        frameTime = mglGetSecs(stimulus.segStart);
-        [~,gIdx] = pdist2(stimulus.gradientTimesBackward,frameTime,'euclidean','Smallest',1);
-        if gIdx <= stimulus.nGradSteps
-            mglBltTexture([stimulus.tex.gradient{gIdx,stimulus.phaseNum} stimulus.tex.aperture], [0 0 stimulus.height stimulus.height; 0 0 stimulus.height*2 stimulus.height*2], 0, 0, [stimulus.orientations(oriInd) 0]);
-        else
-            mglBltTexture([stimulus.tex.grating{stimulus.phaseNum} stimulus.tex.aperture], [0 0 stimulus.height stimulus.height; 0 0 stimulus.height*2 stimulus.height*2], 0, 0, [stimulus.orientations(oriInd) 0]);
-        end
-    end
-else
-    mglBltTexture([stimulus.tex.grating{stimulus.phaseNum} stimulus.tex.aperture], [0 0 stimulus.height stimulus.height; 0 0 stimulus.height*2 stimulus.height*2], 0, 0, [stimulus.orientations(oriInd) 0]);
+if task.thistrial.thisseg<5
+    mglBltTexture(stimulus.tex{oriInd,stimulus.sfInd,stimulus.phaseNum}, [0 0 stimulus.height stimulus.height], 0, 0, 0);
 end
 
 
@@ -221,59 +187,38 @@ stimulus.numPhases = 8;
 stimulus.phases = 0:(360-0)/stimulus.numPhases:360;
 stimulus.phases = stimulus.phases(1:end-1);
 
+% test - remove later
+% stimulus.numPhases = 2;
+% stimulus.phases = [0 0];
+
 if isfield(stimulus, 'tex')
     fprintf('(evOriSFPhEnc) Attention: Using precomputed stimulus textures!!');
 else
     disppercent(-inf,'Creating the stimulus textures');
-
-    % create the grating texture (just need phase and sf, mglBltTexture will handle the rotations)
-    for iPhase=1:length(stimulus.phases)
-
-        % make a grating  but now scale it
-        grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf, 0, stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
-
-        % scale to range of display
-        grating = 255*(grating+1)/2;
-
-        % create a texture
-        stimulus.tex.grating{iPhase} = mglCreateTexture(grating, [], 1);
-
-        disppercent(iPhase/length(stimulus.phases));
-    end
-    
-    % create the gradient textures
-    gradientVals = linspace(0,1,stimulus.nGradSteps+1);
-    gradientVals = gradientVals(1:end-1);
-    for iGradient = 1:length(gradientVals)
-        for iPhase=1:length(stimulus.phases)
-
-            % make a grating  but now scale it
-            grating = gradientVals(iGradient) * mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf, 0, stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
-
-            % scale to range of display
-            grating = 255*(grating+1)/2;
-
-            % create a texture
-            stimulus.tex.gradient{iGradient,iPhase} = mglCreateTexture(grating, [], 1);
+    for iOri=1:length(stimulus.orientations)
+        for iSF=1:length(stimulus.sf)
+            for iPhase=1:length(stimulus.phases)
+                
+                % make a grating  but now scale it
+                grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf(iSF), stimulus.orientations(iOri), stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
+                
+                % make a elliptical (circular) aperture
+                % grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
+                stimSize = size(grating,1);
+                apertureOuter = circStim([stimSize/2*stimulus.outerHeightRatio stimSize/2*stimulus.outerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
+                apertureInner = ~circStim([stimSize/2*stimulus.innerHeightRatio stimSize/2*stimulus.innerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
+                aperture = and(apertureOuter,apertureInner);
+                grating = grating .* aperture;
+                
+                % scale to range of display
+                grating = 255*(grating+1)/2;
+                
+                % create a texture
+                stimulus.tex{iOri, iSF, iPhase} = mglCreateTexture(grating, [], 1);
+                
+            end
         end
+        disppercent(iOri/length(stimulus.orientations));
     end
-
     disppercent(inf);
-
-    % create the aperture texture - make a elliptical (circular) aperture
-    % grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
-    stimSize = size(grating,1);
-    apertureOuter = circStim([stimSize/2*stimulus.outerHeightRatio stimSize/2*stimulus.outerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
-    apertureInner = ~circStim([stimSize/2*stimulus.innerHeightRatio stimSize/2*stimulus.innerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
-    apertureAlpha = ~and(apertureOuter,apertureInner);
-    apertureAlpha = padarray(apertureAlpha,[(stimSize-1)/2 (stimSize-1)/2],1,'both'); % pad the array so that we block out the grating edges
-
-    % make rgb matrix (n x m x 3)
-    apertureRGB = 0.5 * ones(size(apertureAlpha,1),size(apertureAlpha,2),3);
-    
-    % tack on the alpha values
-    aperture = cat(3,apertureRGB,apertureAlpha);
-
-    % create a texture
-    stimulus.tex.aperture = mglCreateTexture(aperture, [], 1);
 end
