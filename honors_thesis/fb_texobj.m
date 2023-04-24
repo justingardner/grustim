@@ -70,8 +70,8 @@ stimulus.num_samples = 2;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/fbottazzini/outputs';
-stimulus.origDir = '~/proj/fbottazzini/inputs';
+stimulus.stimDir = '~/proj/grustim/honors_thesis/scrambled';
+stimulus.origDir = '~/proj/grustim/honors_thesis/originals';
 
 %% Preload images
 mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
