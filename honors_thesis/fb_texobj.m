@@ -60,7 +60,6 @@ stimulus.imageNames = {'adult-10', 'adult-11', 'adult-12', 'adult-13', 'adult-10
                     'adult-103', 'adult-104', 'adult-105', 'adult-106', 'adult-107', 'adult-108',...
                     'house-1', 'house-100', 'house-102','house-104', 'house-105', 'house-107', ...
                     'house-108','house-109', 'house-110', 'house-111','house-114', 'house-115',};
-stimulus.imageNames = {'bear', 'cat', 'horse', 'truck', 'face', 'helicopter', 'house', 'lawn', 'moss', 'dirt'};
 stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
@@ -71,8 +70,8 @@ stimulus.num_samples = 2;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/fbottazzini/outputs';
-stimulus.origDir = '~/proj/fbottazzini/inputs';
+stimulus.stimDir = '~/proj/grustim/honors_thesis/scrambled';
+stimulus.origDir = '~/proj/grustim/honors_thesis/originals';
 
 %% Preload images
 mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
