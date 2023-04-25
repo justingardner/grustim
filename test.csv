@@ -4,3 +4,9 @@ date,username,time,task,computer,stimfile
 05/22/2019,gru,22-May-2019 16:55:20,texAttPool.m,dubonnet.stanford.edu,~/data/texAttPool/test/190522_stim10.mat
 05/22/2019,gru,22-May-2019 17:03:16,texAttPool.m,dubonnet.stanford.edu,~/data/texAttPool/test/190522_stim11.mat
 05/24/2019,gru,24-May-2019 12:51:04,texAttPool.m,dubonnet.stanford.edu,~/data/texAttPool/test/190524_stim42.mat
+04/25/2023,gru,25-Apr-2023 14:23:12,validation_drawingDots.m,cointreau.stanford.edu,/Users/gru/proj/jiwon/validation_drawingDots/test/230425_stim01.mat
+04/25/2023,gru,25-Apr-2023 14:25:12,validation_drawingDots.m,cointreau.stanford.edu,/Users/gru/proj/jiwon/validation_drawingDots/test/230425_stim02.mat
+04/25/2023,gru,25-Apr-2023 14:46:13,validation_drawingDots.m,cointreau.stanford.edu,/Users/gru/proj/jiwon/validation_drawingDots/test/230425_stim03.mat
+04/25/2023,gru,25-Apr-2023 14:58:37,validation_drawingDots.m,cointreau.stanford.edu,/Users/gru/proj/jiwon/validation_drawingDots/test/230425_stim04.mat
+04/25/2023,gru,25-Apr-2023 15:14:03,validation_drawingDots.m,cointreau.stanford.edu,/Users/gru/proj/jiwon/validation_drawingDots/test/230425_stim05.mat
+04/25/2023,gru,25-Apr-2023 15:26:30,validation_drawingDots.m,cointreau.stanford.edu,/Users/gru/proj/jiwon/validation_drawingDots/test/230425_stim06.mat

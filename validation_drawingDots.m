@@ -19,11 +19,11 @@ eyetracker = input('Eyelink?(Y/N) : ', 's');
 task_repetition = 3;
 
 % initialize myscreen
-myscreen.displayName = 'dell_wuTsai';
+myscreen.displayName = 'vpixx';
 myscreen.saveData = 1;
-myscreen.datadir = [pwd '/data'];
+myscreen.datadir = '/Users/gru/proj/jiwon';
 if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
-mglSetParam('abortedStimfilesDir', [pwd '/data/aborted'],1);
+mglSetParam('abortedStimfilesDir', '/Users/gru/proj/jiwon/aborted',1);
 myscreen.keyboard.nums = [37,50];  % Enter, Spacebar
 myscreen = initScreen(myscreen);  
 
