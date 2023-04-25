@@ -69,6 +69,8 @@ getArgs(varargin, {'reinit_img', 1});
                 blob.color = [0;0;1];
             elseif obj.color == 'g'
                 blob.color = [0;1;0];
+            elseif obj.color == '*'
+                blob.color = '*';
             else
                 print('check blob color property')
                 blob.color = [1;1;1];

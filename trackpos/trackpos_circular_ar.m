@@ -30,16 +30,32 @@ exp.controlMethod       = 'wheel'; %'wheel'; % available: wheel
 
 exp.grabframe           = 0; % capture frames. specify save directory
 
-% for loading wheel
+% for loading wheel and dynamics noise stimulus if needed
 exp.lastStimFile        = ''; %'/Users/jryu/Dropbox/GardnerLab/data/trackpos_circular/test/230329_stim01.mat';
+
+% define set of random colors
+exp.randColorsFile      = '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
 
 global stimulus; stimulus = struct;
 stimulus.exp = exp;
 
+if mglIsFile(exp.randColorsFile)
+    stimulus.randcolors = load(exp.randColorsFile);
+end
+
 %% specify task design
 
 % cps = load_experiment(myscreen, exp, 1); % AR structure
-cps = load_experiment(myscreen, exp, 2); % eccentricity
+experiment              = 'ecc';
+setnum                  = 2;
+
+cps = load_experiment(myscreen, 'circular_ar', experiment, setnum, 'debugmode', exp.debug);
+
+% todo: save struct per user so we can continue
+dynnoisefile = fullfile(find_root_dir, 'proj/grustim/trackpos/noise', ...
+    sprintf('circular_ar_%s_%s.mat',experiment, num2str(setnum)));
+stimulus = check_and_load_dynnoise(dynnoisefile, myscreen, stimulus, cps);
+
 stimulus.task = cps;
 stimulus.fixation_size = 0.4;
 
@@ -139,12 +155,11 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
         mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
         mglFlush(); myscreen.flushMode = -1;
 
-        % todo make this work
+        % todo: make this work
 %         if myscreen.userHitSpace
 %             disp(' Calibrating Eye ....')
 %             myscreen  = eyeCalibDisp(myscreen); % calibrate eye again
 %         end
-
     end
     phaseNum = newphaseNum;
     myscreen = tickScreen(myscreen,task);     % flip screen
@@ -245,12 +260,21 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         task.thistrial.framecount = task.thistrial.framecount + 1;
 
         % display target
+        % todo: another function for displaying objects
         if ~isempty(stimulus.target) 
             if isfield(stimulus.target, 'img') && ~isempty(stimulus.target.img)
                 mglBltTexture(stimulus.target.img, stimulus.target.position);
             else
+                if strcmp(stimulus.target.color,'*') && isfield(stimulus,'randcolors')
+                    targcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+                elseif strcmp(stimulus.target.color,'*')
+                    targcolors = [0.5+0.5*rand(3,1)];
+                else
+                    targcolors = stimulus.target.color;
+                end
+            
                 mglMetalDots([stimulus.target.position(1);stimulus.target.position(2);0], ...
-                    [stimulus.target.color;1], [stimulus.target.std; stimulus.target.std], 1, 1);
+                    [targcolors;1], [stimulus.target.std; stimulus.target.std], 1, 1);
             end
         end
 
@@ -265,16 +289,30 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     if ~isempty(stimulus.pointer)
         if isfield(stimulus.pointer, 'img') && ~isempty(stimulus.pointer.img)
             mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
-        else
+        else 
+            if strcmp(stimulus.pointer.color,'*') && isfield(stimulus,'randcolors')
+                pointercolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+            elseif strcmp(stimulus.pointer.color,'*')
+                pointercolors = [0.5+0.5*rand(3,1)];
+            else
+                pointercolors = stimulus.pointer.color;
+            end
+            
             mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
-             [stimulus.pointer.color;1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
+                [pointercolors; 1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
         end
     end
     
     % display fixation
     if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
         mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.3],[0;2*pi], 1);
-        mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.fixation_size;stimulus.fixation_size], 1, 1);
+        if isfield(stimulus,'randcolors')
+            fixcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+        else
+            fixcolors = [0.5+0.5*rand(3,1)];    
+        end
+
+        mglMetalDots([0;0;0], [fixcolors; 1], [stimulus.fixation_size;stimulus.fixation_size], 1, 1);
     end
     
     if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
@@ -291,49 +329,52 @@ function [task myscreen] = responseCallback(task, myscreen)
  
 end
 
-function cps = load_experiment(myscreen, exp, exp_num)
-    cps = {};
-    ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
-    ntrials             = 15; % trials per condition
-    trials_per_block    = 5;  % should divide ntrials, divide trial into blocks
-    maxtrialtime        = 20; % seconds
 
-    if exp.debug, ntrial_learn= 0; ntrials = 1; trials_per_block = 1; maxtrialtime=10; end
+function stimulus = check_and_load_dynnoise(dynnoisefile, myscreen, stimulus, cps)
+% check noise file
+allgood = 1;
+if mglIsFile(dynnoisefile)
+    dyn_noise = load(dynnoisefile).dyn_noise;
+    if length(cps) ~= length(dyn_noise)
+        allgood=0;
+    else
+        for n = 1:length(cps)
+            % check that the conditions match
+            thistask    = cps{n};
 
-    if exp_num == 1 % effect of pointer dynamics
-        experiment          = {'mn'};
-        experiment_paramset = [6, 5, 4, 3, 2, 1]; %., 9, 8, 7, 12,11,10];
-        Nconds = length(experiment_paramset);
-
-        for epset = experiment_paramset
-            % learning phase -- not analyzed
-            cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
-                'experiment', experiment, 'experiment_paramset', epset);
-
-            % tracking
-            nblocks = ceil(ntrials/trials_per_block);
-            for b = 1:nblocks
-                cps{end+1} = circular_ar(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
-                    'experiment', experiment, 'experiment_paramset', epset);
+            if dyn_noise(n).trialN < thistask.numTrials
+                allgood = 0;
             end
-        end
-    elseif exp_num == 2 % effect of eccentricity
-        experiment          = {'ecc'};
-        
-        experiment_paramset = [4,1,5,2,6,3]; %., 9, 8, 7, 12,11,10];
-        Nconds = length(experiment_paramset);
-        
-        for epset = experiment_paramset
-            % learning phase -- not analyzed
-            cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
-                'experiment', experiment, 'experiment_paramset', epset);
 
-            % tracking
-            nblocks = ceil(ntrials/trials_per_block);
-            for b = 1:nblocks
-                cps{end+1} = circular_ar(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
-                    'experiment', experiment, 'experiment_paramset', epset);
+            T = ceil(thistask.maxtrialtime * myscreen.framesPerSecond);
+            if dyn_noise(n).T < T
+                allgood = 0;
             end
+
+            if dyn_noise(n).framesPerSecond ~= myscreen.framesPerSecond
+                allgood = 0;
+            end
+
+            paramset = thistask.parameter_set(thistask.experiment, thistask.experiment_paramset);
+
+            for pname = {'stim_noiseStd', 'stim_noiseTau', 'stim_vel', 'point_noiseStd', 'point_noiseTau', 'point_vel'}
+               if dyn_noise(n).(pname{1}) ~= paramset.(pname{1})
+                   allgood = 0;
+               end
+            end 
         end
     end
+else
+    allgood = 0;
+end
+
+% generate noise (but not save)
+if ~allgood
+   % regenerate noise 
+   disp('(trackpos_circular_ar) dynamic noise file does not match. regenerating dynamics noise')
+   dyn_noise = circular_ar_gen_noise('myscreen', myscreen, 'taskcfg',cps,'savenoise',false);
+end
+
+stimulus.dyn_noise = dyn_noise;
+    
 end
