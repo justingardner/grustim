@@ -23,7 +23,7 @@ global stimulus
 testingLoc = input('Testing location?: ');
 mglSetSID('test')
 eyetracker = 0;
-myscreen.displayName = 'vpixx';
+myscreen.displayName = 'home';
 
 myscreen.saveData = 1;
 myscreen.datadir = '~/proj/jiwon';
