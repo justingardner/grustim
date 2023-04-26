@@ -86,12 +86,12 @@ for i = 1:stimulus.nTexFams
     layerI = stimulus.layerNames{li};
     for j = 1:stimulus.num_samples
        sd = imread(sprintf('%s/%s_%s%s_smp%i.png', stimulus.stimDir, imName, stimulus.poolSize, layerI, j));
-       stimulus.images.synths.(sprintf('%s_%s_%i', imName, layerI, j)) = genTexFromIm(sd);
+       stimulus.images.synths.(sprintf('%s_%s_%i', strrep(imName, '-', '_'), layerI, j)) = genTexFromIm(sd);
     end
  
     % Load noise samples.
     orig = imread(sprintf('%s/%s.jpeg', stimulus.origDir, imName));
-    stimulus.images.origs.(imName) = genTexFromIm(orig);
+    stimulus.images.origs.(strrep(imName, '-', '_')) = genTexFromIm(orig);
   end
   
   disppercent(i / stimulus.nTexFams);
@@ -226,14 +226,14 @@ elseif task.thistrial.stimType==0
   task.thistrial.blank = 0;
   task.thistrial.layer = -1;
   task.thistrial.sample = -1;
-  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.origs.(image);
+  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.origs.(strrep(image, '-', '_'));
   disp(sprintf('%s: Original %s image', trial_str, image));
 else
   task.thistrial.blank = 0;
   task.thistrial.layer = task.thistrial.stimType;
   task.thistrial.sample = randi(stimulus.num_samples);
   layer = stimulus.layerNames{task.thistrial.layer};
-  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.synths.(sprintf('%s_%s_%i', image, layer, task.thistrial.sample));
+  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.synths.(sprintf('%s_%s_%i', strrep(image, '-', '_'), layer, task.thistrial.sample));
   disp(sprintf('%s: %s %s sample %i synth', trial_str, image, layer, task.thistrial.sample));
 end
 
