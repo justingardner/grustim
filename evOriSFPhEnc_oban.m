@@ -178,9 +178,9 @@ global stimulus;
 mglClearScreen;
 
 oriInd = find(task.parameter.orientations==task.thistrial.orientations);
-if stimulus.oridirection == -1
-    oriInd = stimulus.reverseIdx(oriInd);
-end
+% if stimulus.oridirection == -1
+%     oriInd = stimulus.reverseIdx(oriInd);
+% end
 
 % draw the texture
 if isfield(stimulus.tex,'gradient')
