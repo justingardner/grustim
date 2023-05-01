@@ -1,8 +1,8 @@
-function [ myscreen ] = texobj( varargin )
+function [ myscreen ] = fb_texobj( varargin )
 %
 % EVENT-RELATED TEXTURES
 %  Experiment to map neural responses to various textures
-%
+%mg
 %  Usage: texobj(varargin)
 %  Authors: Akshay Jagadeesh
 %  Date: 11/05/2018
@@ -244,8 +244,14 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
-% Save segment start time;
-task.thistrial.tSegStart(task.thistrial.thisseg) = mglGetSecs;
+% Save segment start time for the right hand task (comes first);
+if task.thistrial.stimXPos > 0
+  stimulus.tSegStart(task.thistrial.thisseg) = mglGetSecs;
+end
+
+% Save the global start segment time in task variable
+% This way both left and right stimuli have a synchronized start of trial
+task.thistrial.tSegStart(task.thistrial.thisseg) = stimulus.tSegStart(task.thistrial.thisseg);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -262,11 +268,13 @@ else
 end
 
 % Select which stimulus to display as a function of time since seg start
-timeSinceSegStart = mglGetSecs(task.thistrial.tSegStart(task.thistrial.thisseg));
+%timeSinceSegStart = mglGetSecs(task.thistrial.tSegStart(task.thistrial.thisseg));
+timeSinceSegStart = mglGetSecs(stimulus.tSegStart(task.thistrial.thisseg));
 
 % Flash stimuli on and off - 800ms on, 200ms off.
 cycleLen = stimulus.tStimOn + stimulus.tStimOff;
 stimOn = mod(timeSinceSegStart, cycleLen) < stimulus.tStimOn;
+% disp(sprintf('%s: %i (%0.4f)', side, stimOn, timeSinceSegStart));
 
 %stimIdx = ceil(timeSinceSegStart / stimulus.smpLen);
 stimIdx = ceil(timeSinceSegStart / cycleLen);
