@@ -38,7 +38,7 @@ myscreen = initScreen(myscreen);
 task{1}{1}.waitForBacktick = 1;
 
 % task
-task{1}{1}.getResponse = [0 0 0 0 0 0 1 0];
+task{1}{1}.getResponse = [zeros(1,11) 1 0];
 task{1}{1}.collectEyeData = false;
 task{1}{1}.seglen = [2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2, 1];
 
