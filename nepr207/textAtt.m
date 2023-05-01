@@ -77,6 +77,7 @@ stimulus.matchFakeOrder = stimulus.fakeList(randperm(length(stimulus.fakeList)))
 stimulus.realmatchCounter = 1;
 stimulus.fakematchCounter = 1;
 
+stimulus.wordEcc = 10;
 stimulus.response = zeros(1,task{1}{1}.numTrials);
 stimulus.correctResponse = zeros(1,task{1}{1}.numTrials);
 
@@ -163,17 +164,17 @@ if task.thistrial.thisseg == 1
     if task.thistrial.cue == -1
         mglTextSet('Helvetica', 32, [1 1 1], 0, 0, 0, 0, 0, 0, 0);
         leftText = mglText('XXXXX');
-        mglBltTexture(leftText,[-5 0],'left','top');
+        mglBltTexture(leftText,[-stimulus.wordEcc 0],'left','top');
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         rightText = mglText('XXXXX');
-        mglBltTexture(rightText,[5 0],'left','top');
+        mglBltTexture(rightText,[stimulus.wordEcc 0],'left','top');
     elseif task.thistrial.cue == 1
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         leftText = mglText('XXXXX');
-        mglBltTexture(leftText,[-5 0],'left','top');
+        mglBltTexture(leftText,[-stimulus.wordEcc 0],'left','top');
         mglTextSet('Helvetica', 32, [1 1 1], 0, 0, 0, 0, 0, 0, 0);
         rightText = mglText('XXXXX');
-        mglBltTexture(rightText,[5 0],'left','top');
+        mglBltTexture(rightText,[stimulus.wordEcc 0],'left','top');
     end
 
 elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
@@ -187,17 +188,18 @@ elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
     if task.thistrial.thisseg == stimulus.presentSegment
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         matchWord = mglText(stimulus.currentTrial.matchWord);
-        mglBltTexture(matchWord,[task.thistrial.cue*5 0],'left','top');
+        mglBltTexture(matchWord,[task.thistrial.cue*stimulus.wordEcc 0],'left','top');
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
-        currentText = mglText(stimulus.allList{randi(length(stimulus.allList),1)});
-        mglBltTexture(currentText,[task.thistrial.cue*(-1)*5 0],'left','top');
+        currentText = mglText(stimulus.currentTextLeft);
+        mglBltTexture(currentText,[task.thistrial.cue*(-1)*stimulus.wordEcc 0],'left','top');
+        fprintf('Match Segment %d \n\n', stimulus.presentSegment)
     else
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         leftText = mglText(stimulus.currentTextLeft);
-        mglBltTexture(leftText,[-5 0],'left','top');
+        mglBltTexture(leftText,[-stimulus.wordEcc 0],'left','top');
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         rightText = mglText(stimulus.currentTextRight);
-        mglBltTexture(rightText,[5 0],'left','top');
+        mglBltTexture(rightText,[stimulus.wordEcc 0],'left','top');
     end
     
 elseif task.thistrial.thisseg == 12
