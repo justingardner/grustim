@@ -10,7 +10,7 @@
 % NOTE: parameters you (might) want to change for this task are - 
 % numTrials, coherence, dirs, scan (contrast, speed, width, leftEcc, rightEcc)
 
-function myscreen = fourPatchWM(varargin)
+function myscreen = fourPatchAtt(varargin)
 
 % check arguments
 getArgs(varargin,'stimulusType=dots');
@@ -158,6 +158,14 @@ elseif task.thistrial.thisseg == 6
     elseif cuenum == 4
         stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,task.thistrial.speed);
     end
+    
+elseif task.thistrial.thisseg == 7
+    
+    % set cuecolor to indicate response period
+    stimulus.cuecolor{1} = [1 1 0];
+    stimulus.cuecolor{2} = [1 1 0];
+    stimulus.cuecolor{3} = [1 1 0];
+    stimulus.cuecolor{4} = [1 1 0];
 
 end
 
@@ -227,8 +235,8 @@ elseif task.thistrial.thisseg == 6
 
 elseif task.thistrial.thisseg == 7
 
-    % draw the fixation cross in neutral colors
-    mglFixationCrossDiag(1,1);
+    % draw the fixation cross in respond colors
+    mglFixationCrossDiag(1,1,stimulus.cuecolor);
     
 end
 
