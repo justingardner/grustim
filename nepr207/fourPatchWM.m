@@ -72,7 +72,7 @@ stimulus.coherence = 0; % 0-1
 % set directions
 stimulus.contrast = 1;
 stimulus.speed = 5; % in deg/s
-stimulus.width = 10; % diameter
+stimulus.width = 5; % diameter
 
 stimulus.response = zeros(1,task{1}{1}.numTrials);
 stimulus.correctResponse = zeros(1,task{1}{1}.numTrials);
@@ -138,7 +138,7 @@ elseif task.thistrial.thisseg == 4
     stimulus.dotsUpLeft = stimulus.dotsUpLeft.setSpeed(stimulus.dotsUpLeft,5);
     stimulus.dotsUpRight = stimulus.dotsUpRight.setSpeed(stimulus.dotsUpRight,5);
     stimulus.dotsDownLeft = stimulus.dotsDownLeft.setSpeed(stimulus.dotsDownLeft,5);
-    stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsUpRight,5);
+    stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,5);
 
 elseif task.thistrial.thisseg == 6
 
@@ -156,7 +156,7 @@ elseif task.thistrial.thisseg == 6
     elseif cuenum == 3
         stimulus.dotsDownLeft = stimulus.dotsDownLeft.setSpeed(stimulus.dotsDownLeft,task.thistrial.speed);
     elseif cuenum == 4
-        stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsUpRight,task.thistrial.speed);
+        stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,task.thistrial.speed);
     end
 
 end
@@ -295,12 +295,13 @@ function stimulus = initDots(stimulus,myscreen)
 aperwidth = strcat('aperwidth=',num2str(stimulus.width));
 contrast = strcat('contrast=',num2str(stimulus.contrast));
 speed = strcat('speed=',num2str(stimulus.speed));
+coherence = strcat('coherence=',num2str(stimulus.coherence));
 
 % init the dot patches
-stimulus.dotsUpLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,'xCenter=-5/sqrt(2)','yCenter=5/sqrt(2)');
-stimulus.dotsUpRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,'xCenter=5/sqrt(2)','yCenter=5/sqrt(2)');
-stimulus.dotsDownLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,'xCenter=-5/sqrt(2)','yCenter=-5/sqrt(2)');
-stimulus.dotsDownRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,'xCenter=5/sqrt(2)','yCenter=-5/sqrt(2)');
+stimulus.dotsUpLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=5/sqrt(2)');
+stimulus.dotsUpRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=5/sqrt(2)');
+stimulus.dotsDownLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=-5/sqrt(2)');
+stimulus.dotsDownRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=-5/sqrt(2)');
 
 % set background color
 stimulus.backgroundColor = 0.5;
