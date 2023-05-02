@@ -185,15 +185,18 @@ if task.thistrial.thisseg == 1
     end
     
     % set cue color
-    if task.thistrial.cue == 1
+    if task.thistrial.cue == -1
         stimulus.cuecolor{1} = [1 1 1];
-    elseif task.thistrial.cue == 2
+        fprintf('\nTrial %d: Cue left', task.trialnum)
+    elseif task.thistrial.cue == 1
         stimulus.cuecolor{2} = [1 1 1];
+        fprintf('\nTrial %d: Cue right', task.trialnum)
     else
         stimulus.cuecolor{1} = [0 0 0];
         stimulus.cuecolor{2} = [0 0 0];
         stimulus.cuecolor{3} = [0 0 0];
         stimulus.cuecolor{4} = [0 0 0];
+        fprintf('\nTrial %d: Distributed cue', task.trialnum)
     end
 
 elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
@@ -211,7 +214,7 @@ elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
     if task.thistrial.thisseg == stimulus.presentSegment
         task.thistrial.distributedSide = round(-1 + 2*rand);
 
-        fprintf('Match Segment %d \n\n', stimulus.presentSegment)
+        fprintf('\nMatch Segment %d \n', stimulus.presentSegment)
     end
 
 elseif task.thistrial.thisseg == 12
