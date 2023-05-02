@@ -1,9 +1,9 @@
-% dotsInit.m - mathworks geniuses decided to overshadow 'width','height' with a package function, so now 'width','height' needs to be renamed
+% dotsInitNew.m - mathworks geniuses force overshadow 'width','height' with package functions, so now 'width','height' needs to be renamed
 %
 %        $Id:$ 
-%      usage: dotsInit()
-%         by: justin gardner
-%       date: 07/08/17
+%      usage: dotsInitNew()
+%         by: justin gardner (austin kuo)
+%       date: 07/08/17 (05/01/23)
 %    purpose: Create and update a data structure for random dots
 %             that can be used to display different kinds of dot
 %             movement, coherence and contrast

@@ -142,6 +142,9 @@ elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
     end
     stimulus.currentTextLeft = currentTextLeft;
     stimulus.currentTextRight = currentTextRight;
+    if task.trial.thisseg == stimulus.presentSegment
+        fprintf('Match Segment %d \n\n', stimulus.presentSegment)
+    end
 
 end
 
@@ -192,7 +195,6 @@ elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         currentText = mglText(stimulus.currentTextLeft);
         mglBltTexture(currentText,[task.thistrial.cue*(-1)*stimulus.wordEcc 0],'left','top');
-        fprintf('Match Segment %d \n\n', stimulus.presentSegment)
     else
         mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         leftText = mglText(stimulus.currentTextLeft);
