@@ -183,8 +183,13 @@ if task.thistrial.thisseg == 1
         end
 
     end
-    
+
     % set cue color
+    stimulus.cuecolor{1} = [0 0 0];
+    stimulus.cuecolor{2} = [0 0 0];
+    stimulus.cuecolor{3} = [0 0 0];
+    stimulus.cuecolor{4} = [0 0 0];
+
     if task.thistrial.cue == -1
         stimulus.cuecolor{1} = [1 1 1];
         fprintf('\nTrial %d: Cue left', task.trialnum)
@@ -192,8 +197,8 @@ if task.thistrial.thisseg == 1
         stimulus.cuecolor{2} = [1 1 1];
         fprintf('\nTrial %d: Cue right', task.trialnum)
     else
-        stimulus.cuecolor{1} = [0 0 0];
-        stimulus.cuecolor{2} = [0 0 0];
+        stimulus.cuecolor{1} = [1 1 1];
+        stimulus.cuecolor{2} = [1 1 1];
         stimulus.cuecolor{3} = [0 0 0];
         stimulus.cuecolor{4} = [0 0 0];
         fprintf('\nTrial %d: Distributed cue', task.trialnum)
