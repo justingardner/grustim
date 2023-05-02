@@ -7,7 +7,7 @@
 %  copyright: (c) 2006 Justin Gardner (GPL see mgl/COPYING)
 %    purpose: obtain fMRI responses to patches of varying coherence and motion direction differences
 %
-% NOTE: parameters you (might) want to change for this task are - 
+% NOTE: parameters you (might) want to change for this task are -
 % numTrials, coherence, dirs, scan (contrast, speed, width, leftEcc, rightEcc)
 
 function myscreen = dotAttWM(varargin)
@@ -23,6 +23,7 @@ if ieNotDefined('screenParam')
 else
     myscreen.displayName = screenParam;
 end
+if ieNotDefined('initStair'),initStair = 0;end
 
 % initalize the screen
 myscreen.background = 'gray';
@@ -40,14 +41,19 @@ task{1}{1}.waitForBacktick = 1;
 % task
 task{1}{1}.getResponse = [0 0 0 1 0];
 task{1}{1}.collectEyeData = false;
-task{1}{1}.seglen = [0.5, 1, 8, 2.5, 3];
+task{1}{1}.segmin = [0.5, 1, nan, 2.5, 1]; % average trial time = 18s
+task{1}{1}.segmax = [0.5, 1, nan, 2.5, 7];
+task{1}{1}.segdur{3} = [8 12];
 
 % task parameters
 task{1}{1}.parameter.cue = [-1 -0.1 0.1 1];
 task{1}{1}.parameter.probePosition = [-1 1];
+task{1}{1}.randVars.calculated.trialType = nan;
+task{1}{1}.randVars.calculated.xOffset1 = nan;
+task{1}{1}.randVars.calculated.xOffset2 = nan;
 task{1}{1}.random = 1;
 
-task{1}{1}.numTrials = 24;
+task{1}{1}.numTrials = 16; % 16 conditions
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -58,10 +64,9 @@ end
 global stimulus;
 
 % if scanning, do synch to volume
-task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
+task{1}{1}.synchToVol = zeros(size(task{1}{1}.segmin));
 if atScanner
     task{1}{1}.fudgeLastVolume = 1;
-    task{1}{1}.seglen(end) = task{1}{1}.seglen(end)-0.5;
     task{1}{1}.synchToVol(end) = 1;
 end
 
@@ -71,7 +76,6 @@ stimulus.cuedotX = [stimulus.cuedotEcc; -stimulus.cuedotEcc];
 stimulus.cuedotY = [0; 0];
 stimulus.dotSize = 0.5;
 stimulus.dotColor = [1 1 1];
-stimulus.probeDotOffset = 2;
 stimulus.probeDotY = 0;
 
 % set cue parameters
@@ -94,6 +98,15 @@ stimulus.cueVertY1 = -width;
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
 stimulus = initDots(stimulus,myscreen);
+
+% init the staircase
+stimulus.initStair = initStair;
+if stimulus.initStair
+    fprintf('\n(dotAttWM) Initializing staircases from scratch...\n\n');
+    stimulus = initStaircase(stimulus);
+else
+    fprintf('\n(dotAttWM) Re-using staircase from previous run...\n\n');
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % run the eye calibration
@@ -124,7 +137,81 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus;
 
 if task.thistrial.thisseg == 1
-    
+
+    % set trialType
+    if task.thistrial.seglen(3) == 8
+        if task.thistrial.cue == -1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 1;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 2;
+            end
+
+        elseif task.thistrial.cue == -0.1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 3;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 4;
+            end
+
+        elseif task.thistrial.cue == 0.1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 5;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 6;
+            end
+
+        elseif task.thistrial.cue == 1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 7;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 8;
+            end
+        end
+
+    elseif task.thistrial.seglen(3) == 12
+        if task.thistrial.cue == -1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 9;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 10;
+            end
+
+        elseif task.thistrial.cue == -0.1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 11;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 12;
+            end
+
+        elseif task.thistrial.cue == 0.1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 13;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 14;
+            end
+
+        elseif task.thistrial.cue == 1
+            if task.thistrial.probePosition == -1
+                task.thistrial.trialType = 15;
+            elseif task.thistrial.probePosition == 1
+                task.thistrial.trialType = 16;
+            end
+        end
+    end
+
+elseif task.thistrial.thisseg == 4
+
+    % Get the new delta for this trial from the staircase
+    if task.thistrial.trialType < 9
+        [xOffset, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+        task.thistrial.xOffset1 = xOffset;
+        fprintf('Current xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
+    elseif task.thistrial.trialType > 8
+        [xOffset, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+        task.thistrial.xOffset2 = xOffset;
+        fprintf('Current xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
+    end
 
 end
 
@@ -165,7 +252,7 @@ if task.thistrial.thisseg == 1
     end
 
 elseif task.thistrial.thisseg == 2
-    
+
     % draw cue
     if task.thistrial.cue == -1
         % Vert
@@ -192,64 +279,93 @@ elseif task.thistrial.thisseg == 2
 
     % draw the left/right dots
     mglGluDisk(stimulus.cuedotX,stimulus.cuedotY,stimulus.dotSize,stimulus.dotColor);
-    
+
 elseif task.thistrial.thisseg == 3
 
     % memory period
 
-    % draw cue
-    if task.thistrial.cue == -1
-        % Vert
-        mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-        % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
-        % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-    elseif round(task.thistrial.cue) == 0
-        % Vert
-        mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-        % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-        % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-    elseif task.thistrial.cue == 1
-        % Vert
-        mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-        % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-        % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
-    end
+    % draw fix
+    % Vert
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    % left
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    % right
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+
+%     if task.thistrial.cue == -1
+%         % Vert
+%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+%         % left
+%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
+%         % right
+%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+%     elseif round(task.thistrial.cue) == 0
+%         % Vert
+%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+%         % left
+%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+%         % right
+%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+%     elseif task.thistrial.cue == 1
+%         % Vert
+%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+%         % left
+%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+%         % right
+%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
+%     end
 
 elseif task.thistrial.thisseg == 4
 
-    % draw cue
-    if task.thistrial.cue == -1
-        % Vert
-        mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-        % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
-        % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-    elseif round(task.thistrial.cue) == 0
-        % Vert
-        mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-        % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-        % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-    elseif task.thistrial.cue == 1
-        % Vert
-        mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-        % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-        % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
-    end
+    % draw fix
+    % Vert
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [1 1 0] );
+    % left
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 0]);
+    % right
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 0]);
+
+%     % draw cue
+%     if task.thistrial.cue == -1
+%         % Vert
+%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+%         % left
+%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
+%         % right
+%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+%     elseif round(task.thistrial.cue) == 0
+%         % Vert
+%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+%         % left
+%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+%         % right
+%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+%     elseif task.thistrial.cue == 1
+%         % Vert
+%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+%         % left
+%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+%         % right
+%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
+%     end
 
     % draw probe
     cursign = sign(task.thistrial.cue);
-    mglGluDisk(stimulus.cuedotEcc*cursign + (stimulus.probeDotOffset*task.thistrial.probePosition),stimulus.probeDotY,stimulus.dotSize,stimulus.dotColor);
+    if task.thistrial.trialType < 9
+        mglGluDisk(stimulus.cuedotEcc*cursign + (task.thistrial.xOffset1*task.thistrial.probePosition),stimulus.probeDotY,stimulus.dotSize,stimulus.dotColor);
+    else
+        mglGluDisk(stimulus.cuedotEcc*cursign + (task.thistrial.xOffset2*task.thistrial.probePosition),stimulus.probeDotY,stimulus.dotSize,stimulus.dotColor);
+    end
+
+elseif task.thistrial.thisseg == 5
+
+    % draw fix
+    % Vert
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    % left
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    % right
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
 
 end
 
@@ -260,53 +376,62 @@ function [task myscreen] = responseCallback(task,myscreen)
 
 global stimulus
 
-fprintf('Response received : %g', task.thistrial.whichButton);
-
 % check the response
-% if task.thistrial.gotResponse < 1
-%     % see if it is correct
-%     if isequal(task.thistrial.whichButton,task.thistrial.whichSide)
-%         % report answer
-%         fprintf(' !! Correct !!. Reaction time: %0.2f',task.thistrial.reactionTime);
-%         % change fixation color
-%         stimulus.fixColor = stimulus.correctFixColor;
-%         stimulus.correctResponse(task.trialnum) = 1;
-%         if task.thistrial.whichButton == 1
-%             stimulus.response(task.trialnum) = 0; % subject answered left
-%         elseif task.thistrial.whichButton == 2
-%             stimulus.response(task.trialnum) = 1; % subject answered right
-%         end
-%         % task = jumpSegment(task);
-%     elseif ~task.thistrial.whichSide
-%         % report answer
-%         fprintf(' -- Same direction --. Reaction time: %0.2f',task.thistrial.reactionTime);
-%         stimulus.fixColor = stimulus.neutralFixColor;
-%         stimulus.correctResponse(task.trialnum) = nan;
-%         if task.thistrial.whichButton == 1
-%             stimulus.response(task.trialnum) = 0; % subject answered left
-%         elseif task.thistrial.whichButton == 2
-%             stimulus.response(task.trialnum) = 1; % subject answered right
-%         end
-%         % task = jumpSegment(task);
-%     else
-%         % report answer
-%         fprintf(' ++ Incorrect ++. Reaction time: %0.2f',task.thistrial.reactionTime);
-%         % change fixation color
-%         stimulus.fixColor = stimulus.incorrectFixColor;
-%         stimulus.correctResponse(task.trialnum) = 0;
-%         if task.thistrial.whichButton == 1
-%             stimulus.response(task.trialnum) = 0; % subject answered left
-%         elseif task.thistrial.whichButton == 2
-%             stimulus.response(task.trialnum) = 1; % subject answered right
-%         end
-%         % task = jumpSegment(task);
-%     end
-%     
-% % no response
-% else 
-%     stimulus.correctResponse(task.trialnum) = nan;
-%     stimulus.response(task.trialnum) = nan;
-% end
+if task.thistrial.gotResponse < 1
+
+    fprintf('Response received : %g\n', task.thistrial.whichButton);
+
+    if ~any(task.thistrial.whichButton == [1 2]) % [1 2] should (hopefully) correspond to left/right buttons
+        error('Check your button inputs')
+    end
+    
+    % determine what the correct button should be
+    if task.thistrial.probePosition == -1
+        correctbutton = 1;
+    elseif task.thistrial.probePosition == 1
+        correctbutton = 2;
+    end
+
+    % see if it is correct
+    if isequal(task.thistrial.whichButton,correctbutton) % correct
+        corr = 1;
+        % report answer
+        fprintf('Trial %d. !! Correct !!. \n',task.trialnum);
+        task.thistrial.correct = corr;
+
+        % update staircases
+        if task.thistrial.trialType < 9
+            stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
+        elseif task.thistrial.trialType > 8
+            stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
+        end
+        
+    else % incorrect
+        corr = 0;
+        % report answer
+        fprintf('Trial %d. ++ Incorrect ++. \n',task.trialnum);
+        task.thistrial.correct = corr;
+        
+        % update staircases
+        if task.thistrial.trialType < 9
+            stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
+        elseif task.thistrial.trialType > 8
+            stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
+        end
+
+    end
+
+end
+
+if task.thistrial.trialType < 9
+    [xOffset, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+    fprintf('Previous xOffset value (%d second WM): %0.2f \n', task.thistrial.seglen(3), task.thistrial.xOffset1)
+    fprintf('Next xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
+else
+    [xOffset, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+    fprintf('Previous xOffset value (%d second WM): %0.2f \n', task.thistrial.seglen(3), task.thistrial.xOffset2)
+    fprintf('Next xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dots stimulus
@@ -315,4 +440,13 @@ function stimulus = initDots(stimulus,myscreen)
 
 % set background color
 stimulus.backgroundColor = 0.5;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% function to init the staircase
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function stimulus = initStaircase(stimulus)
+
+stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=1','initialThreshold=2','initialStepsize=0.2','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=1','initialThreshold=2','initialStepsize=0.2','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+
 

@@ -57,8 +57,7 @@ task{1}{1}.randVars.calculated.kWeb1 = nan;
 task{1}{1}.randVars.calculated.kWeb2 = nan;
 task{1}{1}.random = 1;
 
-% number of direction differences * number of coherences * number of sets desired (7*2*x)
-task{1}{1}.numTrials = 24; % 1 set = 1 trial per (number of direction differences * number of coherences)
+task{1}{1}.numTrials = 24; % 12 conditions
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -96,7 +95,7 @@ if stimulus.initStair
     fprintf('\n(fourPatchAtt) Initializing staircases from scratch...\n\n');
     stimulus = initStaircase(stimulus);
 else
-    disp('\n(fourPatchAtt) Re-using staircase from previous run...\n\n');
+    fprintf('\n(fourPatchAtt) Re-using staircase from previous run...\n\n');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -205,6 +204,14 @@ elseif task.thistrial.thisseg == 7
         stimulus.cuecolor{4} = [1 1 0];
     end
 
+elseif task.thistrial.thisseg == 8
+
+    % reset cue color to neutral
+    stimulus.cuecolor{1} = [0 0 0];
+    stimulus.cuecolor{2} = [0 0 0];
+    stimulus.cuecolor{3} = [0 0 0];
+    stimulus.cuecolor{4} = [0 0 0];
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -274,6 +281,11 @@ elseif task.thistrial.thisseg == 6
 elseif task.thistrial.thisseg == 7
 
     % draw the fixation cross in respond colors
+    mglFixationCrossDiag(1,1,stimulus.cuecolor);
+
+elseif task.thistrial.thisseg == 8
+
+    % draw the fixation cross in neutral colors
     mglFixationCrossDiag(1,1,stimulus.cuecolor);
     
 end

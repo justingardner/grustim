@@ -51,7 +51,7 @@ task{1}{1}.randVars.calculated.trialType = nan;
 task{1}{1}.randVars.calculated.distributedSide = nan;
 task{1}{1}.random = 1;
 
-task{1}{1}.numTrials = 24;
+task{1}{1}.numTrials = 24; % 12 conditions
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -228,6 +228,14 @@ elseif task.thistrial.thisseg == 12
     stimulus.cuecolor{3} = [1 1 0];
     stimulus.cuecolor{4} = [1 1 0];
 
+elseif task.thistrial.thisseg == 13
+
+    % reset cue color to neutral
+    stimulus.cuecolor{1} = [0 0 0];
+    stimulus.cuecolor{2} = [0 0 0];
+    stimulus.cuecolor{3} = [0 0 0];
+    stimulus.cuecolor{4} = [0 0 0];
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -303,6 +311,11 @@ elseif task.thistrial.thisseg == 12
     mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
     matchWord = mglText(stimulus.currentTrial.matchWord);
     mglBltTexture(matchWord,[0 3],'left','top');
+
+elseif task.thistrial.thisseg == 13
+
+    % draw fixation
+    mglFixationCrossDiag(0.5,2,stimulus.cuecolor)
     
 end
 
