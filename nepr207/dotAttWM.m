@@ -312,13 +312,25 @@ elseif task.thistrial.thisseg == 4
     % draw probe
     cursign = sign(task.thistrial.cue);
     if task.thistrial.trialType < 9
-        mglBltTexture(stimulus.gauss,...
-            [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset1*task.thistrial.probePosition),... % xpos
-             stimulus.probeDotY]);                                                                   % ypos
+        if cursign < 0
+            mglBltTexture(stimulus.gauss,...
+                [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset1*task.thistrial.probePosition+task.thistrial.cueJitterLeft),... % xpos
+                stimulus.probeDotY]);                                                                   % ypos
+        else
+            mglBltTexture(stimulus.gauss,...
+                [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset1*task.thistrial.probePosition+task.thistrial.cueJitterRight),... % xpos
+                stimulus.probeDotY]);
+        end
     else
+        if cursign < 0
         mglBltTexture(stimulus.gauss,...
-            [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset2*task.thistrial.probePosition),... % xpos
+            [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset2*task.thistrial.probePosition+task.thistrial.cueJitterLeft),... % xpos
              stimulus.probeDotY]);                                                                   % ypos
+        else
+            mglBltTexture(stimulus.gauss,...
+            [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset2*task.thistrial.probePosition+task.thistrial.cueJitterRight),... % xpos
+             stimulus.probeDotY]);  
+        end
     end
 
 elseif task.thistrial.thisseg == 5
@@ -404,7 +416,8 @@ function stimulus = initDots(stimulus,myscreen)
 
 stimulus.pixRes = min(myscreen.screenHeight/myscreen.imageHeight, myscreen.screenWidth/myscreen.imageWidth);
 
-gauss = mglMakeGaussian(2,2,1,1,[],[],stimulus.pixRes,stimulus.pixRes);
+gauss = mglMakeGaussian(2,2,0.3,0.3,0,0,stimulus.pixRes,stimulus.pixRes);
+gauss = 255*(gauss+1)/2;
 stimulus.gauss = mglCreateTexture(gauss);
 
 % set background color
