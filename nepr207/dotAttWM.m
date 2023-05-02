@@ -51,6 +51,8 @@ task{1}{1}.parameter.probePosition = [-1 1];
 task{1}{1}.randVars.calculated.trialType = nan;
 task{1}{1}.randVars.calculated.xOffset1 = nan;
 task{1}{1}.randVars.calculated.xOffset2 = nan;
+task{1}{1}.randVars.calculated.cueJitterLeft = nan;
+task{1}{1}.randVars.calculated.cueJitterRight = nan;
 task{1}{1}.random = 1;
 
 task{1}{1}.numTrials = 16; % 16 conditions
@@ -200,6 +202,10 @@ if task.thistrial.thisseg == 1
         end
     end
 
+    % jitter
+    task.thistrial.cueJitterLeft = rand - 0.5;
+    task.thistrial.cueJitterRight = rand - 0.5;
+
 elseif task.thistrial.thisseg == 4
 
     % Get the new delta for this trial from the staircase
@@ -278,7 +284,8 @@ elseif task.thistrial.thisseg == 2
     end
 
     % draw the left/right dots
-    mglGluDisk(stimulus.cuedotX,stimulus.cuedotY,stimulus.dotSize,stimulus.dotColor);
+    mglBltTexture(stimulus.gauss,[stimulus.cuedotX(1)+task.thistrial.cueJitterLeft,stimulus.cuedotY(1)]);
+    mglBltTexture(stimulus.gauss,[stimulus.cuedotX(2)+task.thistrial.cueJitterRight,stimulus.cuedotY(2)]);
 
 elseif task.thistrial.thisseg == 3
 
@@ -292,29 +299,6 @@ elseif task.thistrial.thisseg == 3
     % right
     mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
 
-%     if task.thistrial.cue == -1
-%         % Vert
-%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-%         % left
-%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
-%         % right
-%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-%     elseif round(task.thistrial.cue) == 0
-%         % Vert
-%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-%         % left
-%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-%         % right
-%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-%     elseif task.thistrial.cue == 1
-%         % Vert
-%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-%         % left
-%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-%         % right
-%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
-%     end
-
 elseif task.thistrial.thisseg == 4
 
     % draw fix
@@ -325,36 +309,16 @@ elseif task.thistrial.thisseg == 4
     % right
     mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 0]);
 
-%     % draw cue
-%     if task.thistrial.cue == -1
-%         % Vert
-%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-%         % left
-%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
-%         % right
-%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-%     elseif round(task.thistrial.cue) == 0
-%         % Vert
-%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-%         % left
-%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-%         % right
-%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
-%     elseif task.thistrial.cue == 1
-%         % Vert
-%         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
-%         % left
-%         mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
-%         % right
-%         mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
-%     end
-
     % draw probe
     cursign = sign(task.thistrial.cue);
     if task.thistrial.trialType < 9
-        mglGluDisk(stimulus.cuedotEcc*cursign + (task.thistrial.xOffset1*task.thistrial.probePosition),stimulus.probeDotY,stimulus.dotSize,stimulus.dotColor);
+        mglBltTexture(stimulus.gauss,...
+            [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset1*task.thistrial.probePosition),... % xpos
+             stimulus.probeDotY]);                                                                   % ypos
     else
-        mglGluDisk(stimulus.cuedotEcc*cursign + (task.thistrial.xOffset2*task.thistrial.probePosition),stimulus.probeDotY,stimulus.dotSize,stimulus.dotColor);
+        mglBltTexture(stimulus.gauss,...
+            [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset2*task.thistrial.probePosition),... % xpos
+             stimulus.probeDotY]);                                                                   % ypos
     end
 
 elseif task.thistrial.thisseg == 5
@@ -437,6 +401,11 @@ end
 % function to init the dots stimulus
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initDots(stimulus,myscreen)
+
+stimulus.pixRes = min(myscreen.screenHeight/myscreen.imageHeight, myscreen.screenWidth/myscreen.imageWidth);
+
+gauss = mglMakeGaussian(2,2,1,1,[],[],stimulus.pixRes,stimulus.pixRes);
+stimulus.gauss = mglCreateTexture(gauss);
 
 % set background color
 stimulus.backgroundColor = 0.5;
