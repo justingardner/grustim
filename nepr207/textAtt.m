@@ -79,7 +79,7 @@ stimulus.matchFakeOrder = stimulus.fakeList(randperm(length(stimulus.fakeList)))
 stimulus.realmatchCounter = 1;
 stimulus.fakematchCounter = 1;
 
-stimulus.wordEcc = 5;
+stimulus.wordEcc = 4;
 stimulus.response = zeros(1,task{1}{1}.numTrials);
 stimulus.correctResponse = zeros(1,task{1}{1}.numTrials);
 
