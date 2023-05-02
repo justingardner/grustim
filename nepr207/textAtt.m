@@ -38,20 +38,20 @@ myscreen = initScreen(myscreen);
 task{1}{1}.waitForBacktick = 1;
 
 % task
-task{1}{1}.getResponse = [zeros(1,11) 1 0];
+task{1}{1}.getResponse = [zeros(1,12) 1 0];
 task{1}{1}.collectEyeData = false;
-task{1}{1}.segmin = [2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2, 1]; % average trial time: 13s
-task{1}{1}.segmax = [2, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2, 7];
+task{1}{1}.segmin = [1, 1, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2, 1]; % average trial time: 13s
+task{1}{1}.segmax = [1, 1, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 2, 7];
 
 % task parameters
 task{1}{1}.parameter.cue = [-1 0 1];
 task{1}{1}.parameter.real = [1 0];
-task{1}{1}.parameter.wordPresent = [1 0];
+task{1}{1}.randVars.uniform.wordPresent = [1 0];
 task{1}{1}.randVars.calculated.trialType = nan;
 task{1}{1}.randVars.calculated.distributedSide = nan;
 task{1}{1}.random = 1;
 
-task{1}{1}.numTrials = 24; % 12 conditions
+task{1}{1}.numTrials = inf; % 6 conditions
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -72,16 +72,15 @@ end
 stimulus.realList = {'OTHER','ABOUT','WHICH','MAYBE','LUNCH','SERVE','SHARP','STAND','STONE','EAGER','EARTH','PIZZA'};
 stimulus.fakeList = {'TOHER','OBTUA','HCIWH','YMBAE','UNLHC','EERSV','RPHSA','TSNDA','ONTSE','REAEG','HRATE','ZIZPA'};
 stimulus.allList = [stimulus.realList stimulus.fakeList];
-stimulus.matchWords = cell(task{1}{1}.numTrials,1);
-stimulus.presentedWords = cell(task{1}{1}.numTrials,2);
 stimulus.matchRealOrder = stimulus.realList(randperm(length(stimulus.realList)));
 stimulus.matchFakeOrder = stimulus.fakeList(randperm(length(stimulus.fakeList)));
 stimulus.realmatchCounter = 1;
 stimulus.fakematchCounter = 1;
 
-stimulus.wordEcc = 4;
-stimulus.response = zeros(1,task{1}{1}.numTrials);
-stimulus.correctResponse = zeros(1,task{1}{1}.numTrials);
+stimulus.wordEccHorz = 4;
+stimulus.matchEccVert = 2;
+stimulus.probeEccVert = 0;
+stimulus.fontSize = 32;
 
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
@@ -128,7 +127,7 @@ if task.thistrial.thisseg == 1
 
     % set when the match will appear
     if task.thistrial.wordPresent == 1
-        stimulus.presentSegment = randi(10,1);
+        stimulus.presentSegment = randi(10,1)+2;
     else
         stimulus.presentSegment = 0;
     end
@@ -191,20 +190,20 @@ if task.thistrial.thisseg == 1
     stimulus.cuecolor{4} = [0 0 0];
 
     if task.thistrial.cue == -1
-        stimulus.cuecolor{1} = [1 1 1];
+        stimulus.cuecolor{3} = [1 1 1];
         fprintf('\nTrial %d: Cue left', task.trialnum)
     elseif task.thistrial.cue == 1
-        stimulus.cuecolor{2} = [1 1 1];
+        stimulus.cuecolor{4} = [1 1 1];
         fprintf('\nTrial %d: Cue right', task.trialnum)
     else
-        stimulus.cuecolor{1} = [1 1 1];
-        stimulus.cuecolor{2} = [1 1 1];
-        stimulus.cuecolor{3} = [0 0 0];
-        stimulus.cuecolor{4} = [0 0 0];
+        stimulus.cuecolor{1} = [0 0 0];
+        stimulus.cuecolor{2} = [0 0 0];
+        stimulus.cuecolor{3} = [1 1 1];
+        stimulus.cuecolor{4} = [1 1 1];
         fprintf('\nTrial %d: Distributed cue', task.trialnum)
     end
 
-elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
+elseif task.thistrial.thisseg > 2 && task.thistrial.thisseg < 13
     
     % set the left and right words
     currentTextLeft = stimulus.allList{randi(length(stimulus.allList),1)};
@@ -217,18 +216,18 @@ elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
     stimulus.currentTextRight = currentTextRight;
 
     if task.thistrial.thisseg == stimulus.presentSegment
-        task.thistrial.distributedSide = round(-1 + 2*rand);
+        task.thistrial.distributedSide = -1 + 2*(rand>0.5);
 
         fprintf('\nMatch Segment %d \n', stimulus.presentSegment)
     end
 
-elseif task.thistrial.thisseg == 12
+elseif task.thistrial.thisseg == 13
     stimulus.cuecolor{1} = [1 1 0];
     stimulus.cuecolor{2} = [1 1 0];
     stimulus.cuecolor{3} = [1 1 0];
     stimulus.cuecolor{4} = [1 1 0];
 
-elseif task.thistrial.thisseg == 13
+elseif task.thistrial.thisseg == 14
 
     % reset cue color to neutral
     stimulus.cuecolor{1} = [0 0 0];
@@ -249,73 +248,79 @@ global stimulus
 mglClearScreen(stimulus.backgroundColor);
 
 if task.thistrial.thisseg == 1
+    
+    % draw fix w/cue
+    mglFixationCrossArms(0.5,2,stimulus.cuecolor);
+
+elseif task.thistrial.thisseg == 2
+
+    % draw fix w/cue
+    mglFixationCrossArms(0.5,2,stimulus.cuecolor);
 
     % draw the text with flankers
-    mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
     matchWord = mglText(stimulus.currentTrial.matchWord);
-    mglBltTexture(matchWord,[0 3],'left','top');
-    mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglBltTexture(matchWord,[0 stimulus.matchEccVert],'left','top');
+    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
     leftText = mglText('XXXXX');
-    mglBltTexture(leftText,[-stimulus.wordEcc 3],'left','top');
-    mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglBltTexture(leftText,[-stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
+    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
     rightText = mglText('XXXXX');
-    mglBltTexture(rightText,[stimulus.wordEcc 3],'left','top');
+    mglBltTexture(rightText,[stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
 
-    mglFixationCrossDiag(0.5,2,stimulus.cuecolor);
-
-elseif task.thistrial.thisseg > 1 && task.thistrial.thisseg < 12
+elseif task.thistrial.thisseg > 2 && task.thistrial.thisseg < 13
     
     % draw fixation
-    mglFixationCrossDiag(0.5,2)
+    mglFixationCrossArms(0.5,2)
 
     % draw the cue text
-    mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
     matchWord = mglText(stimulus.currentTrial.matchWord);
-    mglBltTexture(matchWord,[0 3],'left','top');
+    mglBltTexture(matchWord,[0 stimulus.matchEccVert],'left','top');
 
     % draw the left/right words
     if task.thistrial.thisseg == stimulus.presentSegment
         if task.thistrial.cue == 0
-            mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
             matchWord = mglText(stimulus.currentTrial.matchWord);
-            mglBltTexture(matchWord,[task.thistrial.distributedSide*stimulus.wordEcc 3],'left','top');
-            mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
-            matchWord = mglText(stimulus.currentTextLeft);
-            mglBltTexture(matchWord,[task.thistrial.distributedSide*(-1)*stimulus.wordEcc 3],'left','top');
+            mglBltTexture(matchWord,[task.thistrial.distributedSide*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
+            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            nonMatchWord = mglText(stimulus.currentTextLeft);
+            mglBltTexture(nonMatchWord,[task.thistrial.distributedSide*(-1)*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
 
         else
-            mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
             matchWord = mglText(stimulus.currentTrial.matchWord);
-            mglBltTexture(matchWord,[task.thistrial.cue*stimulus.wordEcc 3],'left','top');
-            mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            mglBltTexture(matchWord,[task.thistrial.cue*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
+            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
             currentText = mglText(stimulus.currentTextLeft);
-            mglBltTexture(currentText,[task.thistrial.cue*(-1)*stimulus.wordEcc 3],'left','top');
+            mglBltTexture(currentText,[task.thistrial.cue*(-1)*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
 
         end
     
     else
-        mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+        mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         leftText = mglText(stimulus.currentTextLeft);
-        mglBltTexture(leftText,[-stimulus.wordEcc 3],'left','top');
-        mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+        mglBltTexture(leftText,[-stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
+        mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
         rightText = mglText(stimulus.currentTextRight);
-        mglBltTexture(rightText,[stimulus.wordEcc 3],'left','top');
+        mglBltTexture(rightText,[stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
     end
     
 elseif task.thistrial.thisseg == 12
     
-    % fixation cross in yellow
-    mglFixationCrossDiag(0.5,2,stimulus.cuecolor);
+    % fixation cross in yellow (or green/red if subject responded)
+    mglFixationCrossArms(0.5,2,stimulus.cuecolor);
 
     % print the cue
-    mglTextSet('Helvetica', 32, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
     matchWord = mglText(stimulus.currentTrial.matchWord);
-    mglBltTexture(matchWord,[0 3],'left','top');
+    mglBltTexture(matchWord,[0 stimulus.matchEccVert],'left','top');
 
 elseif task.thistrial.thisseg == 13
 
     % draw fixation
-    mglFixationCrossDiag(0.5,2,stimulus.cuecolor)
+    mglFixationCrossArms(0.5,2,stimulus.cuecolor)
     
 end
 
@@ -347,12 +352,20 @@ if task.thistrial.gotResponse < 1
         % report answer
         fprintf('Trial %d. !! Correct !!. \n',task.trialnum);
         task.thistrial.correct = corr;
+        stimulus.cuecolor{1} = [0 1 0];
+        stimulus.cuecolor{2} = [0 1 0];
+        stimulus.cuecolor{3} = [0 1 0];
+        stimulus.cuecolor{4} = [0 1 0];
         
     else % incorrect
         corr = 0;
         % report answer
         fprintf('Trial %d. ++ Incorrect ++. \n',task.trialnum);
         task.thistrial.correct = corr;
+        stimulus.cuecolor{1} = [1 0 0];
+        stimulus.cuecolor{2} = [1 0 0];
+        stimulus.cuecolor{3} = [1 0 0];
+        stimulus.cuecolor{4} = [1 0 0];
         
     end
 

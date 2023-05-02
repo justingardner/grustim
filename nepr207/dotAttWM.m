@@ -46,8 +46,9 @@ task{1}{1}.segmax = [0.5, 1, nan, 2.5, 7];
 task{1}{1}.segdur{3} = [8 12];
 
 % task parameters
-task{1}{1}.parameter.cue = [-1 -0.1 0.1 1];
-task{1}{1}.parameter.probePosition = [-1 1];
+task{1}{1}.parameter.cue = [-1 -0.1 0.1 1]; % -1 0 1 calculated variable, put the distributed together
+task{1}{1}.randVars.uniform.probePosition = [-1 1];
+task{1}{1}.randVars.calculated.duration = nan; % this should be 0 or 1 for short/long
 task{1}{1}.randVars.calculated.trialType = nan;
 task{1}{1}.randVars.calculated.xOffset1 = nan;
 task{1}{1}.randVars.calculated.xOffset2 = nan;
@@ -55,7 +56,7 @@ task{1}{1}.randVars.calculated.cueJitterLeft = nan;
 task{1}{1}.randVars.calculated.cueJitterRight = nan;
 task{1}{1}.random = 1;
 
-task{1}{1}.numTrials = 16; % 16 conditions
+task{1}{1}.numTrials = inf; % 16 conditions
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -143,63 +144,32 @@ if task.thistrial.thisseg == 1
     % set trialType
     if task.thistrial.seglen(3) == 8
         if task.thistrial.cue == -1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 1;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 2;
-            end
+            task.thistrial.trialType = 1;
 
-        elseif task.thistrial.cue == -0.1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 3;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 4;
-            end
-
-        elseif task.thistrial.cue == 0.1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 5;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 6;
-            end
+        elseif task.thistrial.cue == -0.1 || task.thistrial.cue == 0.1
+            task.thistrial.trialType = 2;
 
         elseif task.thistrial.cue == 1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 7;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 8;
-            end
+            task.thistrial.trialType = 3;
+
         end
+
+        task.thistrial.duration = 8;
 
     elseif task.thistrial.seglen(3) == 12
         if task.thistrial.cue == -1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 9;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 10;
-            end
+            task.thistrial.trialType = 4;
 
-        elseif task.thistrial.cue == -0.1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 11;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 12;
-            end
-
-        elseif task.thistrial.cue == 0.1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 13;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 14;
-            end
+        elseif task.thistrial.cue == -0.1 || task.thistrial.cue == 0.1
+            task.thistrial.trialType = 5;
 
         elseif task.thistrial.cue == 1
-            if task.thistrial.probePosition == -1
-                task.thistrial.trialType = 15;
-            elseif task.thistrial.probePosition == 1
-                task.thistrial.trialType = 16;
-            end
+            task.thistrial.trialType = 6;
+            
         end
+
+        task.thistrial.duration = 12;
+
     end
 
     % jitter
@@ -208,12 +178,16 @@ if task.thistrial.thisseg == 1
 
 elseif task.thistrial.thisseg == 4
 
+    stimulus.feedbackColors{1} = [1 1 1];
+    stimulus.feedbackColors{2} = [1 1 1];
+    stimulus.feedbackColors{3} = [1 1 1];
+
     % Get the new delta for this trial from the staircase
-    if task.thistrial.trialType < 9
+    if task.thistrial.trialType < 4
         [xOffset, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
         task.thistrial.xOffset1 = xOffset;
         fprintf('Current xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
-    elseif task.thistrial.trialType > 8
+    elseif task.thistrial.trialType > 3
         [xOffset, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
         task.thistrial.xOffset2 = xOffset;
         fprintf('Current xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
@@ -245,9 +219,9 @@ if task.thistrial.thisseg == 1
         % Vert
         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
         % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
         % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
     elseif task.thistrial.cue == 1
         % Vert
         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
@@ -271,9 +245,9 @@ elseif task.thistrial.thisseg == 2
         % Vert
         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
         % left
-        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+        mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 1]);
         % right
-        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+        mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 1]);
     elseif task.thistrial.cue == 1
         % Vert
         mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
@@ -303,15 +277,15 @@ elseif task.thistrial.thisseg == 4
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [1 1 0] );
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, stimulus.feedbackColors{1});
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 1 0]);
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, stimulus.feedbackColors{2});
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 1 0]);
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, stimulus.feedbackColors{3});
 
     % draw probe
     cursign = sign(task.thistrial.cue);
-    if task.thistrial.trialType < 9
+    if task.thistrial.trialType < 4
         if cursign < 0
             mglBltTexture(stimulus.gauss,...
                 [stimulus.cuedotEcc*cursign + (task.thistrial.xOffset1*task.thistrial.probePosition+task.thistrial.cueJitterLeft),... % xpos
@@ -376,12 +350,16 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
 
         % update staircases
-        if task.thistrial.trialType < 9
+        if task.thistrial.trialType < 4
             stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
-        elseif task.thistrial.trialType > 8
+        elseif task.thistrial.trialType > 3
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
         
+        stimulus.feedbackColors{1} = [0 1 0];
+        stimulus.feedbackColors{2} = [0 1 0];
+        stimulus.feedbackColors{3} = [0 1 0];
+
     else % incorrect
         corr = 0;
         % report answer
@@ -389,25 +367,31 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
         
         % update staircases
-        if task.thistrial.trialType < 9
+        if task.thistrial.trialType < 4
             stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
-        elseif task.thistrial.trialType > 8
+        elseif task.thistrial.trialType > 3
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
 
+        stimulus.feedbackColors{1} = [1 0 0];
+        stimulus.feedbackColors{2} = [1 0 0];
+        stimulus.feedbackColors{3} = [1 0 0];
+
+    end
+
+    if task.thistrial.trialType < 4
+        [xOffset, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+        fprintf('Previous xOffset value (%d second WM): %0.2f \n', task.thistrial.seglen(3), task.thistrial.xOffset1)
+        fprintf('Next xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
+    else
+        [xOffset, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+        fprintf('Previous xOffset value (%d second WM): %0.2f \n', task.thistrial.seglen(3), task.thistrial.xOffset2)
+        fprintf('Next xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
     end
 
 end
 
-if task.thistrial.trialType < 9
-    [xOffset, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
-    fprintf('Previous xOffset value (%d second WM): %0.2f \n', task.thistrial.seglen(3), task.thistrial.xOffset1)
-    fprintf('Next xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
-else
-    [xOffset, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
-    fprintf('Previous xOffset value (%d second WM): %0.2f \n', task.thistrial.seglen(3), task.thistrial.xOffset2)
-    fprintf('Next xOffset value (%d second WM): %0.2f \n\n', task.thistrial.seglen(3), xOffset)
-end
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function to init the dots stimulus
@@ -428,7 +412,7 @@ stimulus.backgroundColor = 0.5;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 
-stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=1','initialThreshold=2','initialStepsize=0.2','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
-stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=1','initialThreshold=2','initialStepsize=0.2','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase1 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=2','initialStepsize=0.2','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase2 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=2','initialStepsize=0.2','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
 
 

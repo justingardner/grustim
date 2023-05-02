@@ -41,12 +41,15 @@ task{1}{1}.waitForBacktick = 1;
 % task
 task{1}{1}.getResponse = [0 0 0 0 0 0 1 0];
 task{1}{1}.collectEyeData = false;
-task{1}{1}.segmin = [0.5, 1, 0.5, 1, 0.5, 1, 2, 1.5];
+task{1}{1}.segmin = [0.5, 1, 0.5, 1, 0.5, 1, 2, 1.5]; % average time = 10.5s
 task{1}{1}.segmax = [0.5, 1, 0.5, 1, 0.5, 1, 2, 6.5];
 
 % task parameters
 task{1}{1}.parameter.cue = [1 2 3 4 5 6];
-task{1}{1}.parameter.change = [0 1];
+task{1}{1}.randVars.uniform.faster1 = [1 2];
+task{1}{1}.randVars.uniform.faster2 = [1 2];
+task{1}{1}.randVars.uniform.faster3 = [1 2];
+task{1}{1}.randVars.uniform.faster4 = [1 2];
 task{1}{1}.randVars.uniform.speed1 = [2 4 6 8 10];
 task{1}{1}.randVars.uniform.speed2 = [2 4 6 8 10];
 task{1}{1}.randVars.uniform.speed3 = [2 4 6 8 10];
@@ -57,7 +60,7 @@ task{1}{1}.randVars.calculated.kWeb1 = nan;
 task{1}{1}.randVars.calculated.kWeb2 = nan;
 task{1}{1}.random = 1;
 
-task{1}{1}.numTrials = 24; % 12 conditions
+task{1}{1}.numTrials = inf; % 12 conditions
 
 % initialize the task
 for phaseNum = 1:length(task)
@@ -82,9 +85,6 @@ stimulus.contrast = 1;
 stimulus.initSpeed = 5; % in deg/s
 stimulus.width = 5; % diameter
 stimulus.initStair = initStair;
-
-stimulus.response = zeros(1,task{1}{1}.numTrials);
-stimulus.correctResponse = zeros(1,task{1}{1}.numTrials);
 
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
@@ -137,11 +137,15 @@ if task.thistrial.thisseg == 1
 elseif task.thistrial.thisseg == 2
     
     % set cue color if this is a cued condition
-    if task.thistrial.cue < 4
+    if task.thistrial.cue < 5
         stimulus.cuecolor{task.thistrial.cue} = [1 1 1]; 
-        task.thistrial.trialType = 1;
+        task.thistrial.trialType = task.thistrial.cue;
     else
-        task.thistrial.trialType = 2;
+        task.thistrial.trialType = 5;
+        stimulus.cuecolor{1} = [1 1 1];
+        stimulus.cuecolor{2} = [1 1 1];
+        stimulus.cuecolor{3} = [1 1 1];
+        stimulus.cuecolor{4} = [1 1 1];
     end
 
 elseif task.thistrial.thisseg == 3
@@ -154,40 +158,72 @@ elseif task.thistrial.thisseg == 3
 
 elseif task.thistrial.thisseg == 4
 
-    % reset speed of dots
-    stimulus.dotsUpLeft = stimulus.dotsUpLeft.setSpeed(stimulus.dotsUpLeft,task.thistrial.speed1);
-    stimulus.dotsUpRight = stimulus.dotsUpRight.setSpeed(stimulus.dotsUpRight,task.thistrial.speed2);
-    stimulus.dotsDownLeft = stimulus.dotsDownLeft.setSpeed(stimulus.dotsDownLeft,task.thistrial.speed3);
-    stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,task.thistrial.speed4);
-
-elseif task.thistrial.thisseg == 6
-
     % change correct patch to move at a different speed
-    if task.thistrial.trialType == 2
-        task.thistrial.cuenum = task.thistrial.cue - randi(4,1);
+    if task.thistrial.trialType == 5
+        task.thistrial.cuenum = randi(4,1);
     else
         task.thistrial.cuenum = task.thistrial.cue;
     end
 
     % Get the new delta for this trial from the staircase
-    if task.thistrial.trialType == 1
+    if task.thistrial.trialType < 5
         [kWeb, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
         task.thistrial.kWeb1 = kWeb;
-        fprintf('Current kWeb %d value: %0.2f \n\n', task.thistrial.trialType, kWeb)
-    elseif task.thistrial.trialType == 2
+        fprintf('Current kWeb focal value: %0.2f \n\n', kWeb)
+    elseif task.thistrial.trialType == 5
         [kWeb, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
         task.thistrial.kWeb2 = kWeb;
-        fprintf('Current kWeb %d value: %0.2f \n\n', task.thistrial.trialType, kWeb)
+        fprintf('Current kWeb distributed value: %0.2f \n\n', kWeb)
     end
+
+    % set dot base speed
+    stimulus.dotsUpLeft = stimulus.dotsUpLeft.setSpeed(stimulus.dotsUpLeft,task.thistrial.speed1);
+    stimulus.dotsUpRight = stimulus.dotsUpRight.setSpeed(stimulus.dotsUpRight,task.thistrial.speed2);
+    stimulus.dotsDownLeft = stimulus.dotsDownLeft.setSpeed(stimulus.dotsDownLeft,task.thistrial.speed3);
+    stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,task.thistrial.speed4);
+
+    % adjust the speed of the dots by a value determined by Weber's law
+    if task.thistrial.faster1 == 1
+        stimulus.dotsUpLeft = stimulus.dotsUpLeft.setSpeed(stimulus.dotsUpLeft,task.thistrial.speed1 + task.thistrial.speed1*kWeb);
+    end
+    if task.thistrial.faster2 == 1
+        stimulus.dotsUpRight = stimulus.dotsUpRight.setSpeed(stimulus.dotsUpRight,task.thistrial.speed2 + task.thistrial.speed2*kWeb);
+    end
+    if task.thistrial.faster3 == 1
+        stimulus.dotsDownLeft = stimulus.dotsDownLeft.setSpeed(stimulus.dotsDownLeft,task.thistrial.speed3 + task.thistrial.speed3*kWeb);
+    end
+    if task.thistrial.faster4 == 1
+        stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,task.thistrial.speed4 + task.thistrial.speed4*kWeb);
+    end
+
+elseif task.thistrial.thisseg == 6
+
+    % Get the new delta for this trial from the staircase
+    if task.thistrial.trialType < 5
+        [kWeb, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+        task.thistrial.kWeb1 = kWeb;
+    elseif task.thistrial.trialType == 5
+        [kWeb, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+        task.thistrial.kWeb2 = kWeb;
+    end
+
+    % set dot base speed
+    stimulus.dotsUpLeft = stimulus.dotsUpLeft.setSpeed(stimulus.dotsUpLeft,task.thistrial.speed1);
+    stimulus.dotsUpRight = stimulus.dotsUpRight.setSpeed(stimulus.dotsUpRight,task.thistrial.speed2);
+    stimulus.dotsDownLeft = stimulus.dotsDownLeft.setSpeed(stimulus.dotsDownLeft,task.thistrial.speed3);
+    stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,task.thistrial.speed4);
     
     % adjust the speed of the dots by a value determined by Weber's law
-    if task.thistrial.cuenum == 1 && task.thistrial.change == 1
+    if task.thistrial.faster1 == 2
         stimulus.dotsUpLeft = stimulus.dotsUpLeft.setSpeed(stimulus.dotsUpLeft,task.thistrial.speed1 + task.thistrial.speed1*kWeb);
-    elseif task.thistrial.cuenum == 2 && task.thistrial.change == 1
+    end
+    if task.thistrial.faster2 == 2
         stimulus.dotsUpRight = stimulus.dotsUpRight.setSpeed(stimulus.dotsUpRight,task.thistrial.speed2 + task.thistrial.speed2*kWeb);
-    elseif task.thistrial.cuenum == 3 && task.thistrial.change == 1
+    end
+    if task.thistrial.faster3 == 2
         stimulus.dotsDownLeft = stimulus.dotsDownLeft.setSpeed(stimulus.dotsDownLeft,task.thistrial.speed3 + task.thistrial.speed3*kWeb);
-    elseif task.thistrial.cuenum == 4 && task.thistrial.change == 1
+    end
+    if task.thistrial.faster4 == 2
         stimulus.dotsDownRight = stimulus.dotsDownRight.setSpeed(stimulus.dotsDownRight,task.thistrial.speed4 + task.thistrial.speed4*kWeb);
     end
     
@@ -307,10 +343,30 @@ if task.thistrial.gotResponse < 1
     end
     
     % determine what the correct button should be
-    if task.thistrial.change
-        correctbutton = 1;
-    elseif ~task.thistrial.change
-        correctbutton = 2;
+    if task.thistrial.cuenum == 1
+        if task.thistrial.faster1 == 1
+            correctbutton = 1;
+        elseif task.thistrial.faster1 == 2
+            correctbutton = 2;
+        end
+    elseif task.thistrial.cuenum == 2
+        if task.thistrial.faster2 == 1
+            correctbutton = 1;
+        elseif task.thistrial.faster2 == 2
+            correctbutton = 2;
+        end
+    elseif task.thistrial.cuenum == 3
+        if task.thistrial.faster3 == 1
+            correctbutton = 1;
+        elseif task.thistrial.faster3 == 2
+            correctbutton = 2;
+        end
+    elseif task.thistrial.cuenum == 4
+        if task.thistrial.faster4 == 1
+            correctbutton = 1;
+        elseif task.thistrial.faster4 == 2
+            correctbutton = 2;
+        end
     end
 
     % see if it is correct
@@ -321,11 +377,16 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
 
         % update staircases
-        if task.thistrial.trialType == 1
+        if task.thistrial.trialType < 5
             stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
-        elseif task.thistrial.trialType == 2
+        elseif task.thistrial.trialType == 5
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
+
+        stimulus.cuecolor{1} = [0 1 0];
+        stimulus.cuecolor{2} = [0 1 0];
+        stimulus.cuecolor{3} = [0 1 0];
+        stimulus.cuecolor{4} = [0 1 0];
         
     else % incorrect
         corr = 0;
@@ -334,24 +395,29 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
         
         % update staircases
-        if task.thistrial.trialType == 1
+        if task.thistrial.trialType < 5
             stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
-        elseif task.thistrial.trialType == 2
+        elseif task.thistrial.trialType == 5
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
 
+        stimulus.cuecolor{1} = [1 0 0];
+        stimulus.cuecolor{2} = [1 0 0];
+        stimulus.cuecolor{3} = [1 0 0];
+        stimulus.cuecolor{4} = [1 0 0];
+
     end
 
-end
+    if task.thistrial.trialType < 5
+        [kWeb, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+        fprintf('Previous kWeb focal value: %0.2f \n', task.thistrial.kWeb1)
+        fprintf('Next kWeb focal value: %0.2f \n\n', kWeb)
+    else
+        [kWeb, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+        fprintf('Previous kWeb distributed value: %0.2f \n', task.thistrial.kWeb2)
+        fprintf('Next kWeb distributed value: %0.2f \n\n',kWeb)
+    end
 
-if task.thistrial.trialType == 1
-    [kWeb, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
-    fprintf('Previous kWeb %d value: %0.2f \n', task.thistrial.trialType, task.thistrial.kWeb1)
-    fprintf('Next kWeb %d value: %0.2f \n\n', task.thistrial.trialType, kWeb)
-else
-    [kWeb, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
-    fprintf('Previous kWeb %d value: %0.2f \n', task.thistrial.trialType, task.thistrial.kWeb2)
-    fprintf('Next kWeb %d value: %0.2f \n\n', task.thistrial.trialType, kWeb)
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -365,17 +431,21 @@ speed = strcat('speed=',num2str(stimulus.initSpeed));
 coherence = strcat('coherence=',num2str(stimulus.coherence));
 
 % init the dot patches
-stimulus.dotsUpLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=5/sqrt(2)');
-stimulus.dotsUpRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=5/sqrt(2)');
-stimulus.dotsDownLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=-5/sqrt(2)');
-stimulus.dotsDownRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=-5/sqrt(2)');
+[~,name] = system('hostname');
+if any(strfind(name,'oban'))
+    stimulus.dotsUpLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=5/sqrt(2)');
+    stimulus.dotsUpRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=5/sqrt(2)');
+    stimulus.dotsDownLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=-5/sqrt(2)');
+    stimulus.dotsDownRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=-5/sqrt(2)');
+else
+    stimulus.dotsUpLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=5/sqrt(2)','dotSize=0.1');
+    stimulus.dotsUpRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=5/sqrt(2)','dotSize=0.1');
+    stimulus.dotsDownLeft = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=-5/sqrt(2)','yCenter=-5/sqrt(2)','dotSize=0.1');
+    stimulus.dotsDownRight = dotsInitNew('framesPerSecond',myscreen.framesPerSecond,aperwidth,contrast,speed,coherence,'xCenter=5/sqrt(2)','yCenter=-5/sqrt(2)','dotSize=0.1');
+end
 
 % set background color
 stimulus.backgroundColor = 0.5;
-
-% and fixation color
-stimulus.cueColor = [1 1 1];
-stimulus.noncueColor = [0 0 0];
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -383,8 +453,8 @@ stimulus.noncueColor = [0 0 0];
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 
-stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=1','initialThreshold=5','initialStepsize=0.05','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.05');
-stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=1','initialThreshold=5','initialStepsize=0.05','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.05');
+stimulus.staircase1 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=1','initialStepsize=0.1','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.05');
+stimulus.staircase2 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=2','initialStepsize=0.1','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.05');
 
 
 

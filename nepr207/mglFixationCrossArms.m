@@ -49,29 +49,29 @@ if (~exist('color','var'))
   color{4}=[0 0 0];
 end
 
-% upleft line
+% up line
 x0=origin(1);
-x1=origin(1)-width;
+x1=origin(1);
 y0=origin(2);
 y1=origin(2)+width;
 mglLines2( x0,y0,x1,y1, linewidth, color{1} );
-% upright line
+% down line
 x0=origin(1);
-x1=origin(1)+width;
+x1=origin(1);
 y0=origin(2);
-y1=origin(2)+width;
+y1=origin(2)-width;
 mglLines2( x0,y0,x1,y1, linewidth, color{2} );
-% downleft line
+% left line
 x0=origin(1);
 x1=origin(1)-width;
 y0=origin(2);
-y1=origin(2)-width;
+y1=origin(2);
 mglLines2( x0,y0,x1,y1, linewidth, color{3} );
-% downright line
+% right line
 x0=origin(1);
 x1=origin(1)+width;
 y0=origin(2);
-y1=origin(2)-width;
+y1=origin(2);
 mglLines2( x0,y0,x1,y1, linewidth, color{4} );
 
 
