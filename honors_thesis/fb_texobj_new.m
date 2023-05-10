@@ -1,8 +1,8 @@
-function [ myscreen ] = texobj( varargin )
+function [ myscreen ] = fb_texobj_new( varargin )
 %
 % EVENT-RELATED TEXTURES
 %  Experiment to map neural responses to various textures
-%
+%mg
 %  Usage: texobj(varargin)
 %  Authors: Akshay Jagadeesh
 %  Date: 11/05/2018
@@ -25,7 +25,7 @@ clear scan testing;
 stimulus.counter = 1;
 %% Setup Screen
 if stimulus.scan || true
-  myscreen = initScreen('fMRIproj_akuo2');
+  myscreen = initScreen('fMRIprojFlex');
 else
   myscreen = initScreen('VPixx2');
 end
@@ -60,7 +60,6 @@ stimulus.imageNames = {'adult-10', 'adult-11', 'adult-12', 'adult-13', 'adult-10
                     'adult-103', 'adult-104', 'adult-105', 'adult-106', 'adult-107', 'adult-108',...
                     'house-1', 'house-100', 'house-102','house-104', 'house-105', 'house-107', ...
                     'house-108','house-109', 'house-110', 'house-111','house-114', 'house-115',};
-
 stimulus.layerNames = {'pool4'};
 stimulus.poolSize = '1x1_';
 
@@ -71,8 +70,8 @@ stimulus.num_samples = 2;
 
 %% Select the condition for this run
 % Choose which image and which pooling layer to display on this run on each side
-stimulus.stimDir = '~/proj/fbottazzini/outputs';
-stimulus.origDir = '~/proj/fbottazzini/inputs';
+stimulus.stimDir = '~/proj/grustim/honors_thesis/scrambled';
+stimulus.origDir = '~/proj/grustim/honors_thesis/originals';
 
 %% Preload images
 mask = imread('~/proj/TextureSynthesis/stimuli/Flattop8.tif');
@@ -87,12 +86,12 @@ for i = 1:stimulus.nTexFams
     layerI = stimulus.layerNames{li};
     for j = 1:stimulus.num_samples
        sd = imread(sprintf('%s/%s_%s%s_smp%i.png', stimulus.stimDir, imName, stimulus.poolSize, layerI, j));
-       stimulus.images.synths.(sprintf('%s_%s_%i', imName, layerI, j)) = genTexFromIm(sd);
+       stimulus.images.synths.(sprintf('%s_%s_%i', strrep(imName, '-', '_'), layerI, j)) = genTexFromIm(sd);
     end
  
     % Load noise samples.
     orig = imread(sprintf('%s/%s.jpeg', stimulus.origDir, imName));
-    stimulus.images.origs.(imName) = genTexFromIm(orig);
+    stimulus.images.origs.(strrep(imName, '-', '_')) = genTexFromIm(orig);
   end
   
   disppercent(i / stimulus.nTexFams);
@@ -227,14 +226,14 @@ elseif task.thistrial.stimType==0
   task.thistrial.blank = 0;
   task.thistrial.layer = -1;
   task.thistrial.sample = -1;
-  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.origs.(image);
+  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.origs.(strrep(image, '-', '_'));
   disp(sprintf('%s: Original %s image', trial_str, image));
 else
   task.thistrial.blank = 0;
   task.thistrial.layer = task.thistrial.stimType;
   task.thistrial.sample = randi(stimulus.num_samples);
   layer = stimulus.layerNames{task.thistrial.layer};
-  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.synths.(sprintf('%s_%s_%i', image, layer, task.thistrial.sample));
+  stimulus.live.(sprintf('%s_trialStim', side)) = stimulus.images.synths.(sprintf('%s_%s_%i', strrep(image, '-', '_'), layer, task.thistrial.sample));
   disp(sprintf('%s: %s %s sample %i synth', trial_str, image, layer, task.thistrial.sample));
 end
 
@@ -245,8 +244,14 @@ function [task, myscreen] = startSegmentCallback(task, myscreen)
 
 global stimulus
 
-% Save segment start time;
-task.thistrial.tSegStart(task.thistrial.thisseg) = mglGetSecs;
+% Save segment start time for the right hand task (comes first);
+if task.thistrial.stimXPos > 0
+  stimulus.tSegStart(task.thistrial.thisseg) = mglGetSecs;
+end
+
+% Save the global start segment time in task variable
+% This way both left and right stimuli have a synchronized start of trial
+task.thistrial.tSegStart(task.thistrial.thisseg) = stimulus.tSegStart(task.thistrial.thisseg);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%% Refreshes the Screen %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -263,11 +268,13 @@ else
 end
 
 % Select which stimulus to display as a function of time since seg start
-timeSinceSegStart = mglGetSecs(task.thistrial.tSegStart(task.thistrial.thisseg));
+%timeSinceSegStart = mglGetSecs(task.thistrial.tSegStart(task.thistrial.thisseg));
+timeSinceSegStart = mglGetSecs(stimulus.tSegStart(task.thistrial.thisseg));
 
 % Flash stimuli on and off - 800ms on, 200ms off.
 cycleLen = stimulus.tStimOn + stimulus.tStimOff;
 stimOn = mod(timeSinceSegStart, cycleLen) < stimulus.tStimOn;
+% disp(sprintf('%s: %i (%0.4f)', side, stimOn, timeSinceSegStart));
 
 %stimIdx = ceil(timeSinceSegStart / stimulus.smpLen);
 stimIdx = ceil(timeSinceSegStart / cycleLen);
@@ -363,5 +370,3 @@ for fi = 1:length(files)
     e = e{1}; % why?!
     trials = trials + e.nTrials;
 end
-
-
