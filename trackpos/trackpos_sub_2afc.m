@@ -191,7 +191,6 @@ task.thistrial.framecount   = 0;
 task.thistrial.seglen(5)    = task.thistrial.stimDur;
 task.thistrial.stimDur0     = task.thistrial.seglen(5);
 
-stimulus.reference  = struct();
 stimulus.target     = trackposInitStimulus(stimulus,myscreen); %centerX,Y, diameter called by getArgs.
 
 if isfield(stimulus.exp, 'phasescrambleOn') && ...
@@ -229,7 +228,7 @@ if strcmp(task.private.presSched, 'staircase')
     if isfield(task.private, 'threshstd_thresh')
         tstd = QuestSd(task.private.staircaseTable.staircase{idx}.s);
         tmean = QuestMean(task.private.staircaseTable.staircase{idx}.s);
-        disp(['threshold posterior std = ' num2str(tstd)]);
+        % disp(['threshold posterior std = ' num2str(tstd)]);
         if task.private.staircaseTable.staircase{idx}.trialNum > 20   
             % todo: check quest sd
             if tstd < task.private.threshstd_thresh || ...
@@ -345,7 +344,13 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 global stimulus % call stimulus
 
 if stimulus.exp.colorfix         % changing fixation colors
-    mglMetalDots([0;0;0], [0.5+0.5*rand(3,1);1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+    if isfield(stimulus,'randcolors')
+        fixcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+    else
+        fixcolors = [0.5+0.5*rand(3,1)];
+    end
+
+    mglMetalDots([0;0;0], [fixcolors;1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
 else % white fixation
     mglMetalDots([0;0;0], [stimulus.fixColors.afc';1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
 end
@@ -380,8 +385,22 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
     % draw blob, mask
     if task.thistrial.thisseg == 5 % stimulus
         task.thistrial.stimON(task.thistrial.framecount) = 1;
-        mglMetalBltTexture(stimulus.target.img, stimulus.target.position);
+
+        if isfield(stimulus.target, 'img') && ~isempty(stimulus.target.img)
+            mglBltTexture(stimulus.target.img, stimulus.target.position);
+        else
+            if strcmp(stimulus.target.color,'*') && isfield(stimulus,'randcolors')
+                targcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+            elseif strcmp(stimulus.target.color,'*')
+                targcolors = [0.5+0.5*rand(3,1)];
+            else
+                targcolors = stimulus.target.color;
+            end
         
+            mglMetalDots([stimulus.target.position(1);stimulus.target.position(2);0], ...
+                [targcolors;1], [stimulus.target.std; stimulus.target.std], 1, 1);
+        end
+
     elseif task.thistrial.thisseg == 7 % mask
          mglMetalBltTexture(stimulus.noise_mask_texture{task.thistrial.framecount},...
              stimulus.reference.position);
@@ -395,8 +414,20 @@ elseif (task.thistrial.thisseg > 2) && (task.thistrial.thisseg <10)
     end
 
     % add reference
-    mglMetalDots([stimulus.reference.position'; 0], [stimulus.fixColors.stim';1], ...
-        [stimulus.pointerR; stimulus.pointerR], 1, 1);
+    if isfield(stimulus.reference, 'img') && ~isempty(stimulus.reference.img)
+        mglBltTexture(stimulus.reference.img, stimulus.reference.position);
+    else
+        if strcmp(stimulus.reference.color,'*') && isfield(stimulus,'randcolors')
+            refcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+        elseif strcmp(stimulus.reference.color,'*')
+            refcolors = [0.5+0.5*rand(3,1)];
+        else
+            refcolors = stimulus.reference.color;
+        end
+    
+        mglMetalDots([stimulus.reference.position(1);stimulus.reference.position(2);0], ...
+            [refcolors;1], [stimulus.pointerR; stimulus.pointerR], 1, 1);
+    end
     
     % response period
     % add response direction arrow
