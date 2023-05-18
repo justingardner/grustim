@@ -17,15 +17,15 @@ function myscreen = trackpos_2afc_masked_sc(varargin)
 
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
-myscreen    = setup_screen_jryu(); 
-myscreen = initScreen(myscreen);
+myscreen        = setup_screen_jryu(); 
+myscreen        = initScreen(myscreen);
 mglMetalSetViewColorPixelFormat(4);     % set to argb2101010 pixel format
-rootdir     = find_root_dir();
+rootdir         = find_root_dir();
 rng(0, 'twister'); % set seed
 
 %% Experimenter parameters
 exp                     = struct();
-exp.debug               = false;
+exp.debug               = true;
 exp.trackEye            = true;
 exp.enforceFixThresh    = Inf;
 exp.showmouse           = false;
@@ -33,7 +33,7 @@ exp.showmouse           = false;
 exp.feedback            = false;  % correct or incorrect in 2afc
 exp.feedback_center     = false;  % feedback about the exact center
 
-exp.colorfix            = false; % colored fixation
+exp.colorfix            = true; % colored fixation
 exp.displacement_type   = 'circular'; %'tangential'; % otherwise specify polar angle and displacement angle
 exp.respDirArrow        = true;
 
@@ -78,12 +78,12 @@ if mglIsFile(exp.noise_mask)
     params.task.maskLum          = [0.6]; %0.7]; %[0.05, 0.7];
 end
 
-params.task.pointerOffset       = [3, 5, 10, 15, 20]; %[3, 7, 10]; %3,7,10 % [-10,-5,-2,0,2,5,10];
+params.task.pointerOffset       = [10, 15, 20]; %[3, 7, 10]; %3,7,10 % [-10,-5,-2,0,2,5,10];
 
 % staircase parameters
 params.staircase                    = struct();
-thresh = params.task.pointerOffset(1)*1.7/10 + 0.1;
-params.staircase.initThreshold      = thresh; %0.3;
+% thresh = params.task.pointerOffset(1)*1.7/10 + 0.1;
+params.staircase.initThreshold      = 0.5; %0.3;
 params.staircase.initThresholdSd    = 0.5; %0.3;
 params.staircase.threshstd_thresh   = 0.01; 
 params.staircase.staircase_init     = exp.staircase_init;
@@ -123,6 +123,9 @@ stimulus.fixColors.afc      = [0 0 1]; % afc response period
 stimulus.fixColors.fb       = [1 1 1]; % position feedback
 
 stimulus.pointerR           = 0.4;
+
+stimulus.reference  = struct();
+stimulus.reference.color    = '*';
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
@@ -168,6 +171,14 @@ end
 % noise mask
 if mglIsFile(stimulus.exp.noise_mask)
     stimulus.noise_mask = load(stimulus.exp.noise_mask);
+end
+
+% random colors
+exp.randColorsFile      = '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
+if mglIsFile(exp.randColorsFile)
+    stimulus.randcolors = load(exp.randColorsFile);
+else
+    disp('random color data does not exist')
 end
 
 
@@ -297,11 +308,5 @@ end
 
 
 function params = load_debug_params(params)
-    params.task.stimLum         = [0.2, 0.8]; % [0.1,0.2,0.5] % [16,32,48,96]
-    params.task.stimDur         = [2/60]; %[2/60 5/60 10/60 15/60]; %frames/hz
-    params.task.mask_TOff2MOn   = [0]; % stimulus offset to mask onset (Neisser 1967)
-    params.task.maskLum         = [0.2];
     params.trialpercond         = 3; 
-    params.task.angleSet        = [1, 2, 3, 4, 5,6,7,8]; 
-    params.task.pointerOffset   = [5];
 end

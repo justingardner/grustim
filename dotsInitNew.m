@@ -1,9 +1,9 @@
-% dotsInit.m
+% dotsInitNew.m - mathworks geniuses force overshadow 'width','height' with package functions, so now 'width','height' needs to be renamed
 %
 %        $Id:$ 
-%      usage: dotsInit()
-%         by: justin gardner
-%       date: 07/08/17
+%      usage: dotsInitNew()
+%         by: justin gardner (austin kuo)
+%       date: 07/08/17 (05/01/23)
 %    purpose: Create and update a data structure for random dots
 %             that can be used to display different kinds of dot
 %             movement, coherence and contrast
@@ -69,16 +69,16 @@ function dots = dotsInitNew(varargin)
 
 % parse arguments
 contrast = 1;type='linear';dir = 1;
-getArgs(varargin,{'xCenter=0','yCenter=0','width=5','height=[]','speed=1','dir=1','coherence=1','type=linear','dotSize=4','density=5','contrast=1','framesPerSecond=60','mask=1','drawType=mgl','dotColor=blackAndWhite'});
+getArgs(varargin,{'xCenter=0','yCenter=0','aperwidth=5','aperheight=[]','speed=1','dir=1','coherence=1','type=linear','dotSize=4','density=5','contrast=1','framesPerSecond=60','mask=1','drawType=mgl','dotColor=blackAndWhite'});
 
 % set parameters of dots
-dots.width = width;
-if ~isempty(height)
+dots.width = aperwidth;
+if ~isempty(aperheight)
   % set the height
-  dots.height = height;
+  dots.height = aperheight;
 else
   % if height is empty, then make a square patch
-  dots.height = width;
+  dots.height = aperwidth;
 end
 dots.speed = speed;
 dots.dir = dir;
