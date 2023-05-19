@@ -1,4 +1,4 @@
-e%%% Drawing some dots at different timing points and locations with sound
+%%% Drawing some dots at different timing points and locations with sound
 %%% cue. Observers are supposed to look at the dots according to the sound
 %%% cue.
 %%%
@@ -16,19 +16,15 @@ mglSetSID('test');
 % using eyelink
 eyetracker = input('Eyelink?(Y/N) : ', 's');
 
-% using pupil-labs?
-pupillabs = input('Pupil Labs?(Y/N) : ', 's');
-if strcmpi(pupillabs, 'y')
-    % connect pupil labs
-    ip = '10.35.124.31';
-    device = pyrunfile("connect_pupilLabs.py","device", ip = ip);
-    if isempty(device.phone_id)
-        error("Pupil lab device is not connected.")
-    end
+% connect pupil labs
+ip = '10.35.127.131';
+device = pyrunfile("connect_pupilLabs.py","device", ip = ip);
+if isempty(device.phone_id)
+    error("Pupil lab device is not connected.")
 end
 
 % task repetition
-task_repetition = 1;
+task_repetition = 3;
 
 % initialize myscreen
 myscreen.displayName = 'dell_wuTsai';
@@ -81,7 +77,7 @@ aruco5 = squeeze(aruco5(:,:,1));
 marker_startend = mglCreateTexture(aruco5);
 stimulus.marker_startend = marker_startend;
 
-aruco61 = imread(fullfile(imagepath, 'aurco61.png'));
+aruco61 = imread(fullfile(imagepath, 'aruco61.png'));
 aruco61 = squeeze(aruco61(:,:,1));
 marker_target = mglCreateTexture(aruco61);
 stimulus.marker_target = marker_target;
@@ -173,11 +169,13 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus device
 
 % if it is the first segment, do nothing
-if thisseg == 1
+if task.thistrial.thisseg == 1
     task.thistrial.timing_flip(1) = mglGetSecs;
+    mglClearScreen(.5);
+    myscreen.flushMode=1;
 
     % if it is the second segment, present the target
-elseif thisseg == 2
+elseif task.thistrial.thisseg == 2
     t = task.thistrial.target_location;
     position = stimulus.positions(t,:);
     mglBltTexture(stimulus.marker_target, [position(1), position(2), ...
