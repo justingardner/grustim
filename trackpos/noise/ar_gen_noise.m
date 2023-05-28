@@ -1,4 +1,4 @@
-function dyn_noise = circular_ar_gen_noise(varargin)
+function dyn_noise = ar_gen_noise(varargin)
     getArgs(varargin, ...
         {'taskcfg', 'not_specified',...
         'myscreen', struct('framesPerSecond',60), ...
@@ -10,6 +10,7 @@ function dyn_noise = circular_ar_gen_noise(varargin)
     end
     
     dyn_noise = generate_noise_struct(myscreen, taskcfg);
+    
     if savenoise
         savefile = sprintf('circular_ar_%s_%s.mat',experiment, num2str(exp_num));
         save(fullfile(find_root_dir, 'proj/grustim/trackpos/noise', savefile), 'dyn_noise');
@@ -65,9 +66,9 @@ function noiseStruct = generate_ar_sequence_cond(myscreen, trialN, T, ...
     noiseStruct.point_noise      = cell(trialN,1);
     
     t_phi = 1 - dt/stim_noiseTau; 
-    p_phi = 1 - dt/point_noiseTau; 
-    
     tnoiseStd = stim_noiseStd  * sqrt(dt) * sqrt(prod(1-t_phi.^2));
+    
+    p_phi = 1 - dt/point_noiseTau; 
     pnoiseStd = point_noiseStd * sqrt(dt) * sqrt(prod(1-p_phi.^2));
     
     for tr = 1:trialN

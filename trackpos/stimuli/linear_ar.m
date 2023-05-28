@@ -153,7 +153,7 @@ methods
         else
             thistask.synchToVol     = [0, 0, 0, 0, 0];
         end
-        thistask.waitForBacktick    = 1;
+        thistask.waitForBacktick    = 0;
         
 
         thistask.random             = 1; % randomized parameters by default
@@ -312,6 +312,12 @@ methods
         end
         stimulus.pointer.dynparams  = pointer_dynparams;
         stimulus.pointer.state      = [stimulus.target.positions_trial(1); zeros(pointer_dynparams.maxorder,1)];
+        
+        if strcmp(task.thistrial.stimType, 'dot')
+            stimulus.targetfirst = true;
+        elseif strcmp(task.thistrial.pointType, 'dot')
+            stimulus.targetfirst = false;
+        end
 
         obj.t0 = tic; % start trial
     end
@@ -424,7 +430,7 @@ methods
             else
                 cuecolor = stimulus.pointer.color;
             end
-            mglMetalArcs([stimulus.pointer.position, 0]', [cuecolor; 0.3], [2*r0; 3.5*r0],[0;2*pi], 1);
+            mglMetalArcs([stimulus.pointer.position, 0]', [cuecolor; 0.3], [2*r0; 3*r0],[0;2*pi], 1);
 
             da = task.thistrial.ori;
             arrow_length = 1.5; % length of arrow in deg (visual angle)
@@ -432,10 +438,10 @@ methods
             arm_angle = pi/6;
             arrowidth = r0/5;
 
-            mglMetalArrow(stimulus.pointer.position(1),stimulus.pointer.position(2),...
-                da,arrow_length,arm_ratio, arm_angle, arrowidth, cuecolor)
-            mglMetalArrow(stimulus.pointer.position(1),stimulus.pointer.position(2),...
-                -1*da,arrow_length, arm_ratio, arm_angle, arrowidth, cuecolor)
+            mglMetalArrow(0.5*cos(da),0.5*sin(da),...
+                da,arrow_length,arm_ratio, arm_angle, arrowidth, [1;0;0]);
+            mglMetalArrow(0.5*cos(da+pi),0.5*sin(da+pi),...
+                da+pi,arrow_length, arm_ratio, arm_angle, arrowidth, cuecolor);
         end
     end
     
@@ -450,20 +456,20 @@ methods
     function params = parameter_set(obj, setname, setnum)
         params              = struct();
         params.backLum      = 0.7;
-        params.ecc_r        = 10;
+        params.ecc_r        = 15;
 
-        stim_highlum        = {'dot', 1, 0.4, '*'}; % name, lum, size, color
+        stim_randcol        = {'dot', 1, 0.4, '*'}; % name, lum, size, color
         stim_lowlum         = {'gaussian', 0.4, 1, 'k'}; % name, lum, size, color
         
         [params.stimType, params.stimLum, params.stimStd, params.stimColor]      ...
-            = deal(stim_highlum{:});
+            = deal(stim_randcol{:});
         params.stim_noiseStd    = 0;
         params.stim_noiseTau    = 0;
         params.stim_vel         = 0;
 
         [params.pointType, params.pointLum, params.pointStd, params.pointColor]  ...
             = deal(stim_lowlum{:});
-        params.point_noiseStd = 1;
+        params.point_noiseStd = 0.7;
         params.point_noiseTau = 10/60;
         params.point_vel = 0;
         
@@ -483,8 +489,13 @@ methods
                 params.ori = 0;
             elseif mod(setnum,3) == 2
                 params.ori = pi/4;
-            elseif mod(setnum,3) == 3
+            elseif mod(setnum,3) == 0
                 params.ori = pi/2;
+            end
+            
+            if setnum == 13
+                params.pa = pi/4;
+                params.ori = -pi/4;
             end
 
         end

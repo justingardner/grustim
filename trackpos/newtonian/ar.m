@@ -1,7 +1,11 @@
 function [noise, white_noise] = ar(T, sigma_white, ar_coeff, varargin)
     getArgs(varargin, {'plotfigs', false});
+    
+    if ~isreal(ar_coeff) || isinf(ar_coeff) || isnan(ar_coeff)
+        ar_coeff = 0;
+    end
 
-    if any(isnan(ar_coeff)) || isnan(sigma_white)
+    if isnan(sigma_white) || sigma_white == 0 
         white_noise = zeros(T,1);
         noise = white_noise;
     else

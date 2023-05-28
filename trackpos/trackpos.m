@@ -22,8 +22,9 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
+exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
 
 exp.showRing            = 0; % show ring
@@ -47,10 +48,10 @@ end
 
 %% specify task design
 
-experiment = 'pa';
+experiment = 'ind';
 setnum = 1; 
 
-if any(strcmp(experiment, {'ecc','mn', 'pert'}))
+if any(strcmp(experiment, {'ecc','mn', 'pert', 'ind'}))
 % screen, stimulus, experiment, setnum, kwargs
     cps = load_experiment(myscreen, 'circular_ar', experiment, setnum, 'debugmode', exp.debug);
     dynnoisefile = fullfile(find_root_dir, 'proj/grustim/trackpos/noise', ...
@@ -144,31 +145,89 @@ disp(' Running Task....'); stimulus.t0 = mglGetSecs; %
 % mglClearScreen(task{1}{1}.parameter.backLum/255);
 %mglFlush;
 
-mglBltTexture(mglText('task starting... '), [0 1.5]);
-mglBltTexture(mglText('1. Track the target with the red pointer'),[0 0.5]);
+mglBltTexture(mglText('A pointer object will appear on the screen and will be cued with an large ring.'),[0 2.5]);
+mglBltTexture(mglText('You will be controlling the pointer.'),[0 1.5]);
+% mglBltTexture(mglText('With the cue, two arrows will appear. This is the tracking axis. Turn the wheel clockwise to move towards the red arrow.'),[0 1.5]);
+mglBltTexture(mglText('The target will appear briefly after.'),[0 0.5]);
+mglBltTexture(mglText('1. Use the pointer object to track the target.'),[0 -1]);
 if stimulus.exp.fixateCenter
-    mglBltTexture(mglText('2. Fixate in center. You should be able to see the dot changing colors'),[0 -0.5]);    
+    mglBltTexture(mglText('2. Fixate in center. You should be able to see the dot changing colors'),[0 -2]);    
 end
-mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
+mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -4]);
 mglFlush(); myscreen.flushMode = -1;
+
+keystate = mglGetKeys;
+while ~keystate(50)
+    keystate = mglGetKeys;
+end
 
 if ~exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
-phaseNum = 1;
+phaseNum = 1;trialNum=0;
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, newphaseNum] = updateTask(task{1},myscreen,phaseNum); % update the task
-    if newphaseNum ~= phaseNum
-        mglClearScreen(0.5);
-        
-        mglBltTexture(mglText('When you are ready, press backtick to go to next trial'),[0 -1.5]);
-        mglFlush(); myscreen.flushMode = -1;
-
-        % todo: make this work
-%         if myscreen.userHitSpace
-%             disp(' Calibrating Eye ....')
-%             myscreen  = eyeCalibDisp(myscreen); % calibrate eye again
-%         end
+    
+    if (newphaseNum > length(task{1}))
+        break
     end
+    
+    if  task{1}{newphaseNum}.trialnum ~= trialNum
+        fprintf("Phase %s/%s, trial %s/%s \n",num2str(newphaseNum), num2str(length(task{1})),...
+            num2str(task{1}{newphaseNum}.trialnum), num2str(task{1}{newphaseNum}.numTrials));        
+        trialNum = task{1}{newphaseNum}.trialnum;
+    end
+    
+    if newphaseNum ~= phaseNum        
+        mglClearScreen(0.5);
+        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+        mglFlush;
+        
+        mglClearScreen(0.5);
+        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+        mglFlush;
+        
+        % wait for user to press space
+        keystate = mglGetKeys;
+        while ~keystate(50)
+            keystate = mglGetKeys;
+        end
+        
+        % check eyetracker
+        if stimulus.exp.trackEye && stimulus.exp.trackEye_calibtrial
+            [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
+            if any(isnan(pos))
+                disp('eye not found... recalibrating eye');
+                beep on; beep;
+                % load gong.mat; sound(y)
+                mglClearScreen(0.5);
+                myscreen  = eyeCalibDisp(myscreen); % calibrate eye every time.
+            end
+        end
+        
+        % give control back to the subject
+        mglClearScreen(0.5);
+        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+        mglFlush;
+        
+        mglClearScreen(0.5);
+        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+        mglFlush;
+        
+        % wait for user to press space
+        keystate = mglGetKeys;
+        while ~keystate(50)
+            keystate = mglGetKeys;
+        end
+        
+        fprintf("Space detected. Beginning trial\n");
+        
+        % since we used up the first segment's time to do this, extend the
+        % segment length. add 1 second to first segment to transition into the task.
+        thisseg = 1;
+        thistrial = task{1}{newphaseNum}.thistrial;
+        task{1}{newphaseNum}.thistrial.seglen(thisseg) = mglGetSecs-thistrial.segstart + 1;
+    end
+    
     phaseNum = newphaseNum;
     myscreen = tickScreen(myscreen,task);     % flip screen
 end
@@ -197,7 +256,7 @@ end
 function [task myscreen] = initTrialCallback(task, myscreen)
     global stimulus    
     phaseNum = task.thistrial.thisphase; % phaseNum?
-       
+           
     % save seed for generating random textures
     rng('shuffle','twister'); 
     s=rng; 
@@ -262,65 +321,117 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     % update task
     [task, stimulus]  = stimulus.task{phaseNum}.update(task, myscreen, stimulus);
     
-    % if we are in the tracking period,  save tracking variables
-    if stimulus.task{phaseNum}.doTrack
-        % update framecount
-        task.thistrial.framecount = task.thistrial.framecount + 1;
+    if ~isfield(stimulus, 'targetfirst') || ~stimulus.targetfirst
+        %% if we are in the tracking period,  save tracking variables
+        if stimulus.task{phaseNum}.doTrack
+            % update framecount
+            task.thistrial.framecount = task.thistrial.framecount + 1;
 
-        % display target
-        % todo: another function for displaying objects
-        if ~isempty(stimulus.target) 
-            if isfield(stimulus.target, 'img') && ~isempty(stimulus.target.img)
-                mglBltTexture(stimulus.target.img, stimulus.target.position);
-            else
-                if strcmp(stimulus.target.color,'*') && isfield(stimulus,'randcolors')
-                    targcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
-                elseif strcmp(stimulus.target.color,'*')
-                    targcolors = [0.5+0.5*rand(3,1)];
+            % display target
+            % todo: another function for displaying objects
+            if ~isempty(stimulus.target) 
+                if isfield(stimulus.target, 'img') && ~isempty(stimulus.target.img)
+                    mglBltTexture(stimulus.target.img, stimulus.target.position);
                 else
-                    targcolors = stimulus.target.color;
+                    if strcmp(stimulus.target.color,'*') && isfield(stimulus,'randcolors')
+                        targcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+                    elseif strcmp(stimulus.target.color,'*')
+                        targcolors = [0.5+0.5*rand(3,1)];
+                    else
+                        targcolors = stimulus.target.color;
+                    end
+
+                    mglMetalDots([stimulus.target.position(1);stimulus.target.position(2);0], ...
+                        [targcolors;1], [stimulus.target.std; stimulus.target.std], 1, 1);
                 end
-            
-                mglMetalDots([stimulus.target.position(1);stimulus.target.position(2);0], ...
-                    [targcolors;1], [stimulus.target.std; stimulus.target.std], 1, 1);
+            end
+
+            % display other objects
+            for ij = 1:length(stimulus.otherObjs)
+                mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
             end
         end
 
-        % display other objects
-        for ij = 1:length(stimulus.otherObjs)
-            mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
+        % display pointer
+        if ~isempty(stimulus.pointer)
+            if isfield(stimulus.pointer, 'img') && ~isempty(stimulus.pointer.img)
+                mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
+            else 
+                if strcmp(stimulus.pointer.color,'*') && isfield(stimulus,'randcolors')
+                    pointercolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+                elseif strcmp(stimulus.pointer.color,'*')
+                    pointercolors = [0.5+0.5*rand(3,1)];
+                else
+                    pointercolors = stimulus.pointer.color;
+                end
+
+                mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
+                    [pointercolors; 1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
+            end
         end
+
+    else % display pointer first
+        % display pointer
+        if ~isempty(stimulus.pointer)
+            if isfield(stimulus.pointer, 'img') && ~isempty(stimulus.pointer.img)
+                mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
+            else 
+                if strcmp(stimulus.pointer.color,'*') && isfield(stimulus,'randcolors')
+                    pointercolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+                elseif strcmp(stimulus.pointer.color,'*')
+                    pointercolors = [0.5+0.5*rand(3,1)];
+                else
+                    pointercolors = stimulus.pointer.color;
+                end
+
+                mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
+                    [pointercolors; 1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
+            end
+        end
+            
+        if stimulus.task{phaseNum}.doTrack
+            % update framecount
+            task.thistrial.framecount = task.thistrial.framecount + 1;
+
+            % display target
+            % todo: another function for displaying objects
+            if ~isempty(stimulus.target) 
+                if isfield(stimulus.target, 'img') && ~isempty(stimulus.target.img)
+                    mglBltTexture(stimulus.target.img, stimulus.target.position);
+                else
+                    if strcmp(stimulus.target.color,'*') && isfield(stimulus,'randcolors')
+                        targcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
+                    elseif strcmp(stimulus.target.color,'*')
+                        targcolors = [0.5+0.5*rand(3,1)];
+                    else
+                        targcolors = stimulus.target.color;
+                    end
+
+                    mglMetalDots([stimulus.target.position(1);stimulus.target.position(2);0], ...
+                        [targcolors;1], [stimulus.target.std; stimulus.target.std], 1, 1);
+                end
+            end
+
+            % display other objects
+            for ij = 1:length(stimulus.otherObjs)
+                mglBltTexture(stimulus.otherObjs{ij}.img, stimulus.otherObjs{ij}.position);
+            end
+        end
+
     end
 
-    % display pointer
-    if ~isempty(stimulus.pointer)
-        if isfield(stimulus.pointer, 'img') && ~isempty(stimulus.pointer.img)
-            mglBltTexture(stimulus.pointer.img, stimulus.pointer.position);
-        else 
-            if strcmp(stimulus.pointer.color,'*') && isfield(stimulus,'randcolors')
-                pointercolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
-            elseif strcmp(stimulus.pointer.color,'*')
-                pointercolors = [0.5+0.5*rand(3,1)];
+
+        % display fixation
+        if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
+            mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.3],[0;2*pi], 1);
+            if isfield(stimulus,'randcolors')
+                fixcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
             else
-                pointercolors = stimulus.pointer.color;
+                fixcolors = [0.5+0.5*rand(3,1)];    
             end
-            
-            mglMetalDots([stimulus.pointer.position(1);stimulus.pointer.position(2);0], ...
-                [pointercolors; 1], [stimulus.pointer.std; stimulus.pointer.std], 1, 1);
-        end
-    end
-    
-    % display fixation
-    if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
-        mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.3],[0;2*pi], 1);
-        if isfield(stimulus,'randcolors')
-            fixcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
-        else
-            fixcolors = [0.5+0.5*rand(3,1)];    
-        end
 
-        mglMetalDots([0;0;0], [fixcolors; 1], [stimulus.fixation_size;stimulus.fixation_size], 1, 1);
-    end
+            mglMetalDots([0;0;0], [fixcolors; 1], [stimulus.fixation_size;stimulus.fixation_size], 1, 1);
+        end
     
     if ~stimulus.exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
@@ -379,7 +490,7 @@ end
 if ~allgood
    % regenerate noise 
    disp('(trackpos_circular_ar) dynamic noise file does not match. regenerating dynamics noise')
-   dyn_noise = circular_ar_gen_noise('myscreen', myscreen, 'taskcfg',cps,'savenoise',false);
+   dyn_noise = ar_gen_noise('myscreen', myscreen, 'taskcfg',cps,'savenoise',false);
 end
 
 stimulus.dyn_noise = dyn_noise;

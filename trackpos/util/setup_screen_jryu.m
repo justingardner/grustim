@@ -17,9 +17,10 @@ function myscreen = setup_screen_jryu()
         myscreen.datadir            = '/Users/jryu/Dropbox/GardnerLab/data/';
         
     else
-        
+        w = warning ('off','all');
         rmpath(genpath('/Users/gru/proj/mgl'))
         addpath(genpath('/Users/gru/proj/mgl_jryu'))
+        w = warning ('on','all');
 
         % myscreen.screenWidth = 860; myscreen.screenHeight = 600;
         myscreen.hideCursor         = 1;
@@ -30,5 +31,8 @@ function myscreen = setup_screen_jryu()
         myscreen.saveData           = 1; % save stimfile to data directory
         myscreen.datadir            = '/Users/gru/data/';
     end
+
+    warning('off','MATLAB:RandStream:ActivatingLegacyGenerators')
+    warning('off','MATLAB:RandStream:ReadingInactiveLegacyGeneratorState') 
 
 end

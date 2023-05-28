@@ -149,7 +149,7 @@ methods
         else
             thistask.synchToVol     = [0, 0, 0, 0, 0];
         end
-        thistask.waitForBacktick    = 1;
+        thistask.waitForBacktick    = 0;
         
 
         thistask.random             = 1; % randomized parameters by default
@@ -272,7 +272,7 @@ methods
             
         else
             % generate angular noise for target
-            phi_t = 1 - dt/task.thistrial.stim_noiseTau;
+            phi_t               = 1 - dt/task.thistrial.stim_noiseTau;
             noiseStd            = task.thistrial.stim_noiseStd * sqrt(dt) / task.thistrial.ecc_r * sqrt(prod(1-phi_t.^2)); % angular noise
             [noise, wnoise]     = ar(T, noiseStd, phi_t, 'plotfigs', false);
             task.thistrial.trackTNoiseAR    = task.thistrial.ecc_r * noise;
@@ -303,6 +303,12 @@ methods
         end
         stimulus.pointer.dynparams  = pointer_dynparams;
         stimulus.pointer.state      = [stimulus.target.positions_trial(1); zeros(pointer_dynparams.maxorder,1)];
+        
+        if strcmp(task.thistrial.stimType, 'dot')
+            stimulus.targetfirst = true;
+        elseif strcmp(task.thistrial.pointType, 'dot')
+            stimulus.targetfirst = false;
+        end
 
         obj.t0 = tic; % start trial
     end
@@ -431,7 +437,7 @@ methods
         params.backLum      = 0.7;
         params.ecc_r        = 10;
 
-        stim_highlum        = {'dot', 1, 0.4, '*'}; % name, lum, size, color
+        stim_randcol        = {'dot', 1, 0.4, '*'}; % name, lum, size, color
         stim_lowlum         = {'gaussian', 0.4, 1, 'k'}; % name, lum, size, color
         
         [params.stimType, params.stimLum, params.stimStd, params.stimColor]      ...
@@ -442,12 +448,13 @@ methods
         params.stim_vel         = 0;
 
         [params.pointType, params.pointLum, params.pointStd, params.pointColor]  ...
-            = deal(stim_highlum{:});
+            = deal(stim_randcol{:});
         params.point_noiseStd = 1;
         params.point_noiseTau = 0;
         params.point_vel = 0;
         
-        if strcmp(setname,'mn') % effect of motor noise 
+        if strcmp(setname,'mn') 
+            %% effect of motor noise 
             if mod(setnum,3) == 1
                 tau1 = 10/60;
                 tau2 = 0;
@@ -470,7 +477,7 @@ methods
             if setnum <= 3 || (setnum > 6 &  setnum <=9)
                 % stimulus: high luminance
                 % pointer: low luminance,
-                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_highlum{:});
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_randcol{:});
                 [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
 
                 params.stim_noiseStd    = noisestd2;
@@ -482,7 +489,7 @@ methods
                 % stimulus: low luminance, moving
                 % pointer: high luminance
                 [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_lowlum{:});
-                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_highlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_randcol{:});
                 
                 params.stim_noiseStd    = noisestd1;
                 params.point_noiseStd   = noisestd2;
@@ -516,7 +523,7 @@ methods
             if setnum <= 3 || (setnum > 6 & setnum <=9)
                 % stimulus: high luminance
                 % pointer: low luminance,
-                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_highlum{:});
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_randcol{:});
                 [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
 
                 params.stim_noiseStd    = noisestd2;
@@ -528,7 +535,7 @@ methods
                 % stimulus: low luminance, moving
                 % pointer: high luminance
                 [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_lowlum{:});
-                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_highlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_randcol{:});
                 
                 params.stim_noiseStd    = noisestd1;
                 params.point_noiseStd   = noisestd2;
@@ -558,9 +565,35 @@ methods
             
             if any(setnum == [1,3,5,6])
                 [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_lowlum{:});
-                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_highlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_randcol{:});
             elseif any(setnum == [2,4])
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_randcol{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
+            end
+        elseif strcmp(setname, 'ind')
+            %% independence experiment
+            params.ecc_r        = 15;
+            
+            params.stim_noiseStd    = 0.3;
+            params.point_noiseStd   = 0.3;
+
+            params.stim_noiseTau     = 10/60;
+            params.point_noiseTau    = 10/60;
+            
+            stim_lowlum         = {'gaussian', 0.4, 1, 'k'}; % name, lum, size, color
+            stim_highlum        = {'gaussian', 1, 1, 'k'}; % name, lum, size, color
+            
+            if setnum == 1
                 [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_highlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_randcol{:});
+            elseif setnum == 2
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_lowlum{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_randcol{:});
+            elseif setnum == 3
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_randcol{:});
+                [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_highlum{:});
+            elseif setnum == 4
+                [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_randcol{:});
                 [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
             end
             
