@@ -37,7 +37,8 @@ exp.grabframe           = 0; % capture frames. specify save directory
 exp.lastStimFile        = ''; %'/Users/jryu/Dropbox/GardnerLab/data/trackpos_circular/test/230329_stim01.mat';
 
 % define set of random colors
-exp.randColorsFile      = '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
+exp.randColorsFile      = '/Users/jryu/proj/grustim/trackpos/util/labcolors.mat';
+%'/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
 
 global stimulus; stimulus = struct;
 stimulus.exp = exp;
