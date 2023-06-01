@@ -25,7 +25,7 @@ rng(0, 'twister'); % set seed
 
 %% Experimenter parameters
 exp                     = struct();
-exp.debug               = true;
+exp.debug               = false;
 exp.trackEye            = true;
 exp.enforceFixThresh    = Inf;
 exp.showmouse           = false;
@@ -34,6 +34,7 @@ exp.feedback            = false;  % correct or incorrect in 2afc
 exp.feedback_center     = false;  % feedback about the exact center
 
 exp.colorfix            = true; % colored fixation
+exp.colorref            = true; % colored fixation
 exp.displacement_type   = 'circular'; %'tangential'; % otherwise specify polar angle and displacement angle
 exp.respDirArrow        = true;
 
@@ -41,6 +42,7 @@ exp.block_design        = false; % in each block, present all combinations of pa
 exp.noise_mask          = fullfile(rootdir, 'proj/grustim/trackpos/noise/grating.mat'); 
 exp.staircase_init      = fullfile(rootdir,'data/trackpos_2afc_masked_sc/', mglGetSID, ...
                                    '230330_stim03_staircase.mat');
+
 
 %% task parameters
 % stimulus and background
@@ -83,9 +85,9 @@ params.task.pointerOffset       = [10, 15, 20]; %[3, 7, 10]; %3,7,10 % [-10,-5,-
 % staircase parameters
 params.staircase                    = struct();
 % thresh = params.task.pointerOffset(1)*1.7/10 + 0.1;
-params.staircase.initThreshold      = 0.5; %0.3;
-params.staircase.initThresholdSd    = 0.5; %0.3;
-params.staircase.threshstd_thresh   = 0.01; 
+params.staircase.initThreshold      = 0.3; %0.3;
+params.staircase.initThresholdSd    = 0.3; %0.3;
+params.staircase.threshstd_thresh   = 0.1; % 0.01;
 params.staircase.staircase_init     = exp.staircase_init;
 
 if exp.debug
@@ -125,7 +127,11 @@ stimulus.fixColors.fb       = [1 1 1]; % position feedback
 stimulus.pointerR           = 0.4;
 
 stimulus.reference  = struct();
-stimulus.reference.color    = '*';
+if exp.colorref
+    stimulus.reference.color    = '*';
+else
+    stimulus.reference.color    = 'r';
+end
 
 stimulus.t0 = mglGetSecs; % keeps track of trackTime
 
@@ -174,7 +180,7 @@ if mglIsFile(stimulus.exp.noise_mask)
 end
 
 % random colors
-exp.randColorsFile      = '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
+exp.randColorsFile      = '/Users/jryu/proj/grustim/trackpos/util/labcolors.mat'; % '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
 if mglIsFile(exp.randColorsFile)
     stimulus.randcolors = load(exp.randColorsFile);
 else
@@ -210,7 +216,7 @@ stimulus.t0 = mglGetSecs; %
 mglDisplayCursor(0); %hide cursor
 mglClearScreen(params.task.backLum);
 mglTextDraw('task (trackpos_2afc_masked_sc) starting... ', [0 3])
-mglTextDraw('Press 2 if the blob was in the direction of the red arrow from the red reference dot. 1 otherwise',[0 1]);
+mglTextDraw('Press 1 if the blob was in the direction of the blue arrow from the red reference dot. 2 otherwise',[0 1]);
 
 mglBltTexture(mglText('When you are ready, press backtick to go to the first trial'),[0 -3]);
 mglFlush(); myscreen.flushMode = -1;

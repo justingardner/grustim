@@ -531,8 +531,16 @@ else corrString = 'missed';
 end
 
 posdiff = (2*task.thistrial.stimright-1)*task.thistrial.posDiff;
-disp(['(subtask_2c) Position difference: ' num2str(posdiff) '; ' ...
-      'Response: ' respSide '; ' corrString])
+if isfield(task.private, 'threshstd_thresh')
+    idx     = findCondIdx(task.private.staircaseTable,task.thistrial);
+    tstd    = QuestSd(task.private.staircaseTable.staircase{idx}.s);
+    tmean   = QuestMean(task.private.staircaseTable.staircase{idx}.s);
+    disp(['(subtask_2c) Position difference: ' num2str(posdiff) '; ' ...
+          'Response: ' respSide ' (' corrString '); cond ' num2str(idx) ' questStd: ' num2str(tstd)])
+else
+    disp(['(subtask_2c) Position difference: ' num2str(posdiff) '; ' ...
+          'Response: ' respSide '; ' corrString])
+end
 
 if strcmp(task.private.presSched, 'staircase') && ~isnan(correct)
     idx = stimulus.staircaseIdx;
