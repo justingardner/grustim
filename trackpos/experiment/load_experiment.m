@@ -81,7 +81,7 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
     cps = {};
     maxtrialtime        = 20; % seconds
 
-    if debugmode, ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
+    if debugmode, ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=5; end
 
     if strcmp(experiment_name, 'mn')
         %% effect of ar dynamics
@@ -173,7 +173,7 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
         trials_per_block    = 5;  % number of trials per block
         
         if exp_num == 1
-            experiment_paramset = [1,2,3,4,5,6]; %., 9, 8, 7, 12,11,10];
+            experiment_paramset = [1,2,3,4,5,6]; 
             
             if shuffle_set
                 experiment_paramset = experiment_paramset(randperm(length(experiment_paramset)));
@@ -229,9 +229,9 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
         %% test target pointer independence
         experiment          = {'ind'};
         
-        nblocks_learn       = 3;
+        nblocks_learn       = 1;
         ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
-        nblocks             = 5;
+        nblocks             = 4;
         trials_per_block    = 5;  % number of trials per block
         maxtrialtime        = 20; % seconds
     

@@ -37,7 +37,8 @@ exp.grabframe           = 0; % capture frames. specify save directory
 exp.lastStimFile        = ''; %'/Users/jryu/Dropbox/GardnerLab/data/trackpos_circular/test/230329_stim01.mat';
 
 % define set of random colors
-exp.randColorsFile      = '/Users/jryu/proj/grustim/trackpos/util/labcolors.mat';
+exp.randColorsFile      = '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
+%'/Users/jryu/proj/grustim/trackpos/util/labcolors.mat';
 %'/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
 
 global stimulus; stimulus = struct;
@@ -49,17 +50,18 @@ end
 
 %% specify task design
 
-experiment = 'ind';
-setnum = 1; 
+experiment      = 'ind';
+setnum          = 1; 
+shuffle_conds   = true;
 
 if any(strcmp(experiment, {'ecc','mn', 'pert', 'ind'}))
 % screen, stimulus, experiment, setnum, kwargs
-    cps = load_experiment(myscreen, 'circular_ar', experiment, setnum, 'debugmode', exp.debug);
+    cps = load_experiment(myscreen, 'circular_ar', experiment, setnum, 'debugmode', exp.debug, 'shuffle_set', shuffle_conds);
     dynnoisefile = fullfile(find_root_dir, 'proj/grustim/trackpos/noise', ...
         sprintf('circular_ar_%s_%s.mat',experiment, num2str(setnum)));
 elseif any(strcmp(experiment, {'pa'}))
     % linear
-    cps = load_experiment(myscreen, 'linear_ar', experiment, setnum, 'debugmode', exp.debug);
+    cps = load_experiment(myscreen, 'linear_ar', experiment, setnum, 'debugmode', exp.debug, 'shuffle_set', shuffle_conds);
     dynnoisefile = fullfile(find_root_dir, 'proj/grustim/trackpos/noise', ...
         sprintf('linear_ar_%s_%s.mat', experiment, num2str(setnum)));
 end

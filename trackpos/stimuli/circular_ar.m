@@ -548,7 +548,7 @@ methods
             %% perturbation experiment
             
             if any(setnum == [1,3,4,5,6])
-                params.stim_noiseStd    = 0.7;
+                params.stim_noiseStd    = 0.3;
                 params.stim_noiseTau    = 10/60;
             elseif any(setnum == [2])
                 params.stim_noiseStd    = 0;
@@ -556,7 +556,7 @@ methods
             end
             
             if any(setnum == [2,3,4,6])
-                params.point_noiseStd = 0.7;
+                params.point_noiseStd = 0.3;
                 params.point_noiseTau = 10/60;
             elseif any(setnum == [1,5])
                 params.point_noiseStd = 0;
@@ -570,9 +570,10 @@ methods
                 [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_randcol{:});
                 [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
             end
+            
         elseif strcmp(setname, 'ind')
             %% independence experiment
-            params.ecc_r        = 15;
+            params.ecc_r        = 10;
             
             params.stim_noiseStd    = 0.3;
             params.point_noiseStd   = 0.3;
@@ -580,7 +581,7 @@ methods
             params.stim_noiseTau     = 10/60;
             params.point_noiseTau    = 10/60;
             
-            stim_lowlum         = {'gaussian', 0.4, 1, 'k'}; % name, lum, size, color
+            stim_lowlum         = {'gaussian', 0.2, 1, 'k'}; % name, lum, size, color
             stim_highlum        = {'gaussian', 1, 1, 'k'}; % name, lum, size, color
             
             if setnum == 1
