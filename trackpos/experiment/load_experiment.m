@@ -235,7 +235,7 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
         trials_per_block    = 5;  % number of trials per block
         maxtrialtime        = 20; % seconds
     
-        if debugmode, ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
+        if debugmode, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
 
         if exp_num == 1 
             experiment_paramset = [1,2,3,4];
