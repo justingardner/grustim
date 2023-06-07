@@ -180,7 +180,7 @@ if mglIsFile(stimulus.exp.noise_mask)
 end
 
 % random colors
-exp.randColorsFile      = '/Users/jryu/proj/grustim/trackpos/util/labcolors.mat'; % '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; 
+exp.randColorsFile      = '/Users/gru/proj/grustim/trackpos/util/labcolors.mat'; %'/Users/jryu/proj/grustim/trackpos/util/labcolors.mat'; % 
 if mglIsFile(exp.randColorsFile)
     stimulus.randcolors = load(exp.randColorsFile);
 else

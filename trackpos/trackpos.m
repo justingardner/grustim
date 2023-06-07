@@ -49,8 +49,8 @@ if mglIsFile(exp.randColorsFile)
 end
 
 %% specify task design
-
-experiment      = 'ind';
+% ind1; ecc 3; pert 1; pa 1, 
+experiment      = 'pert';
 setnum          = 1; 
 shuffle_conds   = true;
 
