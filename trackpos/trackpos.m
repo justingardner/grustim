@@ -22,7 +22,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 0; % debug code
+exp.debug               = 1; % debug code
 exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
@@ -50,7 +50,7 @@ end
 
 %% specify task design
 
-experiment      = 'ind';
+experiment      = 'pa';
 setnum          = 1; 
 shuffle_conds   = true;
 

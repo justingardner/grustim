@@ -508,21 +508,21 @@ methods
             end
 
             if setnum <= 6
-                noisestd1 = 0.7;
+                noisestd1 = 0.3;
                 noisestd2 = 0;
                 tau1 = 10/60; % in tau
                 tau2 = 0;
 
             elseif setnum <=12
-                noisestd1 = 0.7;
-                noisestd2 = 0.7;
+                noisestd1 = 0.3;
+                noisestd2 = 0.3;
                 tau1 = 10/60; % in tau
                 tau2 = 10/60;
             end
 
             if setnum <= 3 || (setnum > 6 & setnum <=9)
-                % stimulus: high luminance
-                % pointer: low luminance,
+                % stimulus: blob
+                % pointer: random color dot
                 [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_randcol{:});
                 [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
 
@@ -531,9 +531,10 @@ methods
 
                 params.stim_noiseTau     = tau2;
                 params.point_noiseTau    = tau1;
+                
             elseif setnum <= 6 || (setnum > 9 &  setnum <=12)
-                % stimulus: low luminance, moving
-                % pointer: high luminance
+                % stimulus: blob
+                % pointer: random color dot
                 [params.stimType, params.stimLum, params.stimStd, params.stimColor]         = deal(stim_lowlum{:});
                 [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_randcol{:});
                 
