@@ -117,7 +117,8 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
         %% effect of eccentricity    	
         experiment          = {'ecc'};
 
-        if exp_num == 1  % double noise condition
+        if exp_num == 1  
+            %% double noise condition
             nblocks_learn       = 1;
             ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
             nblocks             = 3;  % number of same blocks for each condition
@@ -147,7 +148,8 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
                 end
             end
             
-        elseif exp_num == 2 % single noise condition
+        elseif exp_num == 2 
+            %% single noise condition
             nblocks_learn       = 1;
             ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
             nblocks             = 3;  % number of same blocks for each condition
@@ -175,10 +177,11 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
                         'experiment', experiment, 'experiment_paramset', epset);
                 end
             end
-        elseif exp_num == 3 % short version. single noise, pointer dot condition
+        elseif exp_num == 3 
+            %% short version. single noise, pointer dot condition
             nblocks_learn       = 1;
             ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
-            nblocks             = 3;  % number of same blocks for each condition
+            nblocks             = 1;  % number of same blocks for each condition
             trials_per_block    = 5;  % number of trials per block
             if debugmode, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
 
@@ -278,7 +281,7 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
         trials_per_block    = 5;  % number of trials per block
         maxtrialtime        = 20; % seconds
     
-        if debugmode, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
+        if debugmode, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=15; end
 
         if exp_num == 1 
             experiment_paramset = [1,2,3,4];

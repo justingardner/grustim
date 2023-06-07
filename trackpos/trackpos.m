@@ -50,7 +50,7 @@ end
 
 %% specify task design
 % ind1; ecc 3; pert 1; pa 1,
-experiment      = 'pert';
+experiment      = 'ind';
 setnum          = 1;
 shuffle_conds   = true;
 
