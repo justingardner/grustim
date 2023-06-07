@@ -17,7 +17,7 @@ function cps = load_experiment_linear(myscreen, experiment_name, exp_num, shuffl
     trials_per_block    = 5;  % number of trials per block
     maxtrialtime        = 20; % seconds
 
-    if debugmode, ntrial_learn= 2; trials_per_block = 1; maxtrialtime=2; end
+    if debugmode, nblocks_learn = 0;ntrial_learn= 0; trials_per_block = 1; nblocks_per_cond=1; maxtrialtime=2; end
 
     experiment          = {experiment_name};
 
@@ -114,13 +114,16 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
             end
         end
     elseif strcmp(experiment_name, 'ecc') 
-        %% effect of eccentricity
+        %% effect of eccentricity    	
         experiment          = {'ecc'};
-        ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
-        nblocks             = 3;  % number of same blocks for each condition
-        trials_per_block    = 5;  % number of trials per block
-    	
-        if exp_num == 1 
+
+        if exp_num == 1  % double noise condition
+            nblocks_learn       = 1;
+            ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
+            nblocks             = 3;  % number of same blocks for each condition
+            trials_per_block    = 5;  % number of trials per block
+            if debugmode, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
+
             experiment_paramset = [10, 7, 11, 8, 12, 9]; 
             
             if shuffle_set
@@ -130,9 +133,11 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
 
             for epset = experiment_paramset
                 % learning phase 
-                cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
-                    'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
-                    'experiment', experiment, 'experiment_paramset', epset);
+                for b =1:nblocks_learn
+                    cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+                        'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
+                        'experiment', experiment, 'experiment_paramset', epset);
+                end
 
                 % tracking
                 for b = 1:nblocks
@@ -142,7 +147,14 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
                 end
             end
             
-        elseif exp_num == 2
+        elseif exp_num == 2 % single noise condition
+            nblocks_learn       = 1;
+            ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
+            nblocks             = 3;  % number of same blocks for each condition
+            trials_per_block    = 5;  % number of trials per block
+            if debugmode, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
+
+
             experiment_paramset = [4,1,5,2,6,3]; %., 9, 8, 7, 12,11,10];
             
             if shuffle_set
@@ -163,6 +175,37 @@ function cps = load_experiment_circular_ar(myscreen, experiment_name, exp_num, s
                         'experiment', experiment, 'experiment_paramset', epset);
                 end
             end
+        elseif exp_num == 3 % short version. single noise, pointer dot condition
+            nblocks_learn       = 1;
+            ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
+            nblocks             = 3;  % number of same blocks for each condition
+            trials_per_block    = 5;  % number of trials per block
+            if debugmode, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=2; end
+
+            experiment_paramset = [4,5,6]; %., 9, 8, 7, 12,11,10];
+            
+            if shuffle_set
+                experiment_paramset = experiment_paramset(randperm(length(experiment_paramset)));
+            end
+            Nconds = length(experiment_paramset);
+
+            for epset = experiment_paramset
+                % learning phase 
+                for b =1:nblocks_learn
+                    cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+                        'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
+                        'experiment', experiment, 'experiment_paramset', epset);
+                end
+
+                % tracking
+                for b = 1:nblocks
+                    cps{end+1} = circular_ar(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
+                        'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
+                        'experiment', experiment, 'experiment_paramset', epset);
+                end
+            end
+
+
         end
     elseif strcmp(experiment_name, 'pert')         
         %% perturbation test
