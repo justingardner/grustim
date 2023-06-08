@@ -13,11 +13,11 @@ function cps = load_experiment_linear(myscreen, experiment_name, exp_num, shuffl
     cps = {};
     ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
     nblocks_learn       = 1;
-    nblocks_per_cond    = 3;  % number of same blocks for each condition
+    nblocks_per_cond    = 4;  % number of same blocks for each condition
     trials_per_block    = 5;  % number of trials per block
     maxtrialtime        = 20; % seconds
 
-    if debugmode, nblocks_learn = 0;ntrial_learn= 0; trials_per_block = 1; nblocks_per_cond=1; maxtrialtime=2; end
+    if debugmode, nblocks_learn = 0;ntrial_learn= 0; trials_per_block = 3; nblocks_per_cond=1; maxtrialtime=10; end
 
     experiment          = {experiment_name};
 
