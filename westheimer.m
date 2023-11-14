@@ -12,37 +12,44 @@
 %             and Increment Responses in Human Visual Cortex. Transl Vis Sci Technol 9:6.
 %
 %
-function westheimer(varargin)
+function stimulus = westheimer(varargin)
 
-getArgs(varargin,{'sawtoothProfile=increment'});
+getArgs(varargin,{'do=test','stimulus=[]','frameNum=0','sawtoothProfile=increment'});
+
+if strcmp(lower(do),'init')
+  stimulus = init('sawtoothProfile',sawtoothProfile);
+  return
+elseif strcmp(lower(do),'update')
+  update(frameNum,stimulus);
+  return
+end
 
 % initalize stimulus variable with settings
-global stimulus;
-stimulus.westheimer = init('sawtoothProfile',sawtoothProfile);
+stimulus = init('sawtoothProfile',sawtoothProfile);
 
 % open mgl screen
 initScreen;
-mglClearScreen(stimulus.westheimer.backgroundLuminance);mglFlush;
+mglClearScreen(stimulus.backgroundLuminance);mglFlush;
 
 % loop for numSecs, displaying westheime stimulus.
 numSecs = 5;
 probeLuminancePlot = [];
-for iFrame = 0:stimulus.westheimer.frameRate*numSecs
+for iFrame = 0:stimulus.frameRate*numSecs
   % clear screen to background luminance
-  mglClearScreen(stimulus.westheimer.backgroundLuminance);
+  mglClearScreen(stimulus.backgroundLuminance);
   % update stimulus
-  probeLuminance = update(iFrame,stimulus.westheimer);
+  probeLuminance = update(iFrame,stimulus);
   % flush
   mglFlush;
   % keep luminance to plot what we are doing
   probeLuminancePlot(end+1) = probeLuminance;
 end
-mglClearScreen(stimulus.westheimer.backgroundLuminance);mglFlush;
+mglClearScreen(stimulus.backgroundLuminance);mglFlush;
 
 mlrSmartfig('westheimerSawtooth','reuse');
 clf;
 plot(probeLuminancePlot);
-title(sprintf('Sawtooth freq %0.1f (Monitor frame rate: %i Hz)',stimulus.westheimer.sawtoothFrequency,stimulus.westheimer.frameRate))
+title(sprintf('Sawtooth freq %0.1f (Monitor frame rate: %i Hz)',stimulus.sawtoothFrequency,stimulus.frameRate))
 xlabel('Frame Number');
 ylabel('Luminance Value (normalized luminance)')
 
