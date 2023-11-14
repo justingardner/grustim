@@ -105,29 +105,38 @@ s.pedestalHexagonY = [];
 s.probeHexagonX = [];
 s.probeHexagonY = [];
 for yPos = -numRows:numRows
-    for xPos = -numCols:numCols
-        % Calculate the center of the hexagon
-        xCenter = xPos * s.elementWidth * s.elementGridSpacing;
-        yCenter = yPos * s.elementHeight * s.elementGridSpacing;
+  % offset odd rows
+  if isodd(yPos)
+    % offset
+    xOffset = (s.elementGridSpacing*s.elementWidth)/2;
+    % add an extra starting element
+    xStart = -numCols-1;
+  else
+    % offset
+    xOffset = 0;
+    % add an extra starting element
+    xStart = -numCols;
+  end
+
+  for xPos = xStart:numCols
+    % Calculate the center of the hexagon
+    xCenter = xPos * s.elementWidth * s.elementGridSpacing + xOffset;
+    yCenter = yPos * s.elementHeight * s.elementGridSpacing;
         
-        % offset every other row
-        if isodd(yPos)
-          xCenter = xCenter + (s.elementGridSpacing*s.elementWidth)/2;
-        end
 
-        % get pedestal hexagon
-        [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.elementRadius);
-        % split into two quads - this is just so that we can use the
-        % mglQuad function which allows sending multiple quads and works
-        % faster than mglPolygon
-        s.pedestalHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
-        s.pedestalHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
+    % get pedestal hexagon
+    [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.elementRadius);
+    % split into two quads - this is just so that we can use the
+    % mglQuad function which allows sending multiple quads and works
+    % faster than mglPolygon
+    s.pedestalHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
+    s.pedestalHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
 
-        % get probe hexagon
-        [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.probeRadius);
-        s.probeHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
-        s.probeHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];        
-    end
+    % get probe hexagon
+    [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.probeRadius);
+    s.probeHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
+    s.probeHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
+  end
 end
 s.nPedestals = size(s.pedestalHexagonX,2);
 
