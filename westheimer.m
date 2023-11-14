@@ -25,7 +25,7 @@ probeWeberContrast = 0.2;
 sawtoothFrequency = 3; 
 frameRate = 60;
 % radius of the base element in degrees (this will later get M-scaled)
-elementRadius = 0.8; 
+elementRadius = 0.3; 
 % ratio of size of pedestal to probe
 pedestalProbeSizeRatio = 5;
 % grid spacing of elements (as a ratio of the element size)
@@ -42,10 +42,12 @@ decrementProbeLuminance = pedestalLuminance - probeWeberContrast * pedestalLumin
 framesPerCycle = frameRate / sawtoothFrequency;
 
 % Loop through rows and columns to plot hexagons
-numRows = 2;
-numCols = 2;
-pedestalHexagon = zeros(numCols*2+1,numRows*2+1,2,7);
-probeHexagon = zeros(numCols*2+1,numRows*2+1,2,7);
+numRows = 6;
+numCols = 6;
+pedestalHexagonX = [];
+pedestalHexagonY = [];
+probeHexagonX = [];
+probeHexagonY = [];
 for yPos = -numRows:numRows
     for xPos = -numCols:numCols
         % Calculate the center of the hexagon
@@ -62,12 +64,20 @@ for yPos = -numRows:numRows
         yIndex = yPos + numRows + 1;
         
         % get pedestal hexagon
-        [pedestalHexagon(xIndex,yIndex,1,:),pedestalHexagon(xIndex,yIndex,2,:)] = getHexagon(xCenter, yCenter, elementRadius);
+        [xPolygon yPolygon] = getHexagon(xCenter, yCenter, elementRadius);
+        % split into two quads - this is just so that we can use the
+        % mglQuad function which allows sending multiple quads and works
+        % faster than mglPolygon
+        pedestalHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
+        pedestalHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
 
         % get probe hexagon
-        [probeHexagon(xIndex,yIndex,1,:),probeHexagon(xIndex,yIndex,2,:)] = getHexagon(xCenter, yCenter, probeRadius);
+        [xPolygon yPolygon] = getHexagon(xCenter, yCenter, probeRadius);
+        probeHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
+        probeHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];        
     end
 end
+nPedestals = size(pedestalHexagonX,2);
 
 mglOpen;
 mglVisualAngleCoordinates(57,[40 30]);
@@ -85,19 +95,12 @@ for iFrame = 0:frameRate*numSecs
   probeLuminance = (incrementProbeLuminance - pedestalLuminance)*sawtoothValue + pedestalLuminance;
   % decrements
   %probeLuminance = (decrementProbeLuminance - pedestalLuminance)*sawtoothValue + pedestalLuminance;
-  % cycle over all hexagons
-  for yPos = -numRows:numRows
-    for xPos = -numCols:numCols
-      % get index values
-      xIndex = xPos + numCols + 1;
-      yIndex = yPos + numRows + 1;
-      % draw pedestal hexagon
-      mglPolygon(pedestalHexagon(xIndex,yIndex,1,:),pedestalHexagon(xIndex,yIndex,2,:),pedestalLuminance);
-      % draw probe hexagon
-      mglPolygon(probeHexagon(xIndex,yIndex,1,:),probeHexagon(xIndex,yIndex,2,:),probeLuminance);
-    end
-  end
+   % display
+  mglQuad(pedestalHexagonX(:,:),pedestalHexagonY(:,:),repmat(pedestalLuminance,1,nPedestals),1);
+  mglQuad(probeHexagonX(:,:),probeHexagonY(:,:),repmat(probeLuminance,1,nPedestals),1);
+  % flush
   mglFlush;
+  % keep luminance to plot what we are doing
   probeLuminancePlot(end+1) = probeLuminance;
 end
 
