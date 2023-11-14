@@ -25,7 +25,7 @@ probeWeberContrast = 0.2;
 sawtoothFrequency = 3; 
 frameRate = 60;
 % radius of the base element in degrees (this will later get M-scaled)
-elementRadius = 0.5; 
+elementRadius = 0.8; 
 % ratio of size of pedestal to probe
 pedestalProbeSizeRatio = 5;
 % grid spacing of elements (as a ratio of the element size)
@@ -42,8 +42,8 @@ decrementProbeLuminance = pedestalLuminance - probeWeberContrast * pedestalLumin
 framesPerCycle = frameRate / sawtoothFrequency;
 
 % Loop through rows and columns to plot hexagons
-numRows = 3;
-numCols = 3;
+numRows = 2;
+numCols = 2;
 pedestalHexagon = zeros(numCols*2+1,numRows*2+1,2,7);
 probeHexagon = zeros(numCols*2+1,numRows*2+1,2,7);
 for yPos = -numRows:numRows
@@ -54,7 +54,7 @@ for yPos = -numRows:numRows
         
         % offset every other row
         if isodd(yPos)
-          xCenter = xCenter + elementWidth/2;
+          xCenter = xCenter + (elementGridSpacing*elementWidth)/2;
         end
 
         % get index values
