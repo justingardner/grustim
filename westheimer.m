@@ -32,7 +32,7 @@ initScreen;
 mglClearScreen(stimulus.backgroundLuminance);mglFlush;
 
 % loop for numSecs, displaying westheime stimulus.
-numSecs = 5;
+numSecs = 60;
 probeLuminancePlot = [];
 for iFrame = 0:stimulus.frameRate*numSecs
   % clear screen to background luminance
