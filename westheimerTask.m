@@ -21,6 +21,7 @@ if isempty(block)
     return
 end
 
+global stimulus
 stimulus.block = block;
 % initalize stimulus variable with settings
 if strcmp(block, 'on') || strcmp(block, 'onoff')
@@ -50,7 +51,7 @@ for phaseNum = 1:length(task{2})
 end
 
 % init the stimulus
-global stimulus;
+% global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
