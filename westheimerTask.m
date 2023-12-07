@@ -35,15 +35,18 @@ end
 
 myscreen = initScreen;
 
-% set the first task to be the fixation staircase task
+% set the first task to be the fixation staircase task 
+global fixStimulus
+fixStimulus.diskSize = 0.25;
+fixStimulus.fixWidth = 0.5;
 [task{1} myscreen] = fixStairInitTask(myscreen);
 
 % set our task to have two phases. 
 % one starts out with dots moving for incohrently for 10 seconds
 task{2}{1}.waitForBacktick = 1;
 task{2}{1}.seglen = [12 12];
-task{2}{1}.numBlocks = 1;
-task{2}{1}.numTrials = 10;
+task{2}{1}.numBlocks = 10;
+task{2}{1}.synchToVol = [0 1];
 
 % initialize our task
 for phaseNum = 1:length(task{2})
@@ -84,7 +87,8 @@ function [task myscreen] = startSegmentCallback(task, myscreen)
 global stimulus;
 
 if (task.thistrial.thisseg == 1)
-    if strmcmp(stimulus.block, 'on') || strmcmp(stimulus.block, 'onoff')
+  stimulus.f = 0;
+    if strcmp(stimulus.block, 'on') || strcmp(stimulus.block, 'onoff')
         stimulus.show = 'on';
     elseif strcmp(stimulus.block, 'off')
         stimulus.show = 'off';
@@ -96,7 +100,7 @@ else
         stimulus.show = 'static';
     end
     
-stimulus.f = 0;
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -112,8 +116,11 @@ elseif strcmp(stimulus.show, 'off')
     update(stimulus.f,stimulus.decrement,1);
     
 elseif strcmp(stimulus.show, 'static')
+  if strcmp(stimulus.block, 'on')
     update(stimulus.f,stimulus.increment,0);
-    
+  else
+    update(stimulus.f,stimulus.decrement,0);
+  end
 end
 
 stimulus.f = stimulus.f + 1;
@@ -128,7 +135,7 @@ function s = init(varargin)
 s = [];
 
 % get arguments
-getArgs(varargin,{'backgroundLuminance=0.25','pedestalLuminance=0.5','probeWeberContrast=0.2','sawtoothFrequency=3','elementRadius=0.3','pedestalProbeSizeRatio=5','frameRate=60','elementGridSpacing',2/sqrt(3),'sawtoothProfile=increment'});
+getArgs(varargin,{'backgroundLuminance=0.25','pedestalLuminance=0.5','probeWeberContrast=0.2','sawtoothFrequency=3','elementRadius=0.25','pedestalProbeSizeRatio=5','frameRate=60','elementGridSpacing',2/sqrt(3),'sawtoothProfile=increment'});
 
 % Luminance values (normalized monitor units)
 s.backgroundLuminance = backgroundLuminance;
@@ -171,8 +178,8 @@ s.decrementProbeLuminance = s.pedestalLuminance - s.probeWeberContrast * s.pedes
 s.framesPerCycle = s.frameRate / s.sawtoothFrequency;
 
 % Loop through rows and columns to plot hexagons
-numRows = 6;
-numCols = 6;
+numRows = 8;
+numCols = 8;
 s.pedestalHexagonX = [];
 s.pedestalHexagonY = [];
 s.probeHexagonX = [];
@@ -196,19 +203,20 @@ for yPos = -numRows:numRows
     xCenter = xPos * s.elementWidth * s.elementGridSpacing + xOffset;
     yCenter = yPos * s.elementHeight * s.elementGridSpacing;
         
+    if ~((xPos == 0) && (yPos == 0))
+      % get pedestal hexagon
+      [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.elementRadius);
+      % split into two quads - this is just so that we can use the
+      % mglQuad function which allows sending multiple quads and works
+      % faster than mglPolygon
+      s.pedestalHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
+      s.pedestalHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
 
-    % get pedestal hexagon
-    [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.elementRadius);
-    % split into two quads - this is just so that we can use the
-    % mglQuad function which allows sending multiple quads and works
-    % faster than mglPolygon
-    s.pedestalHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
-    s.pedestalHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
-
-    % get probe hexagon
-    [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.probeRadius);
-    s.probeHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
-    s.probeHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
+      % get probe hexagon
+      [xPolygon yPolygon] = getHexagon(xCenter, yCenter, s.probeRadius);
+      s.probeHexagonX(1:4,end+1:end+2) = [xPolygon(1:4)' xPolygon(4:7)'];
+      s.probeHexagonY(1:4,end+1:end+2) = [yPolygon(1:4)' yPolygon(4:7)'];
+    end
   end
 end
 s.nPedestals = size(s.pedestalHexagonX,2);
