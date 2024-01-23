@@ -599,6 +599,36 @@ methods
                 [params.pointType, params.pointLum, params.pointStd, params.pointColor]     = deal(stim_lowlum{:});
             end
             
+        elseif strcmp(setname, 'tau')
+            %% dynamics prior
+            params.ecc_r = 10;
+            
+            noisestd1 = 1;
+            noisestd2 = 0;
+            tau2 = 0;
+
+            if setnum == 1
+                tau1 = 5/60;
+            elseif setnum == 2
+                tau1 = 10/60;
+            elseif setnum == 3
+                tau1 = 20/60;
+            elseif setnum == 4
+                tau1 = 30/60; 
+            elseif setnum == 5
+                tau1 = 60/60; 
+            end
+
+            [params.stimType, params.stimLum, params.stimStd, params.stimColor]         ...
+                = deal(stim_lowlum{:});
+            [params.pointType, params.pointLum, params.pointStd, params.pointColor]     ...
+                = deal(stim_randcol{:});
+            params.stim_noiseStd    = noisestd1;
+            params.point_noiseStd   = noisestd2;
+
+            params.stim_noiseTau     = tau1;
+            params.point_noiseTau    = tau2;
+
         end
     end
     
