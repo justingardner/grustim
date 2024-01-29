@@ -439,6 +439,7 @@ methods
 
         stim_randcol        = {'dot', 1, 0.4, '*'}; % name, lum, size, color
         stim_lowlum         = {'gaussian', 0.4, 1, 'k'}; % name, lum, size, color
+        stim_reddot          = {'dot', 1, 0.3, 'r'};
         
         [params.stimType, params.stimLum, params.stimStd, params.stimColor]      ...
             = deal(stim_lowlum{:});
@@ -612,9 +613,9 @@ methods
             elseif setnum == 2
                 tau1 = 10/60;
             elseif setnum == 3
-                tau1 = 20/60;
+                tau1 = 30/60;
             elseif setnum == 4
-                tau1 = 30/60; 
+                tau1 = 45/60; 
             elseif setnum == 5
                 tau1 = 60/60; 
             end
@@ -622,7 +623,7 @@ methods
             [params.stimType, params.stimLum, params.stimStd, params.stimColor]         ...
                 = deal(stim_lowlum{:});
             [params.pointType, params.pointLum, params.pointStd, params.pointColor]     ...
-                = deal(stim_randcol{:});
+                = deal(stim_reddot{:});
             params.stim_noiseStd    = noisestd1;
             params.point_noiseStd   = noisestd2;
 
