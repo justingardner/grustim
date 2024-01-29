@@ -33,19 +33,31 @@ if strcmp(block, 'off') || strcmp(block, 'onoff')
     stimulus.backgroundLuminance = stimulus.decrement.backgroundLuminance;
 end
 
+%displayName = 'test_small_screen';
+%displayName = '';
+%myscreen = initScreen(displayName);
 myscreen = initScreen;
+% mglClearScreen(stimulus.backgroundLuminance);
 
 % set the first task to be the fixation staircase task 
 global fixStimulus
-fixStimulus.diskSize = 0.25;
-fixStimulus.fixWidth = 0.5;
+fixStimulus.diskSize = 0.0;
+fixStimulus.fixWidth = 1;
+fixStimulus.fixLineWidth = 5;
 [task{1} myscreen] = fixStairInitTask(myscreen);
+
+if strcmp(block, 'on') || strcmp(block, 'onoff')
+    update(0,stimulus.increment,1);
+elseif strcmp(block, 'off')
+    update(0,stimulus.decrement,1);
+end
+mglFlush;
 
 % set our task to have two phases. 
 % one starts out with dots moving for incohrently for 10 seconds
 task{2}{1}.waitForBacktick = 1;
-task{2}{1}.seglen = [12 12];
-task{2}{1}.numBlocks = 10;
+task{2}{1}.seglen = [12 11.5];
+task{2}{1}.numBlocks = 11;
 task{2}{1}.synchToVol = [0 1];
 
 % initialize our task
@@ -135,7 +147,7 @@ function s = init(varargin)
 s = [];
 
 % get arguments
-getArgs(varargin,{'backgroundLuminance=0.25','pedestalLuminance=0.5','probeWeberContrast=0.2','sawtoothFrequency=3','elementRadius=0.25','pedestalProbeSizeRatio=5','frameRate=60','elementGridSpacing',2/sqrt(3),'sawtoothProfile=increment'});
+getArgs(varargin,{'backgroundLuminance=0.0','pedestalLuminance=0.5','probeWeberContrast=0.4','sawtoothFrequency=3','elementRadius=0.25','pedestalProbeSizeRatio=5','frameRate=60','elementGridSpacing',2/sqrt(3),'sawtoothProfile=increment'});
 
 % Luminance values (normalized monitor units)
 s.backgroundLuminance = backgroundLuminance;
@@ -230,7 +242,7 @@ function probeLuminance = update(frameNum,s,dynamic)
 sawtoothValue = ((s.framesPerCycle - mod(frameNum,s.framesPerCycle))/s.framesPerCycle);
 
 if ~dynamic
-    probeLuminance = s.backgroundLuminance;
+    probeLuminance = s.pedestalLuminance;
     
 else % dynamic
 
