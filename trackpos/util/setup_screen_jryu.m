@@ -29,6 +29,7 @@ function myscreen = setup_screen_jryu()
         myscreen.calibType          = 'Specify particular calibration';
         myscreen.calibFilename      = '/Users/gru/proj/mgl/task/displays/0002_psy-g7mhty2hjd_240124.mat';
         myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0002_psy-g7mhty2hjd_240124.mat';
+        myscreen.framesPerSecond    = 60; 
         myscreen.saveData           = 1; % save stimfile to data directory
         myscreen.datadir            = '/Users/gru/data/';
     end
