@@ -192,10 +192,11 @@ methods
 
     % trial update?
     function [task, stimulus]  = initTrial(obj, task, myscreen, stimulus)
-        dt                          = 1/myscreen.framesPerSecond;
         phaseNum                    = task.thistrial.thisphase;
 
         T       = (obj.maxtrialtime + 1)*myscreen.framesPerSecond;
+
+        % todo: check and change effective frame rates here
         dt      = 1/myscreen.framesPerSecond;
         
         % load parameters from set
