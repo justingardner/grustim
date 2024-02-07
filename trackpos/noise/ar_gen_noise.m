@@ -78,23 +78,24 @@ function noiseStruct = generate_ar_sequence_cond(myscreen, trialN, T, ...
     pnoiseStd = point_noiseStd * sqrt(dt) * sqrt(prod(1-p_phi.^2));
     
     for tr = 1:trialN
-        [t_noise, t_wnoise]             = ar(T, tnoiseStd, t_phi, 'plotfigs', false);
-
         if rand_init_vel
             % add initial velocity. Initial velocity is a sample from 
             % the steady state distribution
             % since the process is stationary, with phi < 1, the stationary distribution of the subprocess remains the same
-            t_noise = t_noise + normrnd(0, stim_noiseStd  * sqrt(dt), 1, 1);
+            [t_noise, t_wnoise]             = ar(T, tnoiseStd, t_phi, 'init_std', stim_noiseStd  * sqrt(dt), 'plotfigs', false);
+        else
+            [t_noise, t_wnoise]             = ar(T, tnoiseStd, t_phi, 'plotfigs', false);
         end
+
 
         noiseStruct.stim_noiseW{tr}     = t_wnoise;
         noiseStruct.stim_noiseAR{tr}    = t_noise;
         noiseStruct.stim_noise{tr}      = t_noise + stim_vel;
 
-        [p_noise, p_wnoise]             = ar(T, pnoiseStd, p_phi, 'plotfigs', false);
-
         if rand_init_vel
-            p_noise = p_noise + normrnd(0, point_noiseStd* sqrt(dt), 1, 1);
+            [p_noise, p_wnoise]             = ar(T, pnoiseStd, p_phi, 'init_std', point_noiseStd* sqrt(dt), 'plotfigs', false);
+        else
+            [p_noise, p_wnoise]             = ar(T, pnoiseStd, p_phi, 'plotfigs', false);
         end
 
         noiseStruct.point_noiseW{tr}     = p_wnoise;

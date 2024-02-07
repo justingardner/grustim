@@ -410,6 +410,8 @@ methods
                     stimulus.pointer.position = atan2(y,x);
                     
                     control_u = nan;
+                elseif strcmp(stimulus.exp.controlMethod, 'mouse_circ')
+
                 end
             end
 
@@ -630,16 +632,16 @@ methods
             %% dynamics prior
             params.ecc_r = 10;
             
-            noisestd1 = 0.7;
+            noisestd1 = 3; % 0.7;
             noisestd2 = 0;
             tau2 = 0;
 
             if setnum == 1
-                tau1 = 3/60;
+                tau1 = 4/60;
             elseif setnum == 2
                 tau1 = 1.5;
             elseif setnum == 3
-                tau1 = 20;
+                tau1 = 6;
             elseif setnum == 4
                 tau1 = 20; 
             elseif setnum == 5

@@ -22,7 +22,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
@@ -65,12 +65,12 @@ trials_per_block    = 5;  % number of trials per block
 
 shuffle_set         = true;
 
-if exp.debug, nblocks_learn=0; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=20; end
+if exp.debug, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=20; end
 if exp.debug
     shuffle_set = false;
 end
 
-experiment_paramset = [1,2,3]; 
+experiment_paramset = [1, 2, 3]; 
 
 if shuffle_set
     experiment_paramset = experiment_paramset(randperm(length(experiment_paramset)));
@@ -212,22 +212,8 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
         trialNum = task{1}{newphaseNum}.trialnum;
     end
     
-    if newphaseNum ~= phaseNum        
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        % wait for user to press space
-        keystate = mglGetKeys;
-        while ~keystate(50)
-            keystate = mglGetKeys;
-        end
-        
-        % check eyetracker
+    if newphaseNum ~= phaseNum    
+            % check eyetracker
         if stimulus.exp.trackEye && stimulus.exp.trackEye_calibtrial
             [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
             if any(isnan(pos))
@@ -239,19 +225,41 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
             end
         end
         
-        % give control back to the subject
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        % wait for user to press space
-        keystate = mglGetKeys;
-        while ~keystate(50)
+        if mod(newphaseNum,length(task{1})/Nconds) == 1
+            done = newphaseNum/length(task{1})*100;
+
+            % give control back to the subject
+            mglClearScreen(0.5);
+            mglBltTexture(mglText(['You are ', num2str(done, '%.0f'), '% done. Please take a short break.']),[0 -0.5]);
+            mglBltTexture(mglText(['When you are ready, press space to go to next trial']),[0 -3]);
+            mglFlush;
+            
+            mglClearScreen(0.5);
+            mglBltTexture(mglText(['You are ', num2str(done, '%.0f'), '% done. Please take a short break.']),[0 -0.5]);
+            mglBltTexture(mglText(['When you are ready, press space to go to next trial']),[0 -3]);
+            mglFlush;
+            
+            % wait for user to press space
             keystate = mglGetKeys;
+            while ~keystate(50)
+                keystate = mglGetKeys;
+            end
+
+        else
+            % give control back to the subject
+            mglClearScreen(0.5);
+            mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+            mglFlush;
+            
+            mglClearScreen(0.5);
+            mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+            mglFlush;
+            
+            % wait for user to press space
+            keystate = mglGetKeys;
+            while ~keystate(50)
+                keystate = mglGetKeys;
+            end
         end
         
         fprintf("Space detected. Beginning trial\n");
@@ -346,6 +354,10 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         mglClearScreen(task.thistrial.backLum/255);
     else
         mglClearScreen(task.thistrial.backLum);
+    end
+
+    if stimulus.exp.debug
+        mglBltTexture(mglText(['tau = ' num2str(task.thistrial.stim_noiseTau, '%.2f')]),[15,15]);
     end
 
     % draw blue ring for the trajectory path
