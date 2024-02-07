@@ -33,6 +33,7 @@ properties
 
     dyn_noise_phase;    % phase number to pull dynamics from 
     switch_tpnoise;
+    rand_init_vel = false;
     
     % variable parameters
     varparams0  = {}; % parameters to move to randvars
@@ -84,6 +85,7 @@ methods
         p.addParameter('trialpause', false);
         
         p.addParameter('switch_tpnoise', false);
+        p.addParameter('rand_init_vel', true);
         p.addParameter('dyn_noise_phase', -1, @(x)(isnumeric(x))) ;
 
         p.addParameter('backLum', 0.7, @(x)(isnumeric(x)));
@@ -116,13 +118,18 @@ methods
                 eval(['obj.' param{1} ' = p.Results.' param{1} ';'])
             end
         else
-            obj.varparams0 = obj.varparams;
-            obj.varparams = {'experiment', 'experiment_paramset'};
+            obj.varparams0  = obj.varparams;
+            obj.varparams   = {'experiment', 'experiment_paramset'};
             for param = p.Parameters
                 % do not add variable parameters to the object
                 % this is now defined by experiment/experiment_paramset
                 if ~any(strcmp(param{1}, obj.varparams0)) 
                     eval(['obj.' param{1} ' = p.Results.' param{1} ';'])
+                end
+
+                paramset = obj.parameter_set(p.Results.experiment, p.Results.experiment_paramset);
+                for param = obj.varparams0
+                    eval(['obj.' param{1} '= paramset.' param{1} ';']);
                 end
             end
         end
@@ -273,9 +280,20 @@ methods
             
         else
             % generate angular noise for target
-            phi_t               = 1 - dt/task.thistrial.stim_noiseTau;
-            noiseStd            = task.thistrial.stim_noiseStd * sqrt(dt) / task.thistrial.ecc_r * sqrt(prod(1-phi_t.^2)); % angular noise
-            [noise, wnoise]     = ar(T, noiseStd, phi_t, 'plotfigs', false);
+            % todo: compare this with generate_ar_sequence_cond (need to normalize by eccentricity?)
+            phi_t                           = 1 - dt/task.thistrial.stim_noiseTau;
+            noiseStd                        = task.thistrial.stim_noiseStd * sqrt(dt) / task.thistrial.ecc_r * sqrt(prod(1-phi_t.^2)); % angular noise
+            [noise, wnoise]                 = ar(T, noiseStd, phi_t, 'plotfigs', false);
+            disp(obj.rand_init_vel)
+            if obj.rand_init_vel
+                % add initial velocity. Initial velocity is a sample from 
+                % the steady state distribution
+                std = task.thistrial.stim_noiseStd * sqrt(dt) / task.thistrial.ecc_r;
+                init_vel = normrnd(0, std, 1, 1);
+                disp(init_vel)
+                noise = noise + init_vel;
+            end
+
             task.thistrial.trackTNoiseAR    = task.thistrial.ecc_r * noise;
             task.thistrial.trackTNoiseW     = task.thistrial.ecc_r * wnoise;
 
@@ -285,8 +303,15 @@ methods
 
             % generate angular noise for pointer
             phi_p = 1 - dt/task.thistrial.point_noiseTau;
-            pnoiseStd            = task.thistrial.point_noiseStd * sqrt(dt) / task.thistrial.ecc_r * sqrt(prod(1-phi_p.^2)); % angular noise
+            pnoiseStd                       = task.thistrial.point_noiseStd * sqrt(dt) / task.thistrial.ecc_r * sqrt(prod(1-phi_p.^2)); % angular noise
             [noise, wnoise]                 = ar(T, pnoiseStd, phi_p, 'plotfigs', false);
+            if obj.rand_init_vel
+                % add initial velocity. Initial velocity is a sample from 
+                % the steady state distribution
+                std = task.thistrial.stim_noiseStd * sqrt(dt) / task.thistrial.ecc_r;
+                init_vel = normrnd(0, std, 1, 1);
+                noise = noise + init_vel;
+            end
             task.thistrial.trackPNoiseAR    = task.thistrial.ecc_r * noise;
             task.thistrial.trackPNoiseW     = task.thistrial.ecc_r * wnoise;
 
@@ -605,20 +630,20 @@ methods
             %% dynamics prior
             params.ecc_r = 10;
             
-            noisestd1 = 1;
+            noisestd1 = 0.7;
             noisestd2 = 0;
             tau2 = 0;
 
             if setnum == 1
-                tau1 = 5/60;
+                tau1 = 3/60;
             elseif setnum == 2
-                tau1 = 10/60;
+                tau1 = 1.5;
             elseif setnum == 3
-                tau1 = 30/60;
+                tau1 = 20;
             elseif setnum == 4
-                tau1 = 45/60; 
+                tau1 = 20; 
             elseif setnum == 5
-                tau1 = 60/60; 
+                tau1 = 30; 
             end
 
             [params.stimType, params.stimLum, params.stimStd, params.stimColor]         ...
@@ -630,6 +655,8 @@ methods
 
             params.stim_noiseTau     = tau1;
             params.point_noiseTau    = tau2;
+
+            params.rand_init_vel    = true;
 
         end
     end

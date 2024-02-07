@@ -22,7 +22,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 0; % debug code
+exp.debug               = 1; % debug code
 exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
@@ -46,7 +46,7 @@ stimulus.exp = exp;
 
 if mglIsFile(exp.randColorsFile)
     stimulus.randcolors = load(exp.randColorsFile);
-end
+end 
 
 stimulus.fixcolor = [1;0;0];
 
@@ -56,11 +56,11 @@ cps = {};
 maxtrialtime        = 20; % seconds
 
 experiment          = 'tau';
-versionnum          = 2;
+versionnum          = 7;
 
 nblocks_learn       = 1;
 ntrial_learn        = 5;  % learning phase at full luminance, not analyzed
-nblocks             = 3;  % number of same blocks for each condition
+nblocks             = 6;  % number of same blocks for each condition
 trials_per_block    = 5;  % number of trials per block
 
 shuffle_set         = true;
@@ -70,7 +70,7 @@ if exp.debug
     shuffle_set = false;
 end
 
-experiment_paramset = [1,2,3,4,5]; 
+experiment_paramset = [1,2,3]; 
 
 if shuffle_set
     experiment_paramset = experiment_paramset(randperm(length(experiment_paramset)));
@@ -82,6 +82,7 @@ for epset = experiment_paramset
     for b =1:nblocks_learn
         cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
             'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
+            'random_init_vel', true, ...
             'experiment', {experiment}, 'experiment_paramset', epset);
     end
 
@@ -89,6 +90,7 @@ for epset = experiment_paramset
     for b = 1:nblocks
         cps{end+1} = circular_ar(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
             'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
+            'random_init_vel', true, ...
             'experiment', {experiment}, 'experiment_paramset', epset);
     end
 end

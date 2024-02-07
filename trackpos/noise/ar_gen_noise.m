@@ -24,16 +24,21 @@ function noiseStruct = generate_noise_struct(myscreen, taskcfg)
         trialN      = thistask.numTrials;
         paramset    = thistask.parameter_set(thistask.experiment, thistask.experiment_paramset);
 
+        if ~isfield(paramset, 'rand_init_vel')
+            paramset.rand_init_vel = false;
+        end
+
         noiseStruct(n) = generate_ar_sequence_cond(myscreen, trialN, T, ...
             paramset.stim_noiseStd, paramset.stim_noiseTau, paramset.stim_vel, ...
-            paramset.point_noiseStd, paramset.point_noiseTau, paramset.point_vel);
+            paramset.point_noiseStd, paramset.point_noiseTau, paramset.point_vel,...
+            paramset.rand_init_vel);
     end
 end
 
 
 function noiseStruct = generate_ar_sequence_cond(myscreen, trialN, T, ...
     stim_noiseStd, stim_noiseTau, stim_vel, ...
-    point_noiseStd, point_noiseTau, point_vel)
+    point_noiseStd, point_noiseTau, point_vel, rand_init_vel)
 
     % std:      in linear velocity in deg
     % noiseTau: time constant with respect to dt
@@ -67,17 +72,31 @@ function noiseStruct = generate_ar_sequence_cond(myscreen, trialN, T, ...
     
     t_phi = 1 - dt/stim_noiseTau; 
     tnoiseStd = stim_noiseStd  * sqrt(dt) * sqrt(prod(1-t_phi.^2));
+
     
     p_phi = 1 - dt/point_noiseTau; 
     pnoiseStd = point_noiseStd * sqrt(dt) * sqrt(prod(1-p_phi.^2));
     
     for tr = 1:trialN
         [t_noise, t_wnoise]             = ar(T, tnoiseStd, t_phi, 'plotfigs', false);
+
+        if rand_init_vel
+            % add initial velocity. Initial velocity is a sample from 
+            % the steady state distribution
+            % since the process is stationary, with phi < 1, the stationary distribution of the subprocess remains the same
+            t_noise = t_noise + normrnd(0, stim_noiseStd  * sqrt(dt), 1, 1);
+        end
+
         noiseStruct.stim_noiseW{tr}     = t_wnoise;
         noiseStruct.stim_noiseAR{tr}    = t_noise;
         noiseStruct.stim_noise{tr}      = t_noise + stim_vel;
 
         [p_noise, p_wnoise]             = ar(T, pnoiseStd, p_phi, 'plotfigs', false);
+
+        if rand_init_vel
+            p_noise = p_noise + normrnd(0, point_noiseStd* sqrt(dt), 1, 1);
+        end
+
         noiseStruct.point_noiseW{tr}     = p_wnoise;
         noiseStruct.point_noiseAR{tr}    = p_noise;
         noiseStruct.point_noise{tr}      = p_noise + point_vel;

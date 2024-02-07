@@ -22,7 +22,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 1; % debug code
+exp.debug               = 0; % debug code
 exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
@@ -48,6 +48,8 @@ if mglIsFile(exp.randColorsFile)
     stimulus.randcolors = load(exp.randColorsFile);
 end
 
+stimulus.fixcolor = [1;0;0];
+
 %% specify task design
 
 cps = {};
@@ -58,7 +60,7 @@ versionnum          = 3;
 
 nblocks_learn       = 1;
 ntrial_learn        = 4;  % learning phase at full luminance, not analyzed
-nblocks             = 10;  % number of same blocks for each condition
+nblocks             = 12;  % number of same blocks for each condition
 trials_per_block    = 5;  % number of trials per block
 
 % shuffle_set         = true;
@@ -454,8 +456,10 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
         % display fixation
         if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
-            mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.3],[0;2*pi], 1);
-            if isfield(stimulus,'randcolors')
+            mglMetalArcs([0;0;0], [1; 0; 0; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.2],[0;2*pi], 1);
+            if isfield(stimulus, 'fixcolor') && ~(isstring(stimulus.fixcolor) && stimulus.fixcolor == "*")
+                fixcolors = stimulus.fixcolor;
+            elseif isfield(stimulus,'randcolors')
                 fixcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
             else
                 fixcolors = [0.5+0.5*rand(3,1)];    
@@ -527,3 +531,43 @@ end
 stimulus.dyn_noise = dyn_noise;
     
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
