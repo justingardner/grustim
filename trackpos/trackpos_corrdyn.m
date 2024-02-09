@@ -17,7 +17,7 @@ function myscreen = trackpos_corrdyn(varargin)
 myscreen = setup_screen_jryu(); 
 myscreen = initScreen(myscreen);
 mglMetalSetViewColorPixelFormat(4);     % set to argb2101010 pixel format
-rng(0, 'twister'); % set seed
+% rng(0, 'twister'); % set seed
 
 %% experiment parameters
 % Experimenter parameters
@@ -319,6 +319,8 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     
     % task initTrial
     [task, stimulus] = stimulus.task{phaseNum}.initTrial(task, myscreen, stimulus);
+
+    disp(['tau = ' num2str(task.thistrial.stim_noiseTau, '%.2f')])
 end
 
 
@@ -356,9 +358,11 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         mglClearScreen(task.thistrial.backLum);
     end
 
-    if stimulus.exp.debug
-        mglBltTexture(mglText(['tau = ' num2str(task.thistrial.stim_noiseTau, '%.2f')]),[15,15]);
-    end
+    
+    % if stimulus.exp.debug
+        % latency issue with mglBltTexture here. 
+        % mglBltTexture(mglText(['tau = ' num2str(task.thistrial.stim_noiseTau, '%.2f')]),[15,15]);
+    % end
 
     % draw blue ring for the trajectory path
     if stimulus.exp.showRing
