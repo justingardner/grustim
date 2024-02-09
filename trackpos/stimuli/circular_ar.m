@@ -632,7 +632,7 @@ methods
             %% dynamics prior
             params.ecc_r = 10;
             
-            noisestd1 = 3; % 0.7;
+            noisestd1 = 1; % 0.7;
             noisestd2 = 0;
             tau2 = 0;
 

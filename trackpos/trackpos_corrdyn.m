@@ -17,7 +17,7 @@ function myscreen = trackpos_corrdyn(varargin)
 myscreen = setup_screen_jryu(); 
 myscreen = initScreen(myscreen);
 mglMetalSetViewColorPixelFormat(4);     % set to argb2101010 pixel format
-rng(0, 'twister'); % set seed
+% rng(0, 'twister'); % set seed
 
 %% experiment parameters
 % Experimenter parameters
@@ -360,6 +360,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     else
         mglClearScreen(task.thistrial.backLum);
     end
+
 
     if stimulus.exp.debug
         mglBltTexture(stimulus.tasktautext,[15,15]);
