@@ -22,7 +22,7 @@ rng(0, 'twister'); % set seed
 %% experiment parameters
 % Experimenter parameters
 
-exp.debug               = 0; % debug code
+exp.debug               = 1; % debug code
 exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
@@ -319,6 +319,11 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     
     % task initTrial
     [task, stimulus] = stimulus.task{phaseNum}.initTrial(task, myscreen, stimulus);
+
+    % tau text
+    if stimulus.exp.debug
+        stimulus.tasktautext = mglText(['tau = ' num2str(task.thistrial.stim_noiseTau, '%.2f')]);
+    end
 end
 
 
@@ -357,7 +362,7 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     end
 
     if stimulus.exp.debug
-        mglBltTexture(mglText(['tau = ' num2str(task.thistrial.stim_noiseTau, '%.2f')]),[15,15]);
+        mglBltTexture(stimulus.tasktautext,[15,15]);
     end
 
     % draw blue ring for the trajectory path
