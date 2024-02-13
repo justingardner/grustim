@@ -125,7 +125,7 @@ if task.thistrial.thisseg == 2 % change
     fixStimulus.thisArmColor(1) = fixStimulus.threshold;
     
     % write out what the strength is
-  myscreen = writeTrace(fixStimulus.thisArmColor,task.fixStairTrace,myscreen);
+  % myscreen = writeTrace(fixStimulus.thisArmColor(1),task.fixStairTrace,myscreen);
   % training mode text
   if fixStimulus.trainingMode
       fixStimulus.displayText = mglText('Change');
@@ -143,7 +143,7 @@ else
     % training mode, clear sceen here
   if fixStimulus.trainingMode,mglClearScreen;end
   fixStimulus.thisColor = fixStimulus.interColor;
-  myscreen = writeTrace(0,task.fixStairTrace,myscreen);
+  % myscreen = writeTrace(0,task.fixStairTrace,myscreen);
 end
 
 % % choose what color the fixation cross will be
@@ -202,15 +202,15 @@ mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisC
 
 if task.thistrial.thisseg == 2
     if task.thistrial.sigLocation == 1
-        % mglLines2(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
-        %     fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
-        mglMetalLines(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
+        mglLines2(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
             fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
+        % mglMetalLines(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
+        %     fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
     elseif task.thistrial.sigLocation == 2
-        % mglLines2(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
-        %     fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
-        mglMetalLines(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
+        mglLines2(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
             fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
+        % mglMetalLines(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
+        %     fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
     end
     
 end
@@ -236,7 +236,7 @@ if response
   % set to correct fixation color
   fixStimulus.thisColor = fixStimulus.correctColor;
   % set trace to 2 to indicate correct response
-  myscreen = writeTrace(2,task.fixStairTrace,myscreen);
+  % myscreen = writeTrace(2,task.fixStairTrace,myscreen);
   % and update correct count
   task.correct = task.correct+1;
 else
@@ -248,7 +248,7 @@ else
   % set to incorrect fixation color
   fixStimulus.thisColor = fixStimulus.incorrectColor;
   % set trace to -2 to indicate incorrect response
-  myscreen = writeTrace(-2,task.fixStairTrace,myscreen);
+  % myscreen = writeTrace(-2,task.fixStairTrace,myscreen);
   % and update incorrect count
   task.incorrect = task.incorrect+1;
 end
