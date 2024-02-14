@@ -43,27 +43,36 @@ myscreen = initScreen;
 global fixStimulus
 fixStimulus.diskSize = 0.0;
 fixStimulus.fixWidth = 1;
-fixStimulus.fixLineWidth = 5;
-[task{1} myscreen] = fixStairInitTask(myscreen);
+fixStimulus.fixLineWidth = 0.3;
+fixStimulus.threshold = 1;
+[task{1} myscreen] = fixStairInitTaskLR(myscreen);
 
-if strcmp(block, 'on') || strcmp(block, 'onoff')
-    update(0,stimulus.increment,1);
-elseif strcmp(block, 'off')
-    update(0,stimulus.decrement,1);
-end
-mglFlush;
+% if strcmp(block, 'on') || strcmp(block, 'onoff')
+%     update(0,stimulus.increment,1);
+% elseif strcmp(block, 'off')
+%     update(0,stimulus.decrement,1);
+% end
+% mglFlush;
 
 % set our task to have two phases. 
 % one starts out with dots moving for incohrently for 10 seconds
-task{2}{1}.waitForBacktick = 1;
-task{2}{1}.seglen = [12 11.5];
-task{2}{1}.numBlocks = 11;
-task{2}{1}.synchToVol = [0 1];
+task{2}{2}.waitForBacktick = 0;
+task{2}{2}.seglen = [12 11.5];
+task{2}{2}.numBlocks = 11;
+task{2}{2}.synchToVol = [0 1];
+
+task{2}{1}.waitForBacktick = 0;
+task{2}{1}.seglen = 0.5;
+task{2}{1}.numBlocks = 1;
+task{2}{1}.numTrials = 1;
+task{2}{1}.synchToVol = 1;
 
 % initialize our task
-for phaseNum = 1:length(task{2})
-  [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback);
-end
+% for phaseNum = 1:length(task{2})
+%   [task{2}{phaseNum} myscreen] = initTask(task{2}{phaseNum},myscreen,@startSegmentCallback,@updateScreenCallback);
+% end
+[task{2}{2}, myscreen] = initTask(task{2}{2},myscreen,@startSegmentCallback,@updateScreenCallback);
+[task{2}{1}, myscreen] = initTask(task{2}{1},myscreen,@startSegmentCallback,@updateScreenCallbackPre);
 
 % init the stimulus
 % global stimulus;
@@ -137,6 +146,28 @@ end
 
 stimulus.f = stimulus.f + 1;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% function that gets called to draw the stimulus each frame
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function [task myscreen] = updateScreenCallbackPre(task, myscreen)
+
+global stimulus
+mglClearScreen(stimulus.backgroundLuminance);
+if strcmp(stimulus.show, 'on')
+    update(stimulus.f,stimulus.increment,1);
+elseif strcmp(stimulus.show, 'off')
+    update(stimulus.f,stimulus.decrement,1);
+    
+elseif strcmp(stimulus.show, 'static')
+  if strcmp(stimulus.block, 'on')
+    update(stimulus.f,stimulus.increment,0);
+  else
+    update(stimulus.f,stimulus.decrement,0);
+  end
+end
+
+% stimulus.f = stimulus.f + 1;
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % init westheimer stimulus
@@ -146,12 +177,18 @@ function s = init(varargin)
 % init settings variable
 s = [];
 
+s.dispContrastMin = 0.1;
+s.dispContrastMax = 1;
+
 % get arguments
 getArgs(varargin,{'backgroundLuminance=0.0','pedestalLuminance=0.5','probeWeberContrast=0.4','sawtoothFrequency=3','elementRadius=0.25','pedestalProbeSizeRatio=5','frameRate=60','elementGridSpacing',2/sqrt(3),'sawtoothProfile=increment'});
 
 % Luminance values (normalized monitor units)
-s.backgroundLuminance = backgroundLuminance;
-s.pedestalLuminance = pedestalLuminance;
+s.backgroundLuminanceOrig = backgroundLuminance;
+s.pedestalLuminanceOrig = pedestalLuminance;
+% Converted Luminance values (using limited contrast range)
+s.backgroundLuminance = (s.dispContrastMax - s.dispContrastMin) * s.backgroundLuminanceOrig + s.dispContrastMin;
+s.pedestalLuminance = (s.dispContrastMax - s.dispContrastMin) * s.pedestalLuminanceOrig + s.dispContrastMin;
 % modulation depth of sawtooth, as Weber contrast 
 s.probeWeberContrast = probeWeberContrast;
 % frequency for sawtooth modulation in hertex
@@ -166,7 +203,8 @@ s.elementGridSpacing = elementGridSpacing;
 
 % display
 dispHeader('westheimer stimulus settings')
-disp(sprintf('(westheimer:init) backgroundLuminance=%0.2f pedestalLuminance=%0.2f',s.backgroundLuminance,s.pedestalLuminance));
+disp(sprintf('(westheimer:init) backgroundLuminance=%0.2f pedestalLuminance=%0.2f',s.backgroundLuminanceOrig,s.pedestalLuminanceOrig));
+disp(sprintf('(westheimer:init) backgroundLuminanceCorrected=%0.2f pedestalLuminanceCorrected=%0.2f',s.backgroundLuminance, s.pedestalLuminance));
 disp(sprintf('(westheimer:init) probeWeberContrast=%0.2f',s.probeWeberContrast));
 disp(sprintf('(westheimer:init) sawtoothFrequency=%0.2f Hz (frameRate=%i Hz)',s.sawtoothFrequency,s.frameRate));
 disp(sprintf('(westheimer:init) elementRadius=%0.2f pedestalProbeSizeRatio=%0.2f elementGridSpacing=%f',s.elementRadius,s.pedestalProbeSizeRatio,s.elementGridSpacing));
@@ -184,8 +222,11 @@ s.probeRadius = s.elementRadius / s.pedestalProbeSizeRatio;
 s.elementWidth = sqrt(3)*s.elementRadius;
 s.elementHeight = 3*s.elementRadius/2;
 % derived luminances
-s.incrementProbeLuminance = s.pedestalLuminance + s.probeWeberContrast * s.pedestalLuminance;
-s.decrementProbeLuminance = s.pedestalLuminance - s.probeWeberContrast * s.pedestalLuminance;
+s.incrementProbeLuminanceOrig = s.pedestalLuminanceOrig + s.probeWeberContrast * s.pedestalLuminanceOrig;
+s.decrementProbeLuminanceOrig = s.pedestalLuminanceOrig - s.probeWeberContrast * s.pedestalLuminanceOrig;
+% converted luminances
+s.incrementProbeLuminance = (s.dispContrastMax - s.dispContrastMin) * s.incrementProbeLuminanceOrig + s.dispContrastMin;
+s.decrementProbeLuminance = (s.dispContrastMax - s.dispContrastMin) * s.decrementProbeLuminanceOrig + s.dispContrastMin;
 % derived times
 s.framesPerCycle = s.frameRate / s.sawtoothFrequency;
 
@@ -248,10 +289,15 @@ else % dynamic
 
     if s.increment
         % increments
-        probeLuminance = (s.incrementProbeLuminance - s.pedestalLuminance)*sawtoothValue + s.pedestalLuminance;
+%         probeLuminance = (s.incrementProbeLuminance - s.pedestalLuminance)*sawtoothValue + s.pedestalLuminance;
+        probeLuminanceOrig = (s.incrementProbeLuminanceOrig - s.pedestalLuminanceOrig)*sawtoothValue + s.pedestalLuminanceOrig;
+        probeLuminance = (s.dispContrastMax - s.dispContrastMin) * probeLuminanceOrig + s.dispContrastMin;
+
     else
             % decrements
-        probeLuminance = (s.decrementProbeLuminance - s.pedestalLuminance)*sawtoothValue + s.pedestalLuminance;
+%         probeLuminance = (s.decrementProbeLuminance - s.pedestalLuminance)*sawtoothValue + s.pedestalLuminance;
+        probeLuminanceOrig = (s.decrementProbeLuminanceOrig - s.pedestalLuminanceOrig)*sawtoothValue + s.pedestalLuminanceOrig;
+        probeLuminance = (s.dispContrastMax - s.dispContrastMin) * probeLuminanceOrig + s.dispContrastMin;
     end
 end
 % display the pedestals

@@ -52,7 +52,7 @@ if ~isfield(fixStimulus,'interTime') fixStimulus.interTime = 0.8; end
 if ~isfield(fixStimulus,'diskSize') fixStimulus.diskSize = 1; end
 if ~isfield(fixStimulus,'pos') fixStimulus.pos = [0 0]; end
 if ~isfield(fixStimulus,'fixWidth') fixStimulus.fixWidth = 1; end
-if ~isfield(fixStimulus,'fixLineWidth') fixStimulus.fixLineWidth = 3; end
+if ~isfield(fixStimulus,'fixLineWidth') fixStimulus.fixLineWidth = 0.3; end
 if ~isfield(fixStimulus,'trainingMode') fixStimulus.trainingMode = 0;end
 if ~isfield(fixStimulus,'verbose') fixStimulus.verbose = 1;end
 
@@ -198,19 +198,19 @@ end
 mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
 % mglMetalDots([fixStimulus.pos(1),fixStimulus.pos(2),0],[myscreen.background, 1],fixStimulus.diskSize*[1 1]);
 
-mglFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor,fixStimulus.pos);
+drawFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor',fixStimulus.pos);
 
 if task.thistrial.thisseg == 2
     if task.thistrial.sigLocation == 1
-        mglLines2(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
-            fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
-        % mglMetalLines(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
+        % mglLines2(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
         %     fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
+        mglMetalLines(fixStimulus.leftArmStartX, fixStimulus.leftArmStartY, fixStimulus.leftArmEndX, fixStimulus.leftArmEndY, ...
+            fixStimulus.fixLineWidth, fixStimulus.thisArmColor');
     elseif task.thistrial.sigLocation == 2
-        mglLines2(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
-            fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
-        % mglMetalLines(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
+        % mglLines2(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
         %     fixStimulus.fixLineWidth, fixStimulus.thisArmColor);
+        mglMetalLines(fixStimulus.rightArmStartX, fixStimulus.rightArmStartY, fixStimulus.rightArmEndX, fixStimulus.rightArmEndY, ...
+            fixStimulus.fixLineWidth, fixStimulus.thisArmColor');
     end
     
 end
@@ -256,3 +256,17 @@ end
 % update staircase
 fixStimulus.staircase = upDownStaircase(fixStimulus.staircase,response);
 fixStimulus.threshold = fixStimulus.staircase.threshold;
+
+function drawFixationCross(width, linewidth, color, origin)
+% horizontal line
+x0=origin(1)-width/2;
+x1=origin(1)+width/2;
+y0=origin(2);
+y1=y0;
+mglMetalLines(x0,y0,x1,y1, linewidth, color);
+% vertical line
+x0=origin(1);
+x1=x0;
+y0=origin(2)-width/2;
+y1=origin(2)+width/2;
+mglMetalLines(x0,y0,x1,y1, linewidth, color);
