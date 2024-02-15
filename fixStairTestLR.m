@@ -27,7 +27,7 @@ if difficulty == 0
   % default values
   fixStimulus.diskSize = 0.5;
   fixStimulus.fixWidth = 0.95;
-  fixStimulus.fixLineWidth = 3;
+  fixStimulus.fixLineWidth = 0.3;
   fixStimulus.stimTime = 0.4;
   fixStimulus.responseTime = 1;
   fixStimulus.trainingMode = 0;
@@ -35,7 +35,7 @@ elseif difficulty == 1
   % make cross bigger and task slower
   fixStimulus.diskSize = 1;
   fixStimulus.fixWidth = 2;
-  fixStimulus.fixLineWidth = 8;
+  fixStimulus.fixLineWidth = 0.5;
   fixStimulus.stimTime = 0.8;
   fixStimulus.responseTime = 2;
   fixStimulus.trainingMode = 1;
@@ -43,7 +43,7 @@ elseif difficulty == 2
   % make cross realy really big and task very very slow
   fixStimulus.diskSize = 5;
   fixStimulus.fixWidth = 10;
-  fixStimulus.fixLineWidth = 8;
+  fixStimulus.fixLineWidth = 1;
   fixStimulus.stimTime = 2;
   fixStimulus.interTime = 1;
   fixStimulus.responseTime = 5;

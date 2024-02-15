@@ -35,7 +35,7 @@ end
 % not already set
 global fixStimulus;
 myscreen = initStimulus('fixStimulus',myscreen);
-if ~isfield(fixStimulus,'threshold') fixStimulus.threshold = 0.5; end
+if ~isfield(fixStimulus,'threshold') fixStimulus.threshold = 1; end
 if ~isfield(fixStimulus,'pedestal') fixStimulus.pedestal = 0.4; end
 if ~isfield(fixStimulus,'stairUp') fixStimulus.stairUp = 1; end
 if ~isfield(fixStimulus,'stairDown') fixStimulus.stairDown = 2; end
