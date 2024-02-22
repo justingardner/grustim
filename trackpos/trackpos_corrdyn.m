@@ -16,14 +16,15 @@ function myscreen = trackpos_corrdyn(varargin)
 
 myscreen = setup_screen_jryu(); 
 myscreen = initScreen(myscreen);
+mglTextSet('Helvetica',32,[1 1 1],0,0,0);
 mglMetalSetViewColorPixelFormat(4);     % set to argb2101010 pixel format
 % rng(0, 'twister'); % set seed
 
 %% experiment parameters
 % Experimenter parameters
-
-exp.debug               = 1; % debug code
-exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
+        
+exp.debug               = 0; % debug code
+exp.trackEye            = 1; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
 
@@ -65,7 +66,7 @@ trials_per_block    = 5;  % number of trials per block
 
 shuffle_set         = true;
 
-if exp.debug, nblocks_learn=1; ntrial_learn= 1; nblocks=1; trials_per_block = 1; maxtrialtime=20; end
+if exp.debug, nblocks_learn=1; ntrial_learn= 5; nblocks=1; trials_per_block = 1; maxtrialtime=20; end
 if exp.debug
     shuffle_set = false;
 end
@@ -226,7 +227,7 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
         end
         
         if mod(newphaseNum,length(task{1})/Nconds) == 1
-            done = newphaseNum/length(task{1})*100;
+            done = (newphaseNum-1)/length(task{1})*100;
 
             % give control back to the subject
             mglClearScreen(0.5);
@@ -477,6 +478,8 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         % display fixation
         if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
             mglMetalArcs([0;0;0], [1; 0; 0; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.2],[0;2*pi], 1);
+            % mgl bug with alpha composition and ring size (resolution of the r seems pretty small?)
+            % mglMetalArcs([0;0;0], [1; 0; 0], [1+0.1;1+0.2],[0;2*pi], 1);
             if isfield(stimulus, 'fixcolor') && ~(isstring(stimulus.fixcolor) && stimulus.fixcolor == "*")
                 fixcolors = stimulus.fixcolor;
             elseif isfield(stimulus,'randcolors')
