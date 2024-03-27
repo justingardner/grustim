@@ -11,18 +11,18 @@
 
 % task.thistrial.trackStim and trackResp is in dva: r * polar_angle 
 
-function myscreen = trackpos(varargin)
+function myscreen = trackpos_corrdyn(varargin)
 %getArgs(varargin,{'subjectID=s999','centerX=10','centerY=0','diameter=16'}); getArgs(varargin,{'subjectID=-1'});
 
 myscreen = setup_screen_jryu(); 
 myscreen = initScreen(myscreen);
+mglTextSet('Helvetica',32,[1 1 1],0,0,0);
 mglMetalSetViewColorPixelFormat(4);     % set to argb2101010 pixel format
-rng(0, 'twister'); % set seed
+% rng(0, 'twister'); % set seed
 
 %% experiment parameters
 % Experimenter parameters
-
-exp.debug               = 0; % debug code
+exp.debug               = 2; % 1: debug code; 2: practice
 exp.trackEye            = 0; % 0 if no eyetracking; 1 if there is eye tracking `
 exp.trackEye_calibtrial = 1;
 exp.showMouse           = 0; % show mouse during everything
@@ -46,30 +46,62 @@ stimulus.exp = exp;
 
 if mglIsFile(exp.randColorsFile)
     stimulus.randcolors = load(exp.randColorsFile);
-end
+end 
+
+stimulus.fixcolor = [1;0;0];
 
 %% specify task design
-% ind1; ecc 3; pert 1; pa 1,
-experiment      = 'ecc';
-setnum          = 3;
-shuffle_conds   = false;
 
-if any(strcmp(experiment, {'ecc','mn', 'pert', 'ind'}))
-% screen, stimulus, experiment, setnum, kwargs
-    cps = load_experiment(myscreen, 'circular_ar', experiment, setnum, 'debugmode', exp.debug, 'shuffle_set', shuffle_conds);
-    dynnoisefile = fullfile(find_root_dir, 'proj/grustim/trackpos/noise', ...
-        sprintf('circular_ar_%s_%s.mat',experiment, num2str(setnum)));
-elseif any(strcmp(experiment, {'pa'}))
-    % linear
-    cps = load_experiment(myscreen, 'linear_ar', experiment, setnum, 'debugmode', exp.debug, 'shuffle_set', shuffle_conds);
-    dynnoisefile = fullfile(find_root_dir, 'proj/grustim/trackpos/noise', ...
-        sprintf('linear_ar_%s_%s.mat', experiment, num2str(setnum)));
+cps = {};
+maxtrialtime        = 20; % seconds
+
+experiment          = 'tau';
+versionnum          = 7;
+
+nblocks_learn       = 1;
+ntrial_learn        = 5;  % learning phase at full luminance, not analyzed
+nblocks             = 6;  % number of same blocks for each condition
+trials_per_block    = 5;  % number of trials per block
+
+shuffle_set         = true;
+
+if exp.debug > 0, nblocks_learn=1; ntrial_learn= 2; nblocks=5; trials_per_block = 2; maxtrialtime=20; end
+if exp.debug > 0
+    shuffle_set = false;
 end
+
+experiment_paramset = [1, 2, 3]; 
+
+if shuffle_set
+    experiment_paramset = experiment_paramset(randperm(length(experiment_paramset)));
+end
+Nconds = length(experiment_paramset);
+
+for epset = experiment_paramset
+    % learning phase 
+    for b =1:nblocks_learn
+        cps{end+1} = circular_ar(myscreen, 'numTrials', ntrial_learn, 'maxtrialtime', maxtrialtime, ...
+            'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
+            'random_init_vel', true, ...
+            'experiment', {experiment}, 'experiment_paramset', epset);
+    end
+
+    % tracking
+    for b = 1:nblocks
+        cps{end+1} = circular_ar(myscreen, 'numTrials', trials_per_block, 'maxtrialtime', maxtrialtime, ...
+            'dyn_noise_phase', length(cps)+1,  'switch_tpnoise', false, ...
+            'random_init_vel', true, ...
+            'experiment', {experiment}, 'experiment_paramset', epset);
+    end
+end
+
+dynnoisefile = fullfile(find_root_dir, 'proj/grustim/trackpos/noise', ...
+    sprintf('circular_ar_%s_%s.mat',experiment, num2str(versionnum)));
 
 stimulus = check_and_load_dynnoise(dynnoisefile, myscreen, stimulus, cps);
 
 stimulus.task = cps;
-stimulus.fixation_size = 0.4;
+stimulus.fixation_size = 0.3;
 
 %% grabframe
 if stimulus.exp.grabframe
@@ -167,6 +199,13 @@ end
 if ~exp.showMouse, mglDisplayCursor(0);, end %hide cursor
 
 phaseNum = 1;trialNum=0;
+
+% for performance tracking
+stimulus.task_rms = 0;
+stimulus.task_mvp = 0; 
+stimulus.n = 0;
+
+
 while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
     [task{1}, myscreen, newphaseNum] = updateTask(task{1},myscreen,phaseNum); % update the task
     
@@ -180,21 +219,7 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
         trialNum = task{1}{newphaseNum}.trialnum;
     end
     
-    if newphaseNum ~= phaseNum        
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        % wait for user to press space
-        keystate = mglGetKeys;
-        while ~keystate(50)
-            keystate = mglGetKeys;
-        end
-        
+    if newphaseNum ~= phaseNum    
         % check eyetracker
         if stimulus.exp.trackEye && stimulus.exp.trackEye_calibtrial
             [pos,postime] = mglEyelinkGetCurrentEyePos; % is this in image coordinates?
@@ -207,20 +232,64 @@ while (phaseNum <= length(task{1})) && ~myscreen.userHitEsc
             end
         end
         
-        % give control back to the subject
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        mglClearScreen(0.5);
-        mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
-        mglFlush;
-        
-        % wait for user to press space
-        keystate = mglGetKeys;
-        while ~keystate(50)
+        if mod(newphaseNum,length(task{1})/Nconds) == 1
+            done = (newphaseNum-1)/length(task{1})*100;
+
+            % give control back to the subject
+            mglClearScreen(0.5);
+            if stimulus.exp.debug == 2
+                mglBltTexture(mglText(['Average error: ' num2str(stimulus.task_rms/stimulus.n) ' deg']),[0 3]);
+                mglBltTexture(mglText(['Movement rate: ' num2str(stimulus.task_mvp/stimulus.n * 100) ' %']),[0 2]);
+            end
+            mglBltTexture(mglText(['You are ', num2str(done, '%.0f'), '% done. Please take a short break.']),[0 -0.5]);
+            mglBltTexture(mglText(['When you are ready, press space to go to next trial']),[0 -3]);
+            mglFlush;
+            
+            mglClearScreen(0.5);
+            if stimulus.exp.debug == 2
+                mglBltTexture(mglText(['Average error: ' num2str(stimulus.task_rms/stimulus.n) ' deg']),[0 3]);
+                mglBltTexture(mglText(['Movement rate: ' num2str(stimulus.task_mvp/stimulus.n * 100) ' %']),[0 2]);
+            end
+
+            mglBltTexture(mglText(['You are ', num2str(done, '%.0f'), '% done. Please take a short break.']),[0 -0.5]);
+            mglBltTexture(mglText(['When you are ready, press space to go to next trial']),[0 -3]);
+            mglFlush;
+            
+            % wait for user to press space
             keystate = mglGetKeys;
+            while ~keystate(50)
+                keystate = mglGetKeys;
+            end
+
+        else
+            % give control back to the subject
+            mglClearScreen(0.5);
+            if stimulus.exp.debug == 2
+                mglBltTexture(mglText(['Average error: ' num2str(stimulus.task_rms/stimulus.n) ' deg']),[0 3]);
+                mglBltTexture(mglText(['Movement rate: ' num2str(stimulus.task_mvp/stimulus.n * 100) ' %']),[0 2]);
+            end
+            mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+            mglFlush;
+            
+            mglClearScreen(0.5);
+            if stimulus.exp.debug == 2
+                mglBltTexture(mglText(['Average error: ' num2str(stimulus.task_rms/stimulus.n) ' deg']),[0 3]);
+                mglBltTexture(mglText(['Movement rate: ' num2str(stimulus.task_mvp/stimulus.n * 100) ' %']),[0 2]);
+            end
+            mglBltTexture(mglText('When you are ready, press space to go to next trial'),[0 -1.5]);
+            mglFlush;
+            
+            % wait for user to press space
+            keystate = mglGetKeys;
+            while ~keystate(50)
+                keystate = mglGetKeys;
+            end
         end
+
+        stimulus.task_rms = 0;
+        stimulus.task_mvp = 0; 
+        stimulus.n = 0;
+
         
         fprintf("Space detected. Beginning trial\n");
         
@@ -279,6 +348,16 @@ function [task myscreen] = initTrialCallback(task, myscreen)
     
     % task initTrial
     [task, stimulus] = stimulus.task{phaseNum}.initTrial(task, myscreen, stimulus);
+
+    % tau text
+    if stimulus.exp.debug
+        stimulus.tasktautext = mglText(['tau = ' num2str(task.thistrial.stim_noiseTau, '%.2f')]);
+    end
+
+    % task performance
+    stimulus.pointer_prev_position = stimulus.pointer.position;
+    disp(['(trackpos) Average error: ' num2str(stimulus.task_rms/stimulus.n) ...
+          ' deg; movement rate: ' num2str(stimulus.task_mvp/stimulus.n * 100) ' %']);
 end
 
 
@@ -314,6 +393,11 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
         mglClearScreen(task.thistrial.backLum/255);
     else
         mglClearScreen(task.thistrial.backLum);
+    end
+
+
+    if stimulus.exp.debug
+        mglBltTexture(stimulus.tasktautext,[15,15]);
     end
 
     % draw blue ring for the trajectory path
@@ -426,8 +510,12 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
 
         % display fixation
         if stimulus.exp.fixateCenter == 1 && stimulus.task{phaseNum}.displayFix % fixation below others.
-            mglMetalArcs([0;0;0], [1;1;1; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.3],[0;2*pi], 1);
-            if isfield(stimulus,'randcolors')
+            mglMetalArcs([0;0;0], [1; 0; 0; 1], [stimulus.fixation_size+0.1;stimulus.fixation_size+0.2],[0;2*pi], 1);
+            % mgl bug with alpha composition and ring size (resolution of the r seems pretty small?)
+            % mglMetalArcs([0;0;0], [1; 0; 0], [1+0.1;1+0.2],[0;2*pi], 1);
+            if isfield(stimulus, 'fixcolor') && ~(isstring(stimulus.fixcolor) && stimulus.fixcolor == "*")
+                fixcolors = stimulus.fixcolor;
+            elseif isfield(stimulus,'randcolors')
                 fixcolors = stimulus.randcolors.colors(randi(size(stimulus.randcolors.colors,1)),:)';
             else
                 fixcolors = [0.5+0.5*rand(3,1)];    
@@ -442,6 +530,14 @@ function [task, myscreen] = screenUpdateCallback(task, myscreen)
     if stimulus.exp.grabframe && any(task.thistrial.thisseg==stimulus.task{phaseNum}.doTrack)
         global frame; frame{task.thistrial.framecount} = mglFrameGrab;
     end
+
+    % check errors
+    stimulus.task_rms = stimulus.task_rms + mean(abs(stimulus.target.position - stimulus.pointer.position));
+    if all(stimulus.pointer_prev_position ~= stimulus.pointer.position)
+        stimulus.task_mvp = stimulus.task_mvp + 1; 
+        stimulus.pointer_prev_position = stimulus.pointer.position;
+    end
+    stimulus.n = stimulus.n + 1;
 end
 
 %% Get response; do nothing. 

@@ -15,20 +15,35 @@ function myscreen = setup_screen_jryu()
         myscreen.displayName        = 'fulldisp';
         myscreen.saveData           = 1; % save stimfile to data directory
         myscreen.datadir            = '/Users/jryu/Dropbox/GardnerLab/data/';
-        
+    elseif contains(name, 'jinro.stanford.edu')
+        myscreen.hideCursor         = 1;
+        myscreen.displayName        = 'vpixx3d';
+        % myscreen.calibType          = 'Specify particular calibration';
+        % myscreen.calibFilename      = '/Users/gru/proj/mgl/task/displays/0004_jinro_240209.mat';
+        % myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0004_jinro_240209.mat';
+        % myscreen.framesPerSecond    = 60; 
+        myscreen.saveData           = 1; % save stimfile to data directory
+        myscreen.datadir            = '/Users/gru/data/';
+
     else
-        
-        rmpath(genpath('/Users/gru/proj/mgl'))
-        addpath(genpath('/Users/gru/proj/mgl_jryu'))
+        % w = warning ('off','all');
+        % rmpath(genpath('/Users/gru/proj/mgl'))
+        % addpath(genpath('/Users/gru/proj/mgl_jryu'))
+        % addpath(genpath('/Users/gru/proj/mgl'))
+        % w = warning ('on','all');
 
         % myscreen.screenWidth = 860; myscreen.screenHeight = 600;
         myscreen.hideCursor         = 1;
         myscreen.displayName        = 'vpixx_close';
         myscreen.calibType          = 'Specify particular calibration';
-        myscreen.calibFilename      = '0001_dn0a221834_221005.mat';
-        myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0001_dn0a221834_221005';
+        myscreen.calibFilename      = '/Users/gru/proj/mgl/task/displays/0002_psy-g7mhty2hjd_240124.mat';
+        myscreen.calibFullFilename  = '/Users/gru/proj/mgl/task/displays/0002_psy-g7mhty2hjd_240124.mat';
+        myscreen.framesPerSecond    = 60; 
         myscreen.saveData           = 1; % save stimfile to data directory
         myscreen.datadir            = '/Users/gru/data/';
     end
+
+    warning('off','MATLAB:RandStream:ActivatingLegacyGenerators')
+    warning('off','MATLAB:RandStream:ReadingInactiveLegacyGeneratorState') 
 
 end

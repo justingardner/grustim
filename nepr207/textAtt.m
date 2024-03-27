@@ -16,8 +16,8 @@ function myscreen = textAtt(varargin)
 getArgs(varargin);
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 0;end
-if ieNotDefined('saveParam'),saveParam = 0;end
+if ieNotDefined('atScanner'),atScanner = 1;end
+if ieNotDefined('saveParam'),saveParam = 1;end
 if ieNotDefined('screenParam')
     myscreen.displayName = 'fMRIproj_akuo2';
 else
@@ -69,8 +69,8 @@ if atScanner
 end
 
 % set words
-stimulus.realList = {'OTHER','ABOUT','WHICH','MAYBE','LUNCH','SERVE','SHARP','STAND','STONE','EAGER','EARTH','PIZZA'};
-stimulus.fakeList = {'TOHER','OBTUA','HCIWH','YMBAE','UNLHC','EERSV','RPHSA','TSNDA','ONTSE','REAEG','HRATE','ZIZPA'};
+stimulus.realList = {'OTHER','ABOUT','WHICH','MAYBE','LUNCH','SERVE','SHARP','STAND','STONE','EAGER','EARTH','PIZZA','TRAIN'};
+stimulus.fakeList = {'TOHER','OBTUA','HCIWH','YMBAE','UNLHC','EERSV','RPHSA','TSNDA','ONTSE','REAEG','HRATE','ZIZPA','RNIAT'};
 stimulus.allList = [stimulus.realList stimulus.fakeList];
 stimulus.matchRealOrder = [stimulus.realList(randperm(length(stimulus.realList))) stimulus.realList(randperm(length(stimulus.realList)))];
 stimulus.matchFakeOrder = [stimulus.fakeList(randperm(length(stimulus.fakeList))) stimulus.fakeList(randperm(length(stimulus.fakeList)))];

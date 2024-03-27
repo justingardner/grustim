@@ -16,8 +16,8 @@ function myscreen = fourPatchAtt(varargin)
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 0;end
-if ieNotDefined('saveParam'),saveParam = 0;end
+if ieNotDefined('atScanner'),atScanner = 1;end
+if ieNotDefined('saveParam'),saveParam = 1;end
 if ieNotDefined('screenParam')
     myscreen.displayName = 'fMRIproj_akuo2';
 else
@@ -453,8 +453,8 @@ stimulus.backgroundColor = 0.5;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 
-stimulus.staircase1 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=1','initialStepsize=0.1','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.05');
-stimulus.staircase2 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=2','initialStepsize=0.1','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.05');
+stimulus.staircase1 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=0.05','minThreshold=0','initialStepsize=0.01','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.001');
+stimulus.staircase2 = doStaircase('init','upDown','nup=2','ndown=1','initialThreshold=1.2','minThreshold=0','initialStepsize=0.01','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.001');
 
 
 

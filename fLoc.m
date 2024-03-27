@@ -33,7 +33,7 @@ clear scan;
 
 %% Setup Screen
 if stimulus.scan || stimulus.oban;
-  myscreen = initScreen('fMRIprojFlex');
+  myscreen = initScreen('fMRIproj_akuo2');
 else
   myscreen = initScreen('VPixx2');
 end
