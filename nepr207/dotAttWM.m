@@ -23,7 +23,7 @@ if ieNotDefined('screenParam')
 else
     myscreen.displayName = screenParam;
 end
-if ieNotDefined('initStair'),initStair = 0;end
+if ieNotDefined('initStair'),initStair = 1;end
 
 % initalize the screen
 myscreen.background = 'gray';
