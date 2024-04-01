@@ -72,15 +72,16 @@ end
 stimulus.realList = {'OTHER','ABOUT','WHICH','MAYBE','LUNCH','SERVE','SHARP','STAND','STONE','EAGER','EARTH','PIZZA','TRAIN'};
 stimulus.fakeList = {'TOHER','OBTUA','HCIWH','YMBAE','UNLHC','EERSV','RPHSA','TSNDA','ONTSE','REAEG','HRATE','ZIZPA','RNIAT'};
 stimulus.allList = [stimulus.realList stimulus.fakeList];
-stimulus.matchRealOrder = stimulus.realList(randperm(length(stimulus.realList)));
-stimulus.matchFakeOrder = stimulus.fakeList(randperm(length(stimulus.fakeList)));
+stimulus.matchRealOrder = [stimulus.realList(randperm(length(stimulus.realList))) stimulus.realList(randperm(length(stimulus.realList)))];
+stimulus.matchFakeOrder = [stimulus.fakeList(randperm(length(stimulus.fakeList))) stimulus.fakeList(randperm(length(stimulus.fakeList)))];
 stimulus.realmatchCounter = 1;
 stimulus.fakematchCounter = 1;
 
 stimulus.wordEccHorz = 4;
 stimulus.matchEccVert = 2;
 stimulus.probeEccVert = 0;
-stimulus.fontSize = 32;
+stimulus.fontSize = 28;
+stimulus.fontColor = [1 1 1];
 
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
@@ -258,13 +259,13 @@ elseif task.thistrial.thisseg == 2
     mglFixationCrossArms(0.5,2,stimulus.cuecolor);
 
     % draw the text with flankers
-    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
     matchWord = mglText(stimulus.currentTrial.matchWord);
     mglBltTexture(matchWord,[0 stimulus.matchEccVert],'left','top');
-    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
     leftText = mglText('XXXXX');
     mglBltTexture(leftText,[-stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
-    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
     rightText = mglText('XXXXX');
     mglBltTexture(rightText,[stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
 
@@ -274,35 +275,35 @@ elseif task.thistrial.thisseg > 2 && task.thistrial.thisseg < 13
     mglFixationCrossArms(0.5,2)
 
     % draw the cue text
-    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
     matchWord = mglText(stimulus.currentTrial.matchWord);
     mglBltTexture(matchWord,[0 stimulus.matchEccVert],'left','top');
 
     % draw the left/right words
     if task.thistrial.thisseg == stimulus.presentSegment
         if task.thistrial.cue == 0
-            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
             matchWord = mglText(stimulus.currentTrial.matchWord);
             mglBltTexture(matchWord,[task.thistrial.distributedSide*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
-            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
             nonMatchWord = mglText(stimulus.currentTextLeft);
             mglBltTexture(nonMatchWord,[task.thistrial.distributedSide*(-1)*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
 
         else
-            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
             matchWord = mglText(stimulus.currentTrial.matchWord);
             mglBltTexture(matchWord,[task.thistrial.cue*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
-            mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+            mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
             currentText = mglText(stimulus.currentTextLeft);
             mglBltTexture(currentText,[task.thistrial.cue*(-1)*stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
 
         end
     
     else
-        mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+        mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
         leftText = mglText(stimulus.currentTextLeft);
         mglBltTexture(leftText,[-stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
-        mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+        mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
         rightText = mglText(stimulus.currentTextRight);
         mglBltTexture(rightText,[stimulus.wordEccHorz stimulus.probeEccVert],'left','top');
     end
@@ -313,7 +314,7 @@ elseif task.thistrial.thisseg == 13
     mglFixationCrossArms(0.5,2,stimulus.cuecolor);
 
     % print the cue
-    mglTextSet('Helvetica', stimulus.fontSize, [0 0 0], 0, 0, 0, 0, 0, 0, 0);
+    mglTextSet('Helvetica', stimulus.fontSize, stimulus.fontColor, 0, 0, 0, 0, 0, 0, 0);
     matchWord = mglText(stimulus.currentTrial.matchWord);
     mglBltTexture(matchWord,[0 stimulus.matchEccVert],'left','top');
 

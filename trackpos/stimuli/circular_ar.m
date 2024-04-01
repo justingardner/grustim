@@ -449,7 +449,7 @@ methods
             else
                 cuecolor = stimulus.pointer.color;
             end
-            mglMetalArcs([stimulus.pointer.position, 0]', [cuecolor; 0.3], [2*r0; 3.5*r0],[0;2*pi], 1);
+            mglMetalArcs([stimulus.pointer.position, 0]', [cuecolor; 1], [2*r0; 3*r0],[0;2*pi], 1);
         end
     end
 
@@ -632,14 +632,14 @@ methods
             %% dynamics prior
             params.ecc_r = 10;
             
-            noisestd1 = 1; % 0.7;
+            noisestd1 = 1; % 0.7; % austin: sometimes was too fast
             noisestd2 = 0;
             tau2 = 0;
 
             if setnum == 1
                 tau1 = 4/60;
             elseif setnum == 2
-                tau1 = 1.5;
+                tau1 = 1;
             elseif setnum == 3
                 tau1 = 6;
             elseif setnum == 4
