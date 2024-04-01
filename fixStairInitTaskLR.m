@@ -195,8 +195,9 @@ if fixStimulus.trainingMode,mglClearScreen;end
 if ~isempty(fixStimulus.displayText)
   mglBltTexture(fixStimulus.displayText,fixStimulus.displayTextLoc);
 end
-mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
-% mglMetalDots([fixStimulus.pos(1),fixStimulus.pos(2),0],[myscreen.background, 1],fixStimulus.diskSize*[1 1]);
+
+% mglGluDisk(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background,60);
+mglPoints2(fixStimulus.pos(1),fixStimulus.pos(2),fixStimulus.diskSize*[1 1],myscreen.background, 1);
 
 drawFixationCross(fixStimulus.fixWidth,fixStimulus.fixLineWidth,fixStimulus.thisColor',fixStimulus.pos);
 
