@@ -215,9 +215,9 @@ elseif task.thistrial.thisseg == 5 % cue period
 
     % draw cue
     if task.thistrial.sameStim == 1
-        mglBltTexture(stimulus.cueText1,[0 0],'left','top')
+        mglBltTexture(stimulus.cueText1,[0 0],'left','top');
     elseif task.thistrial.sameStim == 2
-        mglBltTexture(stimulus.cueText2,[0 0],'left','top')
+        mglBltTexture(stimulus.cueText2,[0 0],'left','top');
     end
 
 elseif task.thistrial.thisseg == 6 % working memory period
@@ -367,7 +367,7 @@ aperture = 255 * cat(3,apertureRGB,apertureAlpha);
 stimulus.aperture = mglCreateTexture(aperture, [], 1);
 
 % build the cue texture
-mglTextSet('Helvetica',56,[0 0 0 0]);
+mglTextSet('Helvetica',56,[0 0 0],0,0,0);
 stimulus.cueText1 = mglText('1');
 stimulus.cueText2 = mglText('2');
 

@@ -16,8 +16,8 @@ function myscreen = fourPatchAttCuedOnly(varargin)
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 0;end
-if ieNotDefined('saveParam'),saveParam = 0;end
+if ieNotDefined('atScanner'),atScanner = 1;end
+if ieNotDefined('saveParam'),saveParam = 1;end
 if ieNotDefined('screenParam')
     myscreen.displayName = 'fMRIproj_akuo2';
 else
@@ -307,7 +307,7 @@ if task.thistrial.gotResponse < 1
 
     fprintf('Response received : %g\n', task.thistrial.whichButton);
 
-    if ~any(task.thistrial.whichButton == [1 6]) % [1 2] should (hopefully) correspond to left/right buttons
+    if ~any(task.thistrial.whichButton == [1 2]) % [1 2] should (hopefully) correspond to left/right buttons
         error('Check your button inputs')
     end
     

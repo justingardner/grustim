@@ -308,7 +308,7 @@ if task.thistrial.gotResponse < 1
 
     fprintf('Response received : %g\n', task.thistrial.whichButton);
 
-    if ~any(task.thistrial.whichButton == [1 6]) % [1 2] should (hopefully) correspond to left/right buttons
+    if ~any(task.thistrial.whichButton == [1 2]) % [1 2] should (hopefully) correspond to left/right buttons
         error('Check your button inputs')
     end
     

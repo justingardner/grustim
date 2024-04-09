@@ -310,7 +310,7 @@ if ~task.thistrial.noMoreResponses
     fprintf('Response received : %g\n', task.thistrial.whichButton);
     task.thistrial.nResponses = task.thistrial.nResponses + 1;
 
-    if ~any(task.thistrial.whichButton == [1 6]) % [1 6] should (hopefully) correspond to left/right buttons
+    if ~any(task.thistrial.whichButton == [1 2]) % [1 2] should (hopefully) correspond to left/right buttons
         error('Check your button inputs')
     end
 
@@ -319,14 +319,13 @@ if ~task.thistrial.noMoreResponses
     if expectedCorrectResponse == -1
         correctbutton = 1;
     elseif expectedCorrectResponse == 1
-        correctbutton = 6;
+        correctbutton = 2;
     elseif isnan(expectedCorrectResponse)
         task.sequenceResponse{task.trialnum}(task.thistrial.nResponses) = nan;
         corr = 0;
         % report answer
         fprintf('Trial %d. ++ Incorrect ++. \n',task.trialnum);
         task.thistrial.correct = corr;
-        task.thistrial.nResponses = -length(task.correctSequence{task.trialnum});
         correctbutton = nan;
     end
 
