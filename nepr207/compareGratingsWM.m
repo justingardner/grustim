@@ -40,15 +40,18 @@ task{1}{1}.waitForBacktick = 1;
 
 % task
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
-task{1}{1}.segmin = [0.2, 0.4, 0.2, 0.4, 0.8, 11, 0.5, 2.5, 1]; % average trial time = 18s
+task{1}{1}.segmin = [0.2, 0.4, 0.2, 0.4, 0.8, 11, 0.5, 2.5, 1]; % average trial time = 20s
 task{1}{1}.segmax = [0.2, 0.4, 0.2, 0.4, 0.8, 11, 0.5, 2.5, 7];
 
 % task parameters
 task{1}{1}.parameter.sameStim = [1 2]; % 1 stim1, 2 stim2
-task{1}{1}.randVars.uniform.offsetDir = [-1 1]; % -1 CW, 1 CCW
+task{1}{1}.parameter.offsetDir = [-1 1]; % 1 CW, -1 CCW
 task{1}{1}.randVars.calculated.oriStim1 = nan;
 task{1}{1}.randVars.calculated.oriStim2 = nan;
-task{1}{1}.randVars.calculated.oriOffset = nan;
+task{1}{1}.randVars.calculated.oriOffset1 = nan;
+task{1}{1}.randVars.calculated.oriOffset2 = nan;
+task{1}{1}.randVars.calculated.probeOri = nan;
+
 task{1}{1}.random = 1;
 
 task{1}{1}.numTrials = inf; % 16 conditions
@@ -76,7 +79,6 @@ stimulus.aperOuterHeight = 16; % minor axis diameter
 stimulus.aperOuterWidth = 16; % major axis diameter
 stimulus.outerHeightRatio = stimulus.aperOuterHeight/stimulus.height;
 stimulus.outerWidthRatio = stimulus.aperOuterWidth/stimulus.width;
-
 stimulus.aperInnerHeight = 2; % minor axis diameter
 stimulus.aperInnerWidth = 2; % major axis diameter
 stimulus.innerHeightRatio = stimulus.aperInnerHeight/stimulus.height;
@@ -88,12 +90,10 @@ stimulus.cueLeftX0 = 0;
 stimulus.cueLeftX1 = -width;
 stimulus.cueLeftY0 = 0;
 stimulus.cueLeftY1 = 0;
-
 stimulus.cueRightX0 = 0;
 stimulus.cueRightX1 = width;
 stimulus.cueRightY0 = 0;
 stimulus.cueRightY1 = 0;
-
 stimulus.cueVertX0 = 0;
 stimulus.cueVertX1 = 0;
 stimulus.cueVertY0 = width;
@@ -135,15 +135,28 @@ global stimulus;
 
 if task.thistrial.thisseg == 1
 
-    % calculate the necessary offset for stimulus 2
+    % calculate the necessary offset for stimulus 1
     % Get the new delta for this trial from the staircase
-    [oriOffset, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
-    task.thistrial.oriOffset = oriOffset;
-    fprintf('Current oriOffset value: %0.2f \n\n', oriOffset)
+    if task.thistrial.sameStim == 1
+        [oriOffset1, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+        task.thistrial.oriOffset1 = oriOffset1;
+        fprintf('Current oriOffset1 value: %0.2f \n\n', oriOffset1)
+    elseif task.thistrial.sameStim == 2
+        [oriOffset2, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+        task.thistrial.oriOffset2 = oriOffset2;
+        fprintf('Current oriOffset2 value: %0.2f \n\n', oriOffset2)
+    end
 
-    % generate a random grating orientation for the first grating
+    % generate a random grating orientation for the first grating + make it orthogonal for the second grating
     task.thistrial.oriStim1 = randi(360);
-    task.thistrial.oriStim2 = task.thistrial.oriStim1 + task.thistrial.offsetDir*oriOffset;
+    task.thistrial.oriStim2 = task.thistrial.oriStim1 + 90;
+
+    % calculate the probe orientation
+    if task.thistrial.sameStim == 1
+        task.thistrial.probeOri = task.thistrial.oriStim1 + task.thistrial.offsetDir*task.thistrial.oriOffset1;
+    elseif task.thistrial.sameStim == 2
+        task.thistrial.probeOri = task.thistrial.oriStim2 + task.thistrial.offsetDir*task.thistrial.oriOffset2;
+    end
 
 elseif task.thistrial.thisseg == 7
 
@@ -224,20 +237,16 @@ elseif task.thistrial.thisseg == 6 % working memory period
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [1 0.5 1] );
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 0.5 1]);
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 0.5 1]);
 
 elseif task.thistrial.thisseg == 7
 
     % draw the probe grating
-    if task.thistrial.sameStim == 1 % draw the same orientation as stim1
-        mglBltTexture(stimulus.grating, [0 0 stimulus.height stimulus.height], 0, 0, task.thistrial.oriStim1);
-    elseif task.thistrial.sameStim == 2 % draw the same orientation as stim2
-        mglBltTexture(stimulus.grating, [0 0 stimulus.height stimulus.height], 0, 0, task.thistrial.oriStim2);
-    end
+    mglBltTexture(stimulus.grating, [0 0 stimulus.height stimulus.height], 0, 0, task.thistrial.probeOri);
     mglBltTexture(stimulus.aperture, [0 0 stimulus.height*2 stimulus.height*2], 0, 0, 0);
 
     % draw fix
@@ -282,15 +291,15 @@ if task.thistrial.gotResponse < 1
 
     fprintf('Response received : %g\n', task.thistrial.whichButton);
 
-    if ~any(task.thistrial.whichButton == [1 6]) % [1 6] should (hopefully) correspond to left/right buttons
+    if ~any(task.thistrial.whichButton == [1 2]) % [1 2] should (hopefully) correspond to left/right buttons
         error('Check your button inputs')
     end
     
     % determine what the correct button should be
-    if task.thistrial.sameStim == 1
+    if task.thistrial.offsetDir == 1
         correctbutton = 1;
-    elseif task.thistrial.sameStim == 2
-        correctbutton = 6;
+    elseif task.thistrial.offsetDir == -1
+        correctbutton = 2;
     end
 
     % see if it is correct
@@ -301,7 +310,11 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
 
         % update staircases
-        stimulus.staircase = doStaircase('update',stimulus.staircase,corr);
+        if task.thistrial.sameStim == 1
+            stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
+        elseif task.thistrial.sameStim == 2
+            stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
+        end
         
         stimulus.feedbackColors{1} = [0 1 0];
         stimulus.feedbackColors{2} = [0 1 0];
@@ -314,17 +327,27 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
         
         % update staircases
-        stimulus.staircase = doStaircase('update',stimulus.staircase,corr);
+        if task.thistrial.sameStim == 1
+            stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
+        elseif task.thistrial.sameStim == 2
+            stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
+        end
 
         stimulus.feedbackColors{1} = [1 0 0];
         stimulus.feedbackColors{2} = [1 0 0];
         stimulus.feedbackColors{3} = [1 0 0];
 
     end
-
-    [oriOffset, stimulus.staircase] = doStaircase('testValue',stimulus.staircase);
-    fprintf('Previous oriOffset value: %0.2f \n', task.thistrial.oriOffset)
-    fprintf('Next oriOffset value: %0.2f \n\n', oriOffset)
+    
+    if task.thistrial.sameStim == 1
+        [oriOffset1, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+        fprintf('Previous oriOffset1 value: %0.2f \n', task.thistrial.oriOffset1)
+        fprintf('Next oriOffset1 value: %0.2f \n\n', oriOffset1)
+    elseif task.thistrial.sameStim == 2
+        [oriOffset2, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+        fprintf('Previous oriOffset2 value: %0.2f \n', task.thistrial.oriOffset2)
+        fprintf('Next oriOffset2 value: %0.2f \n\n', oriOffset2)
+    end
 
 end
 
@@ -379,5 +402,6 @@ stimulus.backgroundColor = 0.5;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 
-stimulus.staircase = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=20','initialStepsize=2','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=15','initialStepsize=2','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=15','initialStepsize=2','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
 

@@ -44,8 +44,8 @@ stimulus.maxSequence = 6;
 task{1}{1}.getResponse = [zeros(1,2*stimulus.maxSequence+1) 0 1 0];
 task{1}{1}.collectEyeData = false;
 % task structure: [cue, [flash1,blank1,...,flash9,blank9] wait, response, iti] - total: 22 segments
-task{1}{1}.segmin = [1.1, repmat([0.4,0.2],1,stimulus.maxSequence), 8, 5, 1]; % average trial time = 23s
-task{1}{1}.segmax = [1.1, repmat([0.4,0.2],1,stimulus.maxSequence), 8, 5, 6];
+task{1}{1}.segmin = [0.9, repmat([0.4,0.2],1,stimulus.maxSequence), 8, 5, 1]; % average trial time = 21s
+task{1}{1}.segmax = [0.9, repmat([0.4,0.2],1,stimulus.maxSequence), 8, 5, 6];
 
 % task parameters
 task{1}{1}.parameter.sequenceLength = linspace(0,stimulus.maxSequence,4);
@@ -270,11 +270,11 @@ elseif task.thistrial.thisseg == stimulus.maxSequence*2+2 % memory period
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [1 0.5 1] );
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 0.5 1]);
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 0.5 1]);
 
 elseif task.thistrial.thisseg == stimulus.maxSequence*2+3 % response period
 

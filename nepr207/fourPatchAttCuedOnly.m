@@ -16,8 +16,8 @@ function myscreen = fourPatchAttCuedOnly(varargin)
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 1;end
-if ieNotDefined('saveParam'),saveParam = 1;end
+if ieNotDefined('atScanner'),atScanner = 0;end
+if ieNotDefined('saveParam'),saveParam = 0;end
 if ieNotDefined('screenParam')
     myscreen.displayName = 'fMRIproj_akuo2';
 else
@@ -41,8 +41,8 @@ task{1}{1}.waitForBacktick = 1;
 % task
 task{1}{1}.getResponse = [0 0 0 0 0 0 1 0];
 task{1}{1}.collectEyeData = false;
-task{1}{1}.segmin = [0.5, 1, 0.5, 1, 0.5, 1, 2, 1.5]; % average time = 10.5s
-task{1}{1}.segmax = [0.5, 1, 0.5, 1, 0.5, 1, 2, 6.5];
+task{1}{1}.segmin = [0.5, 1, 0.5, 1, 0.5, 1, 2, 2]; % average time = 10.5s
+task{1}{1}.segmax = [0.5, 1, 0.5, 1, 0.5, 1, 2, 6];
 
 % task parameters
 task{1}{1}.parameter.cue = [1 2 3 4];

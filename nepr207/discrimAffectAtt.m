@@ -40,22 +40,24 @@ task{1}{1}.waitForBacktick = 1;
 
 % task
 task{1}{1}.getResponse = [0 0 0 1 0];
-task{1}{1}.segmin = [0.5, 3, 1, 1.75, 1]; % average trial time = 9.5s
-task{1}{1}.segmax = [0.5, 3, 1, 1.75, 7];
+task{1}{1}.segmin = [1, 3, 1, 2, 1]; % average trial time = 9s
+task{1}{1}.segmax = [1, 3, 1, 2, 7];
 
 % task parameters
-task{1}{1}.parameter.affectCue = [-1 0]; % -1 angry, 0 neutral
-task{1}{1}.parameter.offsetDir = [-1 1]; % -1 CW, 1 CCW
-task{1}{1}.randVars.uniform.uncuedDir = [-1 1]; % -1 CW, 1 CCW
-task{1}{1}.randVars.uniform.angrySide = [-1 1]; % -1 left, 1 right
+task{1}{1}.parameter.cueDir = [-1 0 1];
+task{1}{1}.parameter.angrySide = [-1 1]; % -1 left, 1 right
+task{1}{1}.parameter.probedOffsetDir = [-1 1]; % -1 CW, 1 CCW
+task{1}{1}.randVars.uniform.unprobedOffsetDir = [-1 1]; % -1 CW, 1 CCW
 task{1}{1}.randVars.uniform.angryImage = 1:217;
 task{1}{1}.randVars.uniform.neutralImage = 1:216;
-task{1}{1}.randVars.calculated.cueDir = nan; % -1 left, 1 right
+task{1}{1}.randVars.uniform.validCue = [-1 1 1 1];
+task{1}{1}.randVars.calculated.probeDir = nan;
 task{1}{1}.randVars.calculated.oriOffsetAngry = nan;
 task{1}{1}.randVars.calculated.oriOffsetNeutral = nan;
-task{1}{1}.randVars.calculated.cueAngle = nan;
-task{1}{1}.randVars.calculated.disAngle = nan;
+task{1}{1}.randVars.calculated.probedAngle = nan;
+task{1}{1}.randVars.calculated.unprobedAngle = nan;
 task{1}{1}.randVars.calculated.correctButton = nan;
+task{1}{1}.randVars.calculated.trialtype = nan; % 1 - cued probe angry, 2 - cued probe neutral, 3 - uncued probe angry, 4 - uncued probe neutral
 task{1}{1}.random = 1;
 
 task{1}{1}.numTrials = inf; % 16 conditions
@@ -76,7 +78,7 @@ if atScanner
 end
 
 % set grating parameters
-stimulus.SF = 0.5;
+stimulus.SF = 1;
 stimulus.gratingEcc = 5;
 stimulus.gaussStd = 0.5;
 
@@ -86,12 +88,10 @@ stimulus.cueLeftX0 = 0;
 stimulus.cueLeftX1 = -width;
 stimulus.cueLeftY0 = 0;
 stimulus.cueLeftY1 = 0;
-
 stimulus.cueRightX0 = 0;
 stimulus.cueRightX1 = width;
 stimulus.cueRightY0 = 0;
 stimulus.cueRightY1 = 0;
-
 stimulus.cueVertX0 = 0;
 stimulus.cueVertX1 = 0;
 stimulus.cueVertY0 = width;
@@ -138,70 +138,95 @@ if task.thistrial.thisseg == 1
     stimulus.currentAngryFace = mglMetalCreateTexture(cat(3,rescale(stimulus.angryFaces(:,:,:,task.thistrial.angryImage)),ones(150)));
     stimulus.currentNeutralFace = mglMetalCreateTexture(cat(3,rescale(stimulus.neutralFaces(:,:,:,task.thistrial.neutralImage)),ones(150)));
 
-    % figure out cue left or cue right
-    if (task.thistrial.affectCue == -1 && task.thistrial.angrySide == -1) || (task.thistrial.affectCue == 0 && task.thistrial.angrySide == 1)
-        task.thistrial.cueDir = -1;
-    elseif (task.thistrial.affectCue == -1 && task.thistrial.angrySide == 1) || (task.thistrial.affectCue == 0 && task.thistrial.angrySide == -1)
-        task.thistrial.cueDir = 1;
+    % figure out whether the cue is pointing to angry or neutral
+    if task.thistrial.cueDir == -1 % cue left
+        task.thistrial.probeDir = -1 * task.thistrial.validCue; % probe left (mostly)
+        if task.thistrial.angrySide == task.thistrial.probeDir
+            task.thistrial.trialtype = 1; % probe angry
+        elseif task.thistrial.angrySide ~= task.thistrial.probeDir
+            task.thistrial.trialtype = 2; % probe neutral
+        end
+    elseif task.thistrial.cueDir == 1 % cue right
+        task.thistrial.probeDir = 1 * task.thistrial.validCue; % probe right (mostly)
+        if task.thistrial.angrySide ~= task.thistrial.probeDir
+            task.thistrial.trialtype = 2; % probe neutral
+        elseif task.thistrial.angrySide == task.thistrial.probeDir
+            task.thistrial.trialtype = 1; % probe angry
+        end
+    elseif task.thistrial.cueDir == 0 % distributed cue
+        task.thistrial.probeDir = 2*randi(2)-3; % randomize probe direction
+        if task.thistrial.angrySide == task.thistrial.probeDir
+            task.thistrial.trialtype = 3; % probe angry
+        else
+            task.thistrial.trialtype = 4; % probe neutral
+        end
     end
 
     % Get the new delta for this trial from the staircase - need to instantiate both angry and neutral, or else the uncued one has no texture
-    [oriOffset, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
-    task.thistrial.oriOffsetAngry = oriOffset;
-    fprintf('Current oriOffset value (Angry face): %0.2f \n\n', oriOffset)
+    [oriOffsetAngry, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+    task.thistrial.oriOffsetAngry = oriOffsetAngry;
+    fprintf('Current oriOffset value (Angry face): %0.2f \n\n', oriOffsetAngry)
 
-    [oriOffset, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
-    task.thistrial.oriOffsetNeutral = oriOffset;
-    fprintf('Current oriOffset value (Neutral face): %0.2f \n\n', oriOffset)
+    [oriOffsetNeutral, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+    task.thistrial.oriOffsetNeutral = oriOffsetNeutral;
+    fprintf('Current oriOffset value (Neutral face): %0.2f \n\n', oriOffsetNeutral)
 
-    if task.thistrial.affectCue == -1
+    if task.thistrial.trialtype == 1 || task.thistrial.trialtype == 3 % probe angry
         % create the grating texture (just need phase and sf, mglBltTexture will handle the rotations)
-        % make a grating  but now scale it
-        task.thistrial.cueAngle = 90 + task.thistrial.offsetDir*task.thistrial.oriOffsetAngry;
-        task.thistrial.disAngle = 90 + task.thistrial.uncuedDir*task.thistrial.oriOffsetNeutral;
-        gratingAngry = mglMakeGrating(5, 5, stimulus.SF, task.thistrial.cueAngle, randi(360));
-        gratingNeutral = mglMakeGrating(5, 5, stimulus.SF, task.thistrial.disAngle, randi(360));
+        task.thistrial.probedAngle = 90 + task.thistrial.probedOffsetDir*task.thistrial.oriOffsetAngry;
+        task.thistrial.unprobedAngle = 90 + task.thistrial.unprobedOffsetDir*task.thistrial.oriOffsetNeutral;
+        gratingProbed = mglMakeGrating(5, 5, stimulus.SF, task.thistrial.probedAngle, randi(360));
+        gratingUnprobed = mglMakeGrating(5, 5, stimulus.SF, task.thistrial.unprobedAngle, randi(360));
 
-        if task.thistrial.cueAngle > 90
-            task.thistrial.correctButton = 6;
-        else
-            task.thistrial.correctButton = 1;
-        end
-
-    elseif task.thistrial.affectCue == 0
+    elseif task.thistrial.trialtype == 2 || task.thistrial.trialtype == 4 % probe neutral
         % create the grating texture (just need phase and sf, mglBltTexture will handle the rotations)
-        % make a grating  but now scale it
-        task.thistrial.cueAngle = 90 + task.thistrial.offsetDir*task.thistrial.oriOffsetNeutral;
-        task.thistrial.disAngle = 90 + task.thistrial.uncuedDir*task.thistrial.oriOffsetAngry;
-        gratingAngry = mglMakeGrating(5, 5, stimulus.SF, 90 + task.thistrial.uncuedDir*task.thistrial.oriOffsetAngry, randi(360));
-        gratingNeutral = mglMakeGrating(5, 5, stimulus.SF, 90 + task.thistrial.offsetDir*task.thistrial.oriOffsetNeutral, randi(360));
+        task.thistrial.probedAngle = 90 + task.thistrial.probedOffsetDir*task.thistrial.oriOffsetNeutral;
+        task.thistrial.unprobedAngle = 90 + task.thistrial.unprobedOffsetDir*task.thistrial.oriOffsetAngry;
+        gratingProbed = mglMakeGrating(5, 5, stimulus.SF, task.thistrial.probedAngle, randi(360));
+        gratingUnprobed = mglMakeGrating(5, 5, stimulus.SF, task.thistrial.unprobedAngle, randi(360));        
+    end
 
-        if task.thistrial.cueAngle > 90
-            task.thistrial.correctButton = 6;
-        else
-            task.thistrial.correctButton = 1;
-        end
-
+    if task.thistrial.probedAngle > 90
+        task.thistrial.correctButton = 2;
+    else
+        task.thistrial.correctButton = 1;
     end
     
-    angryGabor = cat(3,repmat((gratingAngry.*stimulus.gaussian+1)/2, [1 1 3]),ones(size(stimulus.gaussian)));
-    % scale to range of display
-    stimulus.angryTex = mglMetalCreateTexture(angryGabor);
+    probedGabor = cat(3,repmat((gratingProbed.*stimulus.gaussian+1)/2, [1 1 3]),ones(size(stimulus.gaussian)));
+    stimulus.probedGabor = mglMetalCreateTexture(probedGabor);
 
-    neutralGabor = cat(3,repmat((gratingNeutral.*stimulus.gaussian+1)/2, [1 1 3]),ones(size(stimulus.gaussian)));
-    % scale to range of display
-    stimulus.neutralTex = mglMetalCreateTexture(neutralGabor);
+    unprobedGabor = cat(3,repmat((gratingUnprobed.*stimulus.gaussian+1)/2, [1 1 3]),ones(size(stimulus.gaussian)));
+    stimulus.unprobedGabor = mglMetalCreateTexture(unprobedGabor);
+
+    % set cue colors
+    stimulus.cueColors{1} = [0 0 0];
+    if task.thistrial.cueDir == 1
+        stimulus.cueColors{2} = [0 0 0];
+        stimulus.cueColors{3} = [1 1 1];
+    elseif task.thistrial.cueDir == -1
+        stimulus.cueColors{2} = [1 1 1];
+        stimulus.cueColors{3} = [0 0 0];
+    elseif task.thistrial.cueDir == 0
+        stimulus.cueColors{2} = [1 1 1];
+        stimulus.cueColors{3} = [1 1 1];
+    end
 
 elseif task.thistrial.thisseg == 4
 
     stimulus.feedbackColors{1} = [0 0 0];
-    if task.thistrial.cueDir == 1
+    if task.thistrial.probeDir == 1
         stimulus.feedbackColors{2} = [0 0 0];
         stimulus.feedbackColors{3} = [1 1 1];
-    elseif task.thistrial.cueDir == -1
+    elseif task.thistrial.probeDir == -1
         stimulus.feedbackColors{2} = [1 1 1];
         stimulus.feedbackColors{3} = [0 0 0];
     end
+
+elseif task.thistrial.thisseg == 5
+
+    stimulus.feedbackColors{1} = [0 0 1];
+    stimulus.feedbackColors{2} = [0 0 1];
+    stimulus.feedbackColors{3} = [0 0 1];
 
 end
 
@@ -215,29 +240,20 @@ global stimulus
 % clear screen to gray
 mglClearScreen(stimulus.backgroundColor);
 
-if task.thistrial.thisseg == 1 % blank
+if task.thistrial.thisseg == 1 % cue
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, stimulus.cueColors{1} );
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, stimulus.cueColors{2});
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, stimulus.cueColors{3});
 
 elseif task.thistrial.thisseg == 2 % faces
     
-    if task.thistrial.affectCue == -1
-        % draw the faces
-        % mglMetalBltTexture([stimulus.currentAngryFace stimulus.currentNeutralFace], [task.thistrial.cueDir*stimulus.gratingEcc 0; -task.thistrial.cueDir*stimulus.gratingEcc 0]);
-        mglMetalBltTexture(stimulus.currentAngryFace, [task.thistrial.cueDir*stimulus.gratingEcc 0]);
-        mglMetalBltTexture(stimulus.currentNeutralFace, [-task.thistrial.cueDir*stimulus.gratingEcc 0]);
-    elseif task.thistrial.affectCue == 0
-        % draw the faces
-        % mglMetalBltTexture([stimulus.currentAngryFace stimulus.currentNeutralFace], [task.thistrial.cueDir*stimulus.gratingEcc 0; -task.thistrial.cueDir*stimulus.gratingEcc 0]);
-        mglMetalBltTexture(stimulus.currentAngryFace, [-task.thistrial.cueDir*stimulus.gratingEcc 0]);
-        mglMetalBltTexture(stimulus.currentNeutralFace, [task.thistrial.cueDir*stimulus.gratingEcc 0]);
-    end
+    mglMetalBltTexture(stimulus.currentAngryFace, [task.thistrial.angrySide*stimulus.gratingEcc 0]); % draw angry on angry side
+    mglMetalBltTexture(stimulus.currentNeutralFace, [-task.thistrial.angrySide*stimulus.gratingEcc 0]); % draw neutral on opposite side
 
     % draw fix
     % Vert
@@ -249,14 +265,14 @@ elseif task.thistrial.thisseg == 2 % faces
 
 elseif task.thistrial.thisseg == 3 % grating period
     
-    if task.thistrial.affectCue == -1
-        % draw the cued grating on the angry side
-        mglMetalBltTexture(stimulus.angryTex, [task.thistrial.cueDir*stimulus.gratingEcc 0]);
-        mglMetalBltTexture(stimulus.neutralTex, [-task.thistrial.cueDir*stimulus.gratingEcc 0]);
-    elseif task.thistrial.affectCue == 0
-        % draw the cued grating on the neutral side 
-        mglMetalBltTexture(stimulus.angryTex, [-task.thistrial.cueDir*stimulus.gratingEcc 0]);
-        mglMetalBltTexture(stimulus.neutralTex, [task.thistrial.cueDir*stimulus.gratingEcc 0]);
+    if task.thistrial.trialtype == 1 || task.thistrial.trialtype == 3 % probe angry
+        % draw the probed grating on the angry side
+        mglMetalBltTexture(stimulus.probedGabor, [task.thistrial.angrySide*stimulus.gratingEcc 0]);
+        mglMetalBltTexture(stimulus.unprobedGabor, [-task.thistrial.angrySide*stimulus.gratingEcc 0]);
+    elseif task.thistrial.trialtype == 2 || task.thistrial.trialtype == 4 % probe neutral
+        % draw the probed grating on the neutral side 
+        mglMetalBltTexture(stimulus.probedGabor, [-task.thistrial.angrySide*stimulus.gratingEcc 0]);
+        mglMetalBltTexture(stimulus.unprobedGabor, [task.thistrial.angrySide*stimulus.gratingEcc 0]);
     end
 
     % draw fix
@@ -281,11 +297,11 @@ elseif task.thistrial.thisseg == 5
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0.5 1] );
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0.5 1]);
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0.5 1]);
 
 end
 
@@ -301,16 +317,9 @@ if task.thistrial.gotResponse < 1
 
     fprintf('Response received : %g\n', task.thistrial.whichButton);
 
-    if ~any(task.thistrial.whichButton == [1 6]) % [1 6] should (hopefully) correspond to left/right buttons
+    if ~any(task.thistrial.whichButton == [1 2]) % [1 2] should (hopefully) correspond to left/right buttons
         error('Check your button inputs')
     end
-    
-%     % determine what the correct button should be
-%     if task.thistrial.offsetDir == -1
-%         correctbutton = 6;
-%     elseif task.thistrial.offsetDir == 1
-%         correctbutton = 1;
-%     end
 
     % see if it is correct
     if isequal(task.thistrial.whichButton,task.thistrial.correctButton) % correct
@@ -320,9 +329,9 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
 
         % update staircases
-        if task.thistrial.affectCue == -1
+        if task.thistrial.trialtype == 1 || task.thistrial.trialtype == 3 % probed angry
             stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
-        elseif task.thistrial.affectCue == 0
+        elseif task.thistrial.trialtype == 2 || task.thistrial.trialtype == 4 % probed neutral
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
         
@@ -337,9 +346,9 @@ if task.thistrial.gotResponse < 1
         task.thistrial.correct = corr;
         
         % update staircases
-        if task.thistrial.affectCue == -1
+        if task.thistrial.trialtype == 1 || task.thistrial.trialtype == 3 % probed angry
             stimulus.staircase1 = doStaircase('update',stimulus.staircase1,corr);
-        elseif task.thistrial.affectCue == 0
+        elseif task.thistrial.trialtype == 2 || task.thistrial.trialtype == 4 % probed neutral
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
 
@@ -350,13 +359,13 @@ if task.thistrial.gotResponse < 1
     end
 
     % print out the updated values for the staircase
-    [oriOffset, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
+    [oriOffsetAngry, stimulus.staircase1] = doStaircase('testValue',stimulus.staircase1);
     fprintf('Previous oriOffset value (Angry faces): %0.2f \n', task.thistrial.oriOffsetAngry)
-    fprintf('Next oriOffset value (Angry faces): %0.2f \n\n', oriOffset)
+    fprintf('Next oriOffset value (Angry faces): %0.2f \n\n', oriOffsetAngry)
 
-    [oriOffset, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
+    [oriOffsetNeutral, stimulus.staircase2] = doStaircase('testValue',stimulus.staircase2);
     fprintf('Previous oriOffset value (Neutral faces): %0.2f \n', task.thistrial.oriOffsetNeutral)
-    fprintf('Next oriOffset value (Neutral faces): %0.2f \n\n', oriOffset)
+    fprintf('Next oriOffset value (Neutral faces): %0.2f \n\n', oriOffsetNeutral)
 
 end
 
@@ -390,7 +399,7 @@ stimulus.neutralFaces = neutralImgStack;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 
-stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=20','initialStepsize=2','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
-stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=20','initialStepsize=2','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=10','initialStepsize=1','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=10','initialStepsize=1','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
 
 
