@@ -10,14 +10,14 @@
 % NOTE: parameters you (might) want to change for this task are - 
 % numTrials, coherence, dirs, scan (contrast, speed, width, leftEcc, rightEcc)
 
-function myscreen = fourPatchAtt(varargin)
+function myscreen = contrastDiscrimBlocksCued(varargin)
 
 % check arguments
 getArgs(varargin, [], 'verbose=0');
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 1;end
-if ieNotDefined('saveParam'),saveParam = 1;end
+if ieNotDefined('atScanner'),atScanner = 0;end
+if ieNotDefined('saveParam'),saveParam = 0;end
 if ieNotDefined('screenParam')
     myscreen.displayName = 'fMRIproj_akuo2';
 else
@@ -40,12 +40,12 @@ task{1}{1}.waitForBacktick = 1;
 
 % task
 task{1}{1}.getResponse = [0 0 0 0 0 0 1 0];
-task{1}{1}.collectEyeData = false;
 task{1}{1}.segmin = [0.5, 1, 0.5, 1, 0.5, 1, 2, 1.5]; % average time = 10.5s
 task{1}{1}.segmax = [0.5, 1, 0.5, 1, 0.5, 1, 2, 6.5];
 
 % task parameters
-task{1}{1}.parameter.cue = [1 2 3 4 5 6]; % 5 and 6 are both uncued trials - having both increases the probability to 1/3 instead of 1/5
+task{1}{1}.parameter.cue = [1 2 3 4 5 6];
+task{1}{1}.randVars.uniform.cue = [-1 1]; % -1 left, 1 right
 task{1}{1}.randVars.uniform.faster1 = [1 2];
 task{1}{1}.randVars.uniform.faster2 = [1 2];
 task{1}{1}.randVars.uniform.faster3 = [1 2];
@@ -92,10 +92,10 @@ stimulus = initDots(stimulus,myscreen);
 
 % init the staircase
 if stimulus.initStair
-    fprintf('\n(fourPatchAtt) Initializing staircases from scratch...\n\n');
+    fprintf('\n(contrastDiscrimBlocksCued) Initializing staircases from scratch...\n\n');
     stimulus = initStaircase(stimulus);
 else
-    fprintf('\n(fourPatchAtt) Re-using staircase from previous run...\n\n');
+    fprintf('\n(contrastDiscrimBlocksCued) Re-using staircase from previous run...\n\n');
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

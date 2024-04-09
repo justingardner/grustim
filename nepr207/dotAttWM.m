@@ -16,8 +16,8 @@ function myscreen = dotAttWM(varargin)
 getArgs(varargin);
 
 % set default parameters
-if ieNotDefined('atScanner'),atScanner = 1;end
-if ieNotDefined('saveParam'),saveParam = 1;end
+if ieNotDefined('atScanner'),atScanner = 0;end
+if ieNotDefined('saveParam'),saveParam = 0;end
 if ieNotDefined('screenParam')
     myscreen.displayName = 'fMRIproj_akuo2';
 else
