@@ -83,19 +83,18 @@ stimulus.gratingEcc = 5;
 stimulus.gaussStd = 0.5;
 
 % set fix parameters
-width = 0.5;
-stimulus.cueLeftX0 = 0;
-stimulus.cueLeftX1 = -width;
+stimulus.cueLeftX0 = -1;
+stimulus.cueLeftX1 = 0;
 stimulus.cueLeftY0 = 0;
 stimulus.cueLeftY1 = 0;
-stimulus.cueRightX0 = 0;
-stimulus.cueRightX1 = width;
+stimulus.cueRightX0 = 1;
+stimulus.cueRightX1 = 0;
 stimulus.cueRightY0 = 0;
 stimulus.cueRightY1 = 0;
 stimulus.cueVertX0 = 0;
 stimulus.cueVertX1 = 0;
-stimulus.cueVertY0 = width;
-stimulus.cueVertY1 = -width;
+stimulus.cueVertY0 = -1;
+stimulus.cueVertY1 = 1;
 
 % init the stimulus
 myscreen = initStimulus('stimulus',myscreen);
@@ -199,34 +198,34 @@ if task.thistrial.thisseg == 1
     stimulus.unprobedGabor = mglMetalCreateTexture(unprobedGabor);
 
     % set cue colors
-    stimulus.cueColors{1} = [0 0 0];
+    stimulus.cueColors{1} = [0 0 0]';
     if task.thistrial.cueDir == 1
-        stimulus.cueColors{2} = [0 0 0];
-        stimulus.cueColors{3} = [1 1 1];
+        stimulus.cueColors{2} = [0 0 0]';
+        stimulus.cueColors{3} = [1 0 0]';
     elseif task.thistrial.cueDir == -1
-        stimulus.cueColors{2} = [1 1 1];
-        stimulus.cueColors{3} = [0 0 0];
+        stimulus.cueColors{2} = [1 0 0]';
+        stimulus.cueColors{3} = [0 0 0]';
     elseif task.thistrial.cueDir == 0
-        stimulus.cueColors{2} = [1 1 1];
-        stimulus.cueColors{3} = [1 1 1];
+        stimulus.cueColors{2} = [1 0 0]';
+        stimulus.cueColors{3} = [1 0 0]';
     end
 
 elseif task.thistrial.thisseg == 4
 
-    stimulus.feedbackColors{1} = [0 0 0];
+    stimulus.feedbackColors{1} = [0 0 0]';
     if task.thistrial.probeDir == 1
-        stimulus.feedbackColors{2} = [0 0 0];
-        stimulus.feedbackColors{3} = [1 1 1];
+        stimulus.feedbackColors{2} = [0 0 0]';
+        stimulus.feedbackColors{3} = [1 0 0]';
     elseif task.thistrial.probeDir == -1
-        stimulus.feedbackColors{2} = [1 1 1];
-        stimulus.feedbackColors{3} = [0 0 0];
+        stimulus.feedbackColors{2} = [1 0 0]';
+        stimulus.feedbackColors{3} = [0 0 0]';
     end
 
 elseif task.thistrial.thisseg == 5
 
-    stimulus.feedbackColors{1} = [0 0 1];
-    stimulus.feedbackColors{2} = [0 0 1];
-    stimulus.feedbackColors{3} = [0 0 1];
+    stimulus.feedbackColors{1} = [0 0 1]';
+    stimulus.feedbackColors{2} = [0 0 1]';
+    stimulus.feedbackColors{3} = [0 0 1]';
 
 end
 
@@ -244,11 +243,11 @@ if task.thistrial.thisseg == 1 % cue
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, stimulus.cueColors{1} );
+    mglMetalLines(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 0.2, stimulus.cueColors{1});
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, stimulus.cueColors{2});
+    mglMetalLines( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 0.2, stimulus.cueColors{2});
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, stimulus.cueColors{3});
+    mglMetalLines( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 0.2, stimulus.cueColors{3});
 
 elseif task.thistrial.thisseg == 2 % faces
     
@@ -257,11 +256,11 @@ elseif task.thistrial.thisseg == 2 % faces
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    mglMetalLines(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 0.2, [0 0 0]' );
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    mglMetalLines( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 0.2, [0 0 0]');
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+    mglMetalLines( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 0.2, [0 0 0]');
 
 elseif task.thistrial.thisseg == 3 % grating period
     
@@ -277,31 +276,31 @@ elseif task.thistrial.thisseg == 3 % grating period
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0 0] );
+    mglMetalLines(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 0.2, [0 0 0]' );
     % left
-    mglLines2(stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0 0]);
+    mglMetalLines(stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 0.2, [0 0 0]');
     % right
-    mglLines2(stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0 0]);
+    mglMetalLines(stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 0.2, [0 0 0]');
 
 elseif task.thistrial.thisseg == 4 % response period
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, stimulus.feedbackColors{1});
+    mglMetalLines(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 0.2, stimulus.feedbackColors{1});
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, stimulus.feedbackColors{2});
+    mglMetalLines( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 0.2, stimulus.feedbackColors{2});
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, stimulus.feedbackColors{3});
+    mglMetalLines( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 0.2, stimulus.feedbackColors{3});
 
 elseif task.thistrial.thisseg == 5
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 0.5 1] );
+    mglMetalLines(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 0.2, [0 0.5 1]' );
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 0.5 1]);
+    mglMetalLines( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 0.2, [0 0.5 1]');
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 0.5 1]);
+    mglMetalLines( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 0.2, [0 0.5 1]');
 
 end
 
@@ -335,9 +334,9 @@ if task.thistrial.gotResponse < 1
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
         
-        stimulus.feedbackColors{1} = [0 1 0];
-        stimulus.feedbackColors{2} = [0 1 0];
-        stimulus.feedbackColors{3} = [0 1 0];
+        stimulus.feedbackColors{1} = [0 1 0]';
+        stimulus.feedbackColors{2} = [0 1 0]';
+        stimulus.feedbackColors{3} = [0 1 0]';
 
     else % incorrect
         corr = 0;
@@ -352,9 +351,9 @@ if task.thistrial.gotResponse < 1
             stimulus.staircase2 = doStaircase('update',stimulus.staircase2,corr);
         end
 
-        stimulus.feedbackColors{1} = [1 0 0];
-        stimulus.feedbackColors{2} = [1 0 0];
-        stimulus.feedbackColors{3} = [1 0 0];
+        stimulus.feedbackColors{1} = [1 0 0]';
+        stimulus.feedbackColors{2} = [1 0 0]';
+        stimulus.feedbackColors{3} = [1 0 0]';
 
     end
 
@@ -389,8 +388,8 @@ stimulus.backgroundColor = 0.5;
 function stimulus = initFaces(stimulus)
 
 % load angry and neutral faces
-load('~/Documents/MATLAB/nepr207/neutralFaces.mat')
-load('~/Documents/MATLAB/nepr207/angryFaces.mat')
+load('~/proj/nepr207_extra/neutralFaces.mat')
+load('~/proj/nepr207_extra/angryFaces.mat')
 stimulus.angryFaces = angryImgStack;
 stimulus.neutralFaces = neutralImgStack;
 
@@ -399,7 +398,7 @@ stimulus.neutralFaces = neutralImgStack;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = initStaircase(stimulus)
 
-stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=10','initialStepsize=1','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
-stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=10','initialStepsize=1','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase1 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=6','initialStepsize=1','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
+stimulus.staircase2 = doStaircase('init','upDown','nup=1','ndown=2','initialThreshold=6','initialStepsize=1','minThreshold=0','nTrials=24','stepRule=levitt','maxStepsize=1','minStepsize=.01');
 
 

@@ -40,8 +40,8 @@ task{1}{1}.waitForBacktick = 1;
 
 % task
 task{1}{1}.getResponse = [0 0 0 0 0 0 0 1 0];
-task{1}{1}.segmin = [0.2, 0.4, 0.2, 0.4, 0.8, 11, 0.5, 2.5, 1]; % average trial time = 20s
-task{1}{1}.segmax = [0.2, 0.4, 0.2, 0.4, 0.8, 11, 0.5, 2.5, 7];
+task{1}{1}.segmin = [0.2, 0.4, 0.2, 0.4, 0.8, 12, 0.5, 2.5, 1]; % average trial time = 21s
+task{1}{1}.segmax = [0.2, 0.4, 0.2, 0.4, 0.8, 12, 0.5, 2.5, 7];
 
 % task parameters
 task{1}{1}.parameter.sameStim = [1 2]; % 1 stim1, 2 stim2
@@ -237,11 +237,11 @@ elseif task.thistrial.thisseg == 6 % working memory period
 
     % draw fix
     % Vert
-    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [1 0.5 1] );
+    mglLines2(stimulus.cueVertX0,stimulus.cueVertY0,stimulus.cueVertX1,stimulus.cueVertY1, 2, [0 1 1] );
     % left
-    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [1 0.5 1]);
+    mglLines2( stimulus.cueLeftX0,stimulus.cueLeftY0,stimulus.cueLeftX1,stimulus.cueLeftY1, 2, [0 1 1]);
     % right
-    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [1 0.5 1]);
+    mglLines2( stimulus.cueRightX0,stimulus.cueRightY0,stimulus.cueRightX1,stimulus.cueRightY1, 2, [0 1 1]);
 
 elseif task.thistrial.thisseg == 7
 
