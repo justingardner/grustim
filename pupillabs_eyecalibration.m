@@ -9,27 +9,27 @@
 function validation_drawDots
 mglClose;   % close any MGL windows if opened
 
-% specify the participant
-id = input('ID? : ', 's');
-saving_name = [id '_' datestr(now,'mmddyy-HHMMSS')];
-mglSetSID('test')
-
-% using eyelink
-eyetracker = input('Eyelink?(Y/N) : ', 's');
-
-% connect pupil labs
-global device
-ip = '10.35.122.204';
-device = pyrunfile("connect_pupilLabs.py","device", ip = ip);
-if isempty(device.phone_id)
-    error("Pupil lab device is not connected.")
-end
+% % specify the participant
+% id = input('ID? : ', 's');
+% saving_name = [id '_' datestr(now,'mmddyy-HHMMSS')];
+% mglSetSID('test')
+% 
+% % using eyelink
+% eyetracker = input('Eyelink?(Y/N) : ', 's');
+% 
+% % connect pupil labs
+% global device
+% ip = '10.35.121.121';
+% device = pyrunfile("connect_pupilLabs.py","device", ip = ip);
+% if isempty(device.phone_id)
+%     error("Pupil lab device is not connected.")
+% end
 
 % task repetition
 task_repetition = 10;
 
 % initialize myscreen
-myscreen.displayName = 'psychophysicsroom';
+myscreen.displayName = 'vpixx';
 myscreen.saveData = 1;
 myscreen.datadir = [pwd '/data'];
 if ~exist(myscreen.datadir), mkdir(myscreen.datadir); end
@@ -43,8 +43,8 @@ global stimulus
 
 % determine target locations (angle)
 stimulus.deviceRect = floor(mglGetParam('deviceRect'));  % screen limit in angle
-xlim = stimulus.deviceRect(3)-.5;
-ylim = stimulus.deviceRect(4)-.5;
+xlim = stimulus.deviceRect(3)-15;
+ylim = stimulus.deviceRect(4)-10;
 
 positions = [[-xlim, ylim]; [0, ylim]; [xlim, ylim]; [xlim, 0]; ...
     [xlim, -ylim]; [0, -ylim]; [-xlim, -ylim]; [-xlim, 0]];
