@@ -19,7 +19,7 @@
 %mglVisualAngleCoordinates(57,[16 12]);
 %mglFixationCross;
 %mglFlush;
-function mglFixationCrossDiag( width, linewidth, color, origin );
+function mglFixationCrossArms( width, linewidth, color, origin );
 
 if (exist('width','var') & length(width)>1)
   params=width;

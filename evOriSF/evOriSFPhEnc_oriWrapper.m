@@ -1,14 +1,12 @@
 % evOriSFPhEnc_oriWrapper.m - wrapper script to feed evOriSFPhEnc the proper stim parameters
-% (mglPrivateEyelinkRecordingStart) Start recording failed with value -1
 
 % easy access parameters for scanning/testing
 saveParam = 'saveParam=0';
 scanner = 'atScanner=0';
-mglSetSID('s374');
-setRepeats = 6; % number of repeats of all conditions
+mglSetSID('test');
+setRepeats = 2; % number of repeats of all conditions
 
-% loose variables - MAKE SURE THESE MATCH PARAMETERS IN evOriSFPhEnc
-sf = [6];
+sf = [0.5 1 4];
 dir = [1 -1];
 
 for setIdx = 1:setRepeats

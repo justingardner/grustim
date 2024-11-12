@@ -10,11 +10,11 @@
 %                        sf=0.5: low SF
 %                        sf=1.5: high SF
 
-function retval = evOriSFPhEnc_oban(varargin)
+function retval = evOriSFPhEnc_ori(varargin)
 
 % % check arguments
 if ~any(nargin == [2:5])
-  help evOriSFPhEnc_oban
+  help evOriSFPhEnc_ori
   return
 end
 
@@ -25,7 +25,7 @@ getArgs(varargin, [], 'verbose=0');
 if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('saveParam'),saveParam = 0;end
 if ieNotDefined('screenParam')
-    myscreen.displayName = 'fMRIproj_akuo2';
+    myscreen.displayName = 'test';
 else
     myscreen.displayName = screenParam;
 end
@@ -86,7 +86,7 @@ stimulus.gradientTimesBackward = stimulus.segdur - linspace(1/60,(stimulus.nGrad
 % size
 stimulus.height = 20;
 stimulus.width = 20;
-stimulus.aperOuterHeight = 16; % minor axis diameter
+stimulus.aperOuterHeight = 19; % minor axis diameter
 stimulus.aperOuterWidth = 19; % major axis diameter
 stimulus.outerHeightRatio = stimulus.aperOuterHeight/stimulus.height;
 stimulus.outerWidthRatio = stimulus.aperOuterWidth/stimulus.width;
@@ -111,10 +111,13 @@ if atScanner
 end
 
 global fixStimulus
-fixStimulus.diskSize = 5;
-fixStimulus.fixWidth = 0.8;
-fixStimulus.fixLineWidth = 3;
-[task{2} myscreen] = fixStairInitTask(myscreen);
+fixStimulus.diskSize = 1.5; % radius of fixation disk
+if fixStimulus.diskSize*2 > stimulus.aperInnerHeight
+    warning('The disk size for the fixation cross is larger than your inner aperture size.')
+end
+fixStimulus.fixWidth = 1; % arm length = half of this value
+fixStimulus.fixLineWidth = 0.2;
+[task{2} myscreen] = fixStairInitTaskMetal(myscreen);
 
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -215,9 +218,9 @@ else
 end
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function to init the dot stimulus
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% function to init the grating stimulus %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function stimulus = myInitStimulus(stimulus,myscreen,task)
 
 stimulus.pixRes = min(myscreen.screenHeight/myscreen.imageHeight, myscreen.screenWidth/myscreen.imageWidth);
