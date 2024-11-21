@@ -7,14 +7,13 @@
 %
 %       args: varargin - oridir=1: clockwise
 %                        oridir=-1: counter clockwise
-%                        sf=0.5: low SF
-%                        sf=1.5: high SF
+%                        sfq=0.5: spatial frequency = 0.5 cpd
 
-function retval = evOriSFPhEnc_oban(varargin)
+function retval = evOriSFPhEnc_NIH(varargin)
 
 % % check arguments
 if ~any(nargin == [2:5])
-  help evOriSFPhEnc_oban
+  help evOriSFPhEnc_NIH
   return
 end
 
@@ -24,10 +23,10 @@ getArgs(varargin, [], 'verbose=0');
 % set default parameters
 if ieNotDefined('atScanner'),atScanner = 0;end
 if ieNotDefined('saveParam'),saveParam = 0;end
-if ieNotDefined('screenParam')
+if ieNotDefined('displayName')
     myscreen.displayName = 'test';
 else
-    myscreen.displayName = screenParam;
+    myscreen.displayName = displayName;
 end
 
 if ieNotDefined('sfq') || ieNotDefined('oridir')
@@ -74,20 +73,21 @@ stimulus.orientations = [stimulus.orientations(stimulus.noris/2 + 1:end) stimulu
 task{1}{1}.parameter.orientations = stimulus.orientations;
 
 % gradient timings
-% the total time of the gradient is stimulus.nGradSteps * 1/frameUpdateFreq * 2 (e.g., 1/60); keep this value < 14 (or 0.467 seconds) so that we don't run out of single seg boundary
+% the total time of the gradient is stimulus.nGradSteps * 1/frameUpdateFreq * 2 (e.g., 1/60); keep this value < 14 (or 0.467 seconds) so that we don't run out of single seg boundary if each step update is 1/60
 if ieNotDefined('gradsteps')
     stimulus.nGradSteps = 6;
 else
     stimulus.nGradSteps = gradsteps;
 end
-stimulus.gradientTimesForward = linspace(1/60,(stimulus.nGradSteps+1)/60,stimulus.nGradSteps+1)';
-stimulus.gradientTimesBackward = stimulus.segdur - linspace(1/60,(stimulus.nGradSteps+1)/60,stimulus.nGradSteps+1)';
+stimulus.gradientUpdateFrameHz = 60;
+stimulus.gradientTimesForward = linspace(1/stimulus.gradientUpdateFrameHz,(stimulus.nGradSteps+1)/stimulus.gradientUpdateFrameHz,stimulus.nGradSteps+1)';
+stimulus.gradientTimesBackward = stimulus.segdur - linspace(1/stimulus.gradientUpdateFrameHz,(stimulus.nGradSteps+1)/stimulus.gradientUpdateFrameHz,stimulus.nGradSteps+1)';
 
 % size
 stimulus.height = 20;
 stimulus.width = 20;
-stimulus.aperOuterHeight = 20; % minor axis diameter
-stimulus.aperOuterWidth = 20; % major axis diameter
+stimulus.aperOuterHeight = 10; % minor axis diameter
+stimulus.aperOuterWidth = 10; % major axis diameter
 stimulus.outerHeightRatio = stimulus.aperOuterHeight/stimulus.height;
 stimulus.outerWidthRatio = stimulus.aperOuterWidth/stimulus.width;
 
