@@ -91,8 +91,8 @@ stimulus.aperOuterWidth = 10; % major axis diameter
 stimulus.outerHeightRatio = stimulus.aperOuterHeight/stimulus.height;
 stimulus.outerWidthRatio = stimulus.aperOuterWidth/stimulus.width;
 
-stimulus.aperInnerHeight = 4; % minor axis diameter
-stimulus.aperInnerWidth = 4; % major axis diameter
+stimulus.aperInnerHeight = 6; % minor axis diameter
+stimulus.aperInnerWidth = 6; % major axis diameter
 stimulus.innerHeightRatio = stimulus.aperInnerHeight/stimulus.height;
 stimulus.innerWidthRatio = stimulus.aperInnerWidth/stimulus.width;
 
@@ -117,7 +117,8 @@ if fixStimulus.diskSize*2 > stimulus.aperInnerHeight
 end
 fixStimulus.fixWidth = 1; % arm length = half of this value
 fixStimulus.fixLineWidth = 0.2;
-[task{2} myscreen] = fixStairInitTaskMetal(myscreen);
+% [task{2} myscreen] = fixStairInitTaskMetal(myscreen);
+[task{2} myscreen] = fixRSVP(myscreen);
 
 % initialize the task
 for phaseNum = 1:length(task{1})
