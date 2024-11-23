@@ -43,7 +43,6 @@ myscreen = initScreen(myscreen);
 global stimulus;
 myscreen = initStimulus('stimulus',myscreen);
 
-
 % spatial frequency
 stimulus.sf = sfq;
 task{1}{1}.parameter.sf = stimulus.sf;
@@ -110,15 +109,27 @@ if atScanner
   task{1}{1}.synchToVol(end) = 1;
 end
 
+%%%%%%%%%%%%%%%%%%%%%%%%
+%%% define fixStimulus 
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+clear global fixStimulus
 global fixStimulus
-fixStimulus.diskSize = 1.5; % radius of fixation disk
-if fixStimulus.diskSize*2 > stimulus.aperInnerHeight
-    warning('The disk size for the fixation cross is larger than your inner aperture size.')
+fixStimulus.fixTask = 'rsvp'; % either fixStair or rsvp
+if strcmpi(fixStimulus.fixTask,'fixStair')
+    fixStimulus.diskSize = 1.5; % radius of fixation disk
+    if fixStimulus.diskSize*2 > stimulus.aperInnerHeight
+        warning('The disk size for the fixation cross is larger than your inner aperture size.')
+    end
+    fixStimulus.fixWidth = 1; % arm length = half of this value
+    fixStimulus.fixLineWidth = 0.2;
+    [task{2} myscreen] = fixStairInitTaskMetal(myscreen);
+elseif strcmpi(fixStimulus.fixTask,'rsvp')
+    fixStimulus.diskSize = 1.5;
+    fixStimulus.rate = 2; % letters/numbers per second (default=2)
+    fixStimulus.RSVPSize = 22; % size of text (default=22)
+    [task{2} myscreen] = fixRSVP(myscreen);
 end
-fixStimulus.fixWidth = 1; % arm length = half of this value
-fixStimulus.fixLineWidth = 0.2;
-% [task{2} myscreen] = fixStairInitTaskMetal(myscreen);
-[task{2} myscreen] = fixRSVP(myscreen);
 
 % initialize the task
 for phaseNum = 1:length(task{1})
@@ -148,8 +159,35 @@ while (phaseNum <= length(task)) && ~myscreen.userHitEsc
   myscreen = tickScreen(myscreen,task);
 end
 
+% calculate hit rate and false alarm rate
+nTrials = task{2}{1}.trialnum;
+thisScanTotalPossibleHits = sum(fixStimulus.targetSeq(1:nTrials));
+thisScanTotalPossibleFA = nTrials - thisScanTotalPossibleHits;
+hitRate = sum(task{2}{1}.randVars.hit) / thisScanTotalPossibleHits;
+faRate = sum(task{2}{1}.randVars.falseAlarm) / thisScanTotalPossibleFA;
+
+% avoid infinite or undefined z-scores
+hitRate = max(min(hitRate, 0.99),0.01);
+faRate = max(min(faRate, 0.99),0.01);
+
+zHit = norminv(hitRate);
+zFA = norminv(faRate);
+dprime = zHit - zFA;
+if dprime < 2
+    encouragingMessage = sprintf('(This score relies on the ratio of hit rate to false alarm rate. Try to aim for a d'' of 2!)');
+else
+    encouragingMessage = sprintf('d'' > 2 - great job, keep it up!');
+end
+
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
+
+mglTextSet('Helvetica',32,[1 1 1]);
+mglTextDraw(sprintf('Hit rate: %0.2f%%',hitRate*100),[0 1]);
+mglTextDraw(sprintf('False alarm rate: %0.2f%%',faRate*100),[0 0]);
+mglTextDraw(sprintf('d'' = %0.2f',dprime),[0 -1])
+mglTextDraw(encouragingMessage,[0 -2])
+mglFlush;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
@@ -232,59 +270,56 @@ stimulus.numPhases = 8;
 stimulus.phases = 0:(360-0)/stimulus.numPhases:360;
 stimulus.phases = stimulus.phases(1:end-1);
 
-if isfield(stimulus, 'tex')
-    fprintf('(evOriSFPhEnc) Attention: Using precomputed stimulus textures!!');
-else
-    disppercent(-inf,'Creating the stimulus textures');
+disppercent(-inf,'Creating the stimulus textures');
 
-    % create the grating texture (just need phase and sf, mglBltTexture will handle the rotations)
+% create the grating texture (just need phase and sf, mglBltTexture will handle the rotations)
+for iPhase=1:length(stimulus.phases)
+
+    % make a grating  but now scale it
+    grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf, 0, stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
+
+    % scale to range of display
+    grating = 255*(grating+1)/2;
+
+    % create a texture
+    stimulus.tex.grating{iPhase} = mglCreateTexture(grating, [], 1);
+
+    disppercent(iPhase/length(stimulus.phases));
+end
+
+% create the gradient textures
+gradientVals = linspace(0,1,stimulus.nGradSteps+1);
+gradientVals = gradientVals(1:end-1);
+for iGradient = 1:length(gradientVals)
     for iPhase=1:length(stimulus.phases)
 
         % make a grating  but now scale it
-        grating = mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf, 0, stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
+        grating = gradientVals(iGradient) * mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf, 0, stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
 
         % scale to range of display
         grating = 255*(grating+1)/2;
 
         % create a texture
-        stimulus.tex.grating{iPhase} = mglCreateTexture(grating, [], 1);
-
-        disppercent(iPhase/length(stimulus.phases));
+        stimulus.tex.gradient{iGradient,iPhase} = mglCreateTexture(grating, [], 1);
     end
-    
-    % create the gradient textures
-    gradientVals = linspace(0,1,stimulus.nGradSteps+1);
-    gradientVals = gradientVals(1:end-1);
-    for iGradient = 1:length(gradientVals)
-        for iPhase=1:length(stimulus.phases)
-
-            % make a grating  but now scale it
-            grating = gradientVals(iGradient) * mglMakeGrating(stimulus.width, stimulus.height, stimulus.sf, 0, stimulus.phases(iPhase), stimulus.pixRes, stimulus.pixRes);
-
-            % scale to range of display
-            grating = 255*(grating+1)/2;
-
-            % create a texture
-            stimulus.tex.gradient{iGradient,iPhase} = mglCreateTexture(grating, [], 1);
-        end
-    end
-
-    disppercent(inf);
-
-    % create the aperture texture - make a elliptical (circular) aperture
-    % grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
-    stimSize = size(grating,1);
-    apertureOuter = circStim([stimSize/2*stimulus.outerHeightRatio stimSize/2*stimulus.outerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
-    apertureInner = ~circStim([stimSize/2*stimulus.innerHeightRatio stimSize/2*stimulus.innerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
-    apertureAlpha = ~and(apertureOuter,apertureInner);
-    apertureAlpha = padarray(apertureAlpha,[(stimSize-1)/2 (stimSize-1)/2],1,'both'); % pad the array so that we block out the grating edges
-
-    % make rgb matrix (n x m x 3)
-    apertureRGB = 0.5 * ones(size(apertureAlpha,1),size(apertureAlpha,2),3);
-    
-    % tack on the alpha values
-    aperture = 255 * cat(3,apertureRGB,apertureAlpha);
-    % keyboard
-    % create a texture
-    stimulus.tex.aperture = mglCreateTexture(aperture, [], 1);
 end
+
+disppercent(inf);
+
+% create the aperture texture - make a elliptical (circular) aperture
+% grating = grating .*  mkDisc(size(grating), (length(grating)/2)-2, (size(grating)+1)/2, 1);
+stimSize = size(grating,1);
+apertureOuter = circStim([stimSize/2*stimulus.outerHeightRatio stimSize/2*stimulus.outerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
+apertureInner = ~circStim([stimSize/2*stimulus.innerHeightRatio stimSize/2*stimulus.innerWidthRatio],[stimSize stimSize],[ceil(stimSize/2) ceil(stimSize/2)]);
+apertureAlpha = ~and(apertureOuter,apertureInner);
+apertureAlpha = padarray(apertureAlpha,[(stimSize-1)/2 (stimSize-1)/2],1,'both'); % pad the array so that we block out the grating edges
+
+% make rgb matrix (n x m x 3)
+apertureRGB = 0.5 * ones(size(apertureAlpha,1),size(apertureAlpha,2),3);
+
+% tack on the alpha values
+aperture = 255 * cat(3,apertureRGB,apertureAlpha);
+% keyboard
+% create a texture
+stimulus.tex.aperture = mglCreateTexture(aperture, [], 1);
+
