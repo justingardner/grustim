@@ -50,7 +50,7 @@ task{1}{1}.parameter.sf = stimulus.sf;
 % ccw, cw ori conditions
 stimulus.segdur = 0.25;
 if ieNotDefined('noris')
-    stimulus.noris = 8;
+    stimulus.noris = 16;
 else
     stimulus.noris = noris;
 end
@@ -90,8 +90,8 @@ stimulus.aperOuterWidth = 16; % major axis diameter
 stimulus.outerHeightRatio = stimulus.aperOuterHeight/stimulus.height;
 stimulus.outerWidthRatio = stimulus.aperOuterWidth/stimulus.width;
 
-stimulus.aperInnerHeight = 6; % minor axis diameter
-stimulus.aperInnerWidth = 6; % major axis diameter
+stimulus.aperInnerHeight = 9; % minor axis diameter
+stimulus.aperInnerWidth = 9; % major axis diameter
 stimulus.innerHeightRatio = stimulus.aperInnerHeight/stimulus.height;
 stimulus.innerWidthRatio = stimulus.aperInnerWidth/stimulus.width;
 
@@ -99,7 +99,7 @@ task{1}{1}.random = 0;
 task{1}{1}.numTrials = Inf;
 task{1}{1}.collectEyeData = true;
 task{1}{1}.waitForBacktick = 1;
-task{1}{1}.seglen = stimulus.segdur*ones(1,4*stimulus.trialdur); % [repmat(0.25, 1, nseg)];
+task{1}{1}.seglen = stimulus.segdur*ones(1,stimulus.nseg); % [repmat(0.25, 1, nseg)]; should be length of nseg
 
 % sync to scanner
 task{1}{1}.synchToVol = zeros(size(task{1}{1}.seglen));
@@ -150,7 +150,7 @@ myscreen = eyeCalibDisp(myscreen);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Main display loop
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-mglClearScreen(); mglFlush;
+% mglClearScreen(); mglFlush;
 phaseNum = 1;
 while (phaseNum <= length(task)) && ~myscreen.userHitEsc
   % update the ori task
