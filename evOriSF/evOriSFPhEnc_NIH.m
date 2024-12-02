@@ -85,8 +85,8 @@ stimulus.gradientTimesBackward = stimulus.segdur - linspace(1/stimulus.gradientU
 % size
 stimulus.height = 20;
 stimulus.width = 20;
-stimulus.aperOuterHeight = 10; % minor axis diameter
-stimulus.aperOuterWidth = 10; % major axis diameter
+stimulus.aperOuterHeight = 16; % minor axis diameter
+stimulus.aperOuterWidth = 16; % major axis diameter
 stimulus.outerHeightRatio = stimulus.aperOuterHeight/stimulus.height;
 stimulus.outerWidthRatio = stimulus.aperOuterWidth/stimulus.width;
 
@@ -136,6 +136,8 @@ for phaseNum = 1:length(task{1})
   [task{1}{phaseNum} myscreen] = initTask(task{1}{phaseNum},myscreen,@startSegmentCallback,@screenUpdateCallback,@responseCallback);
 end
 
+mglMetalFullscreen;
+
 % do our initialization which creates the gratings
 stimulus = myInitStimulus(stimulus,myscreen,task);
 
@@ -159,35 +161,46 @@ while (phaseNum <= length(task)) && ~myscreen.userHitEsc
   myscreen = tickScreen(myscreen,task);
 end
 
-% calculate hit rate and false alarm rate
-nTrials = task{2}{1}.trialnum;
-thisScanTotalPossibleHits = sum(fixStimulus.targetSeq(1:nTrials));
-thisScanTotalPossibleFA = nTrials - thisScanTotalPossibleHits;
-hitRate = sum(task{2}{1}.randVars.hit) / thisScanTotalPossibleHits;
-faRate = sum(task{2}{1}.randVars.falseAlarm) / thisScanTotalPossibleFA;
-
-% avoid infinite or undefined z-scores
-hitRate = max(min(hitRate, 0.99),0.01);
-faRate = max(min(faRate, 0.99),0.01);
-
-zHit = norminv(hitRate);
-zFA = norminv(faRate);
-dprime = zHit - zFA;
-if dprime < 2
-    encouragingMessage = sprintf('(This score relies on the ratio of hit rate to false alarm rate. Try to aim for a d'' of 2!)');
-else
-    encouragingMessage = sprintf('d'' > 2 - great job, keep it up!');
-end
-
 % if we got here, we are at the end of the experiment
 myscreen = endTask(myscreen,task);
 
-mglTextSet('Helvetica',32,[1 1 1]);
-mglTextDraw(sprintf('Hit rate: %0.2f%%',hitRate*100),[0 1]);
-mglTextDraw(sprintf('False alarm rate: %0.2f%%',faRate*100),[0 0]);
-mglTextDraw(sprintf('d'' = %0.2f',dprime),[0 -1])
-mglTextDraw(encouragingMessage,[0 -2])
-mglFlush;
+if strcmpi(fixStimulus.fixTask,'rsvp')
+    pause(1)
+    mglMetalFullscreen;
+    pause(2)
+    %%% end of task, show subject their behavioral data %%%
+
+    % calculate hit rate and false alarm rate
+    nTrials = task{2}{1}.trialnum;
+    thisScanTotalPossibleHits = sum(fixStimulus.targetSeq(1:nTrials));
+    thisScanTotalPossibleFA = nTrials - thisScanTotalPossibleHits;
+    hitRate = sum(task{2}{1}.randVars.hit) / thisScanTotalPossibleHits;
+    faRate = sum(task{2}{1}.randVars.falseAlarm) / thisScanTotalPossibleFA;
+
+    % avoid infinite or undefined z-scores
+    hitRateAdj = max(min(hitRate, 0.99),0.01);
+    faRateAdj = max(min(faRate, 0.99),0.01);
+
+    zHit = norminv(hitRateAdj);
+    zFA = norminv(faRateAdj);
+    dprime = zHit - zFA;
+    if faRate < 0.33
+        if dprime < 2
+            encouragingMessage = sprintf('(This score relies on the ratio of hit rate to false alarm rate. Try to aim for a d'' of 2!)');
+        else
+            encouragingMessage = sprintf('d'' > 2 - great job, keep it up!');
+        end
+    else
+        encouragingMessage = sprintf('There seems to be a lot of false alarms - please let us know if we can clarify the task!');
+    end
+
+    mglTextSet('Helvetica',48,[1 1 1]);
+    mglTextDraw(sprintf('Hit rate: %0.2f%%',hitRate*100),[0 1]);
+    mglTextDraw(sprintf('False alarm rate: %0.2f%%',faRate*100),[0 0]);
+    mglTextDraw(sprintf('d'' = %0.2f',dprime),[0 -1])
+    mglTextDraw(encouragingMessage,[0 -2])
+    mglFlush;
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function that gets called at the start of each segment
