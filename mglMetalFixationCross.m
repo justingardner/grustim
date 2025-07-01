@@ -46,6 +46,11 @@ if (~exist('color','var'))
   color=[1 1 1]';
 end
 
+% color needs to be a column vector
+if size(color,1) == 1 && size(color,2) > 1
+    color = color';
+end
+
 % horizontal line
 x0=origin(1)-width/2;
 x1=origin(1)+width/2;
