@@ -7,7 +7,7 @@
 %    purpose: Reconstructs an image from its half fourier representation
 %             (see getHalfFourier)
 %
-function im = reconstructFromHalfFourier(d)
+function [im,imf] = reconstructFromHalfFourier(d)
 
 % check arguments
 if ~any(nargin == [1])
@@ -26,5 +26,6 @@ halfFourier = reshape(halfFourier,d.originalDims(1),ceil(d.originalDims(2)/2));
 % replicate the frequency components to make the negative frequencies which
 % are the complex conjugate of the positive frequncies
 halfFourier2 = fliplr(flipud(conj(halfFourier(:,1:floor(d.originalDims(2)/2)))));
+imf = [halfFourier halfFourier2];
 im = ifft2(ifftshift([halfFourier halfFourier2]));
 
